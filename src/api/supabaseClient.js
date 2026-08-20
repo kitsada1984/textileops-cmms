@@ -11,14 +11,25 @@ function getMissingSchemaColumn(error) {
 
 function getTimestampErrorField(error, payload) {
   const msg = String(error?.message || '')
-  if (!TIMESTAMP_SYNTAX_ERROR_RE.test(msg)) return null
-  const match = msg.match(TIMESTAMP_SYNTAX_ERROR_RE)
-  const badVal = match ? match[1].trim() : ''
+  if (!msg.toLowerCase().includes('invalid input syntax for type timestamp') && !msg.toLowerCase().includes('invalid input syntax for type date')) {
+    return null
+  }
+  
+  const quotedMatch = msg.match(/"([^"]+)"/)
+  const badVal = quotedMatch ? quotedMatch[1].trim() : ''
+
+  if (badVal) {
+    for (const [k, v] of Object.entries(payload)) {
+      if (String(v).trim() === badVal) return k
+    }
+  }
+
   for (const [k, v] of Object.entries(payload)) {
-    if (String(v).trim() === badVal || (typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v.trim()) && badVal.includes(v.trim()))) {
+    if (typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v.trim())) {
       return k
     }
   }
+
   for (const k of ['StartTime', 'EndTime', 'time', 'start_time', 'end_time']) {
     if (Object.hasOwn(payload, k)) return k
   }
