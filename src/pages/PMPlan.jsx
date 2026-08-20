@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Pencil, Trash2, RefreshCw, Calendar } from 'lucide-react'
+import { Pencil, Trash2, RefreshCw, Calendar, ScrollText } from 'lucide-react'
 import { format, addDays, differenceInCalendarDays, startOfDay } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import { AuditLogAPI, CylinderAPI, PMPlanAPI, PM_TYPE, PM_STATUS, WO_PRIORITY } from '../api/entities'
@@ -17,6 +17,7 @@ import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { useAuth } from '../contexts/AuthContext'
+import PMLog from './PMLog'
 
 const PM_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
@@ -257,11 +258,17 @@ function getPMCycleValue(row) {
   return 'CUSTOM'
 }
 
-export default function PMPlan() {
+export default function PMPlan({ defaultTab = 'plan' }) {
   const { t } = useT()
   const { canAdd, canEdit, canDelete } = usePagePerms('pm')
   const { user } = useAuth()
   const toast = useToast()
+  const [activeTab,  setActiveTab]  = useState(defaultTab)
+
+  useEffect(() => {
+    if (defaultTab) setActiveTab(defaultTab)
+  }, [defaultTab])
+
   const { data, loading, load, save, remove } = useEntity(PMPlanAPI)
   const [search,     setSearch]    = useState('')
   const [filterSort, setFilterSort] = useState(INIT_FS)
@@ -886,25 +893,58 @@ export default function PMPlan() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder={t('pm_search')} />
-        <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-        <GoogleSheetSyncButton
-          sheetName="แผน PM"
-          columns={cols}
-          rows={displayRows}
-          valueGetters={{
-            PM_Type: formatPMCycle,
-            Countdown_Days: (row) => getPMCountdown(row.Next_PM_Date).label,
-            ImageUrl: getPMImageUrl,
-            ImagePreview: getPMImageUrl,
-            Remark: (row) => stripImageUrlMeta(row.Remark),
-          }}
-        />
-        <button className="btn-primary ml-auto" onClick={openSyncPMModal} disabled={syncingPM || !canAdd || !cylinderPMSource.length}>
-          <RefreshCw size={14} className={syncingPM ? 'animate-spin' : ''}/> {syncingPM ? 'กำลังอัพเดต...' : 'อัพเดตแผน PM'}
+      {/* Sub-tab switcher */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 overflow-x-auto w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab('plan')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'plan'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Calendar size={15} />
+          <span>แผน PM (PM Plan)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('log')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'log'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <ScrollText size={15} />
+          <span>ประวัติ Log PM (PM Log)</span>
         </button>
       </div>
+
+      {activeTab === 'log' ? (
+        <PMLog />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <SearchInput value={search} onChange={setSearch} placeholder={t('pm_search')} />
+            <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+            <GoogleSheetSyncButton
+              sheetName="แผน PM"
+              columns={cols}
+              rows={displayRows}
+              valueGetters={{
+                PM_Type: formatPMCycle,
+                Countdown_Days: (row) => getPMCountdown(row.Next_PM_Date).label,
+                ImageUrl: getPMImageUrl,
+                ImagePreview: getPMImageUrl,
+                Remark: (row) => stripImageUrlMeta(row.Remark),
+              }}
+            />
+            <button className="btn-primary ml-auto" onClick={openSyncPMModal} disabled={syncingPM || !canAdd || !cylinderPMSource.length}>
+              <RefreshCw size={14} className={syncingPM ? 'animate-spin' : ''}/> {syncingPM ? 'กำลังอัพเดต...' : 'อัพเดตแผน PM'}
+            </button>
+          </div>
 
       <div className="table-wrap">
         <table>
@@ -1213,6 +1253,8 @@ export default function PMPlan() {
           />
         </div>
       </Modal>
+        </>
+      )}
     </div>
   )
 }

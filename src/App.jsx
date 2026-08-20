@@ -47,7 +47,6 @@ const NAV_SECTIONS = [
       { to: '/cylinders',  icon: Disc,            key: 'nav_cylinders',  permKey: 'cylinders' },
       { to: '/workorders',    icon: ClipboardList,   key: 'nav_workorders',    permKey: 'workorders' },
       { to: '/pm',            icon: Calendar,        key: 'nav_pm',            permKey: 'pm' },
-      { to: '/pm-log',        icon: ScrollText,      key: 'nav_pm_log',        permKey: 'pm' },
       { to: '/design-bom',    icon: FileText,        key: 'nav_design_bom',    permKey: 'designbom' },
       { to: '/repair-requests', icon: Wrench,        key: 'nav_repair_requests', permKey: 'workorders' },
     ]
@@ -85,7 +84,7 @@ function PageRoutes() {
       <Route path="/workorders"      element={<WorkOrders />} />
       <Route path="/repair-requests" element={<RepairRequests />} />
       <Route path="/pm"         element={<PMPlan />} />
-      <Route path="/pm-log"     element={<PMLog />} />
+      <Route path="/pm-log"     element={<PMPlan defaultTab="log" />} />
       <Route path="/design-bom" element={<DesignBom />} />
       <Route path="/spareparts" element={<SpareParts />} />
       <Route path="/purchasing" element={<Purchasing />} />
