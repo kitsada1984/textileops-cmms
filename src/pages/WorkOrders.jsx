@@ -437,36 +437,16 @@ export default function WorkOrders() {
     }
   }
 
-  // Soft Delete Job
-  const handleSoftDelete = async (job) => {
-    if (!confirm(`ยืนยันการลบใบสั่งงาน ${job.Job_ID || job['Job ID']} หรือไม่?`)) return
+  // Delete Job
+  const handleDeleteJob = async (job) => {
+    const id = job.id || job._id
+    if (!id) return toast.error('ลบใบสั่งงานไม่สำเร็จ', 'ไม่พบ ID ของรายการ')
+    if (!confirm(`ยืนยันการลบใบสั่งงาน ${job.Job_ID || job['Job ID'] || id} หรือไม่?`)) return
     try {
-      const payload = {
-        ...job,
-        IsDeleted: true,
-        DeletedAt: new Date().toISOString(),
-        DeletedBy: user?.username || user?.full_name || 'ผู้ลบ',
-      }
-      await saveJob(payload)
-      toast.warning('ย้ายใบสั่งงานไปที่ถังขยะแล้ว', job.Job_ID || job['Job ID'])
+      await removeJob(id)
+      toast.success('ลบใบสั่งงานสำเร็จ', job.Job_ID || job['Job ID'] || id)
     } catch (err) {
       toast.error('ลบใบสั่งงานไม่สำเร็จ', err.message)
-    }
-  }
-
-  // Restore Soft-Deleted Job
-  const handleRestoreJob = async (job) => {
-    try {
-      const payload = {
-        ...job,
-        IsDeleted: false,
-        DeletedAt: null,
-        DeletedBy: null,
-      }
-      await saveJob(payload)
-      toast.success('กู้คืนใบสั่งงานสำเร็จ', job.Job_ID || job['Job ID'])
-    } catch (err) {
-      toast.error('กู้คืนไม่สำเร็จ', err.message)
     }
   }
 
@@ -1265,25 +1245,15 @@ export default function WorkOrders() {
                             </button>
                           )}
 
-                          {/* Soft Delete or Restore */}
+                          {/* Delete Job */}
                           {canDelete && (
-                            job.IsDeleted ? (
-                              <button
-                                onClick={() => handleRestoreJob(job)}
-                                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-500 transition-colors"
-                                title="กู้คืนรายการ"
-                              >
-                                <RotateCcw size={15} />
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleSoftDelete(job)}
-                                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 transition-colors"
-                                title="ลบใบสั่งงาน"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            )
+                            <button
+                              onClick={() => handleDeleteJob(job)}
+                              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 transition-colors"
+                              title="ลบใบสั่งงาน"
+                            >
+                              <Trash2 size={15} />
+                            </button>
                           )}
                         </div>
                       </td>
