@@ -9,30 +9,40 @@ function getMissingSchemaColumn(error) {
   return message.match(MISSING_SCHEMA_COLUMN_RE)?.[1] || null
 }
 
-function getTimestampErrorField(error, payload) {
+function getBadFieldFromError(error, payload) {
   const msg = String(error?.message || '')
-  if (!msg.toLowerCase().includes('invalid input syntax for type timestamp') && !msg.toLowerCase().includes('invalid input syntax for type date')) {
-    return null
-  }
   
-  const quotedMatch = msg.match(/"([^"]+)"/)
-  const badVal = quotedMatch ? quotedMatch[1].trim() : ''
-
-  if (badVal) {
+  // Timestamp / date syntax error
+  if (msg.toLowerCase().includes('invalid input syntax for type timestamp') || msg.toLowerCase().includes('invalid input syntax for type date')) {
+    const quotedMatch = msg.match(/"([^"]+)"/)
+    const badVal = quotedMatch ? quotedMatch[1].trim() : ''
+    if (badVal) {
+      for (const [k, v] of Object.entries(payload)) {
+        if (String(v).trim() === badVal) return k
+      }
+    }
     for (const [k, v] of Object.entries(payload)) {
-      if (String(v).trim() === badVal) return k
+      if (typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v.trim())) return k
+    }
+    for (const k of ['StartTime', 'EndTime', 'DateStart', 'DateEnd', 'time', 'start_time', 'end_time']) {
+      if (Object.hasOwn(payload, k)) return k
     }
   }
 
-  for (const [k, v] of Object.entries(payload)) {
-    if (typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v.trim())) {
-      return k
+  // Numeric / float / integer syntax error
+  if (msg.toLowerCase().includes('invalid input syntax for type numeric') || msg.toLowerCase().includes('invalid input syntax for type double precision') || msg.toLowerCase().includes('invalid input syntax for type integer') || msg.toLowerCase().includes('invalid input syntax for type bigint')) {
+    const quotedMatch = msg.match(/"([^"]+)"/)
+    const badVal = quotedMatch ? quotedMatch[1].trim() : ''
+    if (badVal) {
+      for (const [k, v] of Object.entries(payload)) {
+        if (String(v).trim() === badVal) return k
+      }
+    }
+    for (const k of ['Duration', 'WorkingHoursDecimal']) {
+      if (Object.hasOwn(payload, k)) return k
     }
   }
 
-  for (const k of ['StartTime', 'EndTime', 'DateStart', 'DateEnd', 'time', 'start_time', 'end_time']) {
-    if (Object.hasOwn(payload, k)) return k
-  }
   return null
 }
 
@@ -54,6 +64,10 @@ export function sanitizeForSupabase(item) {
           // ignore
         }
       }
+      if (key === 'Duration' && typeof value === 'string') {
+        const parsed = parseFloat(value)
+        return [key, isNaN(parsed) ? 0 : parsed]
+      }
       return [key, value]
     })
   )
@@ -69,13 +83,13 @@ async function runWithMissingColumnRetry(payload, request) {
   let nextPayload = payload
   const omittedColumns = new Set()
 
-  for (let attempt = 0; attempt < 10; attempt += 1) {
+  for (let attempt = 0; attempt < 25; attempt += 1) {
     const { data, error } = await request(nextPayload)
     if (!error) return { data, error: null }
 
     const missingColumn = getMissingSchemaColumn(error)
-    const timestampField = getTimestampErrorField(error, nextPayload)
-    const badCol = missingColumn || timestampField
+    const badField = getBadFieldFromError(error, nextPayload)
+    const badCol = missingColumn || badField
 
     if (!badCol || !Object.hasOwn(nextPayload, badCol) || omittedColumns.has(badCol)) {
       return { data, error }

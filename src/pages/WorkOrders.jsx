@@ -386,7 +386,7 @@ export default function WorkOrders() {
         EndTime: endTimestamp,
         EndTimestamp: endTimestamp,
         DateEnd: endTimestamp,
-        Duration: durationResult.durationText,
+        Duration: durationResult.hoursDecimal,
         WorkingHoursDecimal: durationResult.hoursDecimal,
         WorkingDurationText: durationResult.durationText,
         Status: 'COMPLETED',
