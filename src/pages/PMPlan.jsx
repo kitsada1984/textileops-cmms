@@ -894,11 +894,11 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   return (
     <div className="space-y-4">
       {/* Sub-tab switcher */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 overflow-x-auto w-fit">
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 w-full sm:w-fit">
         <button
           type="button"
           onClick={() => setActiveTab('plan')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
             activeTab === 'plan'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -906,12 +906,17 @@ export default function PMPlan({ defaultTab = 'plan' }) {
         >
           <Calendar size={15} />
           <span>แผน PM (PM Plan)</span>
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            activeTab === 'plan' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+          }`}>
+            {displayRows.length}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('log')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
             activeTab === 'log'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'

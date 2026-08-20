@@ -541,10 +541,11 @@ export default function WorkOrders() {
       </div>
 
       {/* ── 4-Tabs Navigation Bar ─────────────────────────────── */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
         <button
+          type="button"
           onClick={() => setCurrentTab('records')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
             currentTab === 'records'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -552,14 +553,17 @@ export default function WorkOrders() {
         >
           <ClipboardList size={15} />
           <span>รายการใบสั่งงาน & เปิดงาน</span>
-          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            currentTab === 'records' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+          }`}>
             {allJobs.filter((j) => !j.IsDeleted).length}
           </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setCurrentTab('dashboard')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
             currentTab === 'dashboard'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -570,8 +574,9 @@ export default function WorkOrders() {
         </button>
 
         <button
+          type="button"
           onClick={() => setCurrentTab('technicians')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
             currentTab === 'technicians'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -579,14 +584,17 @@ export default function WorkOrders() {
         >
           <Wrench size={15} />
           <span>ทะเบียนช่าง</span>
-          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            currentTab === 'technicians' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+          }`}>
             {technicians.length}
           </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setCurrentTab('settings')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
             currentTab === 'settings'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
