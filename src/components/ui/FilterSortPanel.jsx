@@ -9,7 +9,6 @@ import {
   Search,
   CalendarDays,
   Hash,
-  RotateCcw,
 } from 'lucide-react'
 import { EMPTY_FILTER_SORT, getActiveFilterCount, isFilterValueActive, optionLabel, optionValue } from '../../utils/filterSort'
 
@@ -34,12 +33,14 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
   const [open, setOpen] = useState(false)
   const [draftValue, setDraftValue] = useState(() => cloneFilterSort(value))
   const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(MOBILE_QUERY).matches : false
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(MOBILE_QUERY).matches
+      : false
   )
   const ref = useRef(null)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined
     const mq = window.matchMedia(MOBILE_QUERY)
     const update = () => setIsMobile(mq.matches)
     update()
@@ -88,19 +89,10 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
     setOpen(false)
   }
   const updateDraft = (partial) => setDraftValue(prev => ({ ...prev, ...partial }))
-  const emit = (partial) => updateDraft(partial)
-  const setSort = (key) => emit({ sort: { key, dir: sort.dir || 'asc' } })
+  const setSort = (key) => updateDraft({ sort: { key, dir: sort.dir || 'asc' } })
   const setDir = (dir) => updateDraft({ sort: { ...sort, dir } })
   const setFilter = (key, val) => updateDraft({ filters: { ...filters, [key]: val } })
   const clearAll = () => setDraftValue(cloneFilterSort(INIT_FS))
-
-  const clearField = (col) => {
-    const type = col.filter?.type
-    if (type === 'select') return setFilter(col.key, [])
-    if (type === 'number') return setFilter(col.key, { min: '', max: '' })
-    if (type === 'date') return setFilter(col.key, { from: '', to: '' })
-    return setFilter(col.key, '')
-  }
 
   const toggleOpt = (key, opt, multi = true) => {
     if (!multi) {
@@ -115,6 +107,7 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
+        type="button"
         onClick={() => open ? cancelChanges() : openPanel()}
         style={{
           display: 'flex',
@@ -192,7 +185,7 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
                 </div>
               </div>
               {isMobile && (
-                <button onClick={cancelChanges} style={closeStyle()}>
+                <button type="button" onClick={cancelChanges} style={closeStyle()}>
                   <X size={14} />
                 </button>
               )}
@@ -211,8 +204,8 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
                     <option value="">เลือกคอลัมน์</option>
                     {sortable.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
-                  <DirButton active={sort.key && sort.dir === 'asc'} disabled={!sort.key} onClick={() => setDir('asc')} icon={<ArrowUp size={13} />} label="น้อย" />
-                  <DirButton active={sort.key && sort.dir === 'desc'} disabled={!sort.key} onClick={() => setDir('desc')} icon={<ArrowDown size={13} />} label="มาก" />
+                  <DirButton active={Boolean(sort.key && sort.dir === 'asc')} disabled={!sort.key} onClick={() => setDir('asc')} icon={<ArrowUp size={13} />} label="น้อย" />
+                  <DirButton active={Boolean(sort.key && sort.dir === 'desc')} disabled={!sort.key} onClick={() => setDir('desc')} icon={<ArrowDown size={13} />} label="มาก" />
                 </div>
               </section>
             )}
@@ -220,8 +213,8 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
             <section style={{ ...sectionStyle(), marginTop: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <SectionTitle icon={<Filter size={13} />} label="เงื่อนไขกรองข้อมูล" tone="var(--accent)" />
-                {totalFilterCount > 0 && (
-                  <button onClick={clearAllFilters} style={miniClearStyle()}>
+                {filterActive > 0 && (
+                  <button type="button" onClick={clearAll} style={miniClearStyle()}>
                     <X size={10} /> ล้างเงื่อนไข
                   </button>
                 )}
@@ -236,7 +229,7 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
                       col={col}
                       value={val}
                       onChange={nextVal => setFilter(col.key, nextVal)}
-                      onToggle={toggleFilter}
+                      onToggle={toggleOpt}
                     />
                   )
                 })}
@@ -245,10 +238,10 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
           </div>
 
           <div style={footerStyle(isMobile)}>
-            <button onClick={cancelChanges} style={secondaryActionStyle(isMobile)}>
+            <button type="button" onClick={cancelChanges} style={secondaryActionStyle(isMobile)}>
               ยกเลิก
             </button>
-            <button onClick={applyChanges} style={confirmActionStyle(isMobile)}>
+            <button type="button" onClick={commitChanges} style={confirmActionStyle(isMobile)}>
               {total > 0 ? `นำไปใช้ (${total})` : 'นำไปใช้'}
             </button>
           </div>
@@ -269,7 +262,8 @@ function SectionTitle({ icon, label, tone = 'var(--text-600)' }) {
 
 function FilterField({ col, value, onChange, onToggle }) {
   const type = col?.filter?.type || 'text'
-  const active = isFilterValueActive(type, value)
+  const active = isFilterValueActive(value)
+  const options = col.filter?.opts || col.filter?.options || []
 
   return (
     <div style={{
@@ -285,6 +279,7 @@ function FilterField({ col, value, onChange, onToggle }) {
         </div>
         {active && (
           <button
+            type="button"
             onClick={() => onChange(type === 'select' ? [] : type === 'number' || type === 'date' ? {} : '')}
             style={miniClearStyle()}
           >
@@ -295,13 +290,14 @@ function FilterField({ col, value, onChange, onToggle }) {
 
       {type === 'select' && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {(col.filter.options || []).map(opt => {
+          {options.map(opt => {
             const ov = optionValue(opt)
             const ol = optionLabel(opt)
             const selected = Array.isArray(value) ? value.includes(ov) : value === ov
             return (
               <button
                 key={String(ov)}
+                type="button"
                 onClick={() => onToggle(col.key, ov, col.filter.multi !== false)}
                 style={{
                   display: 'inline-flex',
@@ -429,6 +425,7 @@ function closeStyle() {
 function DirButton({ active, disabled, onClick, icon, label }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       style={{
@@ -519,22 +516,6 @@ function miniClearStyle() {
     borderRadius: 999,
     fontSize: 10,
     fontWeight: 800,
-    cursor: 'pointer',
-    color: '#e11d48',
-    background: '#fff1f2',
-    border: '1px solid #fecdd3',
-  }
-}
-
-function dangerClearStyle() {
-  return {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 5,
-    padding: '7px 10px',
-    borderRadius: 999,
-    fontSize: 11,
-    fontWeight: 900,
     cursor: 'pointer',
     color: '#e11d48',
     background: '#fff1f2',
