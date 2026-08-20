@@ -2,10 +2,27 @@ import { supabase } from '../supabase'
 
 const TEMPORAL_FIELD_RE = /(date|time|updated|created|completed|approved)/i
 const MISSING_SCHEMA_COLUMN_RE = /Could not find the '([^']+)' column/i
+const TIMESTAMP_SYNTAX_ERROR_RE = /invalid input syntax for type timestamp.*?[:"]([^"]+)["\s]?/i
 
 function getMissingSchemaColumn(error) {
   const message = String(error?.message || '')
   return message.match(MISSING_SCHEMA_COLUMN_RE)?.[1] || null
+}
+
+function getTimestampErrorField(error, payload) {
+  const msg = String(error?.message || '')
+  if (!TIMESTAMP_SYNTAX_ERROR_RE.test(msg)) return null
+  const match = msg.match(TIMESTAMP_SYNTAX_ERROR_RE)
+  const badVal = match ? match[1].trim() : ''
+  for (const [k, v] of Object.entries(payload)) {
+    if (String(v).trim() === badVal || (typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v.trim()) && badVal.includes(v.trim()))) {
+      return k
+    }
+  }
+  for (const k of ['StartTime', 'EndTime', 'time', 'start_time', 'end_time']) {
+    if (Object.hasOwn(payload, k)) return k
+  }
+  return null
 }
 
 export function sanitizeForSupabase(item) {
@@ -34,12 +51,15 @@ async function runWithMissingColumnRetry(payload, request) {
     if (!error) return { data, error: null }
 
     const missingColumn = getMissingSchemaColumn(error)
-    if (!missingColumn || !Object.hasOwn(nextPayload, missingColumn) || omittedColumns.has(missingColumn)) {
+    const timestampField = getTimestampErrorField(error, nextPayload)
+    const badCol = missingColumn || timestampField
+
+    if (!badCol || !Object.hasOwn(nextPayload, badCol) || omittedColumns.has(badCol)) {
       return { data, error }
     }
 
-    omittedColumns.add(missingColumn)
-    nextPayload = omitColumn(nextPayload, missingColumn)
+    omittedColumns.add(badCol)
+    nextPayload = omitColumn(nextPayload, badCol)
   }
 
   return request(nextPayload)
