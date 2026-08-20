@@ -1,0 +1,1931 @@
+import { useState, useMemo, useEffect } from 'react'
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  ClipboardList,
+  Target,
+  Wrench,
+  Settings as SettingsIcon,
+  CheckCircle2,
+  Clock,
+  Send,
+  UserCheck,
+  Search,
+  Printer,
+  History,
+  RotateCcw,
+  Sliders,
+  UserPlus,
+  X,
+  Check,
+  AlertCircle,
+  FileSpreadsheet,
+} from 'lucide-react'
+import { format } from 'date-fns'
+import useEntity from '../hooks/useEntity'
+import {
+  WorkOrderAPI,
+  TechnicianAPI,
+  KpiSettingsAPI,
+  AuditLogAPI,
+  WO_JOB_TYPE,
+  TECH_SKILL_LEVELS,
+  TECH_SPECIALIZATIONS,
+  generateJobId,
+  calculateDuration,
+  calculateSlaPerformance,
+} from '../api/entities'
+import Modal from '../components/ui/Modal'
+import SearchInput from '../components/ui/SearchInput'
+import { useT } from '../contexts/LanguageContext'
+import usePagePerms from '../hooks/usePagePerms'
+import { useToast } from '../components/ui/Toast'
+import { useAuth } from '../contexts/AuthContext'
+import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
+import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
+
+const DEFAULT_KPI_TARGETS = {
+  REPAIR: 1.0,
+  DESIGN: 3.0,
+  PM: 2.0,
+}
+
+const DEFAULT_TECHS = [
+  { Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'งานซ่อมเครื่องจักรหลัก, ระบบไฟ', Status: 'ACTIVE' },
+  { Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับแบบลายผ้า, ลาย Cy/Dail', Status: 'ACTIVE' },
+  { Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'PM ล้างเครื่อง, เช็คเข็มและลูกปืน', Status: 'ACTIVE' },
+  { Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Mid-Level', Specialization: 'งานซ่อมทั่วไป, เปลี่ยนอะไหล่', Status: 'ACTIVE' },
+]
+
+export default function WorkOrders() {
+  const { t } = useT()
+  const { user } = useAuth()
+  const toast = useToast()
+  const { canAdd, canEdit, canDelete } = usePagePerms('workorders')
+
+  // Entity Hook for WorkOrders
+  const {
+    data: rawJobs,
+    loading: jobsLoading,
+    load: loadJobs,
+    save: saveJob,
+    remove: removeJob,
+  } = useEntity(WorkOrderAPI)
+
+  // Tabs: 'dashboard' | 'records' | 'technicians' | 'settings'
+  const [currentTab, setCurrentTab] = useState('records')
+
+  // Technicians State
+  const [technicians, setTechnicians] = useState(DEFAULT_TECHS)
+  const [techLoading, setTechLoading] = useState(false)
+
+  // KPI Settings State
+  const [kpiTargets, setKpiTargets] = useState(DEFAULT_KPI_TARGETS)
+
+  // Search & Filter State
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [showDeleted, setShowDeleted] = useState(false)
+
+  // New Work Order Form State
+  const [mc, setMc] = useState('')
+  const [ki, setKi] = useState('')
+  const [design, setDesign] = useState('')
+  const [jobType, setJobType] = useState('REPAIR')
+  const [selectedTechs, setSelectedTechs] = useState([])
+  const [comment, setComment] = useState('')
+  const [submittingStart, setSubmittingStart] = useState(false)
+
+  // Modals State
+  const [completeModalOpen, setCompleteModalOpen] = useState(false)
+  const [compJob, setCompJob] = useState(null)
+  const [compEndDate, setCompEndDate] = useState('')
+  const [compEndTime, setCompEndTime] = useState('')
+  const [compSubmitting, setCompSubmitting] = useState(false)
+
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editJob, setEditJob] = useState(null)
+  const [editTechs, setEditTechs] = useState([])
+  const [editSubmitting, setEditSubmitting] = useState(false)
+
+  const [techModalOpen, setTechModalOpen] = useState(false)
+  const [techForm, setTechForm] = useState({ Name: '', Phone: '', SkillLevel: 'Senior', Specialization: '', Status: 'ACTIVE' })
+  const [editingTechId, setEditingTechId] = useState(null)
+
+  const [kpiModalOpen, setKpiModalOpen] = useState(false)
+  const [draftKpi, setDraftKpi] = useState(DEFAULT_KPI_TARGETS)
+
+  const [historyModalOpen, setHistoryModalOpen] = useState(false)
+  const [historyJob, setHistoryJob] = useState(null)
+
+  const [printModalOpen, setPrintModalOpen] = useState(false)
+  const [printJob, setPrintJob] = useState(null)
+
+  // Load Technicians & KPI Settings from Supabase
+  const loadTechsAndSettings = async () => {
+    setTechLoading(true)
+    try {
+      const [techRes, kpiRes] = await Promise.allSettled([
+        TechnicianAPI.list(),
+        KpiSettingsAPI.list(),
+      ])
+
+      if (techRes.status === 'fulfilled' && Array.isArray(techRes.value) && techRes.value.length > 0) {
+        setTechnicians(techRes.value)
+      }
+
+      if (kpiRes.status === 'fulfilled' && Array.isArray(kpiRes.value)) {
+        const map = { ...DEFAULT_KPI_TARGETS }
+        kpiRes.value.forEach((item) => {
+          if (item.Key === 'kpi_target_repair') map.REPAIR = parseFloat(item.Value) || 1.0
+          if (item.Key === 'kpi_target_design') map.DESIGN = parseFloat(item.Value) || 3.0
+          if (item.Key === 'kpi_target_pm')     map.PM = parseFloat(item.Value) || 2.0
+        })
+        setKpiTargets(map)
+        setDraftKpi(map)
+      }
+    } catch (err) {
+      console.warn('Could not load technicians/settings, using defaults:', err)
+    } finally {
+      setTechLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadTechsAndSettings()
+  }, [])
+
+  // Active jobs list filter
+  const allJobs = useMemo(() => {
+    if (!Array.isArray(rawJobs)) return []
+    return rawJobs
+  }, [rawJobs])
+
+  const filteredJobs = useMemo(() => {
+    return allJobs.filter((job) => {
+      const isDel = Boolean(job.IsDeleted)
+      if (!showDeleted && isDel) return false
+      if (showDeleted && !isDel) return false
+
+      if (typeFilter !== 'ALL' && (job.JobType || 'REPAIR') !== typeFilter) return false
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'กำลังทำ' && job.Status !== 'IN_PROGRESS') return false
+        if (statusFilter === 'เสร็จสิ้น' && job.Status !== 'COMPLETED') return false
+      }
+
+      if (search.trim()) {
+        const q = search.toLowerCase()
+        const match =
+          String(job.Job_ID || job['Job ID'] || '').toLowerCase().includes(q) ||
+          String(job.MC || '').toLowerCase().includes(q) ||
+          String(job.KI || '').toLowerCase().includes(q) ||
+          String(job.Design || '').toLowerCase().includes(q) ||
+          String(job.Technicians || '').toLowerCase().includes(q) ||
+          String(job.CreatedBy || '').toLowerCase().includes(q) ||
+          String(job.Comment || '').toLowerCase().includes(q)
+        if (!match) return false
+      }
+      return true
+    })
+  }, [allJobs, typeFilter, statusFilter, showDeleted, search])
+
+  // KPI Breakdown Calculations
+  const kpiStats = useMemo(() => {
+    const activeNonDeleted = allJobs.filter((j) => !j.IsDeleted)
+    const total = activeNonDeleted.length
+    const active = activeNonDeleted.filter((j) => j.Status === 'IN_PROGRESS').length
+    const completed = activeNonDeleted.filter((j) => j.Status === 'COMPLETED').length
+
+    const calcJobTypeKpi = (typeKey) => {
+      const jobsOfType = activeNonDeleted.filter((j) => (j.JobType || 'REPAIR') === typeKey)
+      const targetDays = kpiTargets[typeKey] || 1.0
+      const totalCount = jobsOfType.length
+
+      let onTimeCount = 0
+      let overdueCount = 0
+      let totalHours = 0
+      let countWithDuration = 0
+
+      jobsOfType.forEach((j) => {
+        const sla = calculateSlaPerformance(j, kpiTargets)
+        if (sla.isOnTime) onTimeCount += 1
+        else overdueCount += 1
+
+        if (j.WorkingHoursDecimal) {
+          totalHours += Number(j.WorkingHoursDecimal)
+          countWithDuration += 1
+        }
+      })
+
+      const rate = totalCount > 0 ? Math.round((onTimeCount / totalCount) * 100) : 0
+      const avgHours = countWithDuration > 0 ? (totalHours / countWithDuration).toFixed(1) : '—'
+      const avgDurationText = avgHours !== '—' ? `${avgHours} ชม.` : '—'
+
+      return {
+        total: totalCount,
+        onTime: onTimeCount,
+        overdue: overdueCount,
+        rate,
+        avgDurationText,
+        targetDays,
+      }
+    }
+
+    const repairKpi = calcJobTypeKpi('REPAIR')
+    const designKpi = calcJobTypeKpi('DESIGN')
+    const pmKpi     = calcJobTypeKpi('PM')
+
+    const totalOnTime = repairKpi.onTime + designKpi.onTime + pmKpi.onTime
+    const overallRate = total > 0 ? Math.round((totalOnTime / total) * 100) : 0
+
+    // User metrics
+    const userMetricsMap = {}
+    activeNonDeleted.forEach((j) => {
+      const u = j.CreatedBy || j.CompletedBy || 'ช่างประจำกะ'
+      userMetricsMap[u] = (userMetricsMap[u] || 0) + 1
+    })
+
+    return {
+      total,
+      active,
+      completed,
+      overallRate,
+      repair: repairKpi,
+      design: designKpi,
+      pm: pmKpi,
+      userMetrics: Object.entries(userMetricsMap).map(([name, count]) => ({ name, count })),
+      recentJobs: activeNonDeleted.slice(0, 5),
+    }
+  }, [allJobs, kpiTargets])
+
+  // Handle Technician checkbox toggle
+  const toggleTechSelection = (techName) => {
+    setSelectedTechs((prev) =>
+      prev.includes(techName) ? prev.filter((t) => t !== techName) : [...prev, techName]
+    )
+  }
+
+  const toggleEditTechSelection = (techName) => {
+    setEditTechs((prev) =>
+      prev.includes(techName) ? prev.filter((t) => t !== techName) : [...prev, techName]
+    )
+  }
+
+  // Submit Start New Job
+  const handleStartJob = async (e) => {
+    e?.preventDefault()
+    if (!mc.trim()) { toast.error('กรุณาระบุรหัสเครื่อง (M/C)'); return }
+    if (!ki.trim()) { toast.error('กรุณาระบุรหัสงาน (KI)'); return }
+    if (selectedTechs.length === 0) { toast.error('กรุณาเลือกช่างผู้ปฏิบัติงานอย่างน้อย 1 คน'); return }
+
+    setSubmittingStart(true)
+    try {
+      const now = new Date()
+      const startDate = format(now, 'yyyy-MM-dd')
+      const startTime = format(now, 'HH:mm:ss')
+      const startTimestamp = now.toISOString()
+      const jobId = generateJobId(allJobs)
+
+      const payload = {
+        Job_ID: jobId,
+        StartDate: startDate,
+        StartTime: startTime,
+        StartTimestamp: startTimestamp,
+        MC: mc.trim(),
+        KI: ki.trim(),
+        Design: design.trim(),
+        JobType: jobType,
+        Technicians: selectedTechs.join(', '),
+        Comment: comment.trim(),
+        Status: 'IN_PROGRESS',
+        IsDeleted: false,
+        CreatedBy: user?.username || user?.full_name || 'ช่างประจำกะ',
+      }
+
+      await saveJob(payload)
+      toast.success('เปิดใบสั่งงานสำเร็จ', `${jobId} (${mc} - ${ki})`)
+
+      // Reset form
+      setMc('')
+      setKi('')
+      setDesign('')
+      setSelectedTechs([])
+      setComment('')
+    } catch (err) {
+      toast.error('ไม่สามารถเปิดใบสั่งงานได้', err.message)
+    } finally {
+      setSubmittingStart(false)
+    }
+  }
+
+  // Open Complete Modal
+  const openCompleteModal = (job) => {
+    setCompJob(job)
+    const now = new Date()
+    setCompEndDate(format(now, 'yyyy-MM-dd'))
+    setCompEndTime(format(now, 'HH:mm'))
+    setCompleteModalOpen(true)
+  }
+
+  // Calculated duration for Complete Modal
+  const compCalcDuration = useMemo(() => {
+    if (!compJob || !compEndDate || !compEndTime) return { hoursDecimal: 0, durationText: '—' }
+    const start = compJob.StartTimestamp || (compJob.StartDate && `${compJob.StartDate}T${compJob.StartTime || '08:00:00'}Z`)
+    const end = `${compEndDate}T${compEndTime}:00`
+    return calculateDuration(start, end)
+  }, [compJob, compEndDate, compEndTime])
+
+  // Submit Complete Job
+  const handleCompleteJob = async () => {
+    if (!compJob || !compEndDate || !compEndTime) return
+    setCompSubmitting(true)
+    try {
+      const endTimestamp = new Date(`${compEndDate}T${compEndTime}:00`).toISOString()
+      const durationResult = compCalcDuration
+
+      const payload = {
+        ...compJob,
+        EndDate: compEndDate,
+        EndTime: compEndTime,
+        EndTimestamp: endTimestamp,
+        WorkingHoursDecimal: durationResult.hoursDecimal,
+        WorkingDurationText: durationResult.durationText,
+        Status: 'COMPLETED',
+        CompletedBy: user?.username || user?.full_name || 'ช่างประจำกะ',
+      }
+
+      await saveJob(payload)
+      toast.success('บันทึกจบงานสำเร็จ', `${compJob.Job_ID || compJob['Job ID']} (${durationResult.durationText})`)
+      setCompleteModalOpen(false)
+      setCompJob(null)
+    } catch (err) {
+      toast.error('ไม่สามารถบันทึกจบงานได้', err.message)
+    } finally {
+      setCompSubmitting(false)
+    }
+  }
+
+  // Open Edit Modal
+  const openEditModal = (job) => {
+    setEditJob({ ...job })
+    const techArray = (job.Technicians || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    setEditTechs(techArray)
+    setEditModalOpen(true)
+  }
+
+  // Submit Edit Job
+  const handleEditJob = async () => {
+    if (!editJob) return
+    setEditSubmitting(true)
+    try {
+      const payload = {
+        ...editJob,
+        Technicians: editTechs.join(', '),
+        UpdatedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
+      }
+      await saveJob(payload)
+      toast.success('แก้ไขข้อมูลใบสั่งงานสำเร็จ', editJob.Job_ID || editJob['Job ID'])
+      setEditModalOpen(false)
+      setEditJob(null)
+    } catch (err) {
+      toast.error('ไม่สามารถแก้ไขใบสั่งงานได้', err.message)
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
+  // Soft Delete Job
+  const handleSoftDelete = async (job) => {
+    if (!confirm(`ยืนยันการลบใบสั่งงาน ${job.Job_ID || job['Job ID']} หรือไม่?`)) return
+    try {
+      const payload = {
+        ...job,
+        IsDeleted: true,
+        DeletedAt: new Date().toISOString(),
+        DeletedBy: user?.username || user?.full_name || 'ผู้ลบ',
+      }
+      await saveJob(payload)
+      toast.warning('ย้ายใบสั่งงานไปที่ถังขยะแล้ว', job.Job_ID || job['Job ID'])
+    } catch (err) {
+      toast.error('ลบใบสั่งงานไม่สำเร็จ', err.message)
+    }
+  }
+
+  // Restore Soft-Deleted Job
+  const handleRestoreJob = async (job) => {
+    try {
+      const payload = {
+        ...job,
+        IsDeleted: false,
+        DeletedAt: null,
+        DeletedBy: null,
+      }
+      await saveJob(payload)
+      toast.success('กู้คืนใบสั่งงานสำเร็จ', job.Job_ID || job['Job ID'])
+    } catch (err) {
+      toast.error('กู้คืนไม่สำเร็จ', err.message)
+    }
+  }
+
+  // Add / Edit Technician
+  const openAddTech = () => {
+    setEditingTechId(null)
+    setTechForm({
+      Technician_ID: `TECH-00${technicians.length + 1}`,
+      Name: '',
+      Phone: '',
+      SkillLevel: 'Senior',
+      Specialization: '',
+      Status: 'ACTIVE',
+    })
+    setTechModalOpen(true)
+  }
+
+  const openEditTech = (tech) => {
+    setEditingTechId(tech.id || tech.Technician_ID)
+    setTechForm({ ...tech })
+    setTechModalOpen(true)
+  }
+
+  const handleSaveTech = async () => {
+    if (!techForm.Name.trim()) { toast.error('กรุณาระบุชื่อช่าง'); return }
+    try {
+      if (editingTechId) {
+        await TechnicianAPI.update(editingTechId, techForm)
+        setTechnicians((prev) => prev.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...techForm } : t)))
+        toast.success('อัปเดตข้อมูลช่างเรียบร้อย', techForm.Name)
+      } else {
+        const created = await TechnicianAPI.create(techForm)
+        setTechnicians((prev) => [...prev, created || techForm])
+        toast.success('เพิ่มช่างใหม่เรียบร้อย', techForm.Name)
+      }
+      setTechModalOpen(false)
+    } catch (err) {
+      // Fallback local update
+      setTechnicians((prev) => {
+        if (editingTechId) return prev.map((t) => (t.Technician_ID === editingTechId ? { ...t, ...techForm } : t))
+        return [...prev, { ...techForm, Technician_ID: `TECH-00${prev.length + 1}` }]
+      })
+      toast.success('บันทึกข้อมูลช่างเรียบร้อย (Local)', techForm.Name)
+      setTechModalOpen(false)
+    }
+  }
+
+  // Save KPI Settings
+  const handleSaveKpiSettings = async () => {
+    try {
+      await Promise.all([
+        KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_repair', Value: String(draftKpi.REPAIR) }),
+        KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_design', Value: String(draftKpi.DESIGN) }),
+        KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_pm',     Value: String(draftKpi.PM) }),
+      ])
+      setKpiTargets({ ...draftKpi })
+      toast.success('บันทึกเป้าหมาย KPI สำเร็จ', 'อัปเดตระบบคำนวณ SLA เรียบร้อย')
+      setKpiModalOpen(false)
+    } catch (err) {
+      setKpiTargets({ ...draftKpi })
+      toast.success('บันทึกเป้าหมาย KPI เรียบร้อย (Local)', 'อัปเดตระบบคำนวณ SLA เรียบร้อย')
+      setKpiModalOpen(false)
+    }
+  }
+
+  // Open Print Sheet Modal
+  const openPrintModal = (job) => {
+    setPrintJob(job)
+    setPrintModalOpen(true)
+  }
+
+  const exportConfig = SHEET_EXPORTS.find((c) => c.key === 'workorders')
+
+  return (
+    <div className="space-y-6">
+      {/* ── Top Header & Sub-Tabs Navigation ──────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-900)' }}>
+            ระบบบันทึกผลงานช่าง (Work Orders & KPI)
+          </h1>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-500)' }}>
+            Gemma Knits Maintenance Management System · Version 55
+          </p>
+        </div>
+
+        {/* Action Controls & Sync */}
+        <div className="flex items-center gap-2">
+          {exportConfig && (
+            <GoogleSheetSyncButton
+              sheetName={exportConfig.sheetName}
+              columns={exportConfig.columns}
+              fetchRows={WorkOrderAPI.list}
+              valueGetters={exportConfig.valueGetters}
+            />
+          )}
+          <button
+            onClick={() => {
+              loadJobs()
+              loadTechsAndSettings()
+            }}
+            className="btn-outline"
+            title="รีเฟรชข้อมูล"
+          >
+            <RefreshCw size={14} className={jobsLoading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">รีเฟรช</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── 4-Tabs Navigation Bar ─────────────────────────────── */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 overflow-x-auto">
+        <button
+          onClick={() => setCurrentTab('records')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            currentTab === 'records'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <ClipboardList size={15} />
+          <span>รายการใบสั่งงาน & เปิดงาน</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+            {allJobs.filter((j) => !j.IsDeleted).length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('dashboard')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            currentTab === 'dashboard'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Target size={15} />
+          <span>แดชบอร์ด & สรุป KPI</span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('technicians')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            currentTab === 'technicians'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Wrench size={15} />
+          <span>ทะเบียนช่าง</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+            {technicians.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setCurrentTab('settings')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            currentTab === 'settings'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <SettingsIcon size={15} />
+          <span>ตั้งค่าเป้าหมาย KPI</span>
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* ── TAB 1: DASHBOARD & KPI BREAKDOWN ─────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {currentTab === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Top 4 KPI Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="stat-card">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
+                <ClipboardList size={20} />
+              </div>
+              <div>
+                <div className="text-2xl font-black" style={{ color: 'var(--text-900)' }}>
+                  {kpiStats.total}
+                </div>
+                <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-500)' }}>
+                  งานทั้งหมด
+                </div>
+                <div className="text-[10px] text-blue-500 font-bold">Total Work Orders</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md">
+                <Clock size={20} />
+              </div>
+              <div>
+                <div className="text-2xl font-black text-amber-500">
+                  {kpiStats.active}
+                </div>
+                <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-500)' }}>
+                  กำลังปฏิบัติงาน
+                </div>
+                <div className="text-[10px] text-amber-500 font-bold">In Progress</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md">
+                <CheckCircle2 size={20} />
+              </div>
+              <div>
+                <div className="text-2xl font-black text-emerald-500">
+                  {kpiStats.completed}
+                </div>
+                <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-500)' }}>
+                  งานเสร็จสิ้นแล้ว
+                </div>
+                <div className="text-[10px] text-emerald-500 font-bold">Completed</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-md">
+                <Target size={20} />
+              </div>
+              <div>
+                <div className="text-2xl font-black text-purple-500">
+                  {kpiStats.overallRate}%
+                </div>
+                <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-500)' }}>
+                  อัตราผ่าน KPI รวม
+                </div>
+                <div className="text-[10px] text-purple-500 font-bold">Overall SLA Rate</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 🌟 3-JOB-TYPE KPI PERFORMANCE BREAKDOWN 🌟 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
+                <Target size={16} className="text-blue-500" />
+                <span>สรุปประสิทธิภาพตามประเภทงาน (KPI Breakdown by Job Type)</span>
+              </h2>
+              <button
+                onClick={() => setKpiModalOpen(true)}
+                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              >
+                <Sliders size={13} /> ปรับเป้าหมาย SLA
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 1. Repair Card */}
+              <div className="card p-5 space-y-3.5 border border-blue-500/25">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-base">
+                      🛠️
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                        งานแก้ไข (Repair)
+                      </h3>
+                      <p className="text-[11px] font-mono text-blue-500 font-semibold">
+                        เป้าหมาย SLA: <b>{kpiStats.repair.targetDays} วัน</b>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="badge badge-green text-xs font-bold">
+                    {kpiStats.repair.rate}%
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs" style={{ color: 'var(--text-500)' }}>
+                    <span>ความสำเร็จทันเป้าหมาย (On-Time)</span>
+                    <span className="font-bold font-mono text-blue-600 dark:text-blue-400">
+                      {kpiStats.repair.rate}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                      style={{ width: `${kpiStats.repair.rate}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                    <div className="text-[10px]" style={{ color: 'var(--text-400)' }}>ทั้งหมด</div>
+                    <div className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                      {kpiStats.repair.total}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <div className="text-[10px]">ทันเป้า</div>
+                    <div className="font-bold text-sm">{kpiStats.repair.onTime}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <div className="text-[10px]">เกินเป้า</div>
+                    <div className="font-bold text-sm">{kpiStats.repair.overdue}</div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between text-xs pt-1" style={{ color: 'var(--text-500)' }}>
+                  <span>ระยะเวลาเฉลี่ย:</span>
+                  <b className="font-mono" style={{ color: 'var(--text-900)' }}>
+                    {kpiStats.repair.avgDurationText}
+                  </b>
+                </div>
+              </div>
+
+              {/* 2. Design Card */}
+              <div className="card p-5 space-y-3.5 border border-amber-500/25">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-base">
+                      🎨
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                        งานปรับแบบ (Design)
+                      </h3>
+                      <p className="text-[11px] font-mono text-amber-500 font-semibold">
+                        เป้าหมาย SLA: <b>{kpiStats.design.targetDays} วัน</b>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="badge badge-yellow text-xs font-bold">
+                    {kpiStats.design.rate}%
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs" style={{ color: 'var(--text-500)' }}>
+                    <span>ความสำเร็จทันเป้าหมาย (On-Time)</span>
+                    <span className="font-bold font-mono text-amber-600 dark:text-amber-400">
+                      {kpiStats.design.rate}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                      style={{ width: `${kpiStats.design.rate}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                    <div className="text-[10px]" style={{ color: 'var(--text-400)' }}>ทั้งหมด</div>
+                    <div className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                      {kpiStats.design.total}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <div className="text-[10px]">ทันเป้า</div>
+                    <div className="font-bold text-sm">{kpiStats.design.onTime}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <div className="text-[10px]">เกินเป้า</div>
+                    <div className="font-bold text-sm">{kpiStats.design.overdue}</div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between text-xs pt-1" style={{ color: 'var(--text-500)' }}>
+                  <span>ระยะเวลาเฉลี่ย:</span>
+                  <b className="font-mono" style={{ color: 'var(--text-900)' }}>
+                    {kpiStats.design.avgDurationText}
+                  </b>
+                </div>
+              </div>
+
+              {/* 3. PM Card */}
+              <div className="card p-5 space-y-3.5 border border-emerald-500/25">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base">
+                      🧹
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                        PM / ล้างเครื่อง
+                      </h3>
+                      <p className="text-[11px] font-mono text-emerald-500 font-semibold">
+                        เป้าหมาย SLA: <b>{kpiStats.pm.targetDays} วัน</b>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="badge badge-green text-xs font-bold">
+                    {kpiStats.pm.rate}%
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs" style={{ color: 'var(--text-500)' }}>
+                    <span>ความสำเร็จทันเป้าหมาย (On-Time)</span>
+                    <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                      {kpiStats.pm.rate}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                      style={{ width: `${kpiStats.pm.rate}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                    <div className="text-[10px]" style={{ color: 'var(--text-400)' }}>ทั้งหมด</div>
+                    <div className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                      {kpiStats.pm.total}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <div className="text-[10px]">ทันเป้า</div>
+                    <div className="font-bold text-sm">{kpiStats.pm.onTime}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <div className="text-[10px]">เกินเป้า</div>
+                    <div className="font-bold text-sm">{kpiStats.pm.overdue}</div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between text-xs pt-1" style={{ color: 'var(--text-500)' }}>
+                  <span>ระยะเวลาเฉลี่ย:</span>
+                  <b className="font-mono" style={{ color: 'var(--text-900)' }}>
+                    {kpiStats.pm.avgDurationText}
+                  </b>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Operational Metrics by User */}
+          <div className="card p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
+                <UserCheck size={16} className="text-emerald-500" />
+                <span>สถิติการทำรายการแยกตามผู้ปฏิบัติงาน (Operational Metrics)</span>
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
+              {kpiStats.userMetrics.map((u, i) => (
+                <div key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div className="min-w-0 pr-2">
+                    <div className="text-xs font-bold truncate" style={{ color: 'var(--text-900)' }}>
+                      {u.name}
+                    </div>
+                    <div className="text-[10px]" style={{ color: 'var(--text-500)' }}>
+                      รายการที่ดูแล
+                    </div>
+                  </div>
+                  <div className="px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 font-mono font-bold text-sm">
+                    {u.count}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* ── TAB 2: WORK ORDERS & CREATE WORK ORDER ──────────────── */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {currentTab === 'records' && (
+        <div className="space-y-6">
+          {/* WORK ORDER ENTRY FORM (เปิดใบสั่งงาน) */}
+          {canAdd && (
+            <div className="card p-5 space-y-4 border border-blue-500/25 bg-blue-500/[0.02]">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                  <h2 className="text-sm sm:text-base font-extrabold flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
+                    <Plus size={16} className="text-blue-500" />
+                    <span>บันทึกเริ่มงานซ่อม / เปิดใบสั่งงาน (Create Work Order)</span>
+                  </h2>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-500)' }}>
+                    กรอกข้อมูลเพื่อเริ่มงาน ระบบจะสร้างรหัส Job ID และจับเวลาการทำงานให้อัตโนมัติ
+                  </div>
+                </div>
+                <div className="text-[11px] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-mono">
+                  ผู้บันทึก: <b className="text-blue-600 dark:text-blue-400">{user?.username || user?.full_name || 'ช่างประจำกะ'}</b>
+                </div>
+              </div>
+
+              <form onSubmit={handleStartJob} className="space-y-4 text-xs">
+                {/* 4 Fields */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="label">รหัสเครื่อง (M/C) *</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น MC-01"
+                      value={mc}
+                      onChange={(e) => setMc(e.target.value)}
+                      className="input font-mono font-bold uppercase"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label">รหัสงาน (KI) *</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น KI-9012"
+                      value={ki}
+                      onChange={(e) => setKi(e.target.value)}
+                      className="input font-mono font-bold uppercase"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label">แบบงาน (Design)</label>
+                    <input
+                      type="text"
+                      placeholder="ระบุแบบงาน / ลายผ้า"
+                      value={design}
+                      onChange={(e) => setDesign(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">ประเภทงาน (Job Type)</label>
+                    <select
+                      value={jobType}
+                      onChange={(e) => setJobType(e.target.value)}
+                      className="select font-semibold"
+                    >
+                      <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
+                      <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
+                      <option value="PM">🧹 PM / ล้างเครื่อง</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Technicians Multi-Select Checklist */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="label flex items-center gap-1.5">
+                      <Wrench size={13} className="text-blue-500" />
+                      <span>ช่างปรับผู้ปฏิบัติงาน (เลือกได้มากกว่า 1 คน) *</span>
+                    </label>
+                    <span className="badge badge-blue text-[11px] font-bold">
+                      เลือกแล้ว: {selectedTechs.length} คน
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 max-h-40 overflow-y-auto">
+                    {technicians.filter((t) => t.Status !== 'INACTIVE').map((tech, idx) => {
+                      const isChecked = selectedTechs.includes(tech.Name)
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => toggleTechSelection(tech.Name)}
+                          className={`flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold transition-all border ${
+                            isChecked
+                              ? 'bg-blue-500/15 border-blue-500 text-blue-600 dark:text-blue-400'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
+                              isChecked
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : 'border-slate-300 dark:border-slate-600'
+                            }`}
+                          >
+                            {isChecked && <Check size={11} strokeWidth={3} />}
+                          </div>
+                          <span className="truncate">{tech.Name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Job Comment */}
+                <div>
+                  <label className="label">อาการเสีย / รายละเอียดงานซ่อม</label>
+                  <input
+                    type="text"
+                    placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="input"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={submittingStart}
+                    className="btn-primary w-full sm:w-auto"
+                  >
+                    <Send size={14} />
+                    <span>{submittingStart ? 'กำลังบันทึก...' : 'ยืนยันเปิดใบสั่งงาน (เริ่มงาน)'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Search & Filter Toolbar */}
+          <div className="card p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex-1 min-w-[220px]">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="ค้นหา Job ID, M/C, KI, ช่าง, ผู้ทำรายการ..."
+                className="w-full"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span style={{ color: 'var(--text-500)' }}>ประเภท:</span>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="select py-1.5 px-3 text-xs"
+              >
+                <option value="ALL">ทุกประเภท</option>
+                <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
+                <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
+                <option value="PM">🧹 PM / ล้างเครื่อง</option>
+              </select>
+
+              <span style={{ color: 'var(--text-500)' }} className="ml-1">สถานะ:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="select py-1.5 px-3 text-xs"
+              >
+                <option value="ALL">ทั้งหมด</option>
+                <option value="กำลังทำ">กำลังทำ (In Progress)</option>
+                <option value="เสร็จสิ้น">เสร็จสิ้น (Completed)</option>
+              </select>
+
+              <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 ml-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showDeleted}
+                  onChange={(e) => setShowDeleted(e.target.checked)}
+                  className="rounded text-blue-600 focus:ring-0"
+                />
+                <span>รายการที่ลบ</span>
+              </label>
+            </div>
+          </div>
+
+          {/* WORK ORDERS TABLE */}
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Job ID</th>
+                  <th>M/C</th>
+                  <th>KI</th>
+                  <th>Design</th>
+                  <th>ประเภท</th>
+                  <th>ช่างผู้ปฏิบัติงาน</th>
+                  <th>สถานะ</th>
+                  <th>เวลาเริ่ม</th>
+                  <th>ระยะเวลา</th>
+                  <th>SLA Performance</th>
+                  <th>ผู้บันทึก</th>
+                  <th className="text-right">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredJobs.map((job, idx) => {
+                  const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
+                  const sla = calculateSlaPerformance(job, kpiTargets)
+                  const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
+
+                  return (
+                    <tr key={job.id || idx}>
+                      {/* Job ID */}
+                      <td className="font-mono text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                        {jobIdDisplay}
+                      </td>
+
+                      {/* M/C */}
+                      <td className="font-bold" style={{ color: 'var(--text-900)' }}>
+                        {job.MC || '—'}
+                      </td>
+
+                      {/* KI */}
+                      <td className="font-mono font-semibold" style={{ color: 'var(--text-700)' }}>
+                        {job.KI || '—'}
+                      </td>
+
+                      {/* Design */}
+                      <td className="max-w-[140px] truncate" style={{ color: 'var(--text-600)' }}>
+                        {job.Design || '—'}
+                      </td>
+
+                      {/* Job Type */}
+                      <td>
+                        <span
+                          className={`badge ${
+                            job.JobType === 'DESIGN'
+                              ? 'badge-purple'
+                              : job.JobType === 'PM'
+                              ? 'badge-yellow'
+                              : 'badge-blue'
+                          }`}
+                        >
+                          {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : '🛠️ แก้ไข'}
+                        </span>
+                      </td>
+
+                      {/* Technicians */}
+                      <td className="max-w-[180px] truncate" style={{ color: 'var(--text-700)' }}>
+                        {job.Technicians || '—'}
+                      </td>
+
+                      {/* Status */}
+                      <td>
+                        <span className={`badge ${isCompleted ? 'badge-green' : 'badge-orange'}`}>
+                          {isCompleted ? 'เสร็จสิ้น' : 'กำลังทำ'}
+                        </span>
+                      </td>
+
+                      {/* Start Time */}
+                      <td className="text-xs font-mono" style={{ color: 'var(--text-500)' }}>
+                        {job.StartDate ? `${job.StartDate} ${job.StartTime || ''}` : '—'}
+                      </td>
+
+                      {/* Duration */}
+                      <td className="font-mono font-bold" style={{ color: isCompleted ? 'var(--text-900)' : 'var(--text-400)' }}>
+                        {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังจับเวลา...')}
+                      </td>
+
+                      {/* SLA Performance */}
+                      <td>
+                        <span className={`badge ${sla.badgeClass}`}>
+                          {sla.label}
+                        </span>
+                      </td>
+
+                      {/* Created By */}
+                      <td className="text-xs" style={{ color: 'var(--text-500)' }}>
+                        {job.CreatedBy || '—'}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Complete Job Button (if in progress) */}
+                          {!isCompleted && !job.IsDeleted && canEdit && (
+                            <button
+                              onClick={() => openCompleteModal(job)}
+                              className="btn-success px-2.5 py-1 text-xs"
+                              title="บันทึกจบงาน"
+                            >
+                              <CheckCircle2 size={13} />
+                              <span>จบงาน</span>
+                            </button>
+                          )}
+
+                          {/* Print A4 Report */}
+                          <button
+                            onClick={() => openPrintModal(job)}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-blue-600 transition-colors"
+                            title="พิมพ์ใบสั่งงาน A4"
+                          >
+                            <Printer size={15} />
+                          </button>
+
+                          {/* Edit Job */}
+                          {!job.IsDeleted && canEdit && (
+                            <button
+                              onClick={() => openEditModal(job)}
+                              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-amber-600 transition-colors"
+                              title="แก้ไขใบสั่งงาน"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          )}
+
+                          {/* Soft Delete or Restore */}
+                          {canDelete && (
+                            job.IsDeleted ? (
+                              <button
+                                onClick={() => handleRestoreJob(job)}
+                                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-500 transition-colors"
+                                title="กู้คืนรายการ"
+                              >
+                                <RotateCcw size={15} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSoftDelete(job)}
+                                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 transition-colors"
+                                title="ลบใบสั่งงาน"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+
+                {filteredJobs.length === 0 && (
+                  <tr>
+                    <td colSpan={12} className="text-center py-12 text-slate-400">
+                      {jobsLoading ? 'กำลังโหลดข้อมูล...' : 'ไม่พบรายการใบสั่งงาน'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* ── TAB 3: TECHNICIANS REGISTRY ──────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {currentTab === 'technicians' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold" style={{ color: 'var(--text-900)' }}>
+                ทะเบียนช่างปรับ & ซ่อมบำรุง (Technicians Registry)
+              </h2>
+              <p className="text-xs" style={{ color: 'var(--text-500)' }}>
+                รายชื่อช่าง เลือกระดับทักษะ และความถนัดเฉพาะทาง
+              </p>
+            </div>
+            {canAdd && (
+              <button onClick={openAddTech} className="btn-primary">
+                <UserPlus size={15} />
+                <span>เพิ่มช่างใหม่</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {technicians.map((tech, idx) => {
+              const skillCfg = TECH_SKILL_LEVELS.find((s) => s.value === tech.SkillLevel)
+              const isActive = tech.Status !== 'INACTIVE'
+
+              return (
+                <div key={idx} className="card p-5 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-black font-mono">
+                        {tech.Name[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm" style={{ color: 'var(--text-900)' }}>
+                          {tech.Name}
+                        </h3>
+                        <div className="text-xs font-mono" style={{ color: 'var(--text-500)' }}>
+                          {tech.Phone || '—'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className={`badge ${isActive ? 'badge-green' : 'badge-gray'}`}>
+                      {isActive ? 'พร้อมทำงาน' : 'ปิดใช้งาน'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs border-t border-slate-100 dark:border-slate-800 pt-3">
+                    <div className="flex items-center justify-between">
+                      <span style={{ color: 'var(--text-500)' }}>ระดับทักษะ:</span>
+                      <span
+                        className="badge"
+                        style={{
+                          background: `${skillCfg?.color || '#3b82f6'}18`,
+                          color: skillCfg?.color || '#3b82f6',
+                          borderColor: `${skillCfg?.color || '#3b82f6'}30`,
+                        }}
+                      >
+                        {tech.SkillLevel || 'Senior'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-2">
+                      <span style={{ color: 'var(--text-500)' }}>ความถนัด:</span>
+                      <span className="font-medium text-right text-[11px]" style={{ color: 'var(--text-700)' }}>
+                        {tech.Specialization || 'งานซ่อมบำรุงทั่วไป'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {canEdit && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                      <button
+                        onClick={() => openEditTech(tech)}
+                        className="btn-outline px-3 py-1 text-xs"
+                      >
+                        <Pencil size={13} /> แก้ไขข้อมูล
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* ── TAB 4: KPI & SLA SETTINGS ────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {currentTab === 'settings' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* KPI SLA Target Configuration */}
+          <div className="card p-6 space-y-5 border border-blue-500/25">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h2 className="text-base font-extrabold flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
+                  <Target size={18} className="text-blue-500" />
+                  <span>ตั้งค่าเป้าหมาย KPI (SLA Target Days)</span>
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-500)' }}>
+                  กำหนดจำนวนวันเป้าหมายสำหรับงานแต่ละประเภทเพื่อนำไปประเมินความสำเร็จ
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="label">🛠️ เป้าหมายงานแก้ไข (Repair) (จำนวนวัน)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={draftKpi.REPAIR}
+                    onChange={(e) => setDraftKpi({ ...draftKpi, REPAIR: parseFloat(e.target.value) || 1.0 })}
+                    className="input font-mono font-bold text-sm"
+                  />
+                  <span className="font-bold" style={{ color: 'var(--text-500)' }}>วัน</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">🎨 เป้าหมายงานปรับแบบ (Design) (จำนวนวัน)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={draftKpi.DESIGN}
+                    onChange={(e) => setDraftKpi({ ...draftKpi, DESIGN: parseFloat(e.target.value) || 3.0 })}
+                    className="input font-mono font-bold text-sm"
+                  />
+                  <span className="font-bold" style={{ color: 'var(--text-500)' }}>วัน</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">🧹 เป้าหมายงาน PM / ล้างเครื่อง (PM) (จำนวนวัน)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={draftKpi.PM}
+                    onChange={(e) => setDraftKpi({ ...draftKpi, PM: parseFloat(e.target.value) || 2.0 })}
+                    className="input font-mono font-bold text-sm"
+                  />
+                  <span className="font-bold" style={{ color: 'var(--text-500)' }}>วัน</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={handleSaveKpiSettings}
+                  className="btn-primary w-full py-2.5"
+                >
+                  <Check size={14} />
+                  <span>บันทึกเป้าหมาย KPI ทั้งหมด</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* System Information Card */}
+          <div className="card p-6 space-y-4">
+            <h2 className="text-base font-extrabold pb-3 border-b border-slate-200 dark:border-slate-800" style={{ color: 'var(--text-900)' }}>
+              ข้อมูลระบบ & สิทธิ์การใช้งาน
+            </h2>
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/60">
+                <span style={{ color: 'var(--text-500)' }}>ผู้ใช้งานปัจจุบัน</span>
+                <span className="font-mono font-bold" style={{ color: 'var(--text-900)' }}>
+                  {user?.username || user?.full_name || 'Admin'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/60">
+                <span style={{ color: 'var(--text-500)' }}>ระบบฐานข้อมูลหลัก</span>
+                <span className="badge badge-green">Supabase PostgreSQL</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/60">
+                <span style={{ color: 'var(--text-500)' }}>Google Sheets Export Sync</span>
+                <span className="badge badge-blue">พร้อมใช้งาน</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800/60">
+                <span style={{ color: 'var(--text-500)' }}>SLA Calculation Engine</span>
+                <span className="badge badge-purple">Active (Server Timestamp)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* ── MODALS SECTION ──────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════ */}
+
+      {/* 1. Complete Job Modal */}
+      {completeModalOpen && compJob && (
+        <Modal
+          open={completeModalOpen}
+          onClose={() => setCompleteModalOpen(false)}
+          title="บันทึกจบงานซ่อม (Complete Job)"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5">
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-500)' }}>รหัสงาน (Job ID):</span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                  {compJob.Job_ID || compJob['Job ID']}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-500)' }}>เครื่องจักร & งาน:</span>
+                <span className="font-bold" style={{ color: 'var(--text-900)' }}>
+                  {compJob.MC} (KI: {compJob.KI})
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-500)' }}>เวลาเริ่มงาน:</span>
+                <span className="font-mono" style={{ color: 'var(--text-700)' }}>
+                  {compJob.StartDate} {compJob.StartTime}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">วันที่จบงาน *</label>
+                <input
+                  type="date"
+                  value={compEndDate}
+                  onChange={(e) => setCompEndDate(e.target.value)}
+                  className="input font-mono"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">เวลาจบงาน *</label>
+                <input
+                  type="time"
+                  value={compEndTime}
+                  onChange={(e) => setCompEndTime(e.target.value)}
+                  className="input font-mono"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+              <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                ระยะเวลาปฏิบัติงานจริง:
+              </span>
+              <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                {compCalcDuration.durationText}
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCompleteModalOpen(false)}
+                className="btn-outline"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleCompleteJob}
+                disabled={compSubmitting}
+                className="btn-success"
+              >
+                <Check size={14} />
+                <span>{compSubmitting ? 'กำลังบันทึก...' : 'ยืนยันจบงาน'}</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 2. Edit Job Modal */}
+      {editModalOpen && editJob && (
+        <Modal
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          title={`แก้ไขใบสั่งงาน ${editJob.Job_ID || editJob['Job ID']}`}
+        >
+          <div className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">รหัสเครื่อง (M/C)</label>
+                <input
+                  type="text"
+                  value={editJob.MC || ''}
+                  onChange={(e) => setEditJob({ ...editJob, MC: e.target.value })}
+                  className="input font-mono font-bold"
+                />
+              </div>
+              <div>
+                <label className="label">รหัสงาน (KI)</label>
+                <input
+                  type="text"
+                  value={editJob.KI || ''}
+                  onChange={(e) => setEditJob({ ...editJob, KI: e.target.value })}
+                  className="input font-mono font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">แบบงาน (Design)</label>
+                <input
+                  type="text"
+                  value={editJob.Design || ''}
+                  onChange={(e) => setEditJob({ ...editJob, Design: e.target.value })}
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="label">ประเภทงาน (Job Type)</label>
+                <select
+                  value={editJob.JobType || 'REPAIR'}
+                  onChange={(e) => setEditJob({ ...editJob, JobType: e.target.value })}
+                  className="select font-semibold"
+                >
+                  <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
+                  <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
+                  <option value="PM">🧹 PM / ล้างเครื่อง</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Technicians Checklist */}
+            <div className="space-y-1.5">
+              <label className="label">ช่างปรับผู้ปฏิบัติงาน</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 max-h-36 overflow-y-auto">
+                {technicians.map((t, idx) => {
+                  const isChecked = editTechs.includes(t.Name)
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => toggleEditTechSelection(t.Name)}
+                      className={`flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold transition-all border ${
+                        isChecked
+                          ? 'bg-blue-500/15 border-blue-500 text-blue-600 dark:text-blue-400'
+                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <div
+                        className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
+                          isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300'
+                        }`}
+                      >
+                        {isChecked && <Check size={10} strokeWidth={3} />}
+                      </div>
+                      <span className="truncate">{t.Name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label className="label">อาการเสีย / รายละเอียดงานซ่อม</label>
+              <input
+                type="text"
+                value={editJob.Comment || ''}
+                onChange={(e) => setEditJob({ ...editJob, Comment: e.target.value })}
+                className="input"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="btn-outline"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleEditJob}
+                disabled={editSubmitting}
+                className="btn-primary"
+              >
+                <Check size={14} />
+                <span>{editSubmitting ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 3. Add / Edit Technician Modal */}
+      {techModalOpen && (
+        <Modal
+          open={techModalOpen}
+          onClose={() => setTechModalOpen(false)}
+          title={editingTechId ? 'แก้ไขข้อมูลช่าง' : 'เพิ่มช่างใหม่ (Add Technician)'}
+        >
+          <div className="space-y-4 text-xs">
+            <div>
+              <label className="label">ชื่อช่าง *</label>
+              <input
+                type="text"
+                placeholder="ระบุชื่อ-นามสกุล หรือชื่อเล่น"
+                value={techForm.Name}
+                onChange={(e) => setTechForm({ ...techForm, Name: e.target.value })}
+                className="input"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label">เบอร์ติดต่อ</label>
+              <input
+                type="text"
+                placeholder="เช่น 081-234-5678"
+                value={techForm.Phone}
+                onChange={(e) => setTechForm({ ...techForm, Phone: e.target.value })}
+                className="input font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="label">ระดับทักษะ (Skill Level)</label>
+              <select
+                value={techForm.SkillLevel}
+                onChange={(e) => setTechForm({ ...techForm, SkillLevel: e.target.value })}
+                className="select font-semibold"
+              >
+                {TECH_SKILL_LEVELS.map((s, idx) => (
+                  <option key={idx} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">ความเชี่ยวชาญเฉพาะทาง</label>
+              <input
+                type="text"
+                placeholder="เช่น งานซ่อมเครื่องจักรหลัก, ระบบไฟ"
+                value={techForm.Specialization}
+                onChange={(e) => setTechForm({ ...techForm, Specialization: e.target.value })}
+                className="input"
+              />
+            </div>
+
+            <div>
+              <label className="label">สถานะ</label>
+              <select
+                value={techForm.Status}
+                onChange={(e) => setTechForm({ ...techForm, Status: e.target.value })}
+                className="select"
+              >
+                <option value="ACTIVE">พร้อมทำงาน (Active)</option>
+                <option value="INACTIVE">ปิดใช้งาน (Inactive)</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setTechModalOpen(false)}
+                className="btn-outline"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTech}
+                className="btn-primary"
+              >
+                <Check size={14} />
+                <span>บันทึกข้อมูลช่าง</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 4. Quick KPI Settings Modal */}
+      {kpiModalOpen && (
+        <Modal
+          open={kpiModalOpen}
+          onClose={() => setKpiModalOpen(false)}
+          title="ปรับแต่งเป้าหมาย KPI SLA แต่ละประเภทงาน"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] leading-relaxed">
+              💡 กำหนดจำนวนวันเป้าหมาย (SLA Target Days) สำหรับงานแต่ละประเภท ระบบจะนำไปคำนวณอัตราความสำเร็จบนแดชบอร์ดทันที
+            </div>
+
+            <div>
+              <label className="label">🛠️ งานแก้ไข (Repair) (เป้าหมายวัน)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.5"
+                  value={draftKpi.REPAIR}
+                  onChange={(e) => setDraftKpi({ ...draftKpi, REPAIR: parseFloat(e.target.value) || 1.0 })}
+                  className="input font-mono font-bold"
+                />
+                <span className="font-bold" style={{ color: 'var(--text-500)' }}>วัน</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="label">🎨 งานปรับแบบ (Design) (เป้าหมายวัน)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.5"
+                  value={draftKpi.DESIGN}
+                  onChange={(e) => setDraftKpi({ ...draftKpi, DESIGN: parseFloat(e.target.value) || 3.0 })}
+                  className="input font-mono font-bold"
+                />
+                <span className="font-bold" style={{ color: 'var(--text-500)' }}>วัน</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="label">🧹 งาน PM / ล้างเครื่อง (PM) (เป้าหมายวัน)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.5"
+                  value={draftKpi.PM}
+                  onChange={(e) => setDraftKpi({ ...draftKpi, PM: parseFloat(e.target.value) || 2.0 })}
+                  className="input font-mono font-bold"
+                />
+                <span className="font-bold" style={{ color: 'var(--text-500)' }}>วัน</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setKpiModalOpen(false)}
+                className="btn-outline"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveKpiSettings}
+                className="btn-primary"
+              >
+                <Check size={14} />
+                <span>บันทึกเป้าหมาย</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 5. Print A4 PDF Report Modal */}
+      {printModalOpen && printJob && (
+        <Modal
+          open={printModalOpen}
+          onClose={() => setPrintModalOpen(false)}
+          title={`พิมพ์ใบสั่งงาน ${printJob.Job_ID || printJob['Job ID']}`}
+        >
+          <div className="space-y-4 text-xs">
+            {/* Printable Paper Preview Box */}
+            <div id="printArea" className="p-6 rounded-2xl bg-white text-slate-900 border border-slate-300 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b-2 border-slate-800 pb-3">
+                <div>
+                  <h1 className="text-base font-black uppercase tracking-wider">
+                    Gemma Knits Co., Ltd.
+                  </h1>
+                  <h2 className="text-xs font-bold text-slate-700">
+                    ใบสั่งงานซ่อมบำรุงและปรับเครื่อง (Maintenance Job Order)
+                  </h2>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-black font-mono text-blue-600">
+                    {printJob.Job_ID || printJob['Job ID']}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    วันที่: {printJob.StartDate || '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 font-semibold">รหัสเครื่องจักร (M/C):</span>{' '}
+                  <b className="font-mono text-sm">{printJob.MC || '—'}</b>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold">รหัสงาน (KI):</span>{' '}
+                  <b className="font-mono text-sm">{printJob.KI || '—'}</b>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold">แบบงาน (Design):</span>{' '}
+                  <b>{printJob.Design || '—'}</b>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold">ประเภทงาน (Job Type):</span>{' '}
+                  <b>{printJob.JobType === 'DESIGN' ? 'ปรับแบบ' : printJob.JobType === 'PM' ? 'PM' : 'แก้ไข'}</b>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-500 font-semibold">ช่างผู้ปฏิบัติงาน:</span>{' '}
+                  <b>{printJob.Technicians || '—'}</b>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-500 font-semibold">รายละเอียด / อาการเสีย:</span>{' '}
+                  <p className="mt-1 p-2 rounded-lg bg-slate-100 border border-slate-200">{printJob.Comment || '—'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-300 text-xs">
+                <div>
+                  <span className="text-slate-500">เวลาเริ่มงาน:</span>
+                  <div className="font-mono font-bold">{printJob.StartDate} {printJob.StartTime}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500">เวลาจบงาน:</span>
+                  <div className="font-mono font-bold">{printJob.EndDate ? `${printJob.EndDate} ${printJob.EndTime || ''}` : 'ยังไม่จบงาน'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500">ระยะเวลารวม:</span>
+                  <div className="font-mono font-bold text-blue-600">{printJob.WorkingDurationText || '—'}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-6 text-center text-[10px]">
+                <div className="border-t border-slate-400 pt-1">
+                  ลายเซ็นช่างผู้ปฏิบัติงาน
+                </div>
+                <div className="border-t border-slate-400 pt-1">
+                  ลายเซ็นหัวหน้างาน / ผู้ตรวจสอบ
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setPrintModalOpen(false)}
+                className="btn-outline"
+              >
+                ปิด
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="btn-primary"
+              >
+                <Printer size={14} />
+                <span>พิมพ์เอกสาร (Print)</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}

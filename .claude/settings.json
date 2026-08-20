@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Content \"C:\\\\Users\\\\kitsa\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-kitsa-Downloads-TextileOps\\\\d8afb2c4-77b7-4424-8169-6b259f3a0801\\\\tasks\\\\bu7a63oov.output\" -Tail 20)",
+      "mcp__claude_ai_Base44__list_user_apps",
+      "mcp__claude_ai_Base44__list_entity_schemas",
+      "mcp__claude_ai_Base44__query_entities",
+      "Bash(npm install *)",
+      "mcp__claude_ai_Supabase__list_organizations",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\kitsa\\\\Documents\\\\VSCODE\\\\N8N\" -Force)",
+      "PowerShell(try { \\(Invoke-WebRequest -Uri \"http://localhost:5678/healthz\" -TimeoutSec 3\\).StatusCode } catch { \"N8N not running on 5678\" })",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\kitsa\\\\Documents\\\\VSCODE\\\\N8N\\\\GhostStory\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\kitsa\\Documents\\VSCODE\\N8N"
+    ]
+  }
+}
