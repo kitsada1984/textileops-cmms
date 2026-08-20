@@ -158,10 +158,35 @@ export default function WorkOrders() {
     loadTechsAndSettings()
   }, [])
 
-  // Active jobs list filter
+  // Active jobs list filter with legacy and new column normalization
   const allJobs = useMemo(() => {
     if (!Array.isArray(rawJobs)) return []
-    return rawJobs
+    return rawJobs.map((r) => {
+      const jobId = r.Job_ID || r['Job ID'] || r.WO_ID || (r.id ? `JOB-${String(r.id).slice(0, 8)}` : 'JOB-00000000-0000')
+      const technicians = r.Technicians || r['Technicians'] || r.Tech || ''
+      const comment = r.Comment || r['Comment'] || r.Problem || r.Detail || ''
+      const startTimestamp = r.StartTimestamp || r['Start Timestamp'] || r.DateStart || r.StartTime || ''
+      const endTimestamp = r.EndTimestamp || r['End Timestamp'] || r.DateEnd || r.EndTime || ''
+      const startDate = r.StartDate || r['Start Date'] || (typeof startTimestamp === 'string' && startTimestamp.includes('T') ? startTimestamp.slice(0, 10) : (r.StartDate || ''))
+      const startTime = r.StartTime || r['Start Time'] || (typeof startTimestamp === 'string' && startTimestamp.includes('T') ? startTimestamp.slice(11, 19) : (r.StartTime || ''))
+      const endDate = r.EndDate || r['End Date'] || (typeof endTimestamp === 'string' && endTimestamp.includes('T') ? endTimestamp.slice(0, 10) : (r.EndDate || ''))
+      const endTime = r.EndTime || r['End Time'] || (typeof endTimestamp === 'string' && endTimestamp.includes('T') ? endTimestamp.slice(11, 19) : (r.EndTime || ''))
+      const workingDurationText = r.WorkingDurationText || r['Working Duration Text'] || r.Duration || ''
+
+      return {
+        ...r,
+        Job_ID: jobId,
+        Technicians: technicians,
+        Comment: comment,
+        StartDate: startDate,
+        StartTime: startTime,
+        StartTimestamp: startTimestamp,
+        EndDate: endDate,
+        EndTime: endTime,
+        EndTimestamp: endTimestamp,
+        WorkingDurationText: workingDurationText,
+      }
+    })
   }, [rawJobs])
 
   const filteredJobs = useMemo(() => {
@@ -290,19 +315,28 @@ export default function WorkOrders() {
       const jobId = generateJobId(allJobs)
 
       const payload = {
+        // Modern CMMS columns
         Job_ID: jobId,
         StartDate: startDate,
-        StartTime: startTime,
+        StartTime: startTimestamp,
         StartTimestamp: startTimestamp,
         MC: mc.trim(),
         KI: ki.trim(),
         Design: design.trim(),
         JobType: jobType,
         Technicians: selectedTechs.join(', '),
-        Comment: comment.trim(),
+        Comment: comment.trim() || 'เปิดใบสั่งงาน',
         Status: 'IN_PROGRESS',
         IsDeleted: false,
         CreatedBy: user?.username || user?.full_name || 'ช่างประจำกะ',
+
+        // Legacy compatibility columns
+        WO_ID: jobId,
+        DateStart: startTimestamp,
+        Tech: selectedTechs.join(', '),
+        Problem: comment.trim() || 'เปิดใบสั่งงาน',
+        Detail: comment.trim() || 'เปิดใบสั่งงาน',
+        Priority: 'MEDIUM',
       }
 
       await saveJob(payload)
@@ -333,7 +367,7 @@ export default function WorkOrders() {
   // Calculated duration for Complete Modal
   const compCalcDuration = useMemo(() => {
     if (!compJob || !compEndDate || !compEndTime) return { hoursDecimal: 0, durationText: '—' }
-    const start = compJob.StartTimestamp || (compJob.StartDate && `${compJob.StartDate}T${compJob.StartTime || '08:00:00'}Z`)
+    const start = compJob.StartTimestamp || (compJob.StartDate && `${compJob.StartDate}T${compJob.StartTime || '08:00:00'}Z`) || compJob.DateStart
     const end = `${compEndDate}T${compEndTime}:00`
     return calculateDuration(start, end)
   }, [compJob, compEndDate, compEndTime])
@@ -349,8 +383,10 @@ export default function WorkOrders() {
       const payload = {
         ...compJob,
         EndDate: compEndDate,
-        EndTime: compEndTime,
+        EndTime: endTimestamp,
         EndTimestamp: endTimestamp,
+        DateEnd: endTimestamp,
+        Duration: durationResult.durationText,
         WorkingHoursDecimal: durationResult.hoursDecimal,
         WorkingDurationText: durationResult.durationText,
         Status: 'COMPLETED',
@@ -387,6 +423,7 @@ export default function WorkOrders() {
       const payload = {
         ...editJob,
         Technicians: editTechs.join(', '),
+        Tech: editTechs.join(', '),
         UpdatedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
       }
       await saveJob(payload)

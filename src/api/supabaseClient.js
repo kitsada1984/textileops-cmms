@@ -30,17 +30,29 @@ function getTimestampErrorField(error, payload) {
     }
   }
 
-  for (const k of ['StartTime', 'EndTime', 'time', 'start_time', 'end_time']) {
+  for (const k of ['StartTime', 'EndTime', 'DateStart', 'DateEnd', 'time', 'start_time', 'end_time']) {
     if (Object.hasOwn(payload, k)) return k
   }
   return null
 }
 
 export function sanitizeForSupabase(item) {
+  const today = new Date().toISOString().slice(0, 10)
   return Object.fromEntries(
     Object.entries(item).map(([key, value]) => {
       if (typeof value === 'string' && value.trim() === '' && TEMPORAL_FIELD_RE.test(key)) {
         return [key, null]
+      }
+      if (typeof value === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(value.trim()) && TEMPORAL_FIELD_RE.test(key)) {
+        const datePart = item.StartDate || item.EndDate || item.DateStart || item.DateEnd || today
+        try {
+          const d = new Date(`${datePart}T${value.trim()}`)
+          if (!isNaN(d.getTime())) {
+            return [key, d.toISOString()]
+          }
+        } catch {
+          // ignore
+        }
       }
       return [key, value]
     })
