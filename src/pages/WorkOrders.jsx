@@ -52,11 +52,25 @@ const DEFAULT_KPI_TARGETS = {
   PM: 2.0,
 }
 
+const UI_SKILL_LEVELS = [
+  { value: 'Junior', label: 'Junior', desc: 'ช่างฝึกหัด / ผู้ช่วยช่าง', icon: '🔰' },
+  { value: 'Technician', label: 'Technician', desc: 'ช่างชำนาญงานทั่วไป', icon: '🎖️' },
+  { value: 'Senior', label: 'Senior', desc: 'ช่างอาวุโส / ปรับแต่งชำนาญ', icon: '🥈' },
+  { value: 'Master', label: 'Master', desc: 'หัวหน้าช่าง / ผู้เชี่ยวชาญพิเศษ', icon: '🥇' },
+]
+
+const UI_SPECIALIZATIONS = [
+  { value: 'เตรียมเครื่อง', label: 'เตรียมเครื่อง', icon: '🛠️' },
+  { value: 'ปรับเครื่อง', label: 'ปรับเครื่อง', icon: '⚄' },
+  { value: 'แก้ปัญหาเครื่อง', label: 'แก้ปัญหาเครื่อง', icon: '🔧' },
+  { value: 'ตั้งศูนย์เครื่อง', label: 'ตั้งศูนย์เครื่อง', icon: '📐' },
+]
+
 const DEFAULT_TECHS = [
-  { Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'งานซ่อมเครื่องจักรหลัก, ระบบไฟ', Status: 'ACTIVE' },
-  { Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับแบบลายผ้า, ลาย Cy/Dail', Status: 'ACTIVE' },
-  { Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'PM ล้างเครื่อง, เช็คเข็มและลูกปืน', Status: 'ACTIVE' },
-  { Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Mid-Level', Specialization: 'งานซ่อมทั่วไป, เปลี่ยนอะไหล่', Status: 'ACTIVE' },
+  { Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE' },
+  { Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE' },
+  { Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'เตรียมเครื่อง, แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
+  { Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
 ]
 
 export default function WorkOrders() {
@@ -1677,14 +1691,15 @@ export default function WorkOrders() {
         <Modal
           open={techModalOpen}
           onClose={() => setTechModalOpen(false)}
-          title={editingTechId ? 'แก้ไขข้อมูลช่าง' : 'เพิ่มช่างใหม่ (Add Technician)'}
+          title={editingTechId ? 'แก้ไขข้อมูลช่าง' : 'เพิ่มข้อมูลช่าง'}
         >
-          <div className="space-y-4 text-xs">
+          <div className="space-y-4 text-xs pb-1">
+            {/* 1. Name */}
             <div>
-              <label className="label">ชื่อช่าง *</label>
+              <label className="label font-bold">ชื่อช่าง *</label>
               <input
                 type="text"
-                placeholder="ระบุชื่อ-นามสกุล หรือชื่อเล่น"
+                placeholder="เช่น ช.หนุ่ม"
                 value={techForm.Name}
                 onChange={(e) => setTechForm({ ...techForm, Name: e.target.value })}
                 className="input"
@@ -1692,8 +1707,9 @@ export default function WorkOrders() {
               />
             </div>
 
+            {/* 2. Phone */}
             <div>
-              <label className="label">เบอร์ติดต่อ</label>
+              <label className="label font-bold">เบอร์ติดต่อ</label>
               <input
                 type="text"
                 placeholder="เช่น 081-234-5678"
@@ -1703,59 +1719,112 @@ export default function WorkOrders() {
               />
             </div>
 
+            {/* 3. Skill Level (2x2 Grid) */}
+            <div className="space-y-2">
+              <label className="label font-bold flex items-center gap-1.5">
+                <span className="text-blue-500">🎗️</span>
+                <span>ระดับทักษะช่าง (Skill Level) *</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {UI_SKILL_LEVELS.map((s) => {
+                  const isSelected = (techForm.SkillLevel || 'Junior').toLowerCase() === s.value.toLowerCase()
+                  return (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => setTechForm({ ...techForm, SkillLevel: s.value })}
+                      className={`p-3 rounded-2xl text-left transition-all border ${
+                        isSelected
+                          ? 'border-2 border-blue-600 bg-blue-50/80 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 shadow-sm'
+                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 font-bold text-xs">
+                        <span>{s.icon}</span>
+                        <span className={isSelected ? 'text-blue-600 dark:text-blue-400 font-extrabold' : ''}>{s.label}</span>
+                      </div>
+                      <div className="text-[11px] mt-0.5 text-slate-500 dark:text-slate-400 pl-5">
+                        {s.desc}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 4. Specialization (2x2 Grid Multi-select) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="label font-bold flex items-center gap-1.5 mb-0">
+                  <span className="text-blue-500">🔧</span>
+                  <span>ความถนัดเฉพาะทาง (Specialization)</span>
+                </label>
+                <span className="text-[10px] text-slate-400">คลิกเลือกได้มากกว่า 1 ทักษะ</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                {UI_SPECIALIZATIONS.map((spec) => {
+                  const selectedSpecs = (techForm.Specialization || '')
+                    .split(',')
+                    .map((str) => str.trim())
+                    .filter(Boolean)
+                  const isSelected = selectedSpecs.some(
+                    (sel) => sel.toLowerCase().includes(spec.value.toLowerCase()) || spec.value.toLowerCase().includes(sel.toLowerCase())
+                  )
+                  return (
+                    <button
+                      key={spec.value}
+                      type="button"
+                      onClick={() => {
+                        const next = isSelected
+                          ? selectedSpecs.filter(
+                              (sel) => !sel.toLowerCase().includes(spec.value.toLowerCase()) && !spec.value.toLowerCase().includes(sel.toLowerCase())
+                            )
+                          : [...selectedSpecs, spec.value]
+                        setTechForm({ ...techForm, Specialization: next.join(', ') })
+                      }}
+                      className={`py-2.5 px-3 rounded-2xl flex items-center gap-2 text-xs font-bold transition-all border ${
+                        isSelected
+                          ? 'border-2 border-blue-600 bg-blue-50/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm'
+                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <span>{spec.icon}</span>
+                      <span>{spec.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 5. Status */}
             <div>
-              <label className="label">ระดับทักษะ (Skill Level)</label>
+              <label className="label font-bold">สถานะ</label>
               <select
-                value={techForm.SkillLevel}
-                onChange={(e) => setTechForm({ ...techForm, SkillLevel: e.target.value })}
+                value={techForm.Status || 'ACTIVE'}
+                onChange={(e) => setTechForm({ ...techForm, Status: e.target.value })}
                 className="select font-semibold"
               >
-                {TECH_SKILL_LEVELS.map((s, idx) => (
-                  <option key={idx} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
+                <option value="ACTIVE">ใช้งานปกติ (Active)</option>
+                <option value="INACTIVE">พักงาน/ลาออก (Inactive)</option>
               </select>
             </div>
 
-            <div>
-              <label className="label">ความเชี่ยวชาญเฉพาะทาง</label>
-              <input
-                type="text"
-                placeholder="เช่น งานซ่อมเครื่องจักรหลัก, ระบบไฟ"
-                value={techForm.Specialization}
-                onChange={(e) => setTechForm({ ...techForm, Specialization: e.target.value })}
-                className="input"
-              />
-            </div>
-
-            <div>
-              <label className="label">สถานะ</label>
-              <select
-                value={techForm.Status}
-                onChange={(e) => setTechForm({ ...techForm, Status: e.target.value })}
-                className="select"
-              >
-                <option value="ACTIVE">พร้อมทำงาน (Active)</option>
-                <option value="INACTIVE">ปิดใช้งาน (Inactive)</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+            {/* Footer Action Buttons */}
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setTechModalOpen(false)}
-                className="btn-outline"
+                className="btn-outline px-4"
               >
                 ยกเลิก
               </button>
               <button
                 type="button"
                 onClick={handleSaveTech}
-                className="btn-primary"
+                className="btn-primary px-5"
               >
                 <Check size={14} />
-                <span>บันทึกข้อมูลช่าง</span>
+                <span>บันทึก</span>
               </button>
             </div>
           </div>
