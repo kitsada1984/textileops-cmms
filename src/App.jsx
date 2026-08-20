@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Cpu, Disc, ClipboardList, Calendar,
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
-  FileText,
+  FileText, Monitor, Smartphone,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
@@ -76,11 +76,35 @@ const NAV_SECTIONS = [
   },
 ]
 
+function PageRoutes() {
+  return (
+    <Routes>
+      <Route path="/"           element={<Dashboard />} />
+      <Route path="/machines"   element={<Machines />} />
+      <Route path="/cylinders"  element={<Cylinders />} />
+      <Route path="/workorders"      element={<WorkOrders />} />
+      <Route path="/repair-requests" element={<RepairRequests />} />
+      <Route path="/pm"         element={<PMPlan />} />
+      <Route path="/pm-log"     element={<PMLog />} />
+      <Route path="/design-bom" element={<DesignBom />} />
+      <Route path="/spareparts" element={<SpareParts />} />
+      <Route path="/purchasing" element={<Purchasing />} />
+      <Route path="/stock"      element={<StockMovement />} />
+      <Route path="/reports"    element={<Reports />} />
+      <Route path="/logs"       element={<Logs />} />
+      <Route path="/users"      element={<UsersPage />} />
+      <Route path="/webbuilder" element={<WebBuilder />} />
+      <Route path="/settings"   element={<SettingsPage />} />
+    </Routes>
+  )
+}
+
 function AppInner() {
   const { t } = useT()
   const { user, logout } = useAuth()
   const [sideOpen, setSideOpen] = useState(false)
   const [dark, setDark]         = useState(() => localStorage.getItem('theme') !== 'light')
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('app_view_mode') || 'web')
   const location = useLocation()
 
   useEffect(() => {
@@ -88,6 +112,10 @@ function AppInner() {
     if (dark) { html.classList.add('dark');    localStorage.setItem('theme', 'dark') }
     else       { html.classList.remove('dark'); localStorage.setItem('theme', 'light') }
   }, [dark])
+
+  useEffect(() => {
+    localStorage.setItem('app_view_mode', viewMode)
+  }, [viewMode])
 
   if (user === undefined) return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
@@ -334,6 +362,65 @@ function AppInner() {
 
           {/* Right controls */}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* View mode toggle (Web / Mobile) */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: dark ? '#1e293b' : '#f1f5f9',
+              borderRadius: 12,
+              padding: 2.5,
+              border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+            }}>
+              <button
+                type="button"
+                onClick={() => setViewMode('web')}
+                title="แสดงผลแบบเว็บ (Web/Desktop Mode)"
+                style={{
+                  height: 28,
+                  padding: '0 9px',
+                  borderRadius: 9,
+                  background: viewMode === 'web' ? (dark ? '#3b82f6' : '#2563eb') : 'transparent',
+                  color: viewMode === 'web' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
+                  fontWeight: viewMode === 'web' ? 700 : 500,
+                  fontSize: 11.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                  boxShadow: viewMode === 'web' ? '0 2px 8px rgba(37,99,235,0.3)' : 'none',
+                }}
+              >
+                <Monitor size={13} />
+                <span className="hidden sm:inline">เว็บ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('mobile')}
+                title="แสดงผลแบบมือถือ (Mobile Mode)"
+                style={{
+                  height: 28,
+                  padding: '0 9px',
+                  borderRadius: 9,
+                  background: viewMode === 'mobile' ? (dark ? '#3b82f6' : '#2563eb') : 'transparent',
+                  color: viewMode === 'mobile' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
+                  fontWeight: viewMode === 'mobile' ? 700 : 500,
+                  fontSize: 11.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                  boxShadow: viewMode === 'mobile' ? '0 2px 8px rgba(37,99,235,0.3)' : 'none',
+                }}
+              >
+                <Smartphone size={13} />
+                <span className="hidden sm:inline">มือถือ</span>
+              </button>
+            </div>
+
             <div style={{
               fontSize: 12, fontWeight: 500,
               color: 'var(--text-500)',
@@ -398,26 +485,33 @@ function AppInner() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
-          <Routes>
-            <Route path="/"           element={<Dashboard />} />
-            <Route path="/machines"   element={<Machines />} />
-            <Route path="/cylinders"  element={<Cylinders />} />
-            <Route path="/workorders"      element={<WorkOrders />} />
-            <Route path="/repair-requests" element={<RepairRequests />} />
-            <Route path="/pm"         element={<PMPlan />} />
-            <Route path="/pm-log"     element={<PMLog />} />
-            <Route path="/design-bom" element={<DesignBom />} />
-            <Route path="/spareparts" element={<SpareParts />} />
-            <Route path="/purchasing" element={<Purchasing />} />
-            <Route path="/stock"      element={<StockMovement />} />
-            <Route path="/reports"    element={<Reports />} />
-            <Route path="/logs"       element={<Logs />} />
-            <Route path="/users"      element={<UsersPage />} />
-            <Route path="/webbuilder" element={<WebBuilder />} />
-            <Route path="/settings"   element={<SettingsPage />} />
-          </Routes>
-        </main>
+        {viewMode === 'mobile' ? (
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70">
+            <div
+              className="w-full max-w-[430px] min-h-[calc(100vh-100px)] rounded-3xl overflow-hidden shadow-2xl border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 my-auto"
+              style={{
+                background: 'var(--bg-page)',
+                boxShadow: dark
+                  ? '0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(51,65,85,0.7)'
+                  : '0 20px 45px rgba(15,23,42,0.12), 0 0 0 1px rgba(226,232,240,0.8)',
+              }}
+            >
+              {/* Simulated Phone Top Notch & Status */}
+              <div className="h-6 flex items-center justify-between px-5 text-[10px] font-bold text-slate-400 select-none bg-slate-100/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+                <span>09:41</span>
+                <div className="w-16 h-3 rounded-full bg-slate-300 dark:bg-slate-700 mx-auto" />
+                <span>100% 🔋</span>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-4">
+                <PageRoutes />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
+            <PageRoutes />
+          </main>
+        )}
       </div>
     </div>
   )
