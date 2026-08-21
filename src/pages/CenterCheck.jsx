@@ -38,6 +38,9 @@ import { useT } from '../contexts/LanguageContext'
 import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
+import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+
+const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 
 export default function CenterCheck() {
   const { t } = useT()
@@ -97,6 +100,7 @@ export default function CenterCheck() {
   const [printRecord, setPrintRecord] = useState(null)
   const [sqlModalOpen, setSqlModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   // Normalized list of records
   const records = useMemo(() => {
@@ -299,22 +303,34 @@ export default function CenterCheck() {
     })
   }
 
-  // Handle Image Upload (Base64)
-  const handleImageUpload = (e) => {
+  // Handle Image Upload (Google Drive with Base64 fallback)
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
 
-    files.forEach((file) => {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const base64Url = event.target.result
+    setUploadingImage(true)
+    for (const file of files) {
+      try {
+        const { imageUrl } = await uploadImageToGoogleDrive(file, { folderName: CENTER_CHECK_IMAGE_FOLDER })
         setFormData((prev) => ({
           ...prev,
-          needle_images: [...(prev.needle_images || []), base64Url],
+          needle_images: [...(prev.needle_images || []), imageUrl],
         }))
+        toast.success('อัปโหลดรูปลง Google Drive สำเร็จ', `โฟลเดอร์ ${CENTER_CHECK_IMAGE_FOLDER}`)
+      } catch (err) {
+        // Fallback to local Base64
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const base64Url = event.target.result
+          setFormData((prev) => ({
+            ...prev,
+            needle_images: [...(prev.needle_images || []), base64Url],
+          }))
+        }
+        reader.readAsDataURL(file)
       }
-      reader.readAsDataURL(file)
-    })
+    }
+    setUploadingImage(false)
   }
 
   const removeImage = (imgIdx) => {
@@ -1000,12 +1016,22 @@ export default function CenterCheck() {
                     <span>รูปถ่ายสภาพเข็ม / ชิ้นส่วน</span>
                   </label>
                   <label className="btn-primary text-xs py-1.5 px-3 cursor-pointer">
-                    <Plus size={13} />
-                    <span>แนบรูปถ่าย</span>
+                    {uploadingImage ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>กำลังอัปโหลด...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={13} />
+                        <span>แนบรูปถ่าย</span>
+                      </>
+                    )}
                     <input
                       type="file"
                       accept="image/*"
                       multiple
+                      disabled={uploadingImage}
                       onChange={handleImageUpload}
                       className="hidden"
                     />
