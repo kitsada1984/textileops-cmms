@@ -1,5 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, RefreshCw, ArrowLeftRight, Pencil, Trash2 } from 'lucide-react'
+import {
+  Plus,
+  RefreshCw,
+  ArrowLeftRight,
+  Pencil,
+  Trash2,
+  Package,
+  ArrowDownLeft,
+  ArrowUpRight,
+  RotateCcw,
+  Image as ImageIcon,
+  ExternalLink,
+  Upload,
+  Check,
+  X,
+  Layers,
+  Sparkles,
+  User,
+  Tag,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import { StockTxnAPI, TXN_TYPE, SparePartAPI } from '../api/entities'
@@ -19,9 +38,14 @@ import { getSparePartImageUrl } from '../utils/sparePartImage'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 
 const SM_FIELD_KEYS = {
-  created_date:'sm_th_date', TXN_Type:'sm_th_type',
-  Part_Name_EN:'sm_th_name', Qty_Before:'sm_th_before', Qty_Change:'sm_th_change',
-  Qty_After:'sm_th_after', Reference:'sm_th_ref', Performed_By:'sm_th_by',
+  created_date: 'sm_th_date',
+  TXN_Type: 'sm_th_type',
+  Part_Name_EN: 'sm_th_name',
+  Qty_Before: 'sm_th_before',
+  Qty_Change: 'sm_th_change',
+  Qty_After: 'sm_th_after',
+  Reference: 'sm_th_ref',
+  Performed_By: 'sm_th_by',
 }
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
 const CATEGORY_NOTE_PREFIX = 'Category:'
@@ -34,49 +58,60 @@ const CATEGORY_OPTIONS = ['อะไหล่', 'เครื่องมือ�
 const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
 
 const getSMFallbackCols = (t) => [
-  { field:'created_date',  label:t('sm_th_date'),   type:'datetime' },
-  { field:'TXN_ID',        label:'เลขรายการ',        type:'text'     },
-  { field:'TXN_Type',      label:t('sm_th_type'),   type:'select'   },
-  { field:'Part_Code',     label:'รหัสอะไหล่',       type:'text'     },
-  { field:'Part_Name_EN',  label:t('sm_th_name'),   type:'text'     },
-  { field:'Category',      label:'หมวดหมู่',         type:'select',   width:'140px', options: CATEGORY_OPTIONS },
-  { field:'Qty_Before',    label:t('sm_th_before'), type:'number'   },
-  { field:'Qty_Change',    label:t('sm_th_change'), type:'number'   },
-  { field:'Qty_After',     label:t('sm_th_after'),  type:'number'   },
-  { field:'Unit',          label:t('field_unit'),    type:'text',     width:'80px' },
-  { field:'Unit_Price',    label:'ราคาต่อหน่วย',     type:'number',   width:'110px' },
-  { field:'Reference',     label:t('sm_th_ref'),    type:'text'     },
-  { field:'Location_Store',label:t('field_warehouse'), type:'select', width:'130px', options: WAREHOUSE_OPTIONS },
-  { field:'Performed_By',  label:t('sm_th_by'),     type:'text'     },
-  { field:'ImageUrl',      label:'URL',              type:'text',     width:'220px' },
-  { field:'ImagePreview',  label:'รูป',              type:'text',     width:'110px' },
-  { field:'Note',          label:'หมายเหตุ',         type:'text',     width:'220px' },
+  { field: 'created_date', label: t('sm_th_date'), type: 'datetime' },
+  { field: 'TXN_ID', label: 'เลขรายการ', type: 'text' },
+  { field: 'TXN_Type', label: t('sm_th_type'), type: 'select' },
+  { field: 'Part_Code', label: 'รหัสอะไหล่', type: 'text' },
+  { field: 'Part_Name_EN', label: t('sm_th_name'), type: 'text' },
+  { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: CATEGORY_OPTIONS },
+  { field: 'Qty_Before', label: t('sm_th_before'), type: 'number' },
+  { field: 'Qty_Change', label: t('sm_th_change'), type: 'number' },
+  { field: 'Qty_After', label: t('sm_th_after'), type: 'number' },
+  { field: 'Unit', label: t('field_unit'), type: 'text', width: '80px' },
+  { field: 'Unit_Price', label: 'ราคาต่อหน่วย', type: 'number', width: '110px' },
+  { field: 'Reference', label: t('sm_th_ref'), type: 'text' },
+  { field: 'Location_Store', label: t('field_warehouse'), type: 'select', width: '130px', options: WAREHOUSE_OPTIONS },
+  { field: 'Performed_By', label: t('sm_th_by'), type: 'text' },
+  { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
+  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
+  { field: 'Note', label: 'หมายเหตุ', type: 'text', width: '220px' },
 ]
 
 const getSMRequiredCols = (t) => [
-  { field:'created_date',  label:t('sm_th_date') },
-  { field:'TXN_ID',        label:'เลขรายการ' },
-  { field:'TXN_Type',      label:t('sm_th_type') },
-  { field:'Part_Code',     label:'รหัสอะไหล่' },
-  { field:'Part_Name_EN',  label:t('sm_th_name') },
-  { field:'Category',      label:'หมวดหมู่', width:'140px' },
-  { field:'Qty_Before',    label:t('sm_th_before') },
-  { field:'Qty_Change',    label:t('sm_th_change') },
-  { field:'Qty_After',     label:t('sm_th_after') },
-  { field:'Unit',          label:t('field_unit'), width:'80px' },
-  { field:'Unit_Price',    label:'ราคาต่อหน่วย', width:'110px' },
-  { field:'Reference',     label:t('sm_th_ref') },
-  { field:'Location_Store',label:t('field_warehouse'), width:'130px' },
-  { field:'Performed_By',  label:t('sm_th_by') },
-  { field:'ImageUrl',      label:'URL', width:'220px' },
-  { field:'ImagePreview',  label:'รูป', width:'110px' },
-  { field:'Note',          label:'หมายเหตุ', width:'220px' },
+  { field: 'created_date', label: t('sm_th_date') },
+  { field: 'TXN_ID', label: 'เลขรายการ' },
+  { field: 'TXN_Type', label: t('sm_th_type') },
+  { field: 'Part_Code', label: 'รหัสอะไหล่' },
+  { field: 'Part_Name_EN', label: t('sm_th_name') },
+  { field: 'Category', label: 'หมวดหมู่', width: '140px' },
+  { field: 'Qty_Before', label: t('sm_th_before') },
+  { field: 'Qty_Change', label: t('sm_th_change') },
+  { field: 'Qty_After', label: t('sm_th_after') },
+  { field: 'Unit', label: t('field_unit'), width: '80px' },
+  { field: 'Unit_Price', label: 'ราคาต่อหน่วย', width: '110px' },
+  { field: 'Reference', label: t('sm_th_ref') },
+  { field: 'Location_Store', label: t('field_warehouse'), width: '130px' },
+  { field: 'Performed_By', label: t('sm_th_by') },
+  { field: 'ImageUrl', label: 'URL', width: '220px' },
+  { field: 'ImagePreview', label: 'รูป', width: '110px' },
+  { field: 'Note', label: 'หมายเหตุ', width: '220px' },
 ]
 
 const EMPTY = {
-  TXN_Type: 'ISSUE', Part_Code: '', Part_Name_EN: '', Category: '', Qty_Before: 0,
-  Qty_Change: 0, Qty_After: 0, Unit: '', Unit_Price: 0,
-  Reference: '', Reference_Type: 'MANUAL', Location_Store: '', Performed_By: '', Note: '',
+  TXN_Type: 'ISSUE',
+  Part_Code: '',
+  Part_Name_EN: '',
+  Category: '',
+  Qty_Before: 0,
+  Qty_Change: 0,
+  Qty_After: 0,
+  Unit: '',
+  Unit_Price: 0,
+  Reference: '',
+  Reference_Type: 'MANUAL',
+  Location_Store: '',
+  Performed_By: '',
+  Note: '',
 }
 
 function resolveSMColumns(wbCols, t) {
@@ -140,7 +175,9 @@ function buildStockPayload(form = {}) {
 
 function omitKeys(item, keys) {
   const clone = { ...item }
-  keys.forEach((key) => { delete clone[key] })
+  keys.forEach((key) => {
+    delete clone[key]
+  })
   return clone
 }
 
@@ -150,55 +187,76 @@ function getMissingStockColumn(error) {
   return match?.[1] || null
 }
 
-function getStockSaveErrorMessage(error) {
-  return error.message
-  const missingColumn = getMissingStockColumn(error)
-  if (missingColumn === 'ImageUrl') {
-    return 'ยังบันทึกลิงก์รูปไม่ได้ เพราะ Supabase ยังไม่มีคอลัมน์ ImageUrl ในตาราง stocktransactions'
-  }
-  return error.message
-}
-
-function getSMColumnLabel(col, t) {
-  if (col.field === 'ImageUrl' || col.field === 'ImagePreview' || col.field === 'Note' || col.field === 'Category') return col.label
-  return SM_FIELD_KEYS[col.field] ? t(SM_FIELD_KEYS[col.field]) : col.label
-}
-
 export default function StockMovement() {
   const { t } = useT()
   const { canAdd, canEdit, canDelete } = usePagePerms('stock')
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(StockTxnAPI)
   const { data: parts, load: loadParts } = useEntity(SparePartAPI)
-  const [search,     setSearch]     = useState('')
-  const [modal,      setModal]      = useState(false)
-  const [form,       setForm]       = useState(EMPTY)
-  const [saving,     setSaving]     = useState(false)
+  const [search, setSearch] = useState('')
+  const [modal, setModal] = useState(false)
+  const [form, setForm] = useState(EMPTY)
+  const [saving, setSaving] = useState(false)
   const [filterSort, setFilterSort] = useState(INIT_FS)
+  const [detailRec, setDetailRec] = useState(null)
+  const [previewImageModal, setPreviewImageModal] = useState(null)
+
+  // Summary statistics
+  const stats = useMemo(() => {
+    const total = data.length
+    const receive = data.filter((tx) => tx.TXN_Type === 'RECEIVE').length
+    const issue = data.filter((tx) => tx.TXN_Type === 'ISSUE').length
+    const adjust = data.filter((tx) => tx.TXN_Type === 'ADJUST').length
+    return { total, receive, issue, adjust }
+  }, [data])
 
   const findPartForStockRow = (row = {}) =>
     parts.find((part) =>
       String(part.Part_Code || '').trim().toLowerCase() === String(row.Part_Code || '').trim().toLowerCase() ||
       (row.Part_ID && String(part.id || part._id) === String(row.Part_ID))
     )
+
   const getStockPartImageUrl = (row = {}) => {
     const part = findPartForStockRow(row)
     return getSparePartImageUrl(part || row)
   }
+
   const getStockCategory = (row = {}) => {
     const part = findPartForStockRow(row)
     return getHiddenStockCategory(row) || part?.Category || ''
   }
 
-  const byText = data.filter(tx =>
-    [tx.TXN_ID, tx.Part_Code, tx.Part_Name_EN, getStockCategory(tx), tx.Reference, tx.Performed_By, stripImageUrlFromNote(tx.Note)]
-      .some(v => String(v||'').toLowerCase().includes(search.toLowerCase()))
-  )
-  const baseRows = byText
+  const baseRows = useMemo(() => {
+    return data.filter((tx) =>
+      [tx.TXN_ID, tx.Part_Code, tx.Part_Name_EN, getStockCategory(tx), tx.Reference, tx.Performed_By, stripImageUrlFromNote(tx.Note)]
+        .some((v) => String(v || '').toLowerCase().includes(search.toLowerCase()))
+    )
+  }, [data, parts, search])
 
-  const [detailRec, setDetailRec] = useState(null)
+  const wbCols = useWebBuilderMenu('/stock-movement')
+  const cols = resolveSMColumns(wbCols, t)
+  const txnTypeOptions = useFieldOptions('/stock-movement', 'TXN_Type', TXN_TYPE)
 
-  const openNew = () => { setForm(EMPTY); setModal(true) }
+  const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
+    selectOptions: {
+      TXN_Type: txnTypeOptions || TXN_TYPE,
+      Category: CATEGORY_OPTIONS,
+    },
+    valueGetters: {
+      Category: getStockCategory,
+      ImageUrl: getStockPartImageUrl,
+      ImagePreview: getStockPartImageUrl,
+      Note: (row) => stripImageUrlFromNote(row.Note),
+    },
+  }), [cols, parts, txnTypeOptions])
+
+  const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
+
+  const openNew = () => {
+    setForm(EMPTY)
+    setModal(true)
+  }
+
   const openEdit = (tx) => {
     setForm({
       ...EMPTY,
@@ -236,60 +294,6 @@ export default function StockMovement() {
     }))
   }
 
-  // Picking a known part name fills the rest of the form, same as picking a code.
-  const applyPartNameToForm = (partName) => {
-    const part = parts.find((item) =>
-      String(item.Part_Name_EN || '').toLowerCase() === String(partName || '').toLowerCase() ||
-      String(item.Part_Name_TH || '').toLowerCase() === String(partName || '').toLowerCase()
-    )
-    if (part) { applyPartToForm(part.Part_Code); return }
-    setForm((prev) => ({ ...prev, Part_Name_EN: partName }))
-  }
-
-  const onPickImageFile = async (file) => {
-    if (!file) return
-    setUploadingImage(true)
-    try {
-      const { imageUrl } = await uploadImageToGoogleDrive(file)
-      setForm((prev) => ({
-        ...prev,
-        ImageUrl: imageUrl,
-        Note: appendImageMetaToNote(prev.Note, { imageUrl }),
-      }))
-      toast.success('อัปโหลดรูปสำเร็จ', imageUrl)
-    } catch (e) {
-      toast.error('อัปโหลดรูปไม่สำเร็จ', e.message)
-    }
-    setUploadingImage(false)
-  }
-
-  const saveWithColumnFallback = async (payload) => {
-    let nextPayload = { ...payload }
-    const removedColumns = []
-
-    while (true) {
-      try {
-        await save(nextPayload)
-        return removedColumns
-      } catch (error) {
-        const missingColumn = getMissingStockColumn(error)
-        if (missingColumn === 'ImageUrl') {
-          removedColumns.push(missingColumn)
-          nextPayload = {
-            ...omitKeys(nextPayload, ['ImageUrl']),
-            Note: appendImageMetaToNote(nextPayload.Note, { imageUrl: nextPayload.ImageUrl }),
-          }
-          continue
-        }
-        if (!missingColumn || removedColumns.includes(missingColumn)) {
-          throw error
-        }
-        removedColumns.push(missingColumn)
-        nextPayload = omitKeys(nextPayload, [missingColumn])
-      }
-    }
-  }
-
   const applyMovementToSparePart = async (payload) => {
     const partCode = String(payload.Part_Code || '').trim()
     if (!partCode) throw new Error('กรุณากรอกรหัสอะไหล่')
@@ -325,309 +329,547 @@ export default function StockMovement() {
           Unit_Price: toNumber(payload.Unit_Price),
           Compatible_Machines: [],
           Status: getPartStockStatus(after, 0),
-          Remark: 'สร้างอัตโนมัติจากเมนูเคลื่อนไหวสต็อก',
+          Remark: 'สร้างอัตโนมัติจากเมนูเคลื่อนไหวสต๊อก',
         }
 
-    const savedPart = existing
+    const saved = existing
       ? await SparePartAPI.update(existing.id || existing._id, partPayload)
       : await SparePartAPI.create(partPayload)
 
-    return {
-      ...payload,
-      Part_ID: savedPart.id || savedPart._id || existing?.id || null,
-      Part_Name_EN: payload.Part_Name_EN || savedPart.Part_Name_EN || '',
-      Category: payload.Category || savedPart.Category || '',
-      Unit: payload.Unit || savedPart.Unit || '',
-      Unit_Price: payload.Unit_Price || savedPart.Unit_Price || 0,
-      Location_Store: payload.Location_Store || savedPart.Location_Store || '',
-      Qty_Before: before,
-      Qty_Change: Math.abs(toNumber(payload.Qty_Change)),
-      Qty_After: after,
-    }
-  }
-
-  const reverseMovementFromSparePart = async (movement) => {
-    const allParts = await SparePartAPI.list()
-    const existing = allParts.find((part) =>
-      String(part.Part_Code || '').trim().toLowerCase() === String(movement.Part_Code || '').trim().toLowerCase() ||
-      (movement.Part_ID && String(part.id || part._id) === String(movement.Part_ID))
-    )
-    if (!existing) return
-
-    const delta = getSignedStockDelta(movement.TXN_Type, movement.Qty_Change)
-    const nextQty = toNumber(existing.Stock_Qty) - delta
-    await SparePartAPI.update(existing.id || existing._id, {
-      ...existing,
-      Stock_Qty: nextQty,
-      Status: getPartStockStatus(nextQty, existing.Min_Qty),
-    })
+    await loadParts()
+    return { before, after, partId: saved.id || saved._id || existing?.id || null }
   }
 
   const submit = async () => {
-    if (!form.Part_Code || !form.Qty_Change) return toast.warning('กรุณากรอกข้อมูล', t('sm_req'))
+    if (!form.Part_Code) {
+      toast.warning('กรุณากรอกข้อมูล', 'รหัสอะไหล่จำเป็นต้องกรอก')
+      return
+    }
     setSaving(true)
     const isEdit = !!(form._id || form.id)
-    const previous = isEdit
-      ? data.find((tx) => String(tx._id || tx.id) === String(form._id || form.id))
-      : null
-    let reversed = false
-    let appliedPayload = null
     try {
-      const now = new Date()
-      if (previous) {
-        await reverseMovementFromSparePart(previous)
-        reversed = true
-      }
-      const stockPayload = await applyMovementToSparePart({
-        ...form,
-        TXN_ID: form.TXN_ID || generateStockTxnId(now),
-      })
-      appliedPayload = stockPayload
-      await save(buildStockPayload(stockPayload))
-      await loadParts()
-      if (false) {
-        toast.success('บันทึกรายการสำเร็จ', 'บันทึกลิงก์รูปเรียบร้อย')
-      } else {
-        toast.success('บันทึกรายการสำเร็จ', `${form.TXN_Type} — ${form.Part_Code}`)
-      }
-      setModal(false)
-    } catch (e) {
-      if (reversed && previous) {
-        if (appliedPayload) {
-          try { await reverseMovementFromSparePart(appliedPayload) } catch {}
+      let finalPayload = { ...form }
+      if (!isEdit) {
+        const { before, after, partId } = await applyMovementToSparePart(form)
+        finalPayload = {
+          ...finalPayload,
+          TXN_ID: generateStockTxnId(new Date()),
+          Part_ID: partId,
+          Qty_Before: before,
+          Qty_After: after,
+          created_date: new Date().toISOString(),
         }
-        try { await applyMovementToSparePart(buildStockPayload(previous)) } catch {}
       }
-      toast.error('เกิดข้อผิดพลาด', getStockSaveErrorMessage(e))
+
+      await save(buildStockPayload(finalPayload))
+      toast.success(
+        isEdit ? 'แก้ไขรายการเคลื่อนไหวสำเร็จ' : 'บันทึกเคลื่อนไหวสต๊อกสำเร็จ',
+        `${finalPayload.Part_Code} (${finalPayload.TXN_Type})`
+      )
+      setModal(false)
+      await load()
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
     }
     setSaving(false)
   }
 
-  const del = async (tx) => {
-    const id = tx?._id || tx?.id
-    if (!id) return
-    if (!confirm('ยืนยันลบรายการเคลื่อนไหวสต็อกนี้? ระบบจะปรับยอดสต็อกคืนให้อัตโนมัติ')) return
-    let reversed = false
+  const del = async (id) => {
+    if (!confirm('ยืนยันการลบรายการเคลื่อนไหวสต๊อกนี้?')) return
     try {
-      await reverseMovementFromSparePart(tx)
-      reversed = true
       await remove(id)
-      await loadParts()
-      setDetailRec(null)
-      toast.success('ลบรายการเคลื่อนไหวสต็อกสำเร็จ')
+      toast.success('ลบรายการสำเร็จ')
     } catch (e) {
-      if (reversed) {
-        try { await applyMovementToSparePart(buildStockPayload(tx)) } catch {}
-      }
       toast.error('เกิดข้อผิดพลาด', e.message)
     }
   }
 
-
-  const wbCols      = useWebBuilderMenu('/stock')
-  const cols        = resolveSMColumns(wbCols, t)
-  const txnTypeOpts = useFieldOptions('/stock', 'TXN_Type', TXN_TYPE)
-  const showActions = canEdit || canDelete
-  const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
-    selectOptions: { TXN_Type: txnTypeOpts || TXN_TYPE, Category: CATEGORY_OPTIONS, Location_Store: WAREHOUSE_OPTIONS },
-    valueGetters: {
-      created_date: (row) => row.created_date || row.created_at,
-      Category: getStockCategory,
-      ImageUrl: getStockPartImageUrl,
-      ImagePreview: getStockPartImageUrl,
-      Note: (row) => stripImageUrlFromNote(row.Note),
-    },
-  }), [cols, txnTypeOpts])
-  const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
-
-  const txColor = (tp) => ({ RECEIVE:'text-emerald-500', ISSUE:'text-red-500', ADJUST:'text-blue-500', RETURN:'text-amber-500', SCRAP:'text-slate-400' }[tp] || '')
-
-  const renderSMCell = (row, col) => {
+  const renderCellContent = (row, col) => {
     const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
       ? getStockPartImageUrl(row)
       : col.field === 'Category'
         ? getStockCategory(row)
-      : col.field === 'created_date'
-        ? row.created_date || row.created_at
-      : row[col.field]
-    if (col.type === 'select' || col.field === 'TXN_Type') {
-      const optColor = col.options?.find(o => o.value === val || o.label === val)?.color
-      if (optColor) return <StatusBadge value={val} color={optColor} />
+        : row[col.field]
+
+    if (val === null || val === undefined || val === '') {
+      return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
     }
-    if (col.field === 'TXN_Type') return <StatusBadge value={val} />
-    if (col.field === 'created_date')
-      return <span className="text-xs" style={{ color:'var(--text-400)' }}>
-        {val ? format(new Date(val), 'dd/MM/yy HH:mm') : '—'}
-      </span>
-    if (col.field === 'Qty_Change')
-      return <span className={`text-right font-semibold ${txColor(row.TXN_Type)}`}>
-        {val != null ? (row.TXN_Type === 'ISSUE' || row.TXN_Type === 'SCRAP' ? `-${val}` : `+${val}`) : '—'}
-      </span>
-    if (col.field === 'Qty_Before' || col.field === 'Qty_After')
-      return <span className="text-right text-sm">{val ?? '—'}</span>
-    if (col.field === 'Unit_Price')
-      return <span>{`฿${Number(val).toLocaleString()}`}</span>
-    if (val === null || val === undefined || val === '')
-      return <span style={{ color:'var(--text-400)' }}>—</span>
+
+    if (col.field === 'TXN_ID') {
+      return (
+        <span className="font-mono font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-[11px]">
+          {String(val)}
+        </span>
+      )
+    }
+
+    if (col.field === 'TXN_Type') {
+      const isRec = val === 'RECEIVE'
+      const isAdj = val === 'ADJUST'
+      return (
+        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+          isRec
+            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20'
+            : isAdj
+              ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20'
+              : 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20'
+        }`}>
+          {isRec ? <ArrowDownLeft size={11} /> : isAdj ? <RotateCcw size={11} /> : <ArrowUpRight size={11} />}
+          <span>{val === 'RECEIVE' ? 'รับเข้า' : val === 'ISSUE' ? 'เบิกจ่าย' : 'ปรับสต๊อก'}</span>
+        </span>
+      )
+    }
+
+    if (col.field === 'Part_Code') {
+      return <span className="font-mono font-black text-blue-600 dark:text-blue-400">{String(val)}</span>
+    }
+
+    if (col.field === 'Part_Name_EN') {
+      return <span className="font-bold text-slate-800 dark:text-slate-100">{String(val)}</span>
+    }
+
+    if (col.field === 'Qty_Change') {
+      const delta = getSignedStockDelta(row.TXN_Type, val)
+      return (
+        <span className={`font-mono font-black text-xs ${delta > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+          {delta > 0 ? `+${Number(val).toLocaleString()}` : `-${Number(val).toLocaleString()}`}
+        </span>
+      )
+    }
+
+    if (col.field === 'Qty_Before' || col.field === 'Qty_After') {
+      return <span className="font-mono text-slate-600 dark:text-slate-400 text-xs">{Number(val).toLocaleString()}</span>
+    }
+
+    if (col.field === 'Unit_Price') {
+      return <span className="font-mono text-slate-600 dark:text-slate-400 text-xs">฿{Number(val).toLocaleString()}</span>
+    }
+
+    if (col.type === 'datetime' || col.field === 'created_date') {
+      try {
+        return <span className="font-mono text-slate-500 text-[11px]">{format(new Date(val), 'dd/MM/yy HH:mm')}</span>
+      } catch {
+        return <span className="font-mono text-slate-500 text-[11px]">{String(val)}</span>
+      }
+    }
+
     if (col.field === 'ImageUrl') {
-      return <a href={String(val)} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12, display:'block', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{String(val)}</a>
+      return (
+        <a
+          href={String(val)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-mono text-[11px] flex items-center gap-1 hover:underline max-w-[200px] truncate"
+        >
+          <span className="truncate">{String(val)}</span>
+          <ExternalLink size={11} className="flex-shrink-0 opacity-70" />
+        </a>
+      )
     }
+
     if (col.field === 'ImagePreview') {
-      return <a href={String(val)} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12 }}>เปิดรูป</a>
+      const imgUrl = String(val)
+      return (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => setPreviewImageModal({ url: imgUrl, title: `${row.Part_Code} - ${row.Part_Name_EN || ''}` })}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
+          >
+            <ImageIcon size={13} />
+            <span>เปิดรูป</span>
+          </button>
+        </div>
+      )
     }
-    if (col.field === 'Note')
-      return <span style={{ fontSize:12, display:'block', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{stripImageUrlFromNote(val)}</span>
-    return <span>{String(val)}</span>
+
+    if (col.field === 'Note') {
+      return <span className="text-slate-500 truncate max-w-[200px] block">{stripImageUrlFromNote(val)}</span>
+    }
+
+    return <span className="text-slate-700 dark:text-slate-300 text-xs">{String(val)}</span>
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder={t('sm_search')} />
-        <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-        <GoogleSheetSyncButton
-          sheetName="เคลื่อนไหวสต็อก"
-          columns={cols}
-          rows={displayRows}
-          valueGetters={{
-            created_date: (row) => row.created_date || row.created_at,
-            Category: getStockCategory,
-            ImageUrl: getStockPartImageUrl,
-            ImagePreview: getStockPartImageUrl,
-            Note: (row) => stripImageUrlFromNote(row.Note),
-          }}
-        />
-        <button className="btn-outline ml-auto" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
-        {canAdd && <button className="btn-primary" onClick={openNew}><Plus size={15}/> {t('sm_add')}</button>}
+    <div className="space-y-5">
+      {/* ── SUMMARY STATS CARDS ──────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รายการเคลื่อนไหวทั้งหมด</div>
+            <div className="text-xl font-black mt-0.5" style={{ color: 'var(--text-900)' }}>
+              {stats.total} <span className="text-xs font-normal text-slate-400">รายการ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+            <ArrowLeftRight size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รับเข้าสต๊อก (Receive)</div>
+            <div className="text-xl font-black mt-0.5 text-emerald-600 dark:text-emerald-400">
+              {stats.receive} <span className="text-xs font-normal text-slate-400">รายการ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
+            <ArrowDownLeft size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">เบิกจ่ายสต๊อก (Issue)</div>
+            <div className="text-xl font-black mt-0.5 text-rose-600 dark:text-rose-400">
+              {stats.issue} <span className="text-xs font-normal text-slate-400">รายการ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold">
+            <ArrowUpRight size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ปรับปรุงสต๊อก (Adjust)</div>
+            <div className="text-xl font-black mt-0.5 text-blue-600 dark:text-blue-400">
+              {stats.adjust} <span className="text-xs font-normal text-slate-400">รายการ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+            <RotateCcw size={18} />
+          </div>
+        </div>
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              {cols.map(c => <th key={c.field||c.id} style={getColumnWidthStyle(c)}>{getSMColumnLabel(c, t)}</th>)}
-              {showActions && <th style={{ width: 128, minWidth: 128, textAlign: 'right' }}>จัดการ</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={cols.length + (showActions ? 1 : 0)} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('loading')}</td></tr>}
-            {!loading && displayRows.map((tx, i) => (
-              <tr key={tx._id || tx.id || i} onClick={() => setDetailRec(tx)} style={{cursor:'pointer'}}>
-                {cols.map(c => <td key={c.field||c.id} style={getColumnWidthStyle(c)}>{renderSMCell(tx, c)}</td>)}
-                {showActions && (
-                  <td onClick={e => e.stopPropagation()}>
-                    <div className="flex justify-end gap-2">
-                      {canEdit && <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(tx)}><Pencil size={12}/> แก้ไข</button>}
-                      {canDelete && <button className="btn-danger py-1 px-2 text-xs" onClick={() => del(tx)}><Trash2 size={12}/> ลบ</button>}
+      {/* ── TOOLBAR ───────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="ค้นหา เลขรายการ / รหัสอะไหล่ / ชื่ออะไหล่ / ผู้ดำเนินการ..."
+            className="w-full sm:w-80"
+          />
+          <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+          <GoogleSheetSyncButton
+            sheetName="เคลื่อนไหวสต๊อก"
+            columns={cols}
+            rows={displayRows}
+            valueGetters={{
+              Category: getStockCategory,
+              ImageUrl: getStockPartImageUrl,
+              ImagePreview: getStockPartImageUrl,
+              Note: (row) => stripImageUrlFromNote(row.Note),
+            }}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={load}
+            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5"
+            title={t('refresh')}
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{t('refresh')}</span>
+          </button>
+
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+            >
+              <Plus size={15} />
+              <span>บันทึกเคลื่อนไหว</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── DATA TABLE ────────────────────────────────────────── */}
+      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="table w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                {cols.map((c) => (
+                  <th key={c.field} style={getColumnWidthStyle(c)} className="py-3 px-3 text-left whitespace-nowrap">
+                    {c.label}
+                  </th>
+                ))}
+                <th className="py-3 px-3 text-center w-24">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {loading && (
+                <tr>
+                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                    <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
+                    <span>{t('loading')}</span>
+                  </td>
+                </tr>
+              )}
+              {!loading && displayRows.map((tx, i) => (
+                <tr
+                  key={tx._id || tx.id || i}
+                  onClick={() => setDetailRec(tx)}
+                  className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                >
+                  {cols.map((c) => (
+                    <td key={c.field} style={getColumnWidthStyle(c)} className="py-2.5 px-3 whitespace-nowrap">
+                      {renderCellContent(tx, c)}
+                    </td>
+                  ))}
+                  <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(tx)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                          title="แก้ไขรายการเคลื่อนไหว"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => del(tx._id || tx.id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                          title="ลบรายการ"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   </td>
-                )}
-              </tr>
-            ))}
-            {!loading && !displayRows.length && <tr><td colSpan={cols.length + (showActions ? 1 : 0)} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('no_data')}</td></tr>}
-          </tbody>
-        </table>
+                </tr>
+              ))}
+              {!loading && !displayRows.length && (
+                <tr>
+                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                    <ArrowLeftRight size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                    <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ บันทึกเคลื่อนไหว" เพื่อเริ่มต้นทำรายการ</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
       <DetailDrawer
-        open={!!detailRec} onClose={() => setDetailRec(null)}
-        title={detailRec?.Part_Code} subtitle={detailRec?.TXN_ID}
-        icon={ArrowLeftRight} accentColor="#06b6d4" iconColor="#22d3ee"
-        badge={detailRec && <StatusBadge value={detailRec.TXN_Type} />}
-        canEdit={canEdit} canDelete={canDelete}
+        open={!!detailRec}
+        onClose={() => setDetailRec(null)}
+        title={detailRec?.TXN_ID}
+        subtitle={detailRec ? `${detailRec.Part_Code} · ${detailRec.Part_Name_EN || ''}` : ''}
+        icon={ArrowLeftRight}
+        accentColor="#2563eb"
+        canEdit={canEdit}
+        canDelete={canDelete}
         onEdit={() => openEdit(detailRec)}
-        onDelete={() => del(detailRec)}
+        onDelete={() => {
+          del(detailRec._id || detailRec.id)
+          setDetailRec(null)
+        }}
         groups={detailRec ? [
-          { label: t('dr_movement'), fields: [
-            { label: 'เลขรายการ',        value: detailRec.TXN_ID, mono: true },
-            { label: t('sm_th_type'),    value: detailRec.TXN_Type },
-            { label: 'รหัสอะไหล่',       value: detailRec.Part_Code, mono: true },
-            { label: t('sm_th_name'),    value: detailRec.Part_Name_EN },
-            { label: 'หมวดหมู่',         value: getStockCategory(detailRec) },
-            { label: t('field_unit'),    value: detailRec.Unit },
-            { label: t('sm_th_by'),      value: detailRec.Performed_By },
-            { label: 'ลิงก์รูป',         value: getStockPartImageUrl(detailRec) },
-          ]},
-          { label: t('dr_quantity'), fields: [
-            { label: t('sm_th_before'), value: detailRec.Qty_Before != null ? String(detailRec.Qty_Before) : null },
-            { label: t('sm_th_change'), value: detailRec.Qty_Change != null ? String(detailRec.Qty_Change) : null,
-              node: detailRec.Qty_Change != null ? <span style={{fontSize:15, fontWeight:800,
-                color: ['ISSUE','SCRAP'].includes(detailRec.TXN_Type) ? '#ef4444' : '#10b981'}}>
-                {['ISSUE','SCRAP'].includes(detailRec.TXN_Type) ? '-' : '+'}{detailRec.Qty_Change}
-              </span> : null },
-            { label: t('sm_th_after'),  value: detailRec.Qty_After != null ? String(detailRec.Qty_After) : null },
-            { label: 'ราคาต่อหน่วย',   value: detailRec.Unit_Price ? `฿${Number(detailRec.Unit_Price).toLocaleString()}` : null },
-          ]},
-          { label: t('dr_reference'), fields: [
-            { label: 'อ้างอิง',             value: detailRec.Reference },
-            { label: t('field_warehouse'),  value: detailRec.Location_Store },
-            { label: t('sm_th_date'),       value: (detailRec.created_date || detailRec.created_at)
-                ? format(new Date(detailRec.created_date || detailRec.created_at),'dd/MM/yyyy HH:mm') : null },
-          ]},
-          { label: 'หมายเหตุ', single: true, fields: [
-            { label: 'หมายเหตุ', value: stripImageUrlFromNote(detailRec.Note), full: true },
-          ]},
-        ] : []}
+          {
+            label: 'ข้อมูลรายการเคลื่อนไหว',
+            fields: [
+              { label: 'เลขรายการ', value: detailRec.TXN_ID, mono: true },
+              { label: 'ประเภทรายการ', value: detailRec.TXN_Type === 'RECEIVE' ? 'รับเข้า' : detailRec.TXN_Type === 'ISSUE' ? 'เบิกจ่าย' : 'ปรับสต๊อก' },
+              { label: 'วันที่ทำรายการ', value: detailRec.created_date ? format(new Date(detailRec.created_date), 'dd/MM/yyyy HH:mm') : null },
+              { label: 'รหัสอะไหล่', value: detailRec.Part_Code, mono: true },
+              { label: 'ชื่ออะไหล่', value: detailRec.Part_Name_EN },
+              { label: 'หมวดหมู่', value: getStockCategory(detailRec) },
+              { label: 'ลิงก์รูปภาพ', value: getStockPartImageUrl(detailRec), full: true },
+            ].filter((f) => f.value),
+          },
+          {
+            label: 'การเปลี่ยนแปลงสต๊อก',
+            fields: [
+              { label: 'จำนวนก่อนทำ', value: `${detailRec.Qty_Before} ${detailRec.Unit || ''}` },
+              { label: 'จำนวนที่เปลี่ยนแปลง', value: `${getSignedStockDelta(detailRec.TXN_Type, detailRec.Qty_Change) > 0 ? '+' : ''}${getSignedStockDelta(detailRec.TXN_Type, detailRec.Qty_Change)} ${detailRec.Unit || ''}` },
+              { label: 'จำนวนคงเหลือหลังทำ', value: `${detailRec.Qty_After} ${detailRec.Unit || ''}` },
+              { label: 'คลัง/สถานที่เก็บ', value: detailRec.Location_Store },
+            ].filter((f) => f.value),
+          },
+          {
+            label: 'อ้างอิงและผู้ดำเนินการ',
+            fields: [
+              { label: 'เอกสารอ้างอิง', value: detailRec.Reference },
+              { label: 'ประเภทอ้างอิง', value: detailRec.Reference_Type },
+              { label: 'ผู้ทำรายการ', value: detailRec.Performed_By },
+              { label: 'หมายเหตุ', value: stripImageUrlFromNote(detailRec.Note), full: true },
+            ].filter((f) => f.value),
+          },
+        ].filter((g) => g.fields.length > 0) : []}
       />
 
-      <Modal open={modal} onClose={() => setModal(false)} title={t('sm_modal')} size="lg"
-        footer={<>
-          <button className="btn-outline" onClick={() => setModal(false)}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? t('saving') : t('save')}</button>
-        </>}
+      {/* ── ADD / EDIT MODAL ──────────────────────────────────── */}
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={form._id || form.id ? '✏️ แก้ไขรายการเคลื่อนไหวสต๊อก' : '➕ บันทึกเคลื่อนไหวสต๊อกใหม่'}
+        size="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button type="button" className="btn-outline px-4" onClick={() => setModal(false)}>
+              {t('cancel')}
+            </button>
+            <button type="button" className="btn-primary px-5" onClick={submit} disabled={saving}>
+              {saving ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>กำลังบันทึก...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={14} />
+                  <span>{t('save')}</span>
+                </>
+              )}
+            </button>
+          </div>
+        }
       >
-        <div className="grid grid-cols-2 gap-4">
-          <F form={form} setForm={setForm} label={t('sm_th_type')}   id="TXN_Type"       opts={txnTypeOpts} />
-          <div>
-            <label className="label">รหัสอะไหล่ *</label>
-            <input
-              className="input"
-              list="sm-part-codes"
-              value={form.Part_Code || ''}
-              onChange={(e) => applyPartToForm(e.target.value)}
-            />
-            <datalist id="sm-part-codes">
-              {parts.map((part) => (
-                <option key={part.id || part.Part_Code} value={part.Part_Code}>
-                  {part.Part_Name_EN || part.Part_Name_TH || part.Part_Code}
-                </option>
-              ))}
-            </datalist>
+        <div className="space-y-5 text-xs">
+          {/* Section 1: Transaction Type & Part Picker */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1.5">
+                <ArrowLeftRight size={14} className="text-blue-500" />
+                <span>ประเภทรายการและอะไหล่</span>
+              </div>
+              {parts?.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400">เลือกอะไหล่:</span>
+                  <select
+                    className="select text-[11px] py-0.5 px-2 max-w-[180px]"
+                    onChange={(e) => applyPartToForm(e.target.value)}
+                    value=""
+                  >
+                    <option value="">— เลือกอะไหล่ —</option>
+                    {parts.map((p) => (
+                      <option key={p.Part_Code} value={p.Part_Code}>
+                        {p.Part_Code} - {p.Part_Name_EN}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <F form={form} setForm={setForm} label="ประเภทรายการ" id="TXN_Type" opts={TXN_TYPE} />
+              <F form={form} setForm={setForm} label="รหัสอะไหล่ *" id="Part_Code" placeholder="เช่น SP-001" />
+              <F form={form} setForm={setForm} label="ชื่ออะไหล่" id="Part_Name_EN" placeholder="ชื่ออะไหล่" />
+              <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
+            </div>
           </div>
-          <div>
-            <label className="label">{t('sm_th_name')}</label>
-            <input
-              className="input"
-              list="sm-part-names"
-              value={form.Part_Name_EN || ''}
-              onChange={(e) => applyPartNameToForm(e.target.value)}
-            />
-            <datalist id="sm-part-names">
-              {[...new Set(parts.map((part) => part.Part_Name_EN).filter(Boolean))].map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
+
+          {/* Section 2: Quantities & Preview */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <Package size={14} className="text-blue-500" />
+              <span>การปรับจำนวนสต๊อก</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+              <div>
+                <label className="label text-slate-500">คงเหลือก่อนทำ</label>
+                <div className="font-mono font-bold text-base text-slate-700 dark:text-slate-300">
+                  {Number(form.Qty_Before || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">{form.Unit}</span>
+                </div>
+              </div>
+
+              <div>
+                <F form={form} setForm={setForm} label="จำนวนที่ทำรายการ *" id="Qty_Change" type="number" placeholder="0" />
+              </div>
+
+              <div>
+                <label className="label text-slate-500">คงเหลือหลังทำ (คำนวณอัตโนมัติ)</label>
+                <div className={`font-mono font-black text-base ${Number(form.Qty_After || 0) < 0 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
+                  {Number(form.Qty_After || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">{form.Unit}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <F form={form} setForm={setForm} label="หน่วยนับ" id="Unit" placeholder="เช่น ชิ้น, อัน" />
+              <F form={form} setForm={setForm} label="ราคาต่อหน่วย" id="Unit_Price" type="number" placeholder="0" />
+              <F form={form} setForm={setForm} label="คลัง/สถานที่เก็บ" id="Location_Store" opts={WAREHOUSE_OPTIONS} />
+            </div>
           </div>
-          <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
-          <F form={form} setForm={setForm} label={t('sm_th_before')} id="Qty_Before"  type="number" />
-          <F form={form} setForm={setForm} label={t('sm_th_change')+' *'} id="Qty_Change" type="number" />
-          <F form={form} setForm={setForm} label={t('sm_th_after')}  id="Qty_After"   type="number" />
-          <F form={form} setForm={setForm} label="หน่วย"             id="Unit" />
-          <F form={form} setForm={setForm} label="ราคาต่อหน่วย"      id="Unit_Price"  type="number" />
-          <F form={form} setForm={setForm} label={t('sm_th_ref')}    id="Reference" />
-          <F form={form} setForm={setForm} label="ที่เก็บ"           id="Location_Store" opts={WAREHOUSE_OPTIONS} />
-          <F form={form} setForm={setForm} label={t('sm_th_by')}     id="Performed_By" />
-          <div className="col-span-2">
-            <label className="label">หมายเหตุ</label>
-            <textarea
-              className="input"
-              rows={2}
-              value={stripImageUrlFromNote(form.Note)}
-              onChange={e => setForm(p => ({...p, Note: e.target.value}))}
-            />
+
+          {/* Section 3: Reference & Notes */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <Tag size={14} className="text-emerald-500" />
+              <span>เอกสารอ้างอิงและผู้ดำเนินการ</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <F form={form} setForm={setForm} label="เอกสารอ้างอิง / เลขที่งาน" id="Reference" placeholder="เช่น WO-2026-001 หรือ PO-001" />
+              <F form={form} setForm={setForm} label="ผู้ทำรายการ" id="Performed_By" placeholder="ชื่อผู้เบิกหรือผู้รับของ" />
+              <div className="sm:col-span-2">
+                <F
+                  form={form}
+                  setForm={setForm}
+                  label="หมายเหตุ (Note)"
+                  id="Note"
+                  placeholder="สาเหตุการเบิก การใช้งาน หรือข้อสังเกต"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </Modal>
+
+      {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
+      {previewImageModal && (
+        <Modal
+          open={!!previewImageModal}
+          onClose={() => setPreviewImageModal(null)}
+          title={`🖼️ ${previewImageModal.title}`}
+        >
+          <div className="space-y-4 text-center">
+            <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center max-h-[70vh]">
+              <img
+                src={previewImageModal.url}
+                alt={previewImageModal.title}
+                className="max-h-[65vh] w-auto object-contain mx-auto"
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs pt-2">
+              <a
+                href={previewImageModal.url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-outline text-xs flex items-center gap-1.5"
+              >
+                <ExternalLink size={13} />
+                <span>เปิดในแท็บใหม่ (Full Size)</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewImageModal(null)}
+                className="btn-primary text-xs px-4"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

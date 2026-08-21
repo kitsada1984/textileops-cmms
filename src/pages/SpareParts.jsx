@@ -1,5 +1,21 @@
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Trash2, RefreshCw, AlertTriangle, Package } from 'lucide-react'
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  AlertTriangle,
+  Package,
+  CheckCircle2,
+  DollarSign,
+  Image as ImageIcon,
+  ExternalLink,
+  Upload,
+  Check,
+  X,
+  Layers,
+  Sparkles,
+} from 'lucide-react'
 import useEntity from '../hooks/useEntity'
 import { SparePartAPI, PART_STATUS } from '../api/entities'
 import useWebBuilderMenu, { useFieldOptions } from '../hooks/useWebBuilderMenu'
@@ -25,10 +41,17 @@ import {
 } from '../utils/sparePartImage'
 
 const SP_FIELD_KEYS = {
-  Part_Code:'sp_th_code', Part_Name_EN:'sp_th_name_en',
-  Category:'sp_th_cat', Stock_Qty:'sp_th_stock', Min_Qty:'sp_th_min',
-  Unit_Price:'sp_th_price', Status:'status', Remark:'remark',
-  Unit:'field_unit', Supplier:'field_supplier', Location_Store:'field_warehouse',
+  Part_Code: 'sp_th_code',
+  Part_Name_EN: 'sp_th_name_en',
+  Category: 'sp_th_cat',
+  Stock_Qty: 'sp_th_stock',
+  Min_Qty: 'sp_th_min',
+  Unit_Price: 'sp_th_price',
+  Status: 'status',
+  Remark: 'remark',
+  Unit: 'field_unit',
+  Supplier: 'field_supplier',
+  Location_Store: 'field_warehouse',
 }
 
 const MISSING_SPAREPART_COLUMN_RE = /Could not find the '([^']+)' column of 'spareparts'|column spareparts\.([^ ]+) does not exist/i
@@ -70,20 +93,20 @@ function buildSparePartFilterOptions(rows = [], key, fallbackOptions = []) {
 }
 
 const getSPFallbackCols = (t) => [
-  { field:'Part_Code',           label:t('sp_th_code'),       type:'text',     width:'130px' },
-  { field:'Category',            label:t('sp_th_cat'),        type:'select',   width:'130px', options: CATEGORY_OPTIONS },
-  { field:'Part_Name_EN',        label:t('sp_th_name_en'),    type:'text',     width:'180px' },
-  { field:'Unit',                label:t('field_unit'),       type:'text',     width:'80px' },
-  { field:'Status',              label:t('status'),           type:'select',   width:'130px' },
-  { field:'Stock_Qty',           label:t('sp_th_stock'),      type:'number',   width:'90px' },
-  { field:'Min_Qty',             label:t('sp_th_min'),        type:'number',   width:'90px' },
-  { field:'Unit_Price',          label:t('sp_th_price'),      type:'number',   width:'120px' },
-  { field:'Location_Store',      label:t('field_warehouse'),  type:'select',   width:'130px', options: WAREHOUSE_OPTIONS },
-  { field:'Supplier',            label:t('field_supplier'),   type:'text',     width:'150px' },
-  { field:'Compatible_Machines', label:'เครื่องที่ใช้ได้',    type:'text',     width:'180px' },
-  { field:'ImageUrl',            label:'URL',                  type:'text',     width:'220px' },
-  { field:'ImagePreview',        label:'รูป',                  type:'text',     width:'110px' },
-  { field:'Remark',              label:t('remark'),           type:'textarea', width:'220px' },
+  { field: 'Part_Code', label: t('sp_th_code'), type: 'text', width: '130px' },
+  { field: 'Category', label: t('sp_th_cat'), type: 'select', width: '130px', options: CATEGORY_OPTIONS },
+  { field: 'Part_Name_EN', label: t('sp_th_name_en'), type: 'text', width: '180px' },
+  { field: 'Unit', label: t('field_unit'), type: 'text', width: '80px' },
+  { field: 'Status', label: t('status'), type: 'select', width: '130px' },
+  { field: 'Stock_Qty', label: t('sp_th_stock'), type: 'number', width: '90px' },
+  { field: 'Min_Qty', label: t('sp_th_min'), type: 'number', width: '90px' },
+  { field: 'Unit_Price', label: t('sp_th_price'), type: 'number', width: '120px' },
+  { field: 'Location_Store', label: t('field_warehouse'), type: 'select', width: '130px', options: WAREHOUSE_OPTIONS },
+  { field: 'Supplier', label: t('field_supplier'), type: 'text', width: '150px' },
+  { field: 'Compatible_Machines', label: 'เครื่องที่ใช้ได้', type: 'text', width: '180px' },
+  { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
+  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
+  { field: 'Remark', label: t('remark'), type: 'textarea', width: '220px' },
 ]
 
 const getSPRequiredCols = (t) => getSPFallbackCols(t).map(({ field, label, width }) => ({ field, label, width }))
@@ -106,12 +129,6 @@ function getColumnWidthStyle(col) {
   return { width: col.width, minWidth: col.width }
 }
 
-function getSPColumnLabel(col, t) {
-  if (col.field === 'Compatible_Machines') return col.label || 'เครื่องที่ใช้ได้'
-  if (col.field === 'ImageUrl' || col.field === 'ImagePreview') return col.label
-  return SP_FIELD_KEYS[col.field] ? t(SP_FIELD_KEYS[col.field]) : col.label
-}
-
 function getSparePartName(row = {}) {
   if (!row) return ''
   return row.Part_Name_EN || row.Part_Name_TH || ''
@@ -121,48 +138,28 @@ function getSparePartStatus(row = {}) {
   return getPartStockStatus(row.Stock_Qty, row.Min_Qty)
 }
 
-function renderSPCell(row, col) {
-  const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
-    ? getSparePartImageUrl(row)
-    : col.field === 'Part_Name_EN'
-      ? getSparePartName(row)
-    : col.field === 'Status'
-      ? getSparePartStatus(row)
-    : row[col.field]
-  if (val === null || val === undefined || val === '')
-    return <span style={{ color:'var(--text-400)' }}>—</span>
-  if (col.field === 'ImageUrl')
-    return <a href={String(val)} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12, display:'block', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{String(val)}</a>
-  if (col.field === 'ImagePreview')
-    return <a href={String(val)} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12 }}>เปิดรูป</a>
-  if (col.field === 'Compatible_Machines') {
-    const text = Array.isArray(val) ? val.join(', ') : String(val)
-    return <span style={{ fontSize:12, display:'block', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{text}</span>
-  }
-  if (col.field === 'Remark')
-    return <span style={{ fontSize:12, display:'block', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{stripSparePartImageMeta(val)}</span>
-  if (col.type === 'select') {
-    const optColor = col.options?.find(o => o.value === val || o.label === val)?.color
-    if (optColor) return <StatusBadge value={val} color={optColor} />
-  }
-  if (col.field === 'Status') return <StatusBadge value={val} />
-  if (col.field === 'Stock_Qty')
-    return <span className={`font-semibold ${val <= (row.Min_Qty||0) ? 'text-red-500' : 'text-emerald-600'}`}>{val}</span>
-  if (col.field === 'Unit_Price')
-    return <span>{`฿${Number(val).toLocaleString()}`}</span>
-  return <span>{String(val)}</span>
-}
-
 const EMPTY = {
-  Part_Code:'', Part_Name_TH:'', Part_Name_EN:'', Category:'', Unit:'',
-  Stock_Qty:0, Min_Qty:0, Location_Store:'', Supplier:'', Unit_Price:0,
-  Compatible_Machines:'', Status:'IN_STOCK', Remark:'',
-  ImageUrl:'',
+  Part_Code: '',
+  Part_Name_TH: '',
+  Part_Name_EN: '',
+  Category: 'อะไหล่',
+  Unit: '',
+  Stock_Qty: 0,
+  Min_Qty: 0,
+  Location_Store: '',
+  Supplier: '',
+  Unit_Price: 0,
+  Compatible_Machines: '',
+  Status: 'IN_STOCK',
+  Remark: '',
+  ImageUrl: '',
 }
 
 function omitKeys(item, keys) {
   const clone = { ...item }
-  keys.forEach((key) => { delete clone[key] })
+  keys.forEach((key) => {
+    delete clone[key]
+  })
   return clone
 }
 
@@ -172,38 +169,41 @@ function getMissingSparePartColumn(error) {
   return match?.[1] || match?.[2] || null
 }
 
-function getSparePartSaveErrorMessage(error) {
-  const missingColumn = getMissingSparePartColumn(error)
-  if (missingColumn === 'ImageUrl') {
-    return 'ยังบันทึกลิงก์รูปลงคอลัมน์จริงไม่ได้ เพราะ Supabase ยังไม่มีคอลัมน์ ImageUrl ในตาราง spareparts'
-  }
-  return error.message
-}
-
 export default function SpareParts() {
   const { t } = useT()
   const { canAdd, canEdit, canDelete } = usePagePerms('spareparts')
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(SparePartAPI)
-  const [search,     setSearch]     = useState('')
-  const [modal,      setModal]      = useState(false)
-  const [form,       setForm]       = useState(EMPTY)
-  const [saving,     setSaving]     = useState(false)
+  const [search, setSearch] = useState('')
+  const [modal, setModal] = useState(false)
+  const [form, setForm] = useState(EMPTY)
+  const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [filterSort, setFilterSort] = useState(INIT_FS)
+  const [detailRec, setDetailRec] = useState(null)
+  const [previewImageModal, setPreviewImageModal] = useState(null)
 
-  const byText = data.filter(p =>
-    [p.Part_Code, p.Part_Name_EN, p.Part_Name_TH, p.Category, p.Supplier, stripSparePartImageMeta(p.Remark)].some(v =>
-      String(v||'').toLowerCase().includes(search.toLowerCase())
+  // Summary statistics
+  const stats = useMemo(() => {
+    const total = data.length
+    const inStock = data.filter((p) => getSparePartStatus(p) === 'IN_STOCK').length
+    const lowStock = data.filter((p) => getSparePartStatus(p) !== 'IN_STOCK').length
+    const totalValue = data.reduce((acc, p) => acc + (Number(p.Stock_Qty) || 0) * (Number(p.Unit_Price) || 0), 0)
+    return { total, inStock, lowStock, totalValue }
+  }, [data])
+
+  const baseRows = useMemo(() => {
+    return data.filter((p) =>
+      [p.Part_Code, p.Part_Name_EN, p.Part_Name_TH, p.Category, p.Supplier, p.Location_Store, stripSparePartImageMeta(p.Remark)].some((v) =>
+        String(v || '').toLowerCase().includes(search.toLowerCase())
+      )
     )
-  )
-  const baseRows = byText
+  }, [data, search])
 
-  const lowStock = data.filter(p => getSparePartStatus(p) !== 'IN_STOCK').length
+  const wbCols = useWebBuilderMenu('/spareparts')
+  const cols = resolveSPColumns(wbCols, t)
+  const statusOpts = useFieldOptions('/spareparts', 'Status', PART_STATUS)
 
-  const wbCols      = useWebBuilderMenu('/spareparts')
-  const cols        = resolveSPColumns(wbCols, t)
-  const statusOpts  = useFieldOptions('/spareparts', 'Status', PART_STATUS)
   const categoryFilterOptions = useMemo(
     () => buildSparePartFilterOptions(data, 'Category', CATEGORY_OPTIONS),
     [data]
@@ -212,6 +212,7 @@ export default function SpareParts() {
     () => buildSparePartFilterOptions(data, 'Status', statusOpts || PART_STATUS),
     [data, statusOpts]
   )
+
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
     include: SP_FILTER_KEYS,
     selectOptions: { Status: statusFilterOptions, Category: categoryFilterOptions },
@@ -223,11 +224,14 @@ export default function SpareParts() {
       Status: getSparePartStatus,
     },
   }), [categoryFilterOptions, cols, statusFilterOptions])
+
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
-  const [detailRec, setDetailRec] = useState(null)
+  const openNew = () => {
+    setForm({ ...EMPTY, Part_Code: generatePartCode(data) })
+    setModal(true)
+  }
 
-  const openNew  = () => { setForm({ ...EMPTY, Part_Code: generatePartCode(data) }); setModal(true) }
   const openEdit = (p) => {
     setForm({
       ...p,
@@ -250,7 +254,7 @@ export default function SpareParts() {
         ImageUrl: imageUrl,
         Remark: appendSparePartImageMeta(prev.Remark, { imageUrl }),
       }))
-      toast.success('อัปโหลดรูปสำเร็จ', imageUrl)
+      toast.success('อัปโหลดรูปสำเร็จ', `บันทึกไว้ในโฟลเดอร์ ${SPARE_PART_IMAGE_FOLDER}`)
     } catch (e) {
       toast.error('อัปโหลดรูปไม่สำเร็จ', e.message)
     }
@@ -285,25 +289,36 @@ export default function SpareParts() {
   }
 
   const submit = async () => {
-    if (!form.Part_Code || !form.Part_Name_EN) return toast.warning('กรุณากรอกข้อมูล', t('sp_req'))
+    if (!form.Part_Code || !form.Part_Name_EN) {
+      toast.warning('กรุณากรอกข้อมูล', t('sp_req'))
+      return
+    }
     const nextStatus = getSparePartStatus(form)
     const payload = buildSparePartImagePayload({
       ...form,
       Status: nextStatus,
       Compatible_Machines: form.Compatible_Machines
-        ? String(form.Compatible_Machines).split(',').map(s=>s.trim()).filter(Boolean) : []
+        ? String(form.Compatible_Machines).split(',').map((s) => s.trim()).filter(Boolean) : [],
     })
     setSaving(true)
     const isEdit = !!(form._id || form.id)
     try {
       const removedColumns = await saveWithColumnFallback(payload)
       if (removedColumns.length > 0) {
-        toast.success(isEdit ? 'แก้ไขอะไหล่สำเร็จ' : 'เพิ่มอะไหล่สำเร็จ', 'บันทึกลิงก์รูปเรียบร้อย')
+        toast.warning(
+          isEdit ? 'แก้ไขสำเร็จ (บางคอลัมน์บันทึกลงหมายเหตุ)' : 'เพิ่มสำเร็จ (บางคอลัมน์บันทึกลงหมายเหตุ)',
+          `คอลัมน์ที่ฐานข้อมูลยังไม่มี: ${removedColumns.join(', ')}`
+        )
       } else {
-        toast.success(isEdit ? 'แก้ไขอะไหล่สำเร็จ' : 'เพิ่มอะไหล่สำเร็จ', form.Part_Code)
+        toast.success(
+          isEdit ? t('sp_edit_success') : t('sp_add_success'),
+          `${form.Part_Code} - ${getSparePartName(form)}`
+        )
       }
       setModal(false)
-    } catch (e) { toast.error('เกิดข้อผิดพลาด', getSparePartSaveErrorMessage(e)) }
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
+    }
     setSaving(false)
   }
 
@@ -311,162 +326,515 @@ export default function SpareParts() {
     if (!confirm(t('sp_del_confirm'))) return
     try {
       await remove(id)
-      toast.success('ลบอะไหล่สำเร็จ')
-    } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
+      toast.success('ลบข้อมูลสำเร็จ')
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
+    }
   }
 
+  const renderCellContent = (row, col) => {
+    const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
+      ? getSparePartImageUrl(row)
+      : col.field === 'Part_Name_EN'
+        ? getSparePartName(row)
+        : col.field === 'Status'
+          ? getSparePartStatus(row)
+          : row[col.field]
+
+    if (val === null || val === undefined || val === '') {
+      return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
+    }
+
+    if (col.field === 'Part_Code') {
+      return (
+        <span className="font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">
+          {String(val)}
+        </span>
+      )
+    }
+
+    if (col.field === 'Category') {
+      const isTool = String(val).includes('เครื่องมือ')
+      return (
+        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+          isTool
+            ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20'
+            : 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20'
+        }`}>
+          {String(val)}
+        </span>
+      )
+    }
+
+    if (col.field === 'Part_Name_EN') {
+      return <span className="font-bold text-slate-800 dark:text-slate-100">{String(val)}</span>
+    }
+
+    if (col.field === 'Status') {
+      return <StatusBadge value={val} />
+    }
+
+    if (col.field === 'Stock_Qty') {
+      const isLow = Number(val) <= (Number(row.Min_Qty) || 0)
+      return (
+        <span className={`font-mono font-black text-xs ${isLow ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+          {Number(val).toLocaleString()}
+        </span>
+      )
+    }
+
+    if (col.field === 'Min_Qty') {
+      return <span className="font-mono text-slate-500 text-xs">{Number(val).toLocaleString()}</span>
+    }
+
+    if (col.field === 'Unit_Price') {
+      return <span className="font-mono font-semibold text-slate-700 dark:text-slate-300 text-xs">฿{Number(val).toLocaleString()}</span>
+    }
+
+    if (col.field === 'Location_Store') {
+      return (
+        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+          {String(val)}
+        </span>
+      )
+    }
+
+    if (col.field === 'ImageUrl') {
+      return (
+        <a
+          href={String(val)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-mono text-[11px] flex items-center gap-1 hover:underline max-w-[200px] truncate"
+        >
+          <span className="truncate">{String(val)}</span>
+          <ExternalLink size={11} className="flex-shrink-0 opacity-70" />
+        </a>
+      )
+    }
+
+    if (col.field === 'ImagePreview') {
+      const imgUrl = String(val)
+      return (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => setPreviewImageModal({ url: imgUrl, title: `${row.Part_Code} - ${getSparePartName(row)}` })}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
+          >
+            <ImageIcon size={13} />
+            <span>เปิดรูป</span>
+          </button>
+        </div>
+      )
+    }
+
+    if (col.field === 'Compatible_Machines') {
+      const text = Array.isArray(val) ? val.join(', ') : String(val)
+      return <span className="text-slate-600 dark:text-slate-400 truncate max-w-[160px] block">{text}</span>
+    }
+
+    if (col.field === 'Remark') {
+      return <span className="text-slate-500 truncate max-w-[200px] block">{stripSparePartImageMeta(val)}</span>
+    }
+
+    return <span className="text-slate-700 dark:text-slate-300 text-xs">{String(val)}</span>
+  }
 
   return (
-    <div className="space-y-4">
-      {lowStock > 0 && (
-        <div className="flex items-center gap-2 p-3 rounded-xl text-sm"
-          style={{background:'rgba(249,115,22,0.08)',border:'1px solid rgba(249,115,22,0.25)',color:'#c2410c'}}>
-          <AlertTriangle size={16}/> {t('sp_alert', { n: lowStock })}
-        </div>
-      )}
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder={t('sp_search')} />
-        <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-        <GoogleSheetSyncButton
-          sheetName="อะไหล่"
-          columns={cols}
-          rows={displayRows}
-          valueGetters={{
-            Part_Name_EN: getSparePartName,
-            Status: getSparePartStatus,
-            ImageUrl: getSparePartImageUrl,
-            ImagePreview: getSparePartImageUrl,
-            Remark: (row) => stripSparePartImageMeta(row.Remark),
-          }}
-        />
-        <button className="btn-outline ml-auto" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
-        {canAdd && <button className="btn-primary" onClick={openNew}><Plus size={15}/> {t('sp_add')}</button>}
-      </div>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              {cols.map(c => <th key={c.field||c.id} style={getColumnWidthStyle(c)}>{getSPColumnLabel(c, t)}</th>)}
-              <th>{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={cols.length+1} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('loading')}</td></tr>}
-            {!loading && displayRows.map((p, i) => (
-              <tr key={p._id || p.id || i} onClick={() => setDetailRec(p)} style={{cursor:'pointer'}}>
-                {cols.map(c => <td key={c.field||c.id} style={getColumnWidthStyle(c)}>{renderSPCell(p, c)}</td>)}
-                <td onClick={e => e.stopPropagation()}>
-                  <div className="flex gap-2">
-                    {canEdit && <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(p)}><Pencil size={12}/></button>}
-                    {canDelete && <button className="btn-danger py-1 px-2 text-xs"  onClick={() => del(p._id || p.id)}><Trash2 size={12}/></button>}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!loading && !displayRows.length && <tr><td colSpan={cols.length+1} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('no_data')}</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      <DetailDrawer
-        open={!!detailRec} onClose={() => setDetailRec(null)}
-        title={getSparePartName(detailRec)} subtitle={detailRec?.Part_Code}
-        icon={Package} accentColor="#f59e0b" iconColor="#fbbf24"
-        badge={detailRec && <StatusBadge value={getSparePartStatus(detailRec)} />}
-        canEdit={canEdit} canDelete={canDelete}
-        onEdit={() => openEdit(detailRec)}
-        onDelete={() => { del(detailRec._id || detailRec.id); setDetailRec(null) }}
-        groups={detailRec ? [
-          { label: t('dr_part_info'), fields: [
-            { label: t('sp_th_code'),     value: detailRec.Part_Code, mono: true },
-            { label: t('sp_th_cat'),      value: detailRec.Category },
-            { label: t('sp_th_name_en'),  value: getSparePartName(detailRec) },
-            { label: t('field_unit'),     value: detailRec.Unit },
-            { label: t('field_supplier'), value: detailRec.Supplier },
-            { label: t('field_warehouse'),value: detailRec.Location_Store },
-            { label: 'ลิงก์รูป',          value: getSparePartImageUrl(detailRec) },
-          ]},
-          { label: t('dr_stock'), fields: [
-            { label: t('status'), value: getSparePartStatus(detailRec),
-              node: <StatusBadge value={getSparePartStatus(detailRec)} /> },
-            { label: t('sp_th_stock'), value: detailRec.Stock_Qty != null ? String(detailRec.Stock_Qty) : null,
-              node: <span style={{ fontSize:15, fontWeight:800,
-                color: (detailRec.Stock_Qty <= detailRec.Min_Qty) ? '#ef4444' : '#10b981' }}>
-                {detailRec.Stock_Qty}
-              </span> },
-            { label: t('sp_th_min'),   value: detailRec.Min_Qty != null ? String(detailRec.Min_Qty) : null },
-            { label: t('sp_th_price'), value: detailRec.Unit_Price
-                ? `฿${Number(detailRec.Unit_Price).toLocaleString()}` : null },
-          ]},
-          { label: t('dr_compat_mc'), single: true, fields: [
-            { label: 'เครื่องที่ใช้ได้', value: Array.isArray(detailRec.Compatible_Machines)
-                ? detailRec.Compatible_Machines.join(', ') : detailRec.Compatible_Machines, full: true },
-            { label: t('remark'), value: stripSparePartImageMeta(detailRec.Remark), full: true },
-          ]},
-        ] : []}
-      />
-
-      <Modal open={modal} onClose={() => setModal(false)}
-        title={form._id ? t('sp_edit') : t('sp_add')} size="lg"
-        footer={<>
-          <button className="btn-outline" onClick={() => setModal(false)}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? t('saving') : t('save')}</button>
-        </>}
-      >
-        <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-5">
+      {/* ── SUMMARY STATS CARDS ──────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
-            <label className="label">{(form._id || form.id) ? 'รหัสอะไหล่' : 'รหัสอะไหล่ (สร้างอัตโนมัติ)'}</label>
-            <input className="input" value={form.Part_Code || ''} readOnly
-              style={{ fontFamily:'monospace', background:'var(--bg-page)', color:'var(--text-500)', cursor:'not-allowed' }} />
-          </div>
-          <F form={form} setForm={setForm} label="หมวดหมู่"              id="Category" opts={CATEGORY_OPTIONS} />
-          <F form={form} setForm={setForm} label={t('sp_th_name_en')+' *'} id="Part_Name_EN" />
-          <F form={form} setForm={setForm} label="หน่วย"                 id="Unit" />
-          <div>
-            <label className="label">{t('status')} (อัตโนมัติ)</label>
-            <div className="input" style={{ display:'flex', alignItems:'center', minHeight:42, background:'var(--bg-page)' }}>
-              <StatusBadge value={getSparePartStatus(form)} />
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รายการอะไหล่ทั้งหมด</div>
+            <div className="text-xl font-black mt-0.5" style={{ color: 'var(--text-900)' }}>
+              {stats.total} <span className="text-xs font-normal text-slate-400">รายการ</span>
             </div>
           </div>
-          <F form={form} setForm={setForm} label="จำนวนคงเหลือ"          id="Stock_Qty"  type="number" />
-          <F form={form} setForm={setForm} label="จำนวนขั้นต่ำ"          id="Min_Qty"    type="number" />
-          <F form={form} setForm={setForm} label="ราคาต่อหน่วย (฿)"       id="Unit_Price" type="number" />
-          <F form={form} setForm={setForm} label="ที่เก็บ"               id="Location_Store" opts={WAREHOUSE_OPTIONS} />
-          <F form={form} setForm={setForm} label="ผู้จัดจำหน่าย"          id="Supplier" />
-          <F form={form} setForm={setForm} label="เครื่องที่ใช้ได้ (คั่นด้วย ,)" id="Compatible_Machines" />
-          <F form={form} setForm={setForm} label="ลิงก์รูป (Google Drive)" id="ImageUrl" useBuilder={false} />
-          <div className="col-span-2">
-            <label className="label">อัปโหลดรูป (Google Drive อัตโนมัติ)</label>
-            <input
-              className="input"
-              type="file"
-              accept="image/*"
-              onChange={(e) => onPickImageFile(e.target.files?.[0])}
-            />
-            {uploadingImage && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-500)' }}>กำลังอัปโหลดรูป...</div>}
-            {form.ImageUrl && (
-              <div style={{ marginTop: 8, fontSize: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ color: 'var(--text-500)' }}>ลิงก์รูป:</span>
-                <a href={form.ImageUrl} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', wordBreak: 'break-all' }}>
-                  {form.ImageUrl}
-                </a>
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+            <Package size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">สต๊อกปกติ (In Stock)</div>
+            <div className="text-xl font-black mt-0.5 text-emerald-600 dark:text-emerald-400">
+              {stats.inStock} <span className="text-xs font-normal text-slate-400">รายการ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
+            <CheckCircle2 size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">สต๊อกต่ำกว่าเกณฑ์</div>
+            <div className="text-xl font-black mt-0.5 text-rose-600 dark:text-rose-400">
+              {stats.lowStock} <span className="text-xs font-normal text-slate-400">รายการ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold">
+            <AlertTriangle size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">มูลค่าสต๊อกรวม</div>
+            <div className="text-xl font-black mt-0.5 text-blue-600 dark:text-blue-400">
+              ฿{stats.totalValue.toLocaleString()}
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+            <DollarSign size={18} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── TOOLBAR ───────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t('sp_search')}
+            className="w-full sm:w-80"
+          />
+          <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+          <GoogleSheetSyncButton
+            sheetName="อะไหล่"
+            columns={cols}
+            rows={displayRows}
+            valueGetters={{
+              Part_Name_EN: getSparePartName,
+              ImageUrl: getSparePartImageUrl,
+              ImagePreview: getSparePartImageUrl,
+              Remark: (row) => stripSparePartImageMeta(row.Remark),
+              Status: getSparePartStatus,
+            }}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={load}
+            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5"
+            title={t('refresh')}
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{t('refresh')}</span>
+          </button>
+
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+            >
+              <Plus size={15} />
+              <span>{t('sp_add')}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── DATA TABLE ────────────────────────────────────────── */}
+      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="table w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                {cols.map((c) => (
+                  <th key={c.field} style={getColumnWidthStyle(c)} className="py-3 px-3.5 text-left whitespace-nowrap">
+                    {c.label}
+                  </th>
+                ))}
+                <th className="py-3 px-3 text-center w-24">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {loading && (
+                <tr>
+                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                    <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
+                    <span>{t('loading')}</span>
+                  </td>
+                </tr>
+              )}
+              {!loading && displayRows.map((p, i) => (
+                <tr
+                  key={p._id || p.id || i}
+                  onClick={() => setDetailRec(p)}
+                  className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                >
+                  {cols.map((c) => (
+                    <td key={c.field} style={getColumnWidthStyle(c)} className="py-2.5 px-3.5 whitespace-nowrap">
+                      {renderCellContent(p, c)}
+                    </td>
+                  ))}
+                  <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(p)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                          title="แก้ไขข้อมูลอะไหล่"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => del(p._id || p.id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                          title="ลบข้อมูล"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!loading && !displayRows.length && (
+                <tr>
+                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                    <Package size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                    <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่มอะไหล่" เพื่อเริ่มต้นบันทึก</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
+      <DetailDrawer
+        open={!!detailRec}
+        onClose={() => setDetailRec(null)}
+        title={getSparePartName(detailRec) || detailRec?.Part_Code}
+        subtitle={detailRec ? `${detailRec.Part_Code} · ${detailRec.Category || 'อะไหล่'}` : ''}
+        icon={Package}
+        accentColor="#2563eb"
+        badge={detailRec && <StatusBadge value={getSparePartStatus(detailRec)} />}
+        canEdit={canEdit}
+        canDelete={canDelete}
+        onEdit={() => openEdit(detailRec)}
+        onDelete={() => {
+          del(detailRec._id || detailRec.id)
+          setDetailRec(null)
+        }}
+        groups={detailRec ? [
+          {
+            label: t('dr_general_info'),
+            fields: [
+              { label: t('sp_th_code'), value: detailRec.Part_Code, mono: true },
+              { label: t('sp_th_name_en'), value: detailRec.Part_Name_EN },
+              { label: t('sp_th_cat'), value: detailRec.Category },
+              { label: t('field_unit'), value: detailRec.Unit },
+              { label: t('field_warehouse'), value: detailRec.Location_Store },
+              { label: t('field_supplier'), value: detailRec.Supplier },
+              { label: 'ลิงก์รูปถ่าย', value: getSparePartImageUrl(detailRec), full: true },
+            ].filter((f) => f.value),
+          },
+          {
+            label: 'สต๊อกและราคา',
+            fields: [
+              { label: t('sp_th_stock'), value: detailRec.Stock_Qty != null ? `${detailRec.Stock_Qty} ${detailRec.Unit || ''}` : null },
+              { label: t('sp_th_min'), value: detailRec.Min_Qty != null ? `${detailRec.Min_Qty} ${detailRec.Unit || ''}` : null },
+              { label: t('sp_th_price'), value: detailRec.Unit_Price != null ? `฿${Number(detailRec.Unit_Price).toLocaleString()}` : null },
+              { label: 'เครื่องที่ใช้ได้', value: Array.isArray(detailRec.Compatible_Machines) ? detailRec.Compatible_Machines.join(', ') : detailRec.Compatible_Machines },
+            ].filter((f) => f.value),
+          },
+          {
+            label: t('remark'),
+            single: true,
+            fields: [
+              { label: t('remark'), value: stripSparePartImageMeta(detailRec.Remark), full: true },
+            ].filter((f) => f.value),
+          },
+        ].filter((g) => g.fields.length > 0) : []}
+      />
+
+      {/* ── ADD / EDIT MODAL ──────────────────────────────────── */}
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={form._id || form.id ? '✏️ แก้ไขข้อมูลอะไหล่' : '➕ เพิ่มข้อมูลอะไหล่ใหม่'}
+        size="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button type="button" className="btn-outline px-4" onClick={() => setModal(false)}>
+              {t('cancel')}
+            </button>
+            <button type="button" className="btn-primary px-5" onClick={submit} disabled={saving}>
+              {saving ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>กำลังบันทึก...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={14} />
+                  <span>{t('save')}</span>
+                </>
+              )}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-5 text-xs">
+          {/* Section 1: Basic Info */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <Package size={14} className="text-blue-500" />
+              <span>ข้อมูลหลักและหมวดหมู่อะไหล่</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <F form={form} setForm={setForm} label={`${t('sp_th_code')} *`} id="Part_Code" placeholder="เช่น SP-001" />
+              <F form={form} setForm={setForm} label={t('sp_th_cat')} id="Category" opts={CATEGORY_OPTIONS} />
+              <F form={form} setForm={setForm} label={`${t('sp_th_name_en')} *`} id="Part_Name_EN" placeholder="ชื่ออะไหล่ภาษาอังกฤษหรือไทย" />
+              <F form={form} setForm={setForm} label={t('field_unit')} id="Unit" placeholder="เช่น ชิ้น, อัน, ตัว, กล่อง" />
+              <F form={form} setForm={setForm} label={t('field_warehouse')} id="Location_Store" opts={WAREHOUSE_OPTIONS} />
+              <F form={form} setForm={setForm} label={t('field_supplier')} id="Supplier" placeholder="ผู้ผลิตหรือร้านค้าที่ซื้อ" />
+            </div>
+          </div>
+
+          {/* Section 2: Stock & Price */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <DollarSign size={14} className="text-blue-500" />
+              <span>สต๊อกและราคา</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <F form={form} setForm={setForm} label={t('sp_th_stock')} id="Stock_Qty" type="number" placeholder="0" />
+              <F form={form} setForm={setForm} label={t('sp_th_min')} id="Min_Qty" type="number" placeholder="0" />
+              <F form={form} setForm={setForm} label={t('sp_th_price')} id="Unit_Price" type="number" placeholder="0" />
+              <div className="sm:col-span-3">
+                <F form={form} setForm={setForm} label="เครื่องที่ใช้ได้ (คั่นด้วยจุลภาค)" id="Compatible_Machines" placeholder="เช่น SA-301M, SA-302M" />
               </div>
-            )}
+            </div>
           </div>
-          <div className="col-span-2">
-          </div>
-          <div className="col-span-2">
-            <label className="label">{t('remark')}</label>
-            <textarea
-              className="input"
-              rows={2}
-              value={stripSparePartImageMeta(form.Remark)}
-              onChange={e => setForm(p => ({...p, Remark: preserveRemarkWithSparePartImageMeta(e.target.value, p)}))}
-            />
+
+          {/* Section 3: Photo & Remark */}
+          <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
+              <ImageIcon size={14} className="text-indigo-500" />
+              <span>รูปถ่ายอะไหล่ & หมายเหตุ</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label font-bold">อัปโหลดรูปอะไหล่เข้า Google Drive</label>
+                <div className="flex items-center gap-2">
+                  <label className="btn-primary text-xs py-2 px-3 cursor-pointer flex items-center gap-1.5 flex-1 justify-center">
+                    {uploadingImage ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>กำลังอัปโหลด...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={13} />
+                        <span>เลือกไฟล์รูปถ่าย</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingImage}
+                      onChange={(e) => onPickImageFile(e.target.files?.[0])}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <F form={form} setForm={setForm} label="หรือวางลิงก์รูป (URL)" id="ImageUrl" useBuilder={false} placeholder="https://..." />
+              </div>
+
+              {form.ImageUrl && (
+                <div className="col-span-1 sm:col-span-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ImageIcon size={16} className="text-blue-600 flex-shrink-0" />
+                    <span className="font-mono text-blue-700 dark:text-blue-300 truncate">{form.ImageUrl}</span>
+                  </div>
+                  <a
+                    href={form.ImageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-outline text-[11px] py-1 px-2 flex-shrink-0 flex items-center gap-1"
+                  >
+                    <span>ดูรูป</span>
+                    <ExternalLink size={10} />
+                  </a>
+                </div>
+              )}
+
+              <div className="col-span-1 sm:col-span-2">
+                <F
+                  form={form}
+                  setForm={setForm}
+                  label={t('remark')}
+                  id="Remark"
+                  placeholder="ข้อคิดเห็น หรือรายละเอียดเพิ่มเติมของอะไหล่"
+                  onChange={(value) => setForm((p) => ({
+                    ...p,
+                    Remark: preserveRemarkWithSparePartImageMeta(p.Remark, value),
+                  }))}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </Modal>
+
+      {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
+      {previewImageModal && (
+        <Modal
+          open={!!previewImageModal}
+          onClose={() => setPreviewImageModal(null)}
+          title={`🖼️ ${previewImageModal.title}`}
+        >
+          <div className="space-y-4 text-center">
+            <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center max-h-[70vh]">
+              <img
+                src={previewImageModal.url}
+                alt={previewImageModal.title}
+                className="max-h-[65vh] w-auto object-contain mx-auto"
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs pt-2">
+              <a
+                href={previewImageModal.url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-outline text-xs flex items-center gap-1.5"
+              >
+                <ExternalLink size={13} />
+                <span>เปิดในแท็บใหม่ (Full Size)</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewImageModal(null)}
+                className="btn-primary text-xs px-4"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

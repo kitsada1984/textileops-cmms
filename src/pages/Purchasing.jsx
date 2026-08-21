@@ -1,5 +1,25 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, RefreshCw, ShoppingCart } from 'lucide-react'
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  ShoppingCart,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  Image as ImageIcon,
+  ExternalLink,
+  Upload,
+  Check,
+  X,
+  Layers,
+  Sparkles,
+  Phone,
+  Mail,
+  User,
+  Building,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import { PurchaseOrderAPI, PO_STATUS, SparePartAPI, StockTxnAPI } from '../api/entities'
@@ -19,11 +39,11 @@ import { appendSparePartImageMeta, getSparePartImageUrl } from '../utils/sparePa
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 
 const STATUS_CFG = {
-  ORDERED:   { bg:'rgba(59,130,246,0.12)',  border:'rgba(59,130,246,0.35)',  color:'#3b82f6', dot:'#3b82f6'  },
-  RECEIVED:  { bg:'rgba(16,185,129,0.12)',  border:'rgba(16,185,129,0.35)',  color:'#10b981', dot:'#10b981'  },
-  CANCELLED: { bg:'rgba(239,68,68,0.12)',   border:'rgba(239,68,68,0.35)',   color:'#ef4444', dot:'#ef4444'  },
+  ORDERED: { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)', color: '#2563eb', dot: '#2563eb' },
+  RECEIVED: { bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.35)', color: '#059669', dot: '#059669' },
+  CANCELLED: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)', color: '#dc2626', dot: '#dc2626' },
 }
-const STATUS_TH = Object.fromEntries(PO_STATUS.map(s => [s.value, s.label]))
+const STATUS_TH = Object.fromEntries(PO_STATUS.map((s) => [s.value, s.label]))
 const CATEGORY_OPTIONS = ['อะไหล่', 'เครื่องมือช่าง']
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'purchaseorders'/i
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
@@ -46,59 +66,62 @@ const PURCHASE_IMAGE_FOLDER = 'จัดซื้อ'
 function StatusPill({ value }) {
   const cfg = STATUS_CFG[value] || {}
   return (
-    <span style={{
-      display:'inline-flex', alignItems:'center', gap:5,
-      padding:'3px 9px', borderRadius:20, fontSize:11, fontWeight:700,
-      background:cfg.bg||'var(--bg-card)', border:`1px solid ${cfg.border||'var(--border)'}`, color:cfg.color||'var(--text-500)',
-    }}>
-      <span style={{ width:5, height:5, borderRadius:'50%', background:cfg.dot||'currentColor', flexShrink:0 }} />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+      style={{
+        background: cfg.bg || 'var(--bg-card)',
+        border: `1px solid ${cfg.border || 'var(--border)'}`,
+        color: cfg.color || 'var(--text-500)',
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot || 'currentColor', flexShrink: 0 }} />
       {STATUS_TH[value] || value}
     </span>
   )
 }
 
 const getPOFallbackCols = () => [
-  { field:'PO_Number',    label:'เลข PO',          type:'text'   },
-  { field:'Order_Date',   label:'วันที่สั่ง',      type:'date'   },
-  { field:'Received_Date',label:'วันที่รับ',       type:'date'   },
-  { field:'Status',       label:'สถานะ',           type:'select' },
-  { field:'Part_Code',    label:'รหัสอะไหล่',      type:'text',   width:'130px' },
-  { field:'Part_Name_EN', label:'ชื่ออะไหล่',      type:'text',   width:'180px' },
-  { field:'Category',     label:'หมวดหมู่',        type:'select', width:'140px', options: CATEGORY_OPTIONS },
-  { field:'Detail',       label:'รายละเอียด',      type:'text'   },
-  { field:'Qty',          label:'จำนวน',           type:'number' },
-  { field:'UnitPrice',    label:'ราคาต่อหน่วย',    type:'number' },
-  { field:'Total_Amount', label:'ราคารวม',         type:'number' },
-  { field:'Supplier',     label:'แหล่งที่มา',      type:'text'   },
-  { field:'Phone',        label:'โทรศัพท์',        type:'text'   },
-  { field:'Email',        label:'อีเมล',           type:'text'   },
-  { field:'Line',         label:'ไลน์',            type:'text'   },
-  { field:'ImageUrl',     label:'URL',             type:'text',   width:'220px' },
-  { field:'ImagePreview', label:'รูป',             type:'text',   width:'110px' },
-  { field:'Note',         label:'หมายเหตุ',        type:'text',   width:'220px' },
-  { field:'LastUpdated',  label:'อัปเดตล่าสุด',    type:'date'   },
+  { field: 'PO_Number', label: 'เลข PO', type: 'text' },
+  { field: 'Order_Date', label: 'วันที่สั่ง', type: 'date' },
+  { field: 'Received_Date', label: 'วันที่รับ', type: 'date' },
+  { field: 'Status', label: 'สถานะ', type: 'select' },
+  { field: 'Part_Code', label: 'รหัสอะไหล่', type: 'text', width: '130px' },
+  { field: 'Part_Name_EN', label: 'ชื่ออะไหล่', type: 'text', width: '180px' },
+  { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: CATEGORY_OPTIONS },
+  { field: 'Detail', label: 'รายละเอียด', type: 'text' },
+  { field: 'Qty', label: 'จำนวน', type: 'number' },
+  { field: 'UnitPrice', label: 'ราคาต่อหน่วย', type: 'number' },
+  { field: 'Total_Amount', label: 'ราคารวม', type: 'number' },
+  { field: 'Supplier', label: 'แหล่งที่มา', type: 'text' },
+  { field: 'Phone', label: 'โทรศัพท์', type: 'text' },
+  { field: 'Email', label: 'อีเมล', type: 'text' },
+  { field: 'Line', label: 'ไลน์', type: 'text' },
+  { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
+  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
+  { field: 'Note', label: 'หมายเหตุ', type: 'text', width: '220px' },
+  { field: 'LastUpdated', label: 'อัปเดตล่าสุด', type: 'date' },
 ]
 
 const REQUIRED_PO_COLUMNS = [
-  { field:'PO_Number',    label:'เลข PO' },
-  { field:'Order_Date',   label:'วันที่สั่ง' },
-  { field:'Received_Date',label:'วันที่รับ' },
-  { field:'Status',       label:'สถานะ' },
-  { field:'Part_Code',    label:'รหัสอะไหล่', width:'130px' },
-  { field:'Part_Name_EN', label:'ชื่ออะไหล่', width:'180px' },
-  { field:'Category',     label:'หมวดหมู่', width:'140px' },
-  { field:'Detail',       label:'รายละเอียด' },
-  { field:'Qty',          label:'จำนวน' },
-  { field:'UnitPrice',    label:'ราคาต่อหน่วย' },
-  { field:'Total_Amount', label:'ราคารวม' },
-  { field:'Supplier',     label:'แหล่งที่มา' },
-  { field:'Phone',        label:'โทรศัพท์' },
-  { field:'Email',        label:'อีเมล' },
-  { field:'Line',         label:'ไลน์' },
-  { field:'ImageUrl',     label:'URL', width:'220px' },
-  { field:'ImagePreview', label:'รูป', width:'110px' },
-  { field:'Note',         label:'หมายเหตุ', width:'220px' },
-  { field:'LastUpdated',  label:'อัปเดตล่าสุด' },
+  { field: 'PO_Number', label: 'เลข PO' },
+  { field: 'Order_Date', label: 'วันที่สั่ง' },
+  { field: 'Received_Date', label: 'วันที่รับ' },
+  { field: 'Status', label: 'สถานะ' },
+  { field: 'Part_Code', label: 'รหัสอะไหล่', width: '130px' },
+  { field: 'Part_Name_EN', label: 'ชื่ออะไหล่', width: '180px' },
+  { field: 'Category', label: 'หมวดหมู่', width: '140px' },
+  { field: 'Detail', label: 'รายละเอียด' },
+  { field: 'Qty', label: 'จำนวน' },
+  { field: 'UnitPrice', label: 'ราคาต่อหน่วย' },
+  { field: 'Total_Amount', label: 'ราคารวม' },
+  { field: 'Supplier', label: 'แหล่งที่มา' },
+  { field: 'Phone', label: 'โทรศัพท์' },
+  { field: 'Email', label: 'อีเมล' },
+  { field: 'Line', label: 'ไลน์' },
+  { field: 'ImageUrl', label: 'URL', width: '220px' },
+  { field: 'ImagePreview', label: 'รูป', width: '110px' },
+  { field: 'Note', label: 'หมายเหตุ', width: '220px' },
+  { field: 'LastUpdated', label: 'อัปเดตล่าสุด' },
 ]
 
 function resolvePOColumns(wbCols) {
@@ -114,7 +137,7 @@ function resolvePOColumns(wbCols) {
   })
   const urlWidth = resolvedCols.find((c) => c.field === 'ImageUrl')?.width || '220px'
   return resolvedCols.map((col) =>
-    col.field === 'Note' ? { ...col, width: urlWidth } : col
+    (col.field === 'Note' ? { ...col, width: urlWidth } : col)
   )
 }
 
@@ -181,17 +204,6 @@ function getPOAppliedPartCode(row = {}) {
   return extractHiddenNoteValue(row.Note, APPLIED_PART_NOTE_PREFIX) || getPOPartCode(row)
 }
 
-function preserveCommentWithPOMeta(comment = '', form = {}) {
-  return appendPOMetaToNote(comment, {
-    imageUrl: getPOImageUrl(form),
-    category: getPOCategory(form),
-    partCode: getPOPartCode(form),
-    partName: getPOPartName(form),
-    appliedQty: getPOAppliedQty(form),
-    appliedPartCode: getPOAppliedPartCode(form),
-  })
-}
-
 function normalizePONumericFields(payload = {}) {
   return PO_NUMERIC_FIELDS.reduce((nextPayload, field) => ({
     ...nextPayload,
@@ -213,60 +225,11 @@ function buildPurchasePayload(form = {}) {
   })
 }
 
-function buildColumnSafePurchasePayload(payload = {}, removedColumns = []) {
-  const nextPayload = normalizePONumericFields({
-    ...payload,
-    Note: appendPOMetaToNote(payload.Note, {
-      imageUrl: getPOImageUrl(payload),
-      category: getPOCategory(payload),
-      partCode: getPOPartCode(payload),
-      partName: getPOPartName(payload),
-      appliedQty: getPOAppliedQty(payload),
-      appliedPartCode: getPOAppliedPartCode(payload),
-    }),
-  })
-  removedColumns.forEach((column) => { delete nextPayload[column] })
-  return nextPayload
-}
-
-function renderPOCell(row, col) {
-  const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
-    ? getPOImageUrl(row)
-    : col.field === 'Part_Code'
-      ? getPOPartCode(row)
-      : col.field === 'Part_Name_EN'
-        ? getPOPartName(row)
-        : col.field === 'Category'
-          ? getPOCategory(row)
-        : row[col.field]
-  if (val === null || val === undefined || val === '')
-    return <span style={{ color:'var(--text-400)' }}>-</span>
-  if (col.field === 'Status')
-    return <StatusPill value={val} />
-  if (col.field === 'Total_Amount' || col.field === 'UnitPrice')
-    return <span style={{ fontWeight:600, fontSize:12 }}>{`฿${Number(val).toLocaleString()}`}</span>
-  if (col.field === 'Qty')
-    return <span style={{ fontWeight:600, fontSize:12 }}>{val}</span>
-  if (col.type === 'date' || col.field.includes('Date') || col.field === 'LastUpdated') {
-    try { return <span style={{ fontSize:11 }}>{format(new Date(val), 'dd/MM/yy')}</span> }
-    catch { return <span>{val}</span> }
-  }
-  if (col.field === 'ImageUrl') {
-    return <a href={String(val)} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12, display:'block', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{String(val)}</a>
-  }
-  if (col.field === 'ImagePreview') {
-    return <a href={String(val)} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12 }}>เปิดรูป</a>
-  }
-  if (col.field === 'Note')
-    return <span style={{ fontSize:12, display:'block', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{stripHiddenNoteMeta(val)}</span>
-  if (col.field === 'Detail')
-    return <span style={{ fontSize:12, display:'block', maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{String(val)}</span>
-  return <span style={{ fontSize:12 }}>{String(val)}</span>
-}
-
 function omitKeys(item, keys) {
   const clone = { ...item }
-  keys.forEach((key) => { delete clone[key] })
+  keys.forEach((key) => {
+    delete clone[key]
+  })
   return clone
 }
 
@@ -276,24 +239,25 @@ function getMissingPurchaseOrderColumn(error) {
   return match?.[1] || null
 }
 
-function getPurchaseOrderSaveErrorMessage(error) {
-  const missingColumn = getMissingPurchaseOrderColumn(error)
-  if (missingColumn === 'ImageUrl') {
-    return 'ยังบันทึกลิงก์รูปไม่ได้ เพราะ Supabase ยังไม่มีคอลัมน์ ImageUrl ในตาราง purchaseorders'
-  }
-  if (missingColumn === 'Category') {
-    return 'ยังบันทึกหมวดหมู่ลงคอลัมน์จริงไม่ได้ เพราะ Supabase ยังไม่มีคอลัมน์ Category ในตาราง purchaseorders'
-  }
-  return error.message
-}
-
 const EMPTY = {
-  PO_Number:'', Supplier:'', Status:'ORDERED',
-  Order_Date:'', Received_Date:'',
-  Detail:'', Qty:'', UnitPrice:'', Total_Amount:'',
-  Phone:'', Email:'', Line:'', Note:'', LastUpdated:'',
-  Part_Code:'', Part_Name_EN:'', Category:'',
-  ImageUrl:'',
+  PO_Number: '',
+  Supplier: '',
+  Status: 'ORDERED',
+  Order_Date: '',
+  Received_Date: '',
+  Detail: '',
+  Qty: '',
+  UnitPrice: '',
+  Total_Amount: '',
+  Phone: '',
+  Email: '',
+  Line: '',
+  Note: '',
+  LastUpdated: '',
+  Part_Code: '',
+  Part_Name_EN: '',
+  Category: '',
+  ImageUrl: '',
 }
 
 export default function Purchasing() {
@@ -308,13 +272,25 @@ export default function Purchasing() {
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [filterSort, setFilterSort] = useState(INIT_FS)
+  const [detailRec, setDetailRec] = useState(null)
+  const [previewImageModal, setPreviewImageModal] = useState(null)
 
-  const byText = data.filter(p =>
-    [p.PO_Number, p.Supplier, getPOPartCode(p), getPOPartName(p), getPOCategory(p), p.Detail, stripHiddenNoteMeta(p.Note)].some(v =>
-      String(v||'').toLowerCase().includes(search.toLowerCase())
+  // Summary statistics
+  const stats = useMemo(() => {
+    const total = data.length
+    const ordered = data.filter((p) => p.Status === 'ORDERED').length
+    const received = data.filter((p) => p.Status === 'RECEIVED').length
+    const totalAmount = data.reduce((acc, p) => acc + (Number(p.Total_Amount) || 0), 0)
+    return { total, ordered, received, totalAmount }
+  }, [data])
+
+  const baseRows = useMemo(() => {
+    return data.filter((p) =>
+      [p.PO_Number, p.Supplier, getPOPartCode(p), getPOPartName(p), getPOCategory(p), p.Detail, stripHiddenNoteMeta(p.Note)].some((v) =>
+        String(v || '').toLowerCase().includes(search.toLowerCase())
+      )
     )
-  )
-  const baseRows = byText
+  }, [data, search])
 
   const wbCols = useWebBuilderMenu('/purchasing')
   const cols = resolvePOColumns(wbCols)
@@ -329,17 +305,22 @@ export default function Purchasing() {
       Note: (row) => stripHiddenNoteMeta(row.Note),
     },
   }), [cols])
+
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
   useEffect(() => {
     const qty = parseFloat(form.Qty) || 0
     const price = parseFloat(form.UnitPrice) || 0
-    if (qty > 0 && price > 0) setForm(p => ({ ...p, Total_Amount: qty * price }))
+    if (qty > 0 && price > 0) {
+      setForm((p) => ({ ...p, Total_Amount: qty * price }))
+    }
   }, [form.Qty, form.UnitPrice])
 
-  const [detailRec, setDetailRec] = useState(null)
+  const openNew = () => {
+    setForm(EMPTY)
+    setModal(true)
+  }
 
-  const openNew = () => { setForm(EMPTY); setModal(true) }
   const openEdit = (p) => {
     setForm({
       ...p,
@@ -373,16 +354,6 @@ export default function Purchasing() {
     }))
   }
 
-  // Picking a known part name fills the rest of the form, same as picking a code.
-  const applyPartNameToForm = (partName) => {
-    const part = parts.find((item) =>
-      String(item.Part_Name_EN || '').toLowerCase() === String(partName || '').toLowerCase() ||
-      String(item.Part_Name_TH || '').toLowerCase() === String(partName || '').toLowerCase()
-    )
-    if (part) { applyPartToForm(part.Part_Code); return }
-    setForm((prev) => ({ ...prev, Part_Name_EN: partName }))
-  }
-
   const onPickImageFile = async (file) => {
     if (!file) return
     setUploadingImage(true)
@@ -399,7 +370,7 @@ export default function Purchasing() {
           appliedPartCode: getPOAppliedPartCode(prev),
         }),
       }))
-      toast.success('อัปโหลดรูปสำเร็จ', imageUrl)
+      toast.success('อัปโหลดรูปสำเร็จ', `บันทึกไว้ในโฟลเดอร์ ${PURCHASE_IMAGE_FOLDER}`)
     } catch (e) {
       toast.error('อัปโหลดรูปไม่สำเร็จ', e.message)
     }
@@ -498,246 +469,632 @@ export default function Purchasing() {
       Reference: po.PO_Number || po.id || '',
       Reference_Type: 'PO',
       Location_Store: savedPart.Location_Store || '',
-      Performed_By: 'ระบบจัดซื้ออัตโนมัติ',
-      Note: `ระบบจัดซื้อ${delta >= 0 ? 'รับเข้าสต็อก' : 'ปรับยอดสต็อก'}อัตโนมัติ\nCategory: ${category}`,
+      Performed_By: 'System (PO)',
+      Note: `อัปเดตสต๊อกจากใบสั่งซื้อ ${po.PO_Number || ''} (${delta >= 0 ? '+' : ''}${delta})`,
+      created_date: now.toISOString(),
     })
   }
 
-  const syncInventoryFromPurchase = async (savedPO, removedColumns = []) => {
-    const partCode = getPOPartCode(savedPO)
-    const appliedPartCode = getPOAppliedPartCode(savedPO)
-    const appliedQty = getPOAppliedQty(savedPO)
-    const desiredQty = savedPO.Status === 'RECEIVED' ? toNumber(savedPO.Qty) : 0
+  const syncInventoryOnStatusChange = async (nextForm, currentRecord) => {
+    const nextStatus = nextForm.Status
+    const previousStatus = currentRecord?.Status || 'ORDERED'
+    const targetPartCode = getPOPartCode(nextForm) || getPOAppliedPartCode(currentRecord)
+    if (!targetPartCode) return nextForm
 
-    if (!partCode && desiredQty > 0) {
-      throw new Error('กรุณาเลือกรหัสอะไหล่ก่อนเปลี่ยน PO เป็นรับแล้ว')
+    const previousAppliedQty = getPOAppliedQty(currentRecord)
+    const targetQty = toNumber(nextForm.Qty)
+    let appliedQtyDelta = 0
+    let nextAppliedQty = previousAppliedQty
+
+    if (nextStatus === 'RECEIVED') {
+      if (previousStatus === 'RECEIVED') {
+        appliedQtyDelta = targetQty - previousAppliedQty
+        nextAppliedQty = targetQty
+      } else {
+        appliedQtyDelta = targetQty
+        nextAppliedQty = targetQty
+      }
+    } else if (previousStatus === 'RECEIVED') {
+      appliedQtyDelta = -previousAppliedQty
+      nextAppliedQty = 0
     }
 
-    if (appliedQty > 0 && appliedPartCode && appliedPartCode !== partCode) {
-      await updateSparePartStock(appliedPartCode, -appliedQty, savedPO)
+    if (appliedQtyDelta !== 0) {
+      await updateSparePartStock(targetPartCode, appliedQtyDelta, nextForm)
+      await loadParts()
     }
 
-    const samePartAppliedQty = appliedPartCode === partCode ? appliedQty : 0
-    const delta = desiredQty - samePartAppliedQty
-    if (partCode && delta !== 0) {
-      await updateSparePartStock(partCode, delta, savedPO)
-    }
-
-    if (delta !== 0 || appliedQty !== desiredQty || appliedPartCode !== partCode) {
-      const note = appendPOMetaToNote(savedPO.Note, {
-        imageUrl: getPOImageUrl(savedPO),
-        category: getPOCategory(savedPO),
-        partCode,
-        partName: getPOPartName(savedPO),
-        appliedQty: desiredQty,
-        appliedPartCode: desiredQty > 0 ? partCode : '',
-      })
-      await saveWithColumnFallback(buildColumnSafePurchasePayload({ ...savedPO, Note: note }, removedColumns))
+    return {
+      ...nextForm,
+      Note: appendPOMetaToNote(nextForm.Note, {
+        imageUrl: getPOImageUrl(nextForm),
+        category: getPOCategory(nextForm),
+        partCode: getPOPartCode(nextForm),
+        partName: getPOPartName(nextForm),
+        appliedQty: nextAppliedQty,
+        appliedPartCode: targetPartCode,
+      }),
     }
   }
 
   const submit = async () => {
-    if (!form.Supplier && !form.Detail) return toast.warning('กรุณากรอกข้อมูล', 'กรุณากรอกแหล่งที่มาหรือรายละเอียด')
+    if (!form.PO_Number) {
+      toast.warning('กรุณากรอกข้อมูล', 'เลข PO จำเป็นต้องกรอก')
+      return
+    }
     setSaving(true)
     const isEdit = !!(form._id || form.id)
+    const currentRecord = isEdit ? data.find((item) => (item.id || item._id) === (form.id || form._id)) : null
     try {
-      const basePayload = buildPurchasePayload({ ...form, LastUpdated: format(new Date(), 'yyyy-MM-dd') })
-      const { removedColumns, saved } = await saveWithColumnFallback(basePayload)
-      const savedPOForSync = buildColumnSafePurchasePayload({
-        ...saved,
-        ...basePayload,
-        id: saved?.id,
-        _id: saved?._id,
-      }, removedColumns)
-      await syncInventoryFromPurchase(savedPOForSync, removedColumns)
+      const syncedForm = await syncInventoryOnStatusChange(form, currentRecord)
+      const payload = buildPurchasePayload({
+        ...syncedForm,
+        LastUpdated: format(new Date(), 'yyyy-MM-dd'),
+      })
+      const { removedColumns } = await saveWithColumnFallback(payload)
       if (removedColumns.length > 0) {
-        toast.success(isEdit ? 'แก้ไข PO สำเร็จ' : 'สร้าง PO สำเร็จ', 'บันทึกลิงก์รูปเรียบร้อย')
+        toast.warning(
+          isEdit ? 'แก้ไขใบสั่งซื้อสำเร็จ (บางคอลัมน์บันทึกลงหมายเหตุ)' : 'เพิ่มใบสั่งซื้อสำเร็จ (บางคอลัมน์บันทึกลงหมายเหตุ)',
+          `คอลัมน์ที่ฐานข้อมูลยังไม่มี: ${removedColumns.join(', ')}`
+        )
       } else {
-        toast.success(isEdit ? 'แก้ไข PO สำเร็จ' : 'สร้าง PO สำเร็จ', form.Supplier || form.Detail)
+        toast.success(
+          isEdit ? 'แก้ไขใบสั่งซื้อสำเร็จ' : 'เพิ่มใบสั่งซื้อสำเร็จ',
+          `PO: ${form.PO_Number}`
+        )
       }
-      await load()
-      await loadParts()
       setModal(false)
-    } catch (e) { toast.error('เกิดข้อผิดพลาด', getPurchaseOrderSaveErrorMessage(e)) }
+      await load()
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
+    }
     setSaving(false)
   }
 
   const del = async (id) => {
-    if (!confirm(t('po_del_confirm'))) return
+    if (!confirm('ยืนยันการลบใบสั่งซื้อนี้?')) return
     try {
       await remove(id)
-      toast.success('ลบ PO สำเร็จ')
-    } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
+      toast.success('ลบใบสั่งซื้อสำเร็จ')
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
+    }
+  }
+
+  const renderCellContent = (row, col) => {
+    const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
+      ? getPOImageUrl(row)
+      : col.field === 'Part_Code'
+        ? getPOPartCode(row)
+        : col.field === 'Part_Name_EN'
+          ? getPOPartName(row)
+          : col.field === 'Category'
+            ? getPOCategory(row)
+            : row[col.field]
+
+    if (val === null || val === undefined || val === '') {
+      return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
+    }
+
+    if (col.field === 'PO_Number') {
+      return (
+        <span className="font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">
+          {String(val)}
+        </span>
+      )
+    }
+
+    if (col.field === 'Status') {
+      return <StatusPill value={val} />
+    }
+
+    if (col.field === 'Part_Code') {
+      return <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{String(val)}</span>
+    }
+
+    if (col.field === 'Part_Name_EN') {
+      return <span className="font-bold text-slate-800 dark:text-slate-100">{String(val)}</span>
+    }
+
+    if (col.field === 'Total_Amount' || col.field === 'UnitPrice') {
+      return <span className="font-mono font-semibold text-slate-700 dark:text-slate-300 text-xs">฿{Number(val).toLocaleString()}</span>
+    }
+
+    if (col.field === 'Qty') {
+      return <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{Number(val).toLocaleString()}</span>
+    }
+
+    if (col.type === 'date' || col.field.includes('Date') || col.field === 'LastUpdated') {
+      try {
+        return <span className="font-mono text-slate-500 text-[11px]">{format(new Date(val), 'dd/MM/yy')}</span>
+      } catch {
+        return <span className="font-mono text-slate-500 text-[11px]">{String(val)}</span>
+      }
+    }
+
+    if (col.field === 'ImageUrl') {
+      return (
+        <a
+          href={String(val)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-mono text-[11px] flex items-center gap-1 hover:underline max-w-[200px] truncate"
+        >
+          <span className="truncate">{String(val)}</span>
+          <ExternalLink size={11} className="flex-shrink-0 opacity-70" />
+        </a>
+      )
+    }
+
+    if (col.field === 'ImagePreview') {
+      const imgUrl = String(val)
+      return (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => setPreviewImageModal({ url: imgUrl, title: `PO: ${row.PO_Number}` })}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
+          >
+            <ImageIcon size={13} />
+            <span>เปิดรูป</span>
+          </button>
+        </div>
+      )
+    }
+
+    if (col.field === 'Note') {
+      return <span className="text-slate-500 truncate max-w-[200px] block">{stripHiddenNoteMeta(val)}</span>
+    }
+
+    return <span className="text-slate-700 dark:text-slate-300 text-xs">{String(val)}</span>
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder={t('po_search')} />
-        <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-        <GoogleSheetSyncButton
-          sheetName="จัดซื้อ"
-          columns={cols}
-          rows={displayRows}
-          valueGetters={{
-            ImageUrl: getPOImageUrl,
-            ImagePreview: getPOImageUrl,
-            Category: getPOCategory,
-            Part_Code: getPOPartCode,
-            Part_Name_EN: getPOPartName,
-            Note: (row) => stripHiddenNoteMeta(row.Note),
-          }}
-        />
-        <button className="btn-outline ml-auto" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
-        {canAdd && <button className="btn-primary" onClick={openNew}><Plus size={15}/> {t('po_add')}</button>}
+    <div className="space-y-5">
+      {/* ── SUMMARY STATS CARDS ──────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ใบสั่งซื้อทั้งหมด</div>
+            <div className="text-xl font-black mt-0.5" style={{ color: 'var(--text-900)' }}>
+              {stats.total} <span className="text-xs font-normal text-slate-400">ใบ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+            <ShoppingCart size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รอรับสินค้า (Ordered)</div>
+            <div className="text-xl font-black mt-0.5 text-blue-600 dark:text-blue-400">
+              {stats.ordered} <span className="text-xs font-normal text-slate-400">ใบ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+            <Clock size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รับสินค้าแล้ว (Received)</div>
+            <div className="text-xl font-black mt-0.5 text-emerald-600 dark:text-emerald-400">
+              {stats.received} <span className="text-xs font-normal text-slate-400">ใบ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
+            <CheckCircle2 size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">มูลค่าสั่งซื้อรวม</div>
+            <div className="text-xl font-black mt-0.5 text-blue-600 dark:text-blue-400">
+              ฿{stats.totalAmount.toLocaleString()}
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+            <DollarSign size={18} />
+          </div>
+        </div>
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              {cols.map(c => <th key={c.field||c.id} style={getColumnWidthStyle(c)}>{c.label}</th>)}
-              <th>{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={cols.length+1} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('loading')}</td></tr>}
-            {!loading && displayRows.map((p, i) => (
-              <tr key={p._id || p.id || i} onClick={() => setDetailRec(p)} style={{cursor:'pointer'}}>
-                {cols.map(c => <td key={c.field||c.id} style={getColumnWidthStyle(c)}>{renderPOCell(p, c)}</td>)}
-                <td onClick={e => e.stopPropagation()}>
-                  <div className="flex gap-2">
-                    {canEdit && <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(p)}><Pencil size={12}/></button>}
-                    {canDelete && <button className="btn-danger py-1 px-2 text-xs" onClick={() => del(p._id || p.id)}><Trash2 size={12}/></button>}
-                  </div>
-                </td>
+      {/* ── TOOLBAR ───────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="ค้นหา เลข PO / รหัสอะไหล่ / ชื่ออะไหล่ / ผู้จัดจำหน่าย..."
+            className="w-full sm:w-80"
+          />
+          <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+          <GoogleSheetSyncButton
+            sheetName="จัดซื้อ"
+            columns={cols}
+            rows={displayRows}
+            valueGetters={{
+              Part_Code: getPOPartCode,
+              Part_Name_EN: getPOPartName,
+              Category: getPOCategory,
+              ImageUrl: getPOImageUrl,
+              ImagePreview: getPOImageUrl,
+              Note: (row) => stripHiddenNoteMeta(row.Note),
+            }}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={load}
+            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5"
+            title={t('refresh')}
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{t('refresh')}</span>
+          </button>
+
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+            >
+              <Plus size={15} />
+              <span>สร้างใบสั่งซื้อ</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── DATA TABLE ────────────────────────────────────────── */}
+      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="table w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                {cols.map((c) => (
+                  <th key={c.field} style={getColumnWidthStyle(c)} className="py-3 px-3 text-left whitespace-nowrap">
+                    {c.label}
+                  </th>
+                ))}
+                <th className="py-3 px-3 text-center w-24">จัดการ</th>
               </tr>
-            ))}
-            {!loading && !displayRows.length && <tr><td colSpan={cols.length+1} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('no_data')}</td></tr>}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {loading && (
+                <tr>
+                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                    <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
+                    <span>{t('loading')}</span>
+                  </td>
+                </tr>
+              )}
+              {!loading && displayRows.map((p, i) => (
+                <tr
+                  key={p._id || p.id || i}
+                  onClick={() => setDetailRec(p)}
+                  className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                >
+                  {cols.map((c) => (
+                    <td key={c.field} style={getColumnWidthStyle(c)} className="py-2.5 px-3 whitespace-nowrap">
+                      {renderCellContent(p, c)}
+                    </td>
+                  ))}
+                  <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(p)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                          title="แก้ไขใบสั่งซื้อ"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => del(p._id || p.id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                          title="ลบใบสั่งซื้อ"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!loading && !displayRows.length && (
+                <tr>
+                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                    <ShoppingCart size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                    <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ สร้างใบสั่งซื้อ" เพื่อเริ่มต้นบันทึก</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
       <DetailDrawer
-        open={!!detailRec} onClose={() => setDetailRec(null)}
-        title={detailRec?.Supplier || detailRec?.Detail} subtitle={detailRec?.PO_Number}
-        icon={ShoppingCart} accentColor="#ef4444" iconColor="#f87171"
+        open={!!detailRec}
+        onClose={() => setDetailRec(null)}
+        title={detailRec?.PO_Number}
+        subtitle={detailRec ? `${getPOPartCode(detailRec)} · ${getPOPartName(detailRec)}` : ''}
+        icon={ShoppingCart}
+        accentColor="#2563eb"
         badge={detailRec && <StatusPill value={detailRec.Status} />}
-        canEdit={canEdit} canDelete={canDelete}
+        canEdit={canEdit}
+        canDelete={canDelete}
         onEdit={() => openEdit(detailRec)}
-        onDelete={() => { del(detailRec._id || detailRec.id); setDetailRec(null) }}
+        onDelete={() => {
+          del(detailRec._id || detailRec.id)
+          setDetailRec(null)
+        }}
         groups={detailRec ? [
-          { label: 'ข้อมูลคำสั่งซื้อ', fields: [
-            { label: 'เลข PO',       value: detailRec.PO_Number, mono: true },
-            { label: 'แหล่งที่มา',  value: detailRec.Supplier },
-            { label: 'รหัสอะไหล่',  value: getPOPartCode(detailRec), mono: true },
-            { label: 'ชื่ออะไหล่',  value: getPOPartName(detailRec) },
-            { label: 'หมวดหมู่',    value: getPOCategory(detailRec) },
-            { label: 'รายละเอียด',  value: detailRec.Detail },
-            { label: 'โทรศัพท์',    value: detailRec.Phone },
-            { label: 'อีเมล',       value: detailRec.Email },
-            { label: 'ไลน์',        value: detailRec.Line },
-            { label: 'ลิงก์รูป',    value: getPOImageUrl(detailRec) },
-          ].filter(f => f.value)},
-          { label: 'วันที่', fields: [
-            { label: 'วันที่สั่ง',      value: detailRec.Order_Date ? format(new Date(detailRec.Order_Date), 'dd/MM/yyyy') : null },
-            { label: 'วันที่รับ',       value: detailRec.Received_Date ? format(new Date(detailRec.Received_Date), 'dd/MM/yyyy') : null },
-            { label: 'อัปเดตล่าสุด',   value: detailRec.LastUpdated ? format(new Date(detailRec.LastUpdated), 'dd/MM/yyyy') : null },
-          ].filter(f => f.value)},
-          { label: 'ราคา', fields: [
-            { label: 'จำนวน',          value: detailRec.Qty },
-            { label: 'ราคาต่อหน่วย',   value: detailRec.UnitPrice ? `฿${Number(detailRec.UnitPrice).toLocaleString()}` : null },
-            { label: 'ราคารวม',        value: detailRec.Total_Amount ? `฿${Number(detailRec.Total_Amount).toLocaleString()}` : null },
-          ].filter(f => f.value)},
-          { label: 'หมายเหตุ', single: true, fields: [
-            { label: 'หมายเหตุ', value: stripHiddenNoteMeta(detailRec.Note), full: true },
-          ].filter(f => f.value)},
-        ].filter(g => g.fields.length > 0) : []}
+          {
+            label: 'ข้อมูลใบสั่งซื้อ',
+            fields: [
+              { label: 'เลข PO', value: detailRec.PO_Number, mono: true },
+              { label: 'วันที่สั่ง', value: detailRec.Order_Date },
+              { label: 'วันที่รับ', value: detailRec.Received_Date },
+              { label: 'รหัสอะไหล่', value: getPOPartCode(detailRec), mono: true },
+              { label: 'ชื่ออะไหล่', value: getPOPartName(detailRec) },
+              { label: 'หมวดหมู่', value: getPOCategory(detailRec) },
+              { label: 'รายละเอียด', value: detailRec.Detail },
+              { label: 'ลิงก์รูปภาพ', value: getPOImageUrl(detailRec), full: true },
+            ].filter((f) => f.value),
+          },
+          {
+            label: 'จำนวนและยอดเงิน',
+            fields: [
+              { label: 'จำนวน', value: detailRec.Qty },
+              { label: 'ราคาต่อหน่วย', value: detailRec.UnitPrice ? `฿${Number(detailRec.UnitPrice).toLocaleString()}` : null },
+              { label: 'ราคารวม', value: detailRec.Total_Amount ? `฿${Number(detailRec.Total_Amount).toLocaleString()}` : null },
+            ].filter((f) => f.value),
+          },
+          {
+            label: 'ผู้จัดจำหน่าย & ติดต่อ',
+            fields: [
+              { label: 'แหล่งที่มา/ผู้จัดจำหน่าย', value: detailRec.Supplier },
+              { label: 'โทรศัพท์', value: detailRec.Phone },
+              { label: 'อีเมล', value: detailRec.Email },
+              { label: 'LINE', value: detailRec.Line },
+            ].filter((f) => f.value),
+          },
+          {
+            label: 'หมายเหตุ',
+            single: true,
+            fields: [
+              { label: 'หมายเหตุ', value: stripHiddenNoteMeta(detailRec.Note), full: true },
+            ].filter((f) => f.value),
+          },
+        ].filter((g) => g.fields.length > 0) : []}
       />
 
-      <Modal open={modal} onClose={() => setModal(false)}
-        title={form._id ? t('po_edit') : t('po_create')} size="lg"
-        footer={<>
-          <button className="btn-outline" onClick={() => setModal(false)}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? t('saving') : t('save')}</button>
-        </>}
+      {/* ── ADD / EDIT MODAL ──────────────────────────────────── */}
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={form._id || form.id ? '✏️ แก้ไขข้อมูลใบสั่งซื้อ' : '➕ สร้างใบสั่งซื้อใหม่'}
+        size="lg"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button type="button" className="btn-outline px-4" onClick={() => setModal(false)}>
+              {t('cancel')}
+            </button>
+            <button type="button" className="btn-primary px-5" onClick={submit} disabled={saving}>
+              {saving ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>กำลังบันทึก...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={14} />
+                  <span>{t('save')}</span>
+                </>
+              )}
+            </button>
+          </div>
+        }
       >
-        <div className="grid grid-cols-2 gap-4">
-          <F form={form} setForm={setForm} label="เลข PO" id="PO_Number" />
-          <F form={form} setForm={setForm} label="สถานะ" id="Status" opts={PO_STATUS} useBuilder={false} />
-          <F form={form} setForm={setForm} label="วันที่สั่ง" id="Order_Date" type="date" />
-          <F form={form} setForm={setForm} label="วันที่รับ" id="Received_Date" type="date" />
-          <div>
-            <label className="label">รหัสอะไหล่ *</label>
-            <input
-              className="input"
-              list="po-part-codes"
-              value={form.Part_Code || ''}
-              onChange={(e) => applyPartToForm(e.target.value)}
-            />
-            <datalist id="po-part-codes">
-              {parts.map((part) => (
-                <option key={part.id || part.Part_Code} value={part.Part_Code}>
-                  {part.Part_Name_EN || part.Part_Name_TH || part.Part_Code}
-                </option>
-              ))}
-            </datalist>
+        <div className="space-y-5 text-xs">
+          {/* Section 1: PO Header */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <ShoppingCart size={14} className="text-blue-500" />
+              <span>ข้อมูลใบสั่งซื้อและสถานะ</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <F form={form} setForm={setForm} label="เลข PO *" id="PO_Number" placeholder="เช่น PO-2026-001" />
+              <F form={form} setForm={setForm} label="สถานะ" id="Status" opts={PO_STATUS} />
+              <F form={form} setForm={setForm} label="วันที่สั่ง" id="Order_Date" type="date" />
+              <F form={form} setForm={setForm} label="วันที่รับ" id="Received_Date" type="date" />
+            </div>
           </div>
-          <div>
-            <label className="label">ชื่ออะไหล่</label>
-            <input
-              className="input"
-              list="po-part-names"
-              value={form.Part_Name_EN || ''}
-              onChange={(e) => applyPartNameToForm(e.target.value)}
-            />
-            <datalist id="po-part-names">
-              {[...new Set(parts.map((part) => part.Part_Name_EN).filter(Boolean))].map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
-          </div>
-          <div className="col-span-2">
-            <F form={form} setForm={setForm} label="รายละเอียด" id="Detail" />
-          </div>
-          <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
-          <F form={form} setForm={setForm} label="จำนวน" id="Qty" type="number" />
-          <F form={form} setForm={setForm} label="ราคาต่อหน่วย" id="UnitPrice" type="number" />
-          <F form={form} setForm={setForm} label="ราคารวม (อัตโนมัติ)" id="Total_Amount" type="number" />
-          <F form={form} setForm={setForm} label="แหล่งที่มา" id="Supplier" />
-          <F form={form} setForm={setForm} label="โทรศัพท์" id="Phone" />
-          <F form={form} setForm={setForm} label="อีเมล" id="Email" />
-          <F form={form} setForm={setForm} label="ไลน์" id="Line" />
-          <F form={form} setForm={setForm} label="ลิงก์รูป (Google Drive)" id="ImageUrl" useBuilder={false} />
-          <div className="col-span-2">
-            <label className="label">อัปโหลดรูป (Google Drive อัตโนมัติ)</label>
-            <input
-              className="input"
-              type="file"
-              accept="image/*"
-              onChange={(e) => onPickImageFile(e.target.files?.[0])}
-            />
-            {uploadingImage && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-500)' }}>กำลังอัปโหลดรูป...</div>}
-            {form.ImageUrl && (
-              <div style={{ marginTop: 8, fontSize: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ color: 'var(--text-500)' }}>ลิงก์รูป:</span>
-                <a href={form.ImageUrl} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', wordBreak: 'break-all' }}>
-                  {form.ImageUrl}
-                </a>
+
+          {/* Section 2: Part & Price */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1.5">
+                <Layers size={14} className="text-blue-500" />
+                <span>รายการอะไหล่และราคา</span>
               </div>
-            )}
+              {parts?.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400">เลือกจากอะไหล่ที่มี:</span>
+                  <select
+                    className="select text-[11px] py-0.5 px-2 max-w-[180px]"
+                    onChange={(e) => applyPartToForm(e.target.value)}
+                    value=""
+                  >
+                    <option value="">— เลือกอะไหล่ —</option>
+                    {parts.map((p) => (
+                      <option key={p.Part_Code} value={p.Part_Code}>
+                        {p.Part_Code} - {p.Part_Name_EN}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <F form={form} setForm={setForm} label="รหัสอะไหล่" id="Part_Code" placeholder="เช่น SP-001" />
+              <F form={form} setForm={setForm} label="ชื่ออะไหล่" id="Part_Name_EN" placeholder="ชื่ออะไหล่" />
+              <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
+              <F form={form} setForm={setForm} label="จำนวน" id="Qty" type="number" placeholder="0" />
+              <F form={form} setForm={setForm} label="ราคาต่อหน่วย" id="UnitPrice" type="number" placeholder="0" />
+              <F form={form} setForm={setForm} label="ราคารวม" id="Total_Amount" type="number" placeholder="0" />
+              <div className="sm:col-span-3">
+                <F form={form} setForm={setForm} label="รายละเอียดเพิ่มเติมของรายการ" id="Detail" placeholder="สเปกเฉพาะ หรือข้อกำหนดการจัดซื้อ" />
+              </div>
+            </div>
           </div>
-          <div className="col-span-2">
-            <label className="label">หมายเหตุ</label>
-            <textarea
-              className="input"
-              rows={2}
-              value={stripHiddenNoteMeta(form.Note)}
-              onChange={(e) => setForm((prev) => ({ ...prev, Note: preserveCommentWithPOMeta(e.target.value, prev) }))}
-            />
+
+          {/* Section 3: Supplier */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <Building size={14} className="text-emerald-500" />
+              <span>ผู้จัดจำหน่ายและช่องทางติดต่อ</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <F form={form} setForm={setForm} label="ผู้จัดจำหน่าย/แหล่งที่มา" id="Supplier" placeholder="ชื่อบริษัทหรือร้านค้า" />
+              <F form={form} setForm={setForm} label="เบอร์โทรศัพท์" id="Phone" placeholder="02-xxx-xxxx" />
+              <F form={form} setForm={setForm} label="อีเมล" id="Email" placeholder="supplier@example.com" />
+              <F form={form} setForm={setForm} label="LINE ID" id="Line" placeholder="LINE ID" />
+            </div>
+          </div>
+
+          {/* Section 4: Photo & Note */}
+          <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
+              <ImageIcon size={14} className="text-indigo-500" />
+              <span>รูปถ่ายบิล/เอกสาร & หมายเหตุ</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label font-bold">อัปโหลดรูปเอกสาร PO เข้า Google Drive</label>
+                <div className="flex items-center gap-2">
+                  <label className="btn-primary text-xs py-2 px-3 cursor-pointer flex items-center gap-1.5 flex-1 justify-center">
+                    {uploadingImage ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>กำลังอัปโหลด...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={13} />
+                        <span>เลือกไฟล์รูปถ่าย</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingImage}
+                      onChange={(e) => onPickImageFile(e.target.files?.[0])}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <F form={form} setForm={setForm} label="หรือวางลิงก์รูป (URL)" id="ImageUrl" useBuilder={false} placeholder="https://..." />
+              </div>
+
+              {form.ImageUrl && (
+                <div className="col-span-1 sm:col-span-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ImageIcon size={16} className="text-blue-600 flex-shrink-0" />
+                    <span className="font-mono text-blue-700 dark:text-blue-300 truncate">{form.ImageUrl}</span>
+                  </div>
+                  <a
+                    href={form.ImageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-outline text-[11px] py-1 px-2 flex-shrink-0 flex items-center gap-1"
+                  >
+                    <span>ดูรูป</span>
+                    <ExternalLink size={10} />
+                  </a>
+                </div>
+              )}
+
+              <div className="col-span-1 sm:col-span-2">
+                <F
+                  form={form}
+                  setForm={setForm}
+                  label="หมายเหตุ (Note)"
+                  id="Note"
+                  placeholder="ข้อคิดเห็น หรือบันทึกเพิ่มเติม"
+                  onChange={(value) => setForm((p) => ({
+                    ...p,
+                    Note: appendPOMetaToNote(value, {
+                      imageUrl: getPOImageUrl(p),
+                      category: getPOCategory(p),
+                      partCode: getPOPartCode(p),
+                      partName: getPOPartName(p),
+                      appliedQty: getPOAppliedQty(p),
+                      appliedPartCode: getPOAppliedPartCode(p),
+                    }),
+                  }))}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </Modal>
+
+      {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
+      {previewImageModal && (
+        <Modal
+          open={!!previewImageModal}
+          onClose={() => setPreviewImageModal(null)}
+          title={`🖼️ ${previewImageModal.title}`}
+        >
+          <div className="space-y-4 text-center">
+            <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center max-h-[70vh]">
+              <img
+                src={previewImageModal.url}
+                alt={previewImageModal.title}
+                className="max-h-[65vh] w-auto object-contain mx-auto"
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs pt-2">
+              <a
+                href={previewImageModal.url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-outline text-xs flex items-center gap-1.5"
+              >
+                <ExternalLink size={13} />
+                <span>เปิดในแท็บใหม่ (Full Size)</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewImageModal(null)}
+                className="btn-primary text-xs px-4"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
