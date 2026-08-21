@@ -1,5 +1,24 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Plus, Pencil, Trash2, RefreshCw, Cpu } from 'lucide-react'
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  Cpu,
+  Layers,
+  MapPin,
+  Image as ImageIcon,
+  ExternalLink,
+  Upload,
+  Check,
+  X,
+  SlidersHorizontal,
+  Activity,
+  CheckCircle2,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
 import useWebBuilderMenu from '../hooks/useWebBuilderMenu'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -22,12 +41,35 @@ const IMAGE_NOTE_PREFIX = 'ImageUrl:'
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'machines'|column machines\.([^ ]+) does not exist/i
 
 const EMPTY = {
-  ITEM:'', Location:'', Mc:'', WaterCheck:'', Serial_OLD:'', Serial_NEW:'',
-  Feeder:'', Manufacturer:'', Type:'', Diameter:'', Gauge:'', Needle:'', Oil:'',
-  Model:'', Model_Inverter:'', Sinker:'',
-  Tape1_No:'', Tape2_No:'', Tape3_No:'', Tape4_No:'',
-  Dial_Front:'', Dial_Rear:'', Leg1:'', Leg2:'', Leg3:'', Leg4:'',
-  Status:'RUNNING', Remark:'', ImageUrl:'',
+  ITEM: '',
+  Location: '',
+  Mc: '',
+  WaterCheck: '',
+  Serial_OLD: '',
+  Serial_NEW: '',
+  Feeder: '',
+  Manufacturer: '',
+  Type: '',
+  Diameter: '',
+  Gauge: '',
+  Needle: '',
+  Oil: '',
+  Model: '',
+  Model_Inverter: '',
+  Sinker: '',
+  Tape1_No: '',
+  Tape2_No: '',
+  Tape3_No: '',
+  Tape4_No: '',
+  Dial_Front: '',
+  Dial_Rear: '',
+  Leg1: '',
+  Leg2: '',
+  Leg3: '',
+  Leg4: '',
+  Status: 'RUNNING',
+  Remark: '',
+  ImageUrl: '',
 }
 
 function extractImageUrl(note = '') {
@@ -54,7 +96,9 @@ function appendMachineImageMeta(remark = '', imageUrl = '') {
 
 function omitKeys(item, keys = []) {
   const clone = { ...item }
-  keys.forEach((key) => { delete clone[key] })
+  keys.forEach((key) => {
+    delete clone[key]
+  })
   return clone
 }
 
@@ -92,15 +136,37 @@ function buildMachineSummary(rows = []) {
 }
 
 const MC_FIELD_KEYS = {
-  ITEM:'mc_th_item', Location:'mc_th_loc', Mc:'mc_th_mc', WaterCheck:'mc_th_watercheck',
-  Serial_OLD:'mc_th_serial_old', Serial_NEW:'mc_th_serial_new', Feeder:'mc_th_feeder',
-  Manufacturer:'mc_th_mfr', Type:'mc_th_type', Diameter:'mc_th_dia', Gauge:'mc_th_gauge',
-  Needle:'mc_th_needle', Oil:'mc_th_oil', Model:'mc_th_model', Model_Inverter:'mc_th_model_inv',
-  Sinker:'mc_th_sinker', Tape1_No:'mc_th_tape1', Tape2_No:'mc_th_tape2',
-  Tape3_No:'mc_th_tape3', Tape4_No:'mc_th_tape4', Dial_Front:'mc_th_dial_front',
-  Dial_Rear:'mc_th_dial_rear', Leg1:'mc_th_leg1', Leg2:'mc_th_leg2',
-  Leg3:'mc_th_leg3', Leg4:'mc_th_leg4', Remark:'mc_th_remark',
-  updated_at:'mc_th_updated', Status:'status', ImageUrl:'URL', ImagePreview:'รูป',
+  ITEM: 'mc_th_item',
+  Location: 'mc_th_loc',
+  Mc: 'mc_th_mc',
+  WaterCheck: 'mc_th_watercheck',
+  Serial_OLD: 'mc_th_serial_old',
+  Serial_NEW: 'mc_th_serial_new',
+  Feeder: 'mc_th_feeder',
+  Manufacturer: 'mc_th_mfr',
+  Type: 'mc_th_type',
+  Diameter: 'mc_th_dia',
+  Gauge: 'mc_th_gauge',
+  Needle: 'mc_th_needle',
+  Oil: 'mc_th_oil',
+  Model: 'mc_th_model',
+  Model_Inverter: 'mc_th_model_inv',
+  Sinker: 'mc_th_sinker',
+  Tape1_No: 'mc_th_tape1',
+  Tape2_No: 'mc_th_tape2',
+  Tape3_No: 'mc_th_tape3',
+  Tape4_No: 'mc_th_tape4',
+  Dial_Front: 'mc_th_dial_front',
+  Dial_Rear: 'mc_th_dial_rear',
+  Leg1: 'mc_th_leg1',
+  Leg2: 'mc_th_leg2',
+  Leg3: 'mc_th_leg3',
+  Leg4: 'mc_th_leg4',
+  Remark: 'mc_th_remark',
+  updated_at: 'mc_th_updated',
+  Status: 'status',
+  ImageUrl: 'URL',
+  ImagePreview: 'รูป',
 }
 
 /* ── Column definitions ── */
@@ -131,102 +197,132 @@ function buildMachineFilterOptions(rows = [], key) {
   )
 }
 
-const useCols = (t) => [
-  { key: 'ITEM',          label: t('mc_th_item'),       render: (m, i) => m.ITEM || i+1 },
-  { key: 'Location',      label: t('mc_th_loc'),        render: m => m.Location },
-  { key: 'Mc',            label: t('mc_th_mc'),         render: m => <span className="font-semibold">{m.Mc}</span> },
-  { key: 'WaterCheck',    label: t('mc_th_watercheck'), render: m => m.WaterCheck || '—' },
-  { key: 'Serial_OLD',    label: t('mc_th_serial_old'), render: m => <span className="font-mono text-xs">{m.Serial_OLD || '—'}</span> },
-  { key: 'Serial_NEW',    label: t('mc_th_serial_new'), render: m => <span className="font-mono text-xs">{m.Serial_NEW || '—'}</span> },
-  { key: 'Feeder',        label: t('mc_th_feeder'),     render: m => m.Feeder || '—' },
-  { key: 'Manufacturer',  label: t('mc_th_mfr'),        render: m => m.Manufacturer || '—' },
-  { key: 'Type',          label: t('mc_th_type'),       render: m => m.Type || '—' },
-  { key: 'Diameter',      label: t('mc_th_dia'),        render: m => m.Diameter || '—' },
-  { key: 'Gauge',         label: t('mc_th_gauge'),      render: m => m.Gauge || '—' },
-  { key: 'Needle',        label: t('mc_th_needle'),     render: m => m.Needle || '—' },
-  { key: 'Oil',           label: t('mc_th_oil'),        render: m => m.Oil || '—' },
-  { key: 'Model',         label: t('mc_th_model'),      render: m => m.Model || '—' },
-  { key: 'Model_Inverter',label: t('mc_th_model_inv'),  render: m => m.Model_Inverter || '—' },
-  { key: 'Sinker',        label: t('mc_th_sinker'),     render: m => m.Sinker || '—' },
-  { key: 'Tape1_No',      label: t('mc_th_tape1'),      render: m => m.Tape1_No || '—' },
-  { key: 'Tape2_No',      label: t('mc_th_tape2'),      render: m => m.Tape2_No || '—' },
-  { key: 'Tape3_No',      label: t('mc_th_tape3'),      render: m => m.Tape3_No || '—' },
-  { key: 'Tape4_No',      label: t('mc_th_tape4'),      render: m => m.Tape4_No || '—' },
-  { key: 'Dial_Front',    label: t('mc_th_dial_front'), render: m => m.Dial_Front || '—' },
-  { key: 'Dial_Rear',     label: t('mc_th_dial_rear'),  render: m => m.Dial_Rear || '—' },
-  { key: 'Leg1',          label: t('mc_th_leg1'),       render: m => m.Leg1 || '—' },
-  { key: 'Leg2',          label: t('mc_th_leg2'),       render: m => m.Leg2 || '—' },
-  { key: 'Leg3',          label: t('mc_th_leg3'),       render: m => m.Leg3 || '—' },
-  { key: 'Leg4',          label: t('mc_th_leg4'),       render: m => m.Leg4 || '—' },
-  { key: 'ImageUrl',      label: 'URL',                  render: renderMachineImageUrl },
-  { key: 'ImagePreview',  label: 'รูป',                  render: renderMachineImagePreview },
-  { key: 'Remark',        label: t('mc_th_remark'),     render: m => <span className="max-w-[120px] truncate block">{stripImageUrlMeta(m.Remark) || '—'}</span> },
-  { key: 'updated_at',    label: t('mc_th_updated'),    render: m => {
-    const d = m.updated_at || m.LastUpdated
-    return d ? <span className="text-xs" style={{color:'var(--text-400)'}}>{format(new Date(d),'dd/MM/yy HH:mm')}</span> : '—'
-  }},
-  { key: 'Status',        label: t('status'),           render: m => <StatusBadge value={m.Status} /> },
-]
-
-function renderMachineImageUrl(row) {
-  const imageUrl = getMachineImageUrl(row)
-  if (!imageUrl) return <span style={{color:'var(--text-400)'}}>—</span>
-  return <a href={imageUrl} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12, display:'block', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{imageUrl}</a>
-}
-
-function renderMachineImagePreview(row) {
-  const imageUrl = getMachineImageUrl(row)
-  if (!imageUrl) return <span style={{color:'var(--text-400)'}}>—</span>
-  return <a href={imageUrl} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12 }}>เปิดรูป</a>
-}
-
 export default function Machines() {
   const { t } = useT()
   const { canAdd, canEdit, canDelete } = usePagePerms('machines')
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(MachineAPI)
-  const [search,     setSearch]    = useState('')
+  const [search, setSearch] = useState('')
   const [filterSort, setFilterSort] = useState(INIT_FS)
-  const [modal,      setModal]     = useState(false)
-  const [form,       setForm]      = useState(EMPTY)
-  const [saving,     setSaving]    = useState(false)
+  const [modal, setModal] = useState(false)
+  const [form, setForm] = useState(EMPTY)
+  const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [detailRec, setDetailRec] = useState(null)
+  const [showSummary, setShowSummary] = useState(false)
+  const [previewImageModal, setPreviewImageModal] = useState(null)
 
-  const allCols  = useCols(t)
-  const wbCols   = useWebBuilderMenu('/machines')
-  const normalizedWbCols = useMemo(() => wbCols?.length
+  // Top summary stats
+  const stats = useMemo(() => {
+    const total = data.length
+    const running = data.filter((m) => m.Status === 'RUNNING').length
+    const maintenance = data.filter((m) => m.Status === 'MAINTENANCE' || m.Status === 'STOP').length
+    const uniqueLocations = new Set(data.map((m) => m.Location).filter(Boolean)).size
+    return { total, running, maintenance, uniqueLocations }
+  }, [data])
+
+  const renderMachineImageUrl = (row) => {
+    const imageUrl = getMachineImageUrl(row)
+    if (!imageUrl) return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
+    return (
+      <a
+        href={imageUrl}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-mono text-[11px] flex items-center gap-1 hover:underline max-w-[200px] truncate"
+      >
+        <span className="truncate">{imageUrl}</span>
+        <ExternalLink size={11} className="flex-shrink-0 opacity-70" />
+      </a>
+    )
+  }
+
+  const renderMachineImagePreview = (row) => {
+    const imageUrl = getMachineImageUrl(row)
+    if (!imageUrl) return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
+    return (
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={() => setPreviewImageModal({ url: imageUrl, title: `เครื่องจักร ${row.Mc}` })}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
+        >
+          <ImageIcon size={13} />
+          <span>เปิดรูป</span>
+        </button>
+      </div>
+    )
+  }
+
+  const defaultCols = useMemo(() => [
+    { key: 'ITEM', label: t('mc_th_item'), render: (m, i) => <span className="font-mono text-slate-500">{m.ITEM || i + 1}</span> },
+    { key: 'Location', label: t('mc_th_loc'), render: (m) => <span className="font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md text-[11px]">{m.Location || '—'}</span> },
+    { key: 'Mc', label: t('mc_th_mc'), render: (m) => <span className="font-mono font-black text-blue-600 dark:text-blue-400">{m.Mc}</span> },
+    { key: 'WaterCheck', label: t('mc_th_watercheck'), render: (m) => <span className="text-slate-600 dark:text-slate-400">{m.WaterCheck || '—'}</span> },
+    { key: 'Serial_OLD', label: t('mc_th_serial_old'), render: (m) => <span className="font-mono text-[11px] text-slate-500">{m.Serial_OLD || '—'}</span> },
+    { key: 'Serial_NEW', label: t('mc_th_serial_new'), render: (m) => <span className="font-mono text-[11px] text-slate-700 dark:text-slate-300">{m.Serial_NEW || '—'}</span> },
+    { key: 'Feeder', label: t('mc_th_feeder'), render: (m) => <span className="font-mono">{m.Feeder || '—'}</span> },
+    { key: 'Manufacturer', label: t('mc_th_mfr'), render: (m) => <span className="font-medium text-slate-800 dark:text-slate-200">{m.Manufacturer || '—'}</span> },
+    { key: 'Type', label: t('mc_th_type'), render: (m) => <span className="font-bold text-slate-700 dark:text-slate-300">{m.Type || '—'}</span> },
+    { key: 'Diameter', label: t('mc_th_dia'), render: (m) => <span className="font-mono">{m.Diameter ? `${m.Diameter}"` : '—'}</span> },
+    { key: 'Gauge', label: t('mc_th_gauge'), render: (m) => <span className="font-mono">{m.Gauge ? `${m.Gauge}G` : '—'}</span> },
+    { key: 'Needle', label: t('mc_th_needle'), render: (m) => <span className="font-mono">{m.Needle || '—'}</span> },
+    { key: 'Oil', label: t('mc_th_oil'), render: (m) => <span className="font-mono">{m.Oil || '—'}</span> },
+    { key: 'Model', label: t('mc_th_model'), render: (m) => <span className="text-slate-700 dark:text-slate-300">{m.Model || '—'}</span> },
+    { key: 'Model_Inverter', label: t('mc_th_model_inv'), render: (m) => <span className="text-slate-600 dark:text-slate-400">{m.Model_Inverter || '—'}</span> },
+    { key: 'Sinker', label: t('mc_th_sinker'), render: (m) => <span className="font-mono text-slate-500">{m.Sinker || '—'}</span> },
+    { key: 'ImageUrl', label: 'URL', render: renderMachineImageUrl },
+    { key: 'ImagePreview', label: 'รูป', render: renderMachineImagePreview },
+    { key: 'Remark', label: t('mc_th_remark'), render: (m) => <span className="max-w-[130px] truncate block text-slate-500">{stripImageUrlMeta(m.Remark) || '—'}</span> },
+    { key: 'updated_at', label: t('mc_th_updated'), render: (m) => {
+      const d = m.updated_at || m.LastUpdated
+      return d ? <span className="font-mono text-[11px] text-slate-400">{format(new Date(d), 'dd/MM/yy HH:mm')}</span> : <span className="text-slate-400">—</span>
+    }},
+    { key: 'Status', label: t('status'), render: (m) => <StatusBadge value={m.Status} /> },
+  ], [t])
+
+  const wbCols = useWebBuilderMenu('/machines')
+  const normalizedWbCols = useMemo(() => (wbCols?.length
     ? [
         ...wbCols,
         ...[
-          { field:'ImageUrl', label:'URL', type:'text', width:'220px' },
-          { field:'ImagePreview', label:'รูป', type:'text', width:'110px' },
+          { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
+          { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
         ].filter((required) => !wbCols.some((col) => col.field === required.field)),
       ]
-    : null, [wbCols])
+    : null), [wbCols])
+
   const cols = normalizedWbCols?.length
-    ? normalizedWbCols.map(wbc => {
+    ? normalizedWbCols.map((wbc) => {
         const label = MC_FIELD_KEYS[wbc.field] ? t(MC_FIELD_KEYS[wbc.field]) : wbc.label
         if (wbc.field === 'ImageUrl') return { key: wbc.field, label, render: renderMachineImageUrl }
         if (wbc.field === 'ImagePreview') return { key: wbc.field, label, render: renderMachineImagePreview }
         if (wbc.type === 'select') {
-          return { key: wbc.field, label, render: m => {
-            const val = m[wbc.field]
-            if (!val) return <span style={{color:'var(--text-400)'}}>—</span>
-            const optColor = wbc.options?.find(o => o.value === val || o.label === val)?.color
-            return <StatusBadge value={val} color={optColor} />
-          }}
+          return {
+            key: wbc.field,
+            label,
+            render: (m) => {
+              const val = m[wbc.field]
+              if (!val) return <span className="text-slate-400">—</span>
+              const optColor = wbc.options?.find((o) => o.value === val || o.label === val)?.color
+              return <StatusBadge value={val} color={optColor} />
+            },
+          }
         }
-        const known = allCols.find(c => c.key === wbc.field)
+        const known = defaultCols.find((c) => c.key === wbc.field)
         if (known) return { ...known, label }
-        return { key: wbc.field, label, render: m => m[wbc.field] ?? '—' }
+        return { key: wbc.field, label, render: (m) => m[wbc.field] ?? '—' }
       })
-    : allCols
+    : defaultCols
 
-  const searched = data.filter(m =>
-    [m.Mc, m.Location, m.Type, m.Manufacturer, m.Serial_NEW, m.Serial_OLD, getMachineImageUrl(m), stripImageUrlMeta(m.Remark)].some(v =>
-      String(v||'').toLowerCase().includes(search.toLowerCase())
+  const searched = useMemo(() => {
+    return data.filter((m) =>
+      [m.Mc, m.Location, m.Type, m.Manufacturer, m.Model, m.Serial_NEW, m.Serial_OLD, getMachineImageUrl(m), stripImageUrlMeta(m.Remark)].some((v) =>
+        String(v || '').toLowerCase().includes(search.toLowerCase())
+      )
     )
-  )
+  }, [data, search])
 
   const machineFilterOptions = useMemo(() => {
     return MACHINE_MULTI_FILTER_KEYS.reduce((acc, key) => {
@@ -237,16 +333,16 @@ export default function Machines() {
 
   const FS_COLS = useMemo(() => {
     const src = normalizedWbCols?.length ? normalizedWbCols : [
-      { field:'Location',    type:'text'   },
-      { field:'Status',      type:'select' },
-      { field:'Type',        type:'text'   },
-      { field:'Manufacturer',type:'text'   },
-      { field:'Diameter',    type:'text'   },
-      { field:'Gauge',       type:'text'   },
-      { field:'updated_at',  type:'date'   },
+      { field: 'Location', type: 'text' },
+      { field: 'Status', type: 'select' },
+      { field: 'Type', type: 'text' },
+      { field: 'Manufacturer', type: 'text' },
+      { field: 'Diameter', type: 'text' },
+      { field: 'Gauge', type: 'text' },
+      { field: 'updated_at', type: 'date' },
     ]
-    return src.map(col => {
-      const key   = col.field || col.key
+    return src.map((col) => {
+      const key = col.field || col.key
       if (MACHINE_FILTER_EXCLUDE_SET.has(key)) return null
       const label = MC_FIELD_KEYS[key] ? t(MC_FIELD_KEYS[key]) : (col.label || key)
       if (MACHINE_MULTI_FILTER_SET.has(key)) {
@@ -257,12 +353,15 @@ export default function Machines() {
           filter: { type: 'select', opts: machineFilterOptions[key] || [], multi: true },
         }
       }
-      if (['date','datetime','datetime-local'].includes(col.type))
+      if (['date', 'datetime', 'datetime-local'].includes(col.type)) {
         return { key, label, sortable: true, filter: { type: 'date' } }
-      if (col.type === 'number')
+      }
+      if (col.type === 'number') {
         return { key, label, sortable: true, filter: { type: 'number' } }
-      if (['boolean','textarea'].includes(col.type))
+      }
+      if (['boolean', 'textarea'].includes(col.type)) {
         return { key, label, sortable: true, filter: { type: 'text' } }
+      }
       if (col.type === 'select') {
         const opts = col.options?.length ? col.options : (key === 'Status' ? MACHINE_STATUS : null)
         return { key, label, sortable: true, ...(opts ? { filter: { type: 'select', opts } } : {}) }
@@ -272,25 +371,25 @@ export default function Machines() {
   }, [machineFilterOptions, normalizedWbCols, t])
 
   useEffect(() => {
-    const valid = new Set(FS_COLS.map(c => c.key))
-    setFilterSort(p => {
-      const stale     = Object.keys(p.filters).filter(k => !valid.has(k) && (Array.isArray(p.filters[k]) ? p.filters[k].length > 0 : !!p.filters[k]))
+    const valid = new Set(FS_COLS.map((c) => c.key))
+    setFilterSort((p) => {
+      const stale = Object.keys(p.filters).filter((k) => !valid.has(k) && (Array.isArray(p.filters[k]) ? p.filters[k].length > 0 : !!p.filters[k]))
       const staleSort = p.sort.key && !valid.has(p.sort.key)
       if (!stale.length && !staleSort) return p
       const newFilters = { ...p.filters }
-      stale.forEach(k => delete newFilters[k])
+      stale.forEach((k) => delete newFilters[k])
       return { sort: staleSort ? { key: '', dir: 'asc' } : p.sort, filters: newFilters }
     })
   }, [FS_COLS])
 
   const displayRows = useMemo(() => applyFilterSort(searched, FS_COLS, filterSort), [searched, FS_COLS, filterSort])
-
-  const [detailRec, setDetailRec] = useState(null)
-  const [showSummary, setShowSummary] = useState(false)
-
   const summary = useMemo(() => buildMachineSummary(data), [data])
 
-  const openNew  = () => { setForm(EMPTY);   setModal(true) }
+  const openNew = () => {
+    setForm(EMPTY)
+    setModal(true)
+  }
+
   const openEdit = (m) => {
     setForm({ ...m, ImageUrl: getMachineImageUrl(m), Remark: stripImageUrlMeta(m.Remark) })
     setModal(true)
@@ -331,7 +430,10 @@ export default function Machines() {
   }
 
   const submit = async () => {
-    if (!form.Mc || !form.Location) return toast.warning('กรุณากรอกข้อมูล', 'Mc และ Location จำเป็นต้องกรอก')
+    if (!form.Mc || !form.Location) {
+      toast.warning('กรุณากรอกข้อมูล', 'Mc และ Location จำเป็นต้องกรอก')
+      return
+    }
     setSaving(true)
     const isEdit = !!(form._id || form.id)
     try {
@@ -341,7 +443,9 @@ export default function Machines() {
       })
       toast.success(isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', `เครื่อง ${form.Mc}`)
       setModal(false)
-    } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
+    }
     setSaving(false)
   }
 
@@ -350,241 +454,503 @@ export default function Machines() {
     try {
       await remove(id)
       toast.success('ลบข้อมูลสำเร็จ')
-    } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
+    }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder={t('mc_search')} />
-        <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-        <GoogleSheetSyncButton
-          sheetName="เครื่องจักร"
-          columns={cols}
-          rows={displayRows}
-          valueGetters={{
-            ImageUrl: getMachineImageUrl,
-            ImagePreview: getMachineImageUrl,
-            Remark: (row) => stripImageUrlMeta(row.Remark),
-          }}
-        />
-        <button className="btn-outline ml-auto" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
-        {canAdd && <button className="btn-primary" onClick={openNew}><Plus size={15}/> {t('mc_add')}</button>}
+    <div className="space-y-5">
+      {/* ── SUMMARY STATS CARDS ──────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">เครื่องจักรทั้งหมด</div>
+            <div className="text-xl font-black mt-0.5" style={{ color: 'var(--text-900)' }}>
+              {stats.total} <span className="text-xs font-normal text-slate-400">เครื่อง</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+            <Cpu size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">สถานะปกติ (Running)</div>
+            <div className="text-xl font-black mt-0.5 text-emerald-600 dark:text-emerald-400">
+              {stats.running} <span className="text-xs font-normal text-slate-400">เครื่อง</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
+            <CheckCircle2 size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ซ่อมบำรุง / หยุด</div>
+            <div className="text-xl font-black mt-0.5 text-amber-600 dark:text-amber-400">
+              {stats.maintenance} <span className="text-xs font-normal text-slate-400">เครื่อง</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+            <AlertTriangle size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">โซน / ตำแหน่ง</div>
+            <div className="text-xl font-black mt-0.5 text-indigo-600 dark:text-indigo-400">
+              {stats.uniqueLocations} <span className="text-xs font-normal text-slate-400">โซน</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold">
+            <MapPin size={18} />
+          </div>
+        </div>
       </div>
 
+      {/* ── TOOLBAR ───────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t('mc_search')}
+            className="w-full sm:w-80"
+          />
+          <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+          <GoogleSheetSyncButton
+            sheetName="เครื่องจักร"
+            columns={cols}
+            rows={displayRows}
+            valueGetters={{
+              ImageUrl: getMachineImageUrl,
+              ImagePreview: getMachineImageUrl,
+              Remark: (row) => stripImageUrlMeta(row.Remark),
+            }}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={load}
+            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5"
+            title="รีเฟรชข้อมูล"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">{t('refresh')}</span>
+          </button>
+
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+            >
+              <Plus size={15} />
+              <span>{t('mc_add')}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── SUMMARY ACCORDION ─────────────────────────────────── */}
       {summary.length > 0 && (
-        <div className="card" style={{flexShrink: 0}}>
-          <div style={{
-            display:'flex', alignItems:'center', gap:8, flexWrap:'wrap',
-            padding:'6px 12px',
-            borderBottom: showSummary ? '1px solid var(--border-subtle)' : 'none',
-          }}>
-            <span style={{fontSize:12, fontWeight:700, color:'var(--text-900)'}}>
-              สรุปจำนวนเครื่อง
-            </span>
-            <span className="badge badge-blue" style={{fontSize:10, padding:'1px 8px'}}>
-              {data.length} เครื่อง · {summary.length} กลุ่ม
-            </span>
-            <button onClick={() => setShowSummary(s => !s)} style={{
-              marginLeft:'auto', fontSize:11, padding:'2px 10px',
-              border:'1px solid var(--border)', borderRadius:6,
-              background:'transparent', color:'var(--text-500)', cursor:'pointer',
-            }}>
-              {showSummary ? 'ซ่อน' : 'แสดง'}
+        <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center justify-between p-3.5 bg-slate-50/80 dark:bg-slate-900/60">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">สรุปจำนวนเครื่องจักรตามกลุ่ม</span>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                {data.length} เครื่อง · {summary.length} กลุ่ม
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSummary((s) => !s)}
+              className="btn-outline text-[11px] py-1 px-2.5 flex items-center gap-1"
+            >
+              <span>{showSummary ? 'ซ่อน' : 'แสดงกลุ่ม'}</span>
+              {showSummary ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
           </div>
+
           {showSummary && (
-            <div style={{
-              padding:'8px 10px',
-              display:'grid',
-              gridTemplateColumns:'repeat(auto-fill, minmax(170px, 1fr))',
-              gap:5,
-            }}>
-              {summary.map(g => (
-                <span key={`${g.Type}|${g.Diameter}|${g.Gauge}`} style={{
-                  display:'flex', alignItems:'center', justifyContent:'space-between',
-                  gap:6, padding:'2px 4px 2px 9px', borderRadius:999,
-                  fontSize:11,
-                  background:'var(--bg-page)', border:'1px solid var(--border)',
-                }}>
-                  <span style={{display:'inline-flex', alignItems:'center', gap:6, minWidth:0, overflow:'hidden'}}>
-                    <span style={{fontWeight:700, color:'var(--text-900)'}}>
-                      {formatMcType(g.Type)}
+            <div className="p-3.5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+              {summary.map((g) => (
+                <div
+                  key={`${g.Type}|${g.Diameter}|${g.Gauge}`}
+                  className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs"
+                >
+                  <div className="min-w-0 pr-1 truncate">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{formatMcType(g.Type)}</span>
+                    <span className="font-mono text-slate-500 text-[11px] ml-1.5">
+                      {g.Diameter || '—'}" · {g.Gauge || '—'}G
                     </span>
-                    <span style={{color:'var(--text-500)', fontFamily:'monospace'}}>
-                      {g.Diameter || '—'}"·{g.Gauge || '—'}G
-                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md font-mono font-bold text-[11px] bg-blue-500 text-white flex-shrink-0">
+                    {g.count}
                   </span>
-                  <span style={{
-                    fontWeight:800, color:'#4f46e5',
-                    background:'rgba(99,102,241,0.12)', padding:'1px 7px', borderRadius:999,
-                    minWidth:22, textAlign:'center', flexShrink:0,
-                  }}>{g.count}</span>
-                </span>
+                </div>
               ))}
             </div>
           )}
         </div>
       )}
 
-      <div className="table-wrap">
-        <table style={{fontSize:'12px'}}>
-          <thead>
-            <tr>
-              {cols.map(c => <th key={c.key} style={{padding:'10px 12px'}}>{c.label}</th>)}
-              <th style={{padding:'10px 12px'}}>{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={cols.length + 1} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('loading')}</td></tr>
-            )}
-            {!loading && displayRows.map((m, i) => (
-              <tr key={m._id || m.id || i}
-                onClick={() => setDetailRec(m)}
-                style={{cursor:'pointer'}}
-              >
-                {cols.map(c => (
-                  <td key={c.key} style={{padding:'8px 12px', color:'var(--text-700)'}}>
-                    {c.render(m, i)}
-                  </td>
+      {/* ── DATA TABLE ────────────────────────────────────────── */}
+      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="table w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                {cols.map((c) => (
+                  <th key={c.key} className="py-3 px-3 text-left whitespace-nowrap">
+                    {c.label}
+                  </th>
                 ))}
-                <td style={{padding:'8px 12px'}} onClick={e => e.stopPropagation()}>
-                  <div className="flex gap-1.5">
-                    {canEdit && <button className="btn-outline py-1 px-2" style={{fontSize:'11px'}} onClick={() => openEdit(m)}><Pencil size={11}/></button>}
-                    {canDelete && <button className="btn-danger  py-1 px-2" style={{fontSize:'11px'}} onClick={() => del(m._id || m.id)}><Trash2 size={11}/></button>}
-                  </div>
-                </td>
+                <th className="py-3 px-3 text-center w-24">จัดการ</th>
               </tr>
-            ))}
-            {!loading && !displayRows.length && (
-              <tr><td colSpan={cols.length + 1} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('no_data')}</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {loading && (
+                <tr>
+                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                    <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
+                    <span>{t('loading')}</span>
+                  </td>
+                </tr>
+              )}
+              {!loading && displayRows.map((m, i) => (
+                <tr
+                  key={m._id || m.id || i}
+                  onClick={() => setDetailRec(m)}
+                  className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                >
+                  {cols.map((c) => (
+                    <td key={c.key} className="py-2.5 px-3 whitespace-nowrap">
+                      {c.render(m, i)}
+                    </td>
+                  ))}
+                  <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <div className="flex items-center justify-center gap-1">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(m)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                          title="แก้ไขข้อมูลเครื่องจักร"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => del(m._id || m.id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                          title="ลบข้อมูล"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!loading && !displayRows.length && (
+                <tr>
+                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                    <Cpu size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                    <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่มเครื่องจักร" เพื่อเริ่มต้นบันทึก</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
       <DetailDrawer
-        open={!!detailRec} onClose={() => setDetailRec(null)}
-        title={detailRec?.Mc} subtitle={detailRec?.Location}
-        icon={Cpu} accentColor="#6366f1"
+        open={!!detailRec}
+        onClose={() => setDetailRec(null)}
+        title={detailRec?.Mc}
+        subtitle={detailRec?.Location ? `ตำแหน่ง: ${detailRec.Location}` : ''}
+        icon={Cpu}
+        accentColor="#2563eb"
         badge={detailRec && <StatusBadge value={detailRec.Status} />}
-        canEdit={canEdit} canDelete={canDelete}
+        canEdit={canEdit}
+        canDelete={canDelete}
         onEdit={() => openEdit(detailRec)}
-        onDelete={() => { del(detailRec._id || detailRec.id); setDetailRec(null) }}
+        onDelete={() => {
+          del(detailRec._id || detailRec.id)
+          setDetailRec(null)
+        }}
         groups={detailRec ? [
-          { label: t('dr_general_info'), fields: [
-            { label: t('mc_th_mc'),          value: detailRec.Mc },
-            { label: t('mc_th_loc'),         value: detailRec.Location },
-            { label: t('mc_th_type'),        value: detailRec.Type },
-            { label: t('mc_th_mfr'),         value: detailRec.Manufacturer },
-            { label: t('mc_th_model'),       value: detailRec.Model },
-            { label: t('mc_th_watercheck'),  value: detailRec.WaterCheck },
-            { label: 'ลิงก์รูป',              value: getMachineImageUrl(detailRec), full: true },
-          ]},
-          { label: t('dr_specs'), fields: [
-            { label: t('mc_th_dia'),         value: detailRec.Diameter },
-            { label: t('mc_th_gauge'),       value: detailRec.Gauge },
-            { label: t('mc_th_needle'),      value: detailRec.Needle },
-            { label: t('mc_th_oil'),         value: detailRec.Oil },
-            { label: t('mc_th_feeder'),      value: detailRec.Feeder },
-            { label: t('mc_th_model_inv'),   value: detailRec.Model_Inverter },
-            { label: t('mc_th_sinker'),      value: detailRec.Sinker },
-          ]},
-          { label: 'Serial Numbers', fields: [
-            { label: t('mc_th_serial_old'),  value: detailRec.Serial_OLD, mono: true },
-            { label: t('mc_th_serial_new'),  value: detailRec.Serial_NEW, mono: true },
-          ]},
-          { label: 'Tape & Dial & Leg', fields: [
-            { label: t('mc_th_tape1'),       value: detailRec.Tape1_No },
-            { label: t('mc_th_tape2'),       value: detailRec.Tape2_No },
-            { label: t('mc_th_tape3'),       value: detailRec.Tape3_No },
-            { label: t('mc_th_tape4'),       value: detailRec.Tape4_No },
-            { label: t('mc_th_dial_front'),  value: detailRec.Dial_Front },
-            { label: t('mc_th_dial_rear'),   value: detailRec.Dial_Rear },
-            { label: t('mc_th_leg1'),        value: detailRec.Leg1 },
-            { label: t('mc_th_leg2'),        value: detailRec.Leg2 },
-            { label: t('mc_th_leg3'),        value: detailRec.Leg3 },
-            { label: t('mc_th_leg4'),        value: detailRec.Leg4 },
-          ]},
-          { label: t('remark'), single: true, fields: [
-            { label: t('remark'), value: stripImageUrlMeta(detailRec.Remark), full: true },
-          ]},
-          { label: t('dr_updated'), fields: [
-            { label: t('field_updated_at'), value: (detailRec.updated_at || detailRec.LastUpdated)
-                ? format(new Date(detailRec.updated_at || detailRec.LastUpdated), 'dd/MM/yyyy HH:mm')
-                : null },
-          ]},
-        ] : []}
+          {
+            label: t('dr_general_info'),
+            fields: [
+              { label: t('mc_th_mc'), value: detailRec.Mc },
+              { label: t('mc_th_loc'), value: detailRec.Location },
+              { label: t('mc_th_type'), value: detailRec.Type },
+              { label: t('mc_th_mfr'), value: detailRec.Manufacturer },
+              { label: t('mc_th_model'), value: detailRec.Model },
+              { label: t('mc_th_watercheck'), value: detailRec.WaterCheck },
+              { label: 'ลิงก์รูปถ่าย', value: getMachineImageUrl(detailRec), full: true },
+            ].filter((f) => f.value),
+          },
+          {
+            label: t('dr_specs'),
+            fields: [
+              { label: t('mc_th_dia'), value: detailRec.Diameter ? `${detailRec.Diameter}"` : null },
+              { label: t('mc_th_gauge'), value: detailRec.Gauge ? `${detailRec.Gauge}G` : null },
+              { label: t('mc_th_needle'), value: detailRec.Needle },
+              { label: t('mc_th_oil'), value: detailRec.Oil },
+              { label: t('mc_th_feeder'), value: detailRec.Feeder },
+              { label: t('mc_th_model_inv'), value: detailRec.Model_Inverter },
+              { label: t('mc_th_sinker'), value: detailRec.Sinker },
+            ].filter((f) => f.value),
+          },
+          {
+            label: 'Serial Numbers',
+            fields: [
+              { label: t('mc_th_serial_old'), value: detailRec.Serial_OLD, mono: true },
+              { label: t('mc_th_serial_new'), value: detailRec.Serial_NEW, mono: true },
+            ].filter((f) => f.value),
+          },
+          {
+            label: 'Tape, Dial & Leg Parameters',
+            fields: [
+              { label: t('mc_th_tape1'), value: detailRec.Tape1_No },
+              { label: t('mc_th_tape2'), value: detailRec.Tape2_No },
+              { label: t('mc_th_tape3'), value: detailRec.Tape3_No },
+              { label: t('mc_th_tape4'), value: detailRec.Tape4_No },
+              { label: t('mc_th_dial_front'), value: detailRec.Dial_Front },
+              { label: t('mc_th_dial_rear'), value: detailRec.Dial_Rear },
+              { label: t('mc_th_leg1'), value: detailRec.Leg1 },
+              { label: t('mc_th_leg2'), value: detailRec.Leg2 },
+              { label: t('mc_th_leg3'), value: detailRec.Leg3 },
+              { label: t('mc_th_leg4'), value: detailRec.Leg4 },
+            ].filter((f) => f.value),
+          },
+          {
+            label: t('remark'),
+            single: true,
+            fields: [
+              { label: t('remark'), value: stripImageUrlMeta(detailRec.Remark), full: true },
+            ].filter((f) => f.value),
+          },
+          {
+            label: t('dr_updated'),
+            fields: [
+              {
+                label: t('field_updated_at'),
+                value: (detailRec.updated_at || detailRec.LastUpdated)
+                  ? format(new Date(detailRec.updated_at || detailRec.LastUpdated), 'dd/MM/yyyy HH:mm')
+                  : null,
+              },
+            ].filter((f) => f.value),
+          },
+        ].filter((g) => g.fields.length > 0) : []}
       />
 
-      <Modal open={modal} onClose={() => setModal(false)}
-        title={form._id ? t('mc_edit') : t('mc_add')} size="xl"
-        footer={<>
-          <button className="btn-outline" onClick={() => setModal(false)}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? t('saving') : t('save')}</button>
-        </>}
+      {/* ── ADD / EDIT MODAL ──────────────────────────────────── */}
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={form._id || form.id ? '✏️ แก้ไขข้อมูลเครื่องจักร' : '➕ เพิ่มข้อมูลเครื่องจักรใหม่'}
+        size="xl"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button type="button" className="btn-outline px-4" onClick={() => setModal(false)}>
+              {t('cancel')}
+            </button>
+            <button type="button" className="btn-primary px-5" onClick={submit} disabled={saving}>
+              {saving ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>กำลังบันทึก...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={14} />
+                  <span>{t('save')}</span>
+                </>
+              )}
+            </button>
+          </div>
+        }
       >
-        <div className="grid grid-cols-3 gap-4">
-          <F form={form} setForm={setForm} label={`${t('mc_th_mc')} (Mc) *`}      id="Mc" />
-          <F form={form} setForm={setForm} label={`${t('mc_th_loc')} *`}           id="Location" />
-          <F form={form} setForm={setForm} label={t('mc_th_item')}                 id="ITEM" type="number" />
-          <F form={form} setForm={setForm} label={t('status')}                     id="Status" opts={MACHINE_STATUS} />
-          <F form={form} setForm={setForm} label={t('mc_th_type')}                 id="Type" />
-          <F form={form} setForm={setForm} label={t('mc_th_mfr')}                  id="Manufacturer" />
-          <F form={form} setForm={setForm} label={t('mc_th_model')}                id="Model" />
-          <F form={form} setForm={setForm} label={t('mc_th_dia')}                  id="Diameter" />
-          <F form={form} setForm={setForm} label={t('mc_th_gauge')}                id="Gauge" />
-          <F form={form} setForm={setForm} label={t('mc_th_needle')}               id="Needle" />
-          <F form={form} setForm={setForm} label={t('mc_th_oil')}                  id="Oil" />
-          <F form={form} setForm={setForm} label={t('mc_th_feeder')}               id="Feeder" />
-          <F form={form} setForm={setForm} label={t('mc_th_model_inv')}            id="Model_Inverter" />
-          <F form={form} setForm={setForm} label={t('mc_th_sinker')}               id="Sinker" />
-          <F form={form} setForm={setForm} label={t('mc_th_watercheck')}           id="WaterCheck" />
-          <F form={form} setForm={setForm} label={t('mc_th_serial_old')}           id="Serial_OLD" />
-          <F form={form} setForm={setForm} label={t('mc_th_serial_new')}           id="Serial_NEW" />
-          <F form={form} setForm={setForm} label={t('mc_th_tape1')}                id="Tape1_No" />
-          <F form={form} setForm={setForm} label={t('mc_th_tape2')}                id="Tape2_No" />
-          <F form={form} setForm={setForm} label={t('mc_th_tape3')}                id="Tape3_No" />
-          <F form={form} setForm={setForm} label={t('mc_th_tape4')}                id="Tape4_No" />
-          <F form={form} setForm={setForm} label={t('mc_th_dial_front')}           id="Dial_Front" />
-          <F form={form} setForm={setForm} label={t('mc_th_dial_rear')}            id="Dial_Rear" />
-          <F form={form} setForm={setForm} label={t('mc_th_leg1')}                 id="Leg1" />
-          <F form={form} setForm={setForm} label={t('mc_th_leg2')}                 id="Leg2" />
-          <F form={form} setForm={setForm} label={t('mc_th_leg3')}                 id="Leg3" />
-          <F form={form} setForm={setForm} label={t('mc_th_leg4')}                 id="Leg4" />
-          <div className="col-span-3">
-            <F form={form} setForm={setForm} label="ลิงก์รูป (Google Drive)" id="ImageUrl" useBuilder={false} />
-            <div style={{ marginTop: 10 }}>
-              <label className="label">อัปโหลดรูปแท็กเครื่องจักร</label>
-              <input
-                className="input"
-                type="file"
-                accept="image/*"
-                disabled={uploadingImage}
-                onChange={(e) => onPickImageFile(e.target.files?.[0])}
-              />
-              {uploadingImage && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-500)' }}>กำลังอัปโหลดรูป...</div>}
+        <div className="space-y-5 text-xs">
+          {/* Section 1: General Info */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <Cpu size={14} className="text-blue-500" />
+              <span>ข้อมูลหลักและสถานะเครื่องจักร</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <F form={form} setForm={setForm} label={`${t('mc_th_mc')} (Mc) *`} id="Mc" placeholder="เช่น SA369-P" />
+              <F form={form} setForm={setForm} label={`${t('mc_th_loc')} *`} id="Location" placeholder="เช่น GK3" />
+              <F form={form} setForm={setForm} label={t('status')} id="Status" opts={MACHINE_STATUS} />
+              <F form={form} setForm={setForm} label={t('mc_th_item')} id="ITEM" type="number" placeholder="ลำดับ" />
+              <F form={form} setForm={setForm} label={t('mc_th_type')} id="Type" placeholder="เช่น S หรือ D" />
+              <F form={form} setForm={setForm} label={t('mc_th_mfr')} id="Manufacturer" placeholder="เช่น Pailung" />
+              <F form={form} setForm={setForm} label={t('mc_th_model')} id="Model" placeholder="เช่น PL-KS3B/C-W" />
+              <F form={form} setForm={setForm} label={t('mc_th_watercheck')} id="WaterCheck" placeholder="เช่น 11/3/2566" />
+            </div>
+          </div>
+
+          {/* Section 2: Specs */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <Layers size={14} className="text-blue-500" />
+              <span>สเปกและส่วนประกอบเครื่องจักร</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              <F form={form} setForm={setForm} label={t('mc_th_dia')} id="Diameter" placeholder="เช่น 36" />
+              <F form={form} setForm={setForm} label={t('mc_th_gauge')} id="Gauge" placeholder="เช่น 28" />
+              <F form={form} setForm={setForm} label={t('mc_th_needle')} id="Needle" placeholder="เช่น 3168" />
+              <F form={form} setForm={setForm} label={t('mc_th_feeder')} id="Feeder" placeholder="เช่น 110" />
+              <F form={form} setForm={setForm} label={t('mc_th_oil')} id="Oil" placeholder="เช่น 41" />
+              <F form={form} setForm={setForm} label={t('mc_th_sinker')} id="Sinker" placeholder="Sinker" />
+              <F form={form} setForm={setForm} label={t('mc_th_model_inv')} id="Model_Inverter" placeholder="Inverter Model" />
+              <F form={form} setForm={setForm} label={t('mc_th_serial_old')} id="Serial_OLD" placeholder="ซีเรียลเดิม" />
+              <F form={form} setForm={setForm} label={t('mc_th_serial_new')} id="Serial_NEW" placeholder="ซีเรียลใหม่" />
+            </div>
+          </div>
+
+          {/* Section 3: Tape, Dial & Leg */}
+          <div className="space-y-2">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
+              <SlidersHorizontal size={14} className="text-emerald-500" />
+              <span>พารามิเตอร์สายพาน, หน้าปัด และขาเครื่องจักร (Tape, Dial, Legs)</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              <F form={form} setForm={setForm} label={t('mc_th_tape1')} id="Tape1_No" />
+              <F form={form} setForm={setForm} label={t('mc_th_tape2')} id="Tape2_No" />
+              <F form={form} setForm={setForm} label={t('mc_th_tape3')} id="Tape3_No" />
+              <F form={form} setForm={setForm} label={t('mc_th_tape4')} id="Tape4_No" />
+              <F form={form} setForm={setForm} label={t('mc_th_dial_front')} id="Dial_Front" />
+              <F form={form} setForm={setForm} label={t('mc_th_dial_rear')} id="Dial_Rear" />
+              <F form={form} setForm={setForm} label={t('mc_th_leg1')} id="Leg1" />
+              <F form={form} setForm={setForm} label={t('mc_th_leg2')} id="Leg2" />
+              <F form={form} setForm={setForm} label={t('mc_th_leg3')} id="Leg3" />
+              <F form={form} setForm={setForm} label={t('mc_th_leg4')} id="Leg4" />
+            </div>
+          </div>
+
+          {/* Section 4: Photo & Remark */}
+          <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
+              <ImageIcon size={14} className="text-indigo-500" />
+              <span>รูปถ่ายแท็กเครื่องจักร & หมายเหตุ</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label font-bold">อัปโหลดรูปแท็กเข้า Google Drive</label>
+                <div className="flex items-center gap-2">
+                  <label className="btn-primary text-xs py-2 px-3 cursor-pointer flex items-center gap-1.5 flex-1 justify-center">
+                    {uploadingImage ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>กำลังอัปโหลด...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={13} />
+                        <span>เลือกไฟล์รูปถ่าย</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingImage}
+                      onChange={(e) => onPickImageFile(e.target.files?.[0])}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <F form={form} setForm={setForm} label="หรือวางลิงก์รูป (URL)" id="ImageUrl" useBuilder={false} placeholder="https://..." />
+              </div>
+
               {form.ImageUrl && (
-                <div style={{ marginTop: 8, fontSize: 12 }}>
-                  <a href={form.ImageUrl} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', wordBreak: 'break-all' }}>
-                    {form.ImageUrl}
+                <div className="col-span-1 sm:col-span-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ImageIcon size={16} className="text-blue-600 flex-shrink-0" />
+                    <span className="font-mono text-blue-700 dark:text-blue-300 truncate">{form.ImageUrl}</span>
+                  </div>
+                  <a
+                    href={form.ImageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-outline text-[11px] py-1 px-2 flex-shrink-0 flex items-center gap-1"
+                  >
+                    <span>ดูรูป</span>
+                    <ExternalLink size={10} />
                   </a>
                 </div>
               )}
+
+              <div className="col-span-1 sm:col-span-2">
+                <F
+                  form={form}
+                  setForm={setForm}
+                  label={t('mc_th_remark')}
+                  id="Remark"
+                  placeholder="ข้อคิดเห็น หรือประวัติพิเศษของเครื่อง"
+                  onChange={(value) => setForm((p) => ({ ...p, Remark: appendMachineImageMeta(value, p.ImageUrl) }))}
+                />
+              </div>
             </div>
-          </div>
-          <div className="col-span-3">
-            <F
-              form={form}
-              setForm={setForm}
-              label={t('mc_th_remark')}
-              id="Remark"
-              onChange={value => setForm(p => ({ ...p, Remark: appendMachineImageMeta(value, p.ImageUrl) }))}
-            />
           </div>
         </div>
       </Modal>
+
+      {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
+      {previewImageModal && (
+        <Modal
+          open={!!previewImageModal}
+          onClose={() => setPreviewImageModal(null)}
+          title={`🖼️ ${previewImageModal.title}`}
+        >
+          <div className="space-y-4 text-center">
+            <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center max-h-[70vh]">
+              <img
+                src={previewImageModal.url}
+                alt={previewImageModal.title}
+                className="max-h-[65vh] w-auto object-contain mx-auto"
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs pt-2">
+              <a
+                href={previewImageModal.url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-outline text-xs flex items-center gap-1.5"
+              >
+                <ExternalLink size={13} />
+                <span>เปิดในแท็บใหม่ (Full Size)</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewImageModal(null)}
+                className="btn-primary text-xs px-4"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
