@@ -102,60 +102,206 @@ async function runWithMissingColumnRetry(payload, request) {
   return request(nextPayload)
 }
 
+const MISSING_TABLE_RE = /Could not find the table|schema cache|relation.*does not exist/i
+
+function isMissingTableError(error) {
+  const msg = String(error?.message || error || '')
+  return MISSING_TABLE_RE.test(msg)
+}
+
+function getLocalTable(tableName) {
+  try {
+    const raw = localStorage.getItem(`textileops_tbl_${tableName}`)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function setLocalTable(tableName, rows) {
+  try {
+    localStorage.setItem(`textileops_tbl_${tableName}`, JSON.stringify(rows))
+  } catch {}
+}
+
 export function createEntityClient(tableName) {
   return {
     list: async () => {
-      const { data, error } = await supabase.from(tableName).select('*').order('created_at', { ascending: false })
-      if (error) throw new Error(error.message)
-      return data || []
+      try {
+        const { data, error } = await supabase.from(tableName).select('*').order('created_at', { ascending: false })
+        if (error) {
+          if (isMissingTableError(error)) {
+            return getLocalTable(tableName)
+          }
+          throw new Error(error.message)
+        }
+        if (Array.isArray(data) && data.length > 0) {
+          setLocalTable(tableName, data)
+        } else {
+          const local = getLocalTable(tableName)
+          if (local.length > 0) return local
+        }
+        return data || []
+      } catch (err) {
+        if (isMissingTableError(err)) {
+          return getLocalTable(tableName)
+        }
+        throw err
+      }
     },
 
     get: async (id) => {
-      const { data, error } = await supabase.from(tableName).select('*').eq('id', id).single()
-      if (error) throw new Error(error.message)
-      return data
+      try {
+        const { data, error } = await supabase.from(tableName).select('*').eq('id', id).single()
+        if (error) {
+          if (isMissingTableError(error)) {
+            const list = getLocalTable(tableName)
+            return list.find((r) => (r.id || r._id) === id) || null
+          }
+          throw new Error(error.message)
+        }
+        return data
+      } catch (err) {
+        if (isMissingTableError(err)) {
+          const list = getLocalTable(tableName)
+          return list.find((r) => (r.id || r._id) === id) || null
+        }
+        throw err
+      }
     },
 
     create: async (item) => {
       const { id, _id, ...clean } = item
       const payload = sanitizeForSupabase(clean)
-      const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
-        supabase.from(tableName).insert(nextPayload).select().single()
-      )
-      if (error) throw new Error(error.message)
-      return data
+      try {
+        const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
+          supabase.from(tableName).insert(nextPayload).select().single()
+        )
+        if (error) {
+          if (isMissingTableError(error)) {
+            const newItem = {
+              ...payload,
+              id: id || `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }
+            const list = getLocalTable(tableName)
+            setLocalTable(tableName, [newItem, ...list])
+            return newItem
+          }
+          throw new Error(error.message)
+        }
+        return data
+      } catch (err) {
+        if (isMissingTableError(err)) {
+          const newItem = {
+            ...payload,
+            id: id || `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+          const list = getLocalTable(tableName)
+          setLocalTable(tableName, [newItem, ...list])
+          return newItem
+        }
+        throw err
+      }
     },
 
     update: async (id, item) => {
       const { _id, ...clean } = item
       const payload = sanitizeForSupabase({ ...clean, updated_at: new Date().toISOString() })
-      const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
-        supabase
-          .from(tableName)
-          .update(nextPayload)
-          .eq('id', id)
-          .select()
-          .single())
-      if (error) throw new Error(error.message)
-      return data
+      try {
+        const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
+          supabase
+            .from(tableName)
+            .update(nextPayload)
+            .eq('id', id)
+            .select()
+            .single())
+        if (error) {
+          if (isMissingTableError(error)) {
+            const list = getLocalTable(tableName)
+            const updatedList = list.map((r) => ((r.id || r._id) === id ? { ...r, ...payload, id } : r))
+            setLocalTable(tableName, updatedList)
+            return { ...payload, id }
+          }
+          throw new Error(error.message)
+        }
+        return data
+      } catch (err) {
+        if (isMissingTableError(err)) {
+          const list = getLocalTable(tableName)
+          const updatedList = list.map((r) => ((r.id || r._id) === id ? { ...r, ...payload, id } : r))
+          setLocalTable(tableName, updatedList)
+          return { ...payload, id }
+        }
+        throw err
+      }
     },
 
     delete: async (id) => {
-      const { error } = await supabase.from(tableName).delete().eq('id', id)
-      if (error) throw new Error(error.message)
+      try {
+        const { error } = await supabase.from(tableName).delete().eq('id', id)
+        if (error) {
+          if (isMissingTableError(error)) {
+            const list = getLocalTable(tableName)
+            setLocalTable(tableName, list.filter((r) => (r.id || r._id) !== id))
+            return
+          }
+          throw new Error(error.message)
+        }
+        const list = getLocalTable(tableName)
+        setLocalTable(tableName, list.filter((r) => (r.id || r._id) !== id))
+      } catch (err) {
+        if (isMissingTableError(err)) {
+          const list = getLocalTable(tableName)
+          setLocalTable(tableName, list.filter((r) => (r.id || r._id) !== id))
+          return
+        }
+        throw err
+      }
     },
 
     upsertBy: async (conflictCol, item) => {
       const { id, _id, ...clean } = item
       const payload = sanitizeForSupabase({ ...clean, updated_at: new Date().toISOString() })
-      const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
-        supabase
-          .from(tableName)
-          .upsert(nextPayload, { onConflict: conflictCol })
-          .select()
-          .single())
-      if (error) throw new Error(error.message)
-      return data
+      try {
+        const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
+          supabase
+            .from(tableName)
+            .upsert(nextPayload, { onConflict: conflictCol })
+            .select()
+            .single())
+        if (error) {
+          if (isMissingTableError(error)) {
+            const list = getLocalTable(tableName)
+            const existingIdx = list.findIndex((r) => r[conflictCol] === payload[conflictCol])
+            if (existingIdx >= 0) {
+              list[existingIdx] = { ...list[existingIdx], ...payload }
+            } else {
+              list.unshift({ ...payload, id: id || `local_${Date.now()}` })
+            }
+            setLocalTable(tableName, list)
+            return payload
+          }
+          throw new Error(error.message)
+        }
+        return data
+      } catch (err) {
+        if (isMissingTableError(err)) {
+          const list = getLocalTable(tableName)
+          const existingIdx = list.findIndex((r) => r[conflictCol] === payload[conflictCol])
+          if (existingIdx >= 0) {
+            list[existingIdx] = { ...list[existingIdx], ...payload }
+          } else {
+            list.unshift({ ...payload, id: id || `local_${Date.now()}` })
+          }
+          setLocalTable(tableName, list)
+          return payload
+        }
+        throw err
+      }
     },
   }
 }
