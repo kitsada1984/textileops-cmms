@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Pencil, Trash2, RefreshCw, Calendar, ScrollText } from 'lucide-react'
+import { Pencil, Trash2, RefreshCw, Calendar, ScrollText, Layers, Target } from 'lucide-react'
 import { format, addDays, differenceInCalendarDays, startOfDay } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import { AuditLogAPI, CylinderAPI, PMPlanAPI, PM_TYPE, PM_STATUS, WO_PRIORITY } from '../api/entities'
@@ -18,6 +18,7 @@ import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { useAuth } from '../contexts/AuthContext'
 import PMLog from './PMLog'
+import CenterCheck from './CenterCheck'
 
 const PM_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
@@ -915,6 +916,19 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
         <button
           type="button"
+          onClick={() => setActiveTab('center_check')}
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
+            activeTab === 'center_check'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Target size={15} />
+          <span>ประวัติเช็คศูนย์ (Center Checks)</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('log')}
           className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
             activeTab === 'log'
@@ -927,7 +941,9 @@ export default function PMPlan({ defaultTab = 'plan' }) {
         </button>
       </div>
 
-      {activeTab === 'log' ? (
+      {activeTab === 'center_check' ? (
+        <CenterCheck />
+      ) : activeTab === 'log' ? (
         <PMLog />
       ) : (
         <>

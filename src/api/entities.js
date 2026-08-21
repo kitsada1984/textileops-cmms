@@ -1,19 +1,21 @@
 import { createEntityClient } from './supabaseClient'
 
-export const MachineAPI       = createEntityClient('machines')
-export const CylinderAPI      = createEntityClient('cylinders')
-export const WorkOrderAPI     = createEntityClient('workorders')
-export const TechnicianAPI    = createEntityClient('technicians')
-export const KpiSettingsAPI   = createEntityClient('kpi_settings')
-export const PMPlanAPI        = createEntityClient('pmplans')
-export const SparePartAPI     = createEntityClient('spareparts')
-export const AuditLogAPI      = createEntityClient('audit_logs')
-export const PurchaseOrderAPI = createEntityClient('purchaseorders')
-export const StockTxnAPI      = createEntityClient('stocktransactions')
-export const AppConfigAPI     = createEntityClient('appconfigs')
-export const UserAPI          = createEntityClient('users')
-export const RepairRequestAPI = createEntityClient('repair_requests')
-export const DesignBomAPI     = createEntityClient('design_bom')
+export const MachineAPI         = createEntityClient('machines')
+export const CylinderAPI        = createEntityClient('cylinders')
+export const WorkOrderAPI       = createEntityClient('workorders')
+export const TechnicianAPI      = createEntityClient('technicians')
+export const KpiSettingsAPI     = createEntityClient('kpi_settings')
+export const PMPlanAPI          = createEntityClient('pmplans')
+export const CenterCheckAPI     = createEntityClient('center_checks')
+export const ChecklistConfigAPI = createEntityClient('checklist_configs')
+export const SparePartAPI       = createEntityClient('spareparts')
+export const AuditLogAPI        = createEntityClient('audit_logs')
+export const PurchaseOrderAPI   = createEntityClient('purchaseorders')
+export const StockTxnAPI        = createEntityClient('stocktransactions')
+export const AppConfigAPI       = createEntityClient('appconfigs')
+export const UserAPI            = createEntityClient('users')
+export const RepairRequestAPI   = createEntityClient('repair_requests')
+export const DesignBomAPI       = createEntityClient('design_bom')
 
 export const MACHINE_STATUS = [
   { value: 'RUNNING', label: 'เดินเครื่อง' },
@@ -210,4 +212,57 @@ export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESI
     label: isOnTime ? 'อยู่ในเกณฑ์ (In SLA)' : 'เกินกำหนด (Overdue)',
     badgeClass: isOnTime ? 'badge-blue' : 'badge-orange',
   }
+}
+
+// ============================================================
+// Circular Knitting Center Check Constants & Helpers
+// ============================================================
+
+export const DEFAULT_SINGLE_CHECKLIST_ITEMS = [
+  { no: 1, item: 'กลม cylinder', std: '0.03' },
+  { no: 2, item: 'สูงต่ำ cylinder', std: '0.03' },
+  { no: 3, item: 'สูงต่ำ cambox cylinder', std: '0.03' },
+  { no: 4, item: 'กลม cambox cylinder', std: '0.03' },
+  { no: 5, item: 'กลม singer', std: '0.03' },
+  { no: 6, item: 'สูงต่ำ singer', std: '0.03' },
+  { no: 7, item: 'ระยะห่าง singer', std: '0.15><0.20' },
+  { no: 8, item: 'กลม วงแปรง', std: '0.05' },
+  { no: 9, item: 'สูงต่ำ วงแปรง', std: '0.05' },
+  { no: 10, item: 'กลม take down', std: '1.00' },
+]
+
+export const DEFAULT_DOUBLE_CHECKLIST_ITEMS = [
+  { no: 1, item: 'กลม Cylinder', std: '0.03' },
+  { no: 2, item: 'สูง-ต่ำ Cylinder', std: '0.03' },
+  { no: 3, item: 'กลม Cambox Cylinder', std: '0.03' },
+  { no: 4, item: 'สูง-ต่ำ Cambox Cylinder', std: '0.03' },
+  { no: 5, item: 'กลม Dail', std: '0.03' },
+  { no: 6, item: 'สูง-ต่ำ Dail', std: '0.03' },
+  { no: 7, item: 'ระยะห่าง cambox Dail', std: '0.15><0.20' },
+  { no: 8, item: 'สูง-ต่ำ วงแปรง', std: '0.03' },
+  { no: 9, item: 'ระยะห่าง แปรง', std: '0.20' },
+  { no: 10, item: 'กลม Takedown', std: '1.00' },
+]
+
+/**
+ * Generates Doc No for Center Checks: CS-S-YYYYMMDD-001 (Single) / CS-D-YYYYMMDD-001 (Double)
+ */
+export function generateCenterCheckDocNo(type = 'Single', existingRecords = []) {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  const dateStr = `${yyyy}${mm}${dd}`
+  const prefix = type === 'Double' ? `CS-D-${dateStr}-` : `CS-S-${dateStr}-`
+
+  const todayNums = (existingRecords || [])
+    .filter((r) => r.doc_no && r.doc_no.startsWith(prefix))
+    .map((r) => {
+      const parts = r.doc_no.split('-')
+      return parseInt(parts[parts.length - 1], 10) || 0
+    })
+
+  const maxNum = todayNums.length > 0 ? Math.max(...todayNums) : 0
+  const nextSeq = String(maxNum + 1).padStart(3, '0')
+  return `${prefix}${nextSeq}`
 }
