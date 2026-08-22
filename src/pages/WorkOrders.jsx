@@ -45,6 +45,7 @@ import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
+import RepairRequests from './RepairRequests'
 
 const DEFAULT_KPI_TARGETS = {
   REPAIR: 1.0,
@@ -179,7 +180,7 @@ const DEFAULT_TECHS = [
   { Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
 ]
 
-export default function WorkOrders() {
+export default function WorkOrders({ defaultTab = 'records' }) {
   const { t } = useT()
   const { user } = useAuth()
   const toast = useToast()
@@ -194,8 +195,12 @@ export default function WorkOrders() {
     remove: removeJob,
   } = useEntity(WorkOrderAPI)
 
-  // Tabs: 'dashboard' | 'records' | 'technicians' | 'settings'
-  const [currentTab, setCurrentTab] = useState('records')
+  // Tabs: 'records' | 'repair_requests' | 'dashboard' | 'technicians' | 'settings'
+  const [currentTab, setCurrentTab] = useState(defaultTab)
+
+  useEffect(() => {
+    if (defaultTab) setCurrentTab(defaultTab)
+  }, [defaultTab])
 
   // Technicians State
   const [technicians, setTechnicians] = useState(DEFAULT_TECHS)
@@ -677,7 +682,7 @@ export default function WorkOrders() {
         </div>
       </div>
 
-      {/* ── 4-Tabs Navigation Bar ─────────────────────────────── */}
+      {/* ── 5-Tabs Navigation Bar ─────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
         <button
           type="button"
@@ -695,6 +700,19 @@ export default function WorkOrders() {
           }`}>
             {allJobs.filter((j) => !j.IsDeleted).length}
           </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentTab('repair_requests')}
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
+            currentTab === 'repair_requests'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Wrench size={15} />
+          <span>แจ้งซ่อม (Repair Requests)</span>
         </button>
 
         <button
@@ -719,7 +737,7 @@ export default function WorkOrders() {
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <Wrench size={15} />
+          <UserCheck size={15} />
           <span>ทะเบียนช่าง</span>
           <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
             currentTab === 'technicians' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -741,6 +759,13 @@ export default function WorkOrders() {
           <span>ตั้งค่าเป้าหมาย KPI</span>
         </button>
       </div>
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* ── TAB: REPAIR REQUESTS (แจ้งซ่อม) ────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {currentTab === 'repair_requests' && (
+        <RepairRequests />
+      )}
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* ── TAB 1: DASHBOARD & KPI BREAKDOWN ─────────────────────── */}
