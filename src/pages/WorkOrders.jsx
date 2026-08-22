@@ -66,6 +66,112 @@ const UI_SPECIALIZATIONS = [
   { value: 'ตั้งศูนย์เครื่อง', label: 'ตั้งศูนย์เครื่อง', icon: '📐' },
 ]
 
+export function getTechSkillInfo(skillLevel = 'Senior') {
+  const norm = String(skillLevel || '').trim().toLowerCase()
+  if (norm.includes('master')) {
+    return {
+      level: 4,
+      maxLevel: 4,
+      percent: 100,
+      label: 'Master',
+      sublabel: 'หัวหน้าช่าง / ผู้เชี่ยวชาญ',
+      icon: '🥇',
+      gradient: 'from-purple-500 to-indigo-600',
+      activeBg: 'bg-purple-600',
+      textColor: 'text-purple-600 dark:text-purple-400',
+      badgeClass: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20',
+    }
+  }
+  if (norm.includes('senior')) {
+    return {
+      level: 3,
+      maxLevel: 4,
+      percent: 75,
+      label: 'Senior',
+      sublabel: 'ช่างอาวุโส / ปรับแต่งชำนาญ',
+      icon: '🥈',
+      gradient: 'from-blue-500 to-indigo-500',
+      activeBg: 'bg-blue-600',
+      textColor: 'text-blue-600 dark:text-blue-400',
+      badgeClass: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20',
+    }
+  }
+  if (norm.includes('tech') || norm.includes('mid')) {
+    return {
+      level: 2,
+      maxLevel: 4,
+      percent: 50,
+      label: 'Technician',
+      sublabel: 'ช่างชำนาญงานทั่วไป',
+      icon: '🎖️',
+      gradient: 'from-sky-400 to-blue-500',
+      activeBg: 'bg-sky-500',
+      textColor: 'text-sky-600 dark:text-sky-400',
+      badgeClass: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20',
+    }
+  }
+  return {
+    level: 1,
+    maxLevel: 4,
+    percent: 25,
+    label: 'Junior',
+    sublabel: 'ช่างฝึกหัด / ผู้ช่วย',
+    icon: '🔰',
+    gradient: 'from-amber-400 to-amber-500',
+    activeBg: 'bg-amber-500',
+    textColor: 'text-amber-600 dark:text-amber-400',
+    badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
+  }
+}
+
+export function TechSkillBar({ skillLevel }) {
+  const skill = getTechSkillInfo(skillLevel)
+  const steps = [
+    { num: 1, label: 'Junior' },
+    { num: 2, label: 'Tech' },
+    { num: 3, label: 'Senior' },
+    { num: 4, label: 'Master' },
+  ]
+
+  return (
+    <div className="space-y-2 p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800/80">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-bold text-slate-500 flex items-center gap-1">
+          <span>ระดับทักษะ:</span>
+        </span>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${skill.badgeClass}`}>
+          <span>{skill.icon}</span>
+          <span>{skill.label}</span>
+          <span className="opacity-75 text-[10px] font-mono">({skill.level}/4)</span>
+        </span>
+      </div>
+
+      {/* 4-Segmented Progress Bar */}
+      <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+        {steps.map((s) => {
+          const isFilled = skill.level >= s.num
+          return (
+            <div key={s.num} className="space-y-1">
+              <div
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  isFilled
+                    ? `bg-gradient-to-r ${skill.gradient} shadow-sm`
+                    : 'bg-slate-200 dark:bg-slate-800'
+                }`}
+              />
+              <div className={`text-[10px] text-center font-medium leading-none ${
+                isFilled ? `${skill.textColor} font-bold` : 'text-slate-400 opacity-60'
+              }`}>
+                {s.label}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const DEFAULT_TECHS = [
   { Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE' },
   { Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE' },
@@ -1312,21 +1418,26 @@ export default function WorkOrders() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {technicians.map((tech, idx) => {
-              const skillCfg = TECH_SKILL_LEVELS.find((s) => s.value === tech.SkillLevel)
               const isActive = tech.Status !== 'INACTIVE'
+              const specList = tech.Specialization
+                ? String(tech.Specialization).split(',').map((s) => s.trim()).filter(Boolean)
+                : []
 
               return (
-                <div key={idx} className="card p-5 space-y-4">
+                <div
+                  key={idx}
+                  className="card p-5 space-y-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-black font-mono">
                         {tech.Name[0]?.toUpperCase()}
                       </div>
                       <div>
-                        <h3 className="font-extrabold text-sm" style={{ color: 'var(--text-900)' }}>
+                        <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
                           {tech.Name}
                         </h3>
-                        <div className="text-xs font-mono" style={{ color: 'var(--text-500)' }}>
+                        <div className="text-xs font-mono text-slate-500 mt-0.5">
                           {tech.Phone || '—'}
                         </div>
                       </div>
@@ -1337,26 +1448,25 @@ export default function WorkOrders() {
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-xs border-t border-slate-100 dark:border-slate-800 pt-3">
-                    <div className="flex items-center justify-between">
-                      <span style={{ color: 'var(--text-500)' }}>ระดับทักษะ:</span>
-                      <span
-                        className="badge"
-                        style={{
-                          background: `${skillCfg?.color || '#3b82f6'}18`,
-                          color: skillCfg?.color || '#3b82f6',
-                          borderColor: `${skillCfg?.color || '#3b82f6'}30`,
-                        }}
-                      >
-                        {tech.SkillLevel || 'Senior'}
-                      </span>
-                    </div>
+                  {/* Visual Skill Level Bar */}
+                  <TechSkillBar skillLevel={tech.SkillLevel} />
 
-                    <div className="flex items-start justify-between gap-2">
-                      <span style={{ color: 'var(--text-500)' }}>ความถนัด:</span>
-                      <span className="font-medium text-right text-[11px]" style={{ color: 'var(--text-700)' }}>
-                        {tech.Specialization || 'งานซ่อมบำรุงทั่วไป'}
-                      </span>
+                  {/* Specializations Tags */}
+                  <div className="space-y-1.5 text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span className="font-bold text-slate-500 block">ความถนัด:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {specList.length > 0 ? (
+                        specList.map((item, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                          >
+                            <span>{item}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 text-xs italic">งานซ่อมบำรุงทั่วไป</span>
+                      )}
                     </div>
                   </div>
 
@@ -1364,9 +1474,10 @@ export default function WorkOrders() {
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
                       <button
                         onClick={() => openEditTech(tech)}
-                        className="btn-outline px-3 py-1 text-xs"
+                        className="btn-outline px-3 py-1.5 text-xs flex items-center gap-1.5 font-bold"
                       >
-                        <Pencil size={13} /> แก้ไขข้อมูล
+                        <Pencil size={13} />
+                        <span>แก้ไขข้อมูล</span>
                       </button>
                     </div>
                   )}
