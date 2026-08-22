@@ -1,5 +1,22 @@
 import { useEffect, useState } from 'react'
-import { Cpu, Disc, ClipboardList, Package, AlertTriangle, CheckCircle, TrendingUp, Calendar, FileSpreadsheet } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import {
+  Cpu,
+  Disc,
+  ClipboardList,
+  Package,
+  AlertTriangle,
+  CheckCircle,
+  TrendingUp,
+  Calendar,
+  FileSpreadsheet,
+  Wrench,
+  ArrowRight,
+  ArrowUpRight,
+  CheckCircle2,
+  Clock,
+} from 'lucide-react'
+import { format } from 'date-fns'
 import {
   MachineAPI,
   CylinderAPI,
@@ -15,6 +32,7 @@ import { useT } from '../contexts/LanguageContext'
 import { useToast } from '../components/ui/Toast'
 import { syncRowsToGoogleSheet } from '../utils/googleSheetsSync'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
+import { getAppBaseUrl } from '../utils/telegram'
 
 const ICON_BG = {
   slate:   'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -57,45 +75,95 @@ const SHEET_APIS = {
 function StatCard({ icon: Icon, label, value, sub, color = 'slate' }) {
   return (
     <div className="stat-card">
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{background: ICON_BG[color], boxShadow:'0 4px 12px rgba(0,0,0,0.2)'}}>
-        <Icon size={19} className="text-white"/>
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: ICON_BG[color], boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+      >
+        <Icon size={19} className="text-white" />
       </div>
       <div>
-        <div className="text-2xl font-bold leading-none" style={{color:'var(--text-900)'}}>{value ?? '—'}</div>
-        <div className="text-sm font-medium mt-1" style={{color:'var(--text-600)'}}>{label}</div>
-        {sub && <div className="text-xs mt-0.5" style={{color:'var(--text-400)'}}>{sub}</div>}
+        <div className="text-2xl font-bold leading-none" style={{ color: 'var(--text-900)' }}>
+          {value ?? '—'}
+        </div>
+        <div className="text-sm font-medium mt-1" style={{ color: 'var(--text-600)' }}>
+          {label}
+        </div>
+        {sub && <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>{sub}</div>}
       </div>
     </div>
   )
 }
 
+function RepairStatusBadge({ status }) {
+  const cfg = {
+    PENDING: { label: 'รอการอนุมัติ', bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+    IN_PROGRESS: { label: 'กำลังซ่อม', bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+    WAIT_PARTS: { label: 'รออะไหล่', bg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
+    COMPLETED: { label: 'ซ่อมเสร็จ', bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+  }[status] || { label: status || '—', bg: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20' }
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap ${cfg.bg}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+      <span>{cfg.label}</span>
+    </span>
+  )
+}
+
+function formatDateTime(val) {
+  if (!val) return '—'
+  try {
+    return format(new Date(val), 'dd/MM/yy HH:mm')
+  } catch {
+    return String(val)
+  }
+}
+
 export default function Dashboard() {
   const { t } = useT()
   const toast = useToast()
-  const [stats, setStats]     = useState({})
+  const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [syncingAll, setSyncingAll] = useState(false)
 
   useEffect(() => {
     Promise.allSettled([
-      MachineAPI.list(), WorkOrderAPI.list(), PMPlanAPI.list(), SparePartAPI.list(),
-    ]).then(([m, w, p, s]) => {
-      const machines   = m.status === 'fulfilled' ? (m.value?.data || m.value || []) : []
-      const workorders = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
-      const pm         = p.status === 'fulfilled' ? (p.value?.data || p.value || []) : []
-      const parts      = s.status === 'fulfilled' ? (s.value?.data || s.value || []) : []
+      MachineAPI.list(),
+      WorkOrderAPI.list(),
+      PMPlanAPI.list(),
+      SparePartAPI.list(),
+      RepairRequestAPI.list(),
+    ]).then(([m, w, p, s, r]) => {
+      const machines       = m.status === 'fulfilled' ? (m.value?.data || m.value || []) : []
+      const workorders     = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
+      const pm             = p.status === 'fulfilled' ? (p.value?.data || p.value || []) : []
+      const parts          = s.status === 'fulfilled' ? (s.value?.data || s.value || []) : []
+      const repairRequests = r.status === 'fulfilled' ? (r.value?.data || r.value || []) : []
+
+      const pendingRepairs = repairRequests
+        .filter((x) => x.status !== 'COMPLETED' && x.status !== 'REJECTED')
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+
+      const pendingApprove = repairRequests.filter((x) => x.status === 'PENDING').length
+      const inProgressRepairs = repairRequests.filter((x) => x.status === 'IN_PROGRESS').length
+      const waitPartsRepairs = repairRequests.filter((x) => x.status === 'WAIT_PARTS').length
+
       setStats({
         totalMachines: machines.length,
-        breakdown:     machines.filter(x => x.Status === 'BREAKDOWN').length,
-        running:       machines.filter(x => x.Status === 'RUNNING').length,
-        openWO:        workorders.filter(x => ['OPEN','IN_PROGRESS'].includes(x.Status)).length,
-        overdueWO:     workorders.filter(x => x.Status === 'OVERDUE').length,
-        pmScheduled:   pm.filter(x => x.Status === 'SCHEDULED').length,
-        pmOverdue:     pm.filter(x => x.Status === 'OVERDUE').length,
-        lowStock:      parts.filter(x => x.Status === 'LOW_STOCK').length,
-        outOfStock:    parts.filter(x => x.Status === 'OUT_OF_STOCK').length,
-        recentWO:      workorders.slice(-5).reverse(),
+        breakdown: machines.filter((x) => x.Status === 'BREAKDOWN').length,
+        running: machines.filter((x) => x.Status === 'RUNNING').length,
+        openWO: workorders.filter((x) => ['OPEN', 'IN_PROGRESS'].includes(x.Status)).length,
+        overdueWO: workorders.filter((x) => x.Status === 'OVERDUE').length,
+        pmScheduled: pm.filter((x) => x.Status === 'SCHEDULED').length,
+        pmOverdue: pm.filter((x) => x.Status === 'OVERDUE').length,
+        lowStock: parts.filter((x) => x.Status === 'LOW_STOCK').length,
+        outOfStock: parts.filter((x) => x.Status === 'OUT_OF_STOCK').length,
+        pendingRepairsCount: pendingRepairs.length,
+        pendingApprove,
+        inProgressRepairs,
+        waitPartsRepairs,
+        pendingRepairsList: pendingRepairs,
+        recentWO: workorders.slice(-5).reverse(),
       })
       setLoading(false)
     })
@@ -144,11 +212,13 @@ export default function Dashboard() {
     }
   }
 
+  const baseUrl = getAppBaseUrl()
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="flex flex-col items-center gap-3">
         <div className="spinner-gemini" style={{ width: 32, height: 32, borderWidth: 3 }} />
-        <span className="text-sm font-medium" style={{color:'var(--text-400)'}}>{t('loading')}</span>
+        <span className="text-sm font-medium" style={{ color: 'var(--text-400)' }}>{t('loading')}</span>
       </div>
     </div>
   )
@@ -167,50 +237,160 @@ export default function Dashboard() {
         </button>
       </div>
 
+      {/* ── 8-STAT CARDS SUMMARY ───────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Cpu}           label={t('dash_total_mc')}   value={stats.totalMachines} sub={`${stats.running} ${t('dash_running_sub')}`}    color="slate"   />
         <StatCard icon={AlertTriangle} label={t('dash_breakdown')}  value={stats.breakdown}     sub={statusLabel('BREAKDOWN')}                         color="red"     />
+        <StatCard icon={Wrench}        label="งานแจ้งซ่อมค้าง"      value={stats.pendingRepairsCount ?? 0} sub={`${stats.pendingApprove || 0} รออนุมัติ · ${stats.inProgressRepairs || 0} กำลังซ่อม`} color="amber" />
         <StatCard icon={ClipboardList} label={t('dash_open_wo')}    value={stats.openWO}        sub={`${stats.overdueWO} ${t('dash_overdue_sub')}`}   color="blue"    />
-        <StatCard icon={Calendar}      label={t('dash_pm_sched')}   value={stats.pmScheduled}   sub={`${stats.pmOverdue} ${t('dash_overdue_sub')}`}   color="amber"   />
+        <StatCard icon={Calendar}      label={t('dash_pm_sched')}   value={stats.pmScheduled}   sub={`${stats.pmOverdue} ${t('dash_overdue_sub')}`}   color="orange"  />
         <StatCard icon={Package}       label={t('dash_low_stock')}  value={stats.lowStock}      sub={`${stats.outOfStock} ${t('dash_out_sub')}`}      color="orange"  />
-        <StatCard icon={CheckCircle}   label={t('dash_running')}    value={stats.running}       sub={statusLabel('RUNNING')}                           color="emerald" />
         <StatCard icon={Disc}          label={t('dash_pm_overdue')} value={stats.pmOverdue}     sub={statusLabel('OVERDUE')}                           color="rose"    />
         <StatCard icon={TrendingUp}    label={t('dash_recent_wo')}  value={stats.recentWO?.length || 0} sub={t('dash_latest_sub')}                    color="violet"  />
       </div>
 
-      <div className="card">
-        <div className="card-header">
+      {/* ── PENDING REPAIR REQUESTS SECTION ──────────────────────── */}
+      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="card-header flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/50 p-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/25">
+              <Wrench size={16} />
+            </div>
+            <div>
+              <h2 className="font-extrabold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <span>งานแจ้งซ่อมที่ค้างในระบบ (Pending Repair Requests)</span>
+                <span className="badge badge-yellow font-bold text-xs px-2 py-0.5">
+                  {stats.pendingRepairsList?.length || 0} รายการ
+                </span>
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                รายการแจ้งซ่อมที่รออนุมัติ กำลังดำเนินการ หรือรออะไหล่
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/repair-requests"
+            className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1.5 font-bold hover:text-blue-600 transition-colors"
+          >
+            <span>จัดการงานแจ้งซ่อมทั้งหมด</span>
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="table w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                <th className="py-3 px-3 text-left whitespace-nowrap">เลขที่แจ้งซ่อม</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">เครื่องจักร</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">ซีเรียล</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">ตำแหน่ง</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">อาการเสีย / ปัญหา</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">ผู้แจ้ง</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">ช่างผู้รับผิดชอบ</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">วันที่แจ้ง</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">สถานะ</th>
+                <th className="py-3 px-3 text-center whitespace-nowrap">ดูงาน</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {(stats.pendingRepairsList || []).map((req, i) => (
+                <tr
+                  key={req.id || req._id || i}
+                  className="hover:bg-blue-50/30 dark:hover:bg-slate-800/40 transition-colors"
+                >
+                  <td className="py-2.5 px-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                    {req.request_no || (req.id ? `REQ-${req.id.slice(0, 8)}` : '—')}
+                  </td>
+                  <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                    {req.machine_mc || '—'}
+                  </td>
+                  <td className="py-2.5 px-3 font-mono font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                    {req.cylinder_serial || '—'}
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                    {req.cylinder_location ? (
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold text-[11px]">
+                        {req.cylinder_location}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="py-2.5 px-3 max-w-xs truncate text-slate-700 dark:text-slate-300 font-medium" title={req.problem_description}>
+                    {req.problem_description || '—'}
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    {req.reported_by || '—'}
+                  </td>
+                  <td className="py-2.5 px-3 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    {req.technician_name || <span className="text-slate-400 font-normal italic">ยังไม่มอบหมาย</span>}
+                  </td>
+                  <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                    {formatDateTime(req.created_at)}
+                  </td>
+                  <td className="py-2.5 px-3 whitespace-nowrap">
+                    <RepairStatusBadge status={req.status} />
+                  </td>
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <a
+                      href={`${baseUrl}/repair/${encodeURIComponent(req.cylinder_serial || '')}?req=${encodeURIComponent(req.id || req._id || '')}&step=view`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-700 transition-all"
+                      title="เปิดดูหน้าแจ้งซ่อม"
+                    >
+                      <ArrowUpRight size={13} />
+                    </a>
+                  </td>
+                </tr>
+              ))}
+              {!stats.pendingRepairsList?.length && (
+                <tr>
+                  <td colSpan={10} className="text-center py-10 text-slate-400">
+                    <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-500 opacity-80" />
+                    <p className="font-semibold text-slate-600 dark:text-slate-400">ไม่มีงานแจ้งซ่อมค้างในระบบ</p>
+                    <p className="text-[11px] mt-0.5 text-slate-400">ทุกรายการได้รับการซ่อมเสร็จสิ้นเรียบร้อยแล้ว</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── RECENT WORK ORDERS SECTION ───────────────────────────── */}
+      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="card-header flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/50 p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <ClipboardList size={16} style={{color:'var(--text-500)'}}/>
-            <h2 className="font-semibold" style={{color:'var(--text-900)'}}>{t('dash_wo_table')}</h2>
+            <ClipboardList size={16} className="text-blue-600 dark:text-blue-400" />
+            <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">{t('dash_wo_table')}</h2>
           </div>
           <span className="badge badge-gray">{stats.recentWO?.length || 0}</span>
         </div>
         <div className="overflow-x-auto">
-          <table>
+          <table className="table w-full text-xs">
             <thead>
-              <tr>
-                <th>{t('wo_th_id')}</th>
-                <th>{t('wo_th_machine')}</th>
-                <th>{t('wo_th_problem')}</th>
-                <th>{t('priority')}</th>
-                <th>{t('status')}</th>
+              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_id')}</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_machine')}</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_problem')}</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">{t('priority')}</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">{t('status')}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {(stats.recentWO || []).map((wo, i) => (
-                <tr key={i}>
-                  <td className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+                <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                  <td className="py-2.5 px-3 font-mono text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                     {wo.Job_ID || wo['Job ID'] || wo.WO_ID || (wo.id ? `JOB-${wo.id.slice(0, 8)}` : '—')}
                   </td>
-                  <td className="font-semibold" style={{color:'var(--text-900)'}}>{wo.MC}</td>
-                  <td className="max-w-xs truncate" style={{color:'var(--text-600)'}}>{wo.Comment || wo.Problem || wo.Design || '—'}</td>
-                  <td>
+                  <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">{wo.MC}</td>
+                  <td className="py-2.5 px-3 max-w-xs truncate text-slate-600 dark:text-slate-300">{wo.Comment || wo.Problem || wo.Design || '—'}</td>
+                  <td className="py-2.5 px-3 whitespace-nowrap">
                     <span className={`badge ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':'badge-blue'}`}>
                       {wo.JobType==='DESIGN'?'🎨 ปรับแบบ':wo.JobType==='PM'?'🧹 PM':wo.JobType==='REPAIR'?'🛠️ แก้ไข':(statusLabel(wo.Priority) || '🛠️ แก้ไข')}
                     </span>
                   </td>
-                  <td>
+                  <td className="py-2.5 px-3 whitespace-nowrap">
                     <span className={`badge ${wo.Status==='COMPLETED'?'badge-green':wo.Status==='IN_PROGRESS'?'badge-orange':wo.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
                       {wo.Status==='COMPLETED'?'เสร็จสิ้น':wo.Status==='IN_PROGRESS'?'กำลังทำ':(statusLabel(wo.Status) || wo.Status)}
                     </span>
@@ -218,7 +398,11 @@ export default function Dashboard() {
                 </tr>
               ))}
               {!stats.recentWO?.length && (
-                <tr><td colSpan={5} className="text-center py-10" style={{color:'var(--text-400)'}}>{t('no_data')}</td></tr>
+                <tr>
+                  <td colSpan={5} className="text-center py-10 text-slate-400">
+                    {t('no_data')}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
