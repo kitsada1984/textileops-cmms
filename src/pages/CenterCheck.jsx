@@ -16,6 +16,7 @@ import {
   Layers,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   UserCheck,
   Check,
   X,
@@ -42,7 +43,7 @@ import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 
 const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 
-export default function CenterCheck() {
+export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan }) {
   const { t } = useT()
   const toast = useToast()
   const { canAdd, canEdit, canDelete } = usePagePerms('pm')
@@ -145,6 +146,70 @@ export default function CenterCheck() {
     const passRate = total > 0 ? Math.round((passedCount / total) * 100) : 100
     return { total, singleCount, doubleCount, passedCount, passRate }
   }, [records])
+
+  // Initialize from initialPreset (e.g. triggered from PM Plan table)
+  useEffect(() => {
+    if (initialPreset && initialPreset.type) {
+      const type = initialPreset.type === 'Double' ? 'Double' : 'Single'
+      setEditingId(null)
+      setFormType(type)
+      const defaults =
+        type === 'Double' ? DEFAULT_DOUBLE_CHECKLIST_ITEMS : DEFAULT_SINGLE_CHECKLIST_ITEMS
+      const defaultItems = defaults.map((d) => ({
+        no: d.no,
+        item: d.item,
+        std: d.std,
+        val_before: '',
+        val_after: '',
+        result: 'ผ่าน',
+        remark: '',
+      }))
+
+      const newDocNo = generateCenterCheckDocNo(type, records)
+      const todayStr = format(new Date(), 'yyyy-MM-dd')
+      const daysSince = initialPreset.prev_doc_date
+        ? Math.max(0, differenceInCalendarDays(new Date(todayStr), new Date(initialPreset.prev_doc_date)))
+        : 0
+
+      // Look up previous counter if available
+      const cleanMc = String(initialPreset.mc || '').trim().toUpperCase()
+      let prevVal = 0
+      if (cleanMc) {
+        const pastChecks = records
+          .filter((r) => r.mc && r.mc.toUpperCase() === cleanMc)
+          .sort((a, b) => new Date(b.doc_date || 0) - new Date(a.doc_date || 0))
+        if (pastChecks.length > 0) {
+          prevVal = Number(pastChecks[0].counter_latest || 0)
+        }
+      }
+
+      setFormData({
+        doc_no: newDocNo,
+        doc_date: todayStr,
+        mechanic: initialPreset.mechanic || '',
+        mc: initialPreset.mc || '',
+        serial: initialPreset.serial || '',
+        needle_cond: 'ปกติ',
+        needle_arr: 'ตามแบบมาตรฐาน',
+        needle_images: [],
+        comment: '',
+        counter_latest: '',
+        counter_prev: prevVal > 0 ? String(prevVal) : '',
+        counter_total: 0,
+        prev_doc_date: initialPreset.prev_doc_date || '',
+        days_since_last: daysSince,
+        items: defaultItems,
+        remark: initialPreset.remark || '',
+        sign_name: initialPreset.mechanic || '',
+        sign_date: todayStr,
+        sup_name: '',
+        sup_date: todayStr,
+        status: 'ผ่าน',
+      })
+      setActiveSubTab(type === 'Double' ? 'double_form' : 'single_form')
+      if (onClearPreset) onClearPreset()
+    }
+  }, [initialPreset, records])
 
   // Initialize new form
   const initNewForm = (type = 'Single') => {
@@ -427,6 +492,18 @@ export default function CenterCheck() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          {onBackToPMPlan && (
+            <button
+              type="button"
+              onClick={onBackToPMPlan}
+              className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300"
+              title="กลับไปยังหน้าแผน PM"
+            >
+              <ArrowLeft size={14} />
+              <span>กลับไปแผน PM</span>
+            </button>
+          )}
+
           {canAdd && (
             <>
               <button

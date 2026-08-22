@@ -1,5 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Pencil, Trash2, RefreshCw, Calendar, ScrollText, Layers, Target } from 'lucide-react'
+import {
+  Pencil,
+  Trash2,
+  RefreshCw,
+  Calendar,
+  ScrollText,
+  Layers,
+  Target,
+  Image as ImageIcon,
+  ExternalLink,
+  Upload,
+  Check,
+  X,
+  Sparkles,
+  ChevronRight,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react'
 import { format, addDays, differenceInCalendarDays, startOfDay } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import { AuditLogAPI, CylinderAPI, PMPlanAPI, PM_TYPE, PM_STATUS, WO_PRIORITY } from '../api/entities'
@@ -25,10 +43,17 @@ const IMAGE_NOTE_PREFIX = 'ImageUrl:'
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'pmplans'|column pmplans\.([^ ]+) does not exist/i
 
 const PM_FIELD_KEYS = {
-  Location:'cyl_th_loc',
-  Department:'pm_th_dept', Next_PM_Date:'pm_th_next', Last_PM_Date:'field_last_pm',
-  Assigned_Tech:'pm_th_tech', Priority:'priority', Status:'status', Remark:'remark',
-  Countdown_Days:'นับถอยหลัง', ImageUrl:'URL', ImagePreview:'รูป',
+  Location: 'cyl_th_loc',
+  Department: 'pm_th_dept',
+  Next_PM_Date: 'pm_th_next',
+  Last_PM_Date: 'field_last_pm',
+  Assigned_Tech: 'pm_th_tech',
+  Priority: 'priority',
+  Status: 'status',
+  Remark: 'remark',
+  Countdown_Days: 'นับถอยหลัง',
+  ImageUrl: 'URL',
+  ImagePreview: 'รูป',
 }
 
 const normalizeMachineCode = (value = '') => String(value || '')
@@ -39,7 +64,7 @@ const normalizeMachineCode = (value = '') => String(value || '')
 
 const normalizeSerial = (value = '') => String(value || '').toUpperCase().replace(/\s+/g, '').trim()
 
-const uniqueSorted = (values = []) => [...new Set(values.map(v => String(v || '').trim()).filter(Boolean))]
+const uniqueSorted = (values = []) => [...new Set(values.map((v) => String(v || '').trim()).filter(Boolean))]
   .sort((a, b) => a.localeCompare(b, 'th', { numeric: true, sensitivity: 'base' }))
 
 const matchesText = (value = '', query = '') => {
@@ -53,7 +78,7 @@ const isInUseCylinder = (cyl = {}) =>
 
 function pickCylinderForPM(matches = []) {
   const inUse = matches.filter(isInUseCylinder)
-  const withLocation = inUse.filter(c => String(c.Location || '').trim())
+  const withLocation = inUse.filter((c) => String(c.Location || '').trim())
   return withLocation[0] || inUse[0] || null
 }
 
@@ -67,7 +92,7 @@ function pickPMKeeper(matches = []) {
 
 function buildPMBySerial(rows = []) {
   const grouped = new Map()
-  rows.forEach(row => {
+  rows.forEach((row) => {
     const key = normalizeSerial(row.Machine_KI)
     if (!key) return
     grouped.set(key, [...(grouped.get(key) || []), row])
@@ -76,14 +101,14 @@ function buildPMBySerial(rows = []) {
     const keeper = pickPMKeeper(matches)
     return [key, {
       keeper,
-      duplicates: matches.filter(row => row !== keeper),
+      duplicates: matches.filter((row) => row !== keeper),
     }]
   }))
 }
 
 function getPMLogSnapshot(row = {}) {
   const snapshot = { ...row, Remark: stripImageUrlMeta(row.Remark) }
-  Object.keys(snapshot).forEach(key => {
+  Object.keys(snapshot).forEach((key) => {
     if (key.startsWith('__')) delete snapshot[key]
   })
   return snapshot
@@ -119,7 +144,9 @@ function appendPMImageMeta(remark = '', imageUrl = '') {
 
 function omitKeys(item, keys = []) {
   const clone = { ...item }
-  keys.forEach((key) => { delete clone[key] })
+  keys.forEach((key) => {
+    delete clone[key]
+  })
   return clone
 }
 
@@ -130,22 +157,24 @@ function getMissingPMColumn(error) {
 }
 
 const getPMFallbackCols = (t) => [
-  { field:'Location',      label:'ตำแหน่ง',           type:'text'   },
-  { field:'Machine_MC',    label:'เครื่องปัจจุบัน',  type:'text'   },
-  { field:'Machine_KI',    label:'ซีเรียลเดิม',       type:'text'   },
-  { field:'PM_Type',       label:'รอบ PM (วัน)',    type:'select' },
-  { field:'Last_PM_Date',   label:t('field_last_pm'), type:'date'   },
-  { field:'Next_PM_Date',  label:t('pm_th_next'),    type:'date'   },
-  { field:'Countdown_Days', label:'นับถอยหลัง',       type:'number', width:'130px' },
-  { field:'Assigned_Tech', label:t('pm_th_tech'),    type:'text'   },
-  { field:'ImageUrl',      label:'URL',              type:'text',   width:'220px' },
-  { field:'ImagePreview',  label:'รูป',              type:'text',   width:'110px' },
-  { field:'Remark',        label:t('remark'),         type:'text'   },
+  { field: 'Location', label: 'ตำแหน่ง', type: 'text', width: '100px' },
+  { field: 'Machine_MC', label: 'เครื่องปัจจุบัน', type: 'text', width: '140px' },
+  { field: 'Machine_KI', label: 'ซีเรียลเดิม', type: 'text', width: '120px' },
+  { field: 'Type', label: 'ประเภท', type: 'text', width: '130px' },
+  { field: 'PM_Type', label: 'รอบ PM (วัน)', type: 'select', width: '120px' },
+  { field: 'Last_PM_Date', label: t('field_last_pm'), type: 'date', width: '120px' },
+  { field: 'Next_PM_Date', label: t('pm_th_next'), type: 'date', width: '120px' },
+  { field: 'Countdown_Days', label: 'นับถอยหลัง', type: 'number', width: '130px' },
+  { field: 'Assigned_Tech', label: t('pm_th_tech'), type: 'text', width: '130px' },
+  { field: 'Center_Check', label: 'เช็คศูนย์', type: 'action', width: '200px' },
+  { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
+  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
+  { field: 'Remark', label: t('remark'), type: 'text', width: '220px' },
 ]
 
 function orderPMColumns(cols = []) {
   const withoutLocation = cols.filter((col) => col.field !== 'Location')
-  const locationCol = cols.find((col) => col.field === 'Location') || { field:'Location', label:'ตำแหน่ง', type:'text', width:'120px' }
+  const locationCol = cols.find((col) => col.field === 'Location') || { field: 'Location', label: 'ตำแหน่ง', type: 'text', width: '120px' }
   const machineIndex = withoutLocation.findIndex((col) => col.field === 'Machine_MC')
   if (machineIndex === -1) return [locationCol, ...withoutLocation]
   return [
@@ -155,52 +184,34 @@ function orderPMColumns(cols = []) {
   ]
 }
 
-function renderPMCell(row, col) {
-  const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
-    ? getPMImageUrl(row)
-    : col.field === 'Countdown_Days'
-      ? getPMCountdown(row.Next_PM_Date).days
-    : col.field === 'Remark'
-      ? stripImageUrlMeta(row.Remark)
-      : row[col.field]
-  if (val === null || val === undefined || val === '')
-    return <span style={{ color:'var(--text-400)' }}>—</span>
-  if (col.field === 'ImageUrl') {
-    return <a href={String(val)} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12, display:'block', maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{String(val)}</a>
-  }
-  if (col.field === 'ImagePreview') {
-    return <a href={String(val)} target="_blank" rel="noreferrer" style={{ color:'#2563eb', textDecoration:'underline', fontSize:12 }}>เปิดรูป</a>
-  }
-  if (col.type === 'select') {
-    const optColor = col.options?.find(o => o.value === val || o.label === val)?.color
-    if (optColor) return <StatusBadge value={val} color={optColor} />
-  }
-  if (col.field === 'Status')   return <StatusBadge value={val} />
-  if (col.field === 'Priority') return <StatusBadge value={val} />
-  if (col.field === 'PM_Type')  return <span className="badge badge-blue">{formatPMCycle(row)}</span>
-  if (col.field === 'Countdown_Days') return <PMCountdownBadge date={row.Next_PM_Date} />
-  if (col.type === 'date' || col.field.includes('Date')) {
-    try {
-      return <span className={`text-sm ${row.Status === 'OVERDUE' && col.field === 'Next_PM_Date' ? 'text-red-500 font-semibold' : ''}`}>
-        {format(new Date(val), 'dd/MM/yyyy')}
-      </span>
-    } catch { return <span>{val}</span> }
-  }
-  if (col.type === 'number') return <span>{val}</span>
-  return <span>{String(val)}</span>
-}
-
 const EMPTY = {
-  PM_ID:'', PM_Type:'30', Machine_MC:'', Location:'', Machine_KI:'', Department:'',
-  Frequency_Type:'CALENDAR', Frequency_Value:30, Last_PM_Date:'', Next_PM_Date:'',
-  Estimated_Hours:1, Assigned_Tech:'', Priority:'MEDIUM', Status:'SCHEDULED',
-  Required_Parts:'', Downtime_Plan:0, Remark:'', CreatedBy:'', ImageUrl:''
+  PM_ID: '',
+  PM_Type: '30',
+  Machine_MC: '',
+  Location: '',
+  Machine_KI: '',
+  Department: '',
+  Frequency_Type: 'CALENDAR',
+  Frequency_Value: 30,
+  Last_PM_Date: '',
+  Next_PM_Date: '',
+  Estimated_Hours: 1,
+  Assigned_Tech: '',
+  Priority: 'MEDIUM',
+  Status: 'SCHEDULED',
+  Required_Parts: '',
+  Downtime_Plan: 0,
+  Remark: '',
+  CreatedBy: '',
+  ImageUrl: '',
 }
 
 const pmColumnLabel = (col, t) => {
   if (col.field === 'Machine_MC') return 'เครื่องปัจจุบัน'
   if (col.field === 'Location') return 'ตำแหน่ง'
   if (col.field === 'Machine_KI') return 'ซีเรียลเดิม'
+  if (col.field === 'Type') return 'ประเภท'
+  if (col.field === 'Center_Check') return 'เช็คศูนย์'
   if (col.field === 'PM_Type') return 'รอบ PM (วัน)'
   if (col.field === 'Frequency_Value') return 'จำนวนวัน'
   if (col.field === 'Last_PM_Date') return t('field_last_pm')
@@ -221,19 +232,21 @@ function getPMCountdown(date) {
 function PMCountdownBadge({ date }) {
   const countdown = getPMCountdown(date)
   const styles = {
-    green: { color:'#059669', background:'rgba(16,185,129,.12)', border:'rgba(16,185,129,.28)' },
-    yellow: { color:'#d97706', background:'rgba(245,158,11,.14)', border:'rgba(245,158,11,.32)' },
-    red: { color:'#dc2626', background:'rgba(239,68,68,.12)', border:'rgba(239,68,68,.3)' },
-    gray: { color:'var(--text-500)', background:'var(--bg-page)', border:'var(--border)' },
+    green: { color: '#059669', background: 'rgba(16,185,129,.12)', border: 'rgba(16,185,129,.28)' },
+    yellow: { color: '#d97706', background: 'rgba(245,158,11,.14)', border: 'rgba(245,158,11,.32)' },
+    red: { color: '#dc2626', background: 'rgba(239,68,68,.12)', border: 'rgba(239,68,68,.3)' },
+    gray: { color: 'var(--text-500)', background: 'var(--bg-page)', border: 'var(--border)' },
   }
   const s = styles[countdown.color] || styles.gray
   return (
-    <span style={{
-      display:'inline-flex', alignItems:'center',
-      padding:'2px 9px', borderRadius:20, fontSize:11, fontWeight:800,
-      color:s.color, background:s.background, border:`1px solid ${s.border}`,
-      whiteSpace:'nowrap',
-    }}>
+    <span
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap"
+      style={{
+        color: s.color,
+        background: s.background,
+        border: `1px solid ${s.border}`,
+      }}
+    >
       {countdown.label}
     </span>
   )
@@ -264,18 +277,19 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   const { canAdd, canEdit, canDelete } = usePagePerms('pm')
   const { user } = useAuth()
   const toast = useToast()
-  const [activeTab,  setActiveTab]  = useState(defaultTab)
+  const [activeTab, setActiveTab] = useState(defaultTab)
+  const [centerCheckPreset, setCenterCheckPreset] = useState(null)
 
   useEffect(() => {
     if (defaultTab) setActiveTab(defaultTab)
   }, [defaultTab])
 
   const { data, loading, load, save, remove } = useEntity(PMPlanAPI)
-  const [search,     setSearch]    = useState('')
+  const [search, setSearch] = useState('')
   const [filterSort, setFilterSort] = useState(INIT_FS)
-  const [modal,      setModal]     = useState(false)
-  const [syncModal,  setSyncModal] = useState(false)
-  const [syncForm,   setSyncForm]  = useState({
+  const [modal, setModal] = useState(false)
+  const [syncModal, setSyncModal] = useState(false)
+  const [syncForm, setSyncForm] = useState({
     Location: '',
     Machine_MC: '',
     Machine_KI: '',
@@ -286,11 +300,11 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     ImageUrl: '',
     Remark: '',
   })
-  const [form,       setForm]      = useState(EMPTY)
-  const [saving,     setSaving]    = useState(false)
+  const [form, setForm] = useState(EMPTY)
+  const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [syncingPM, setSyncingPM] = useState(false)
-  const [cylinders,  setCylinders] = useState([])
+  const [cylinders, setCylinders] = useState([])
   const autoSyncDoneRef = useRef(false)
   const syncingRef = useRef(false)
 
@@ -303,7 +317,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   const cylWbCols = useWebBuilderMenu('/cylinders')
   const cylCurrentMachineField = useMemo(() => {
     if (!cylWbCols) return 'NewMC'
-    const col = cylWbCols.find(c =>
+    const col = cylWbCols.find((c) =>
       c.field === 'NewMC' ||
       String(c.label).toLowerCase().replace(/\s+/g, '') === 'currentmachine' ||
       String(c.label).includes('เครื่องปัจจุบัน')
@@ -313,7 +327,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
   const cylinderByCurrentMachine = useMemo(() => {
     const grouped = new Map()
-    cylinders.forEach(cyl => {
+    cylinders.forEach((cyl) => {
       const key = normalizeMachineCode(cyl?.[cylCurrentMachineField])
       if (!key) return
       grouped.set(key, [...(grouped.get(key) || []), cyl])
@@ -323,7 +337,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
   const cylinderBySerial = useMemo(() => {
     const grouped = new Map()
-    cylinders.forEach(cyl => {
+    cylinders.forEach((cyl) => {
       const key = normalizeSerial(cyl.Serial_OLD)
       if (!key || !isInUseCylinder(cyl)) return
       grouped.set(key, [...(grouped.get(key) || []), cyl])
@@ -332,7 +346,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   }, [cylinders])
 
   const pmBySerial = useMemo(() => buildPMBySerial(data), [data])
-  const uniquePMRows = useMemo(() => [...pmBySerial.values()].map(entry => entry.keeper).filter(Boolean), [pmBySerial])
+  const uniquePMRows = useMemo(() => [...pmBySerial.values()].map((entry) => entry.keeper).filter(Boolean), [pmBySerial])
 
   const getPMCylinder = (pm = {}) => cylinderBySerial.get(normalizeSerial(pm.Machine_KI)) || null
 
@@ -348,27 +362,32 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       ''
   }
 
+  const getPMCylinderType = (pm = {}) => {
+    const cyl = getPMCylinder(pm) || cylinderByCurrentMachine.get(normalizeMachineCode(pm.Machine_MC))
+    return String(cyl?.Type || pm.Type || '').trim()
+  }
+
   const cylinderPMSource = useMemo(() => (
     [...cylinderBySerial.values()]
-      .filter(cyl => isInUseCylinder(cyl))
-      .filter(cyl => String(cyl?.[cylCurrentMachineField] || '').trim() && String(cyl?.Serial_OLD || '').trim())
+      .filter((cyl) => isInUseCylinder(cyl))
+      .filter((cyl) => String(cyl?.[cylCurrentMachineField] || '').trim() && String(cyl?.Serial_OLD || '').trim())
   ), [cylCurrentMachineField, cylinderBySerial])
 
   const syncLocationOptions = useMemo(
-    () => uniqueSorted(cylinderPMSource.map(cyl => cyl.Location)),
+    () => uniqueSorted(cylinderPMSource.map((cyl) => cyl.Location)),
     [cylinderPMSource]
   )
   const syncMachineOptions = useMemo(
-    () => uniqueSorted(cylinderPMSource.map(cyl => cyl?.[cylCurrentMachineField])),
+    () => uniqueSorted(cylinderPMSource.map((cyl) => cyl?.[cylCurrentMachineField])),
     [cylCurrentMachineField, cylinderPMSource]
   )
   const syncSerialOptions = useMemo(
-    () => uniqueSorted(cylinderPMSource.map(cyl => cyl.Serial_OLD)),
+    () => uniqueSorted(cylinderPMSource.map((cyl) => cyl.Serial_OLD)),
     [cylinderPMSource]
   )
 
   const syncCylinderSource = useMemo(() => (
-    cylinderPMSource.filter(cyl =>
+    cylinderPMSource.filter((cyl) =>
       matchesText(cyl.Location, syncForm.Location) &&
       matchesText(cyl?.[cylCurrentMachineField], syncForm.Machine_MC) &&
       matchesText(cyl.Serial_OLD, syncForm.Machine_KI)
@@ -376,16 +395,18 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   ), [cylCurrentMachineField, cylinderPMSource, syncForm.Location, syncForm.Machine_KI, syncForm.Machine_MC])
 
   const cylinderDrivenPMRows = useMemo(() => {
-    return cylinderPMSource.map(cyl => {
+    return cylinderPMSource.map((cyl) => {
       const serialOld = String(cyl?.Serial_OLD || '').trim()
       const machine = String(cyl?.[cylCurrentMachineField] || '').trim()
       const location = String(cyl?.Location || '').trim()
+      const type = String(cyl?.Type || '').trim()
       const existing = pmBySerial.get(normalizeSerial(serialOld))?.keeper
       return {
         ...(existing || {}),
         Machine_KI: serialOld,
         Machine_MC: machine,
         Location: location,
+        Type: type,
         PM_Type: 'RUNTIME',
         Frequency_Type: 'CALENDAR',
         Frequency_Value: 90,
@@ -398,7 +419,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
   const pmSyncPreviewRows = useMemo(() => {
     const localPMBySerial = buildPMBySerial(data)
-    return syncCylinderSource.map(cyl => {
+    return syncCylinderSource.map((cyl) => {
       const serialOld = String(cyl?.Serial_OLD || '').trim()
       const machine = String(cyl?.[cylCurrentMachineField] || '').trim()
       const location = String(cyl?.Location || '').trim()
@@ -435,18 +456,12 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   }, [syncCycleDays, syncForm.Last_PM_Date])
 
   const openSyncPMModal = () => {
-    setSyncForm(prev => ({
+    setSyncForm((prev) => ({
       ...prev,
       Last_PM_Date: prev.Last_PM_Date || format(new Date(), 'yyyy-MM-dd'),
     }))
     setSyncModal(true)
   }
-
-  const getSyncCylinderValues = (cyl = {}) => ({
-    Location: String(cyl.Location || '').trim(),
-    Machine_MC: String(cyl?.[cylCurrentMachineField] || '').trim(),
-    Machine_KI: String(cyl.Serial_OLD || '').trim(),
-  })
 
   const findSyncCylinderByField = (field, value) => {
     const query = String(value || '').trim()
@@ -462,12 +477,12 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       return cyl.Location
     }
     const normalizedQuery = normalize(query)
-    return cylinderPMSource.find(cyl => normalize(getValue(cyl)) === normalizedQuery)
+    return cylinderPMSource.find((cyl) => normalize(getValue(cyl)) === normalizedQuery)
   }
 
   const handleSyncSourceChange = (field, value) => {
     if (!String(value || '').trim()) {
-      setSyncForm(prev => ({
+      setSyncForm((prev) => ({
         ...prev,
         Location: '',
         Machine_MC: '',
@@ -477,30 +492,18 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     }
     const cyl = findSyncCylinderByField(field, value)
     if (!cyl) {
-      setSyncForm(prev => ({
+      setSyncForm((prev) => ({
         ...prev,
-        Location: field === 'Location' ? value : '',
-        Machine_MC: field === 'Machine_MC' ? value : '',
-        Machine_KI: field === 'Machine_KI' ? value : '',
+        [field]: value,
       }))
       return
     }
-    setSyncForm(prev => ({
+    setSyncForm((prev) => ({
       ...prev,
-      ...getSyncCylinderValues(cyl),
+      Location: String(cyl.Location || '').trim(),
+      Machine_MC: String(cyl?.[cylCurrentMachineField] || '').trim(),
+      Machine_KI: String(cyl.Serial_OLD || '').trim(),
     }))
-  }
-
-  const createPMWithLocationFallback = async (payload) => {
-    try {
-      await PMPlanAPI.create(payload)
-    } catch (error) {
-      if (getMissingPMColumn(error) === 'Location') {
-        await PMPlanAPI.create(omitKeys(payload, ['Location']))
-        return
-      }
-      throw error
-    }
   }
 
   const updatePMWithLocationFallback = async (id, payload) => {
@@ -527,63 +530,6 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       User: user?.full_name || user?.username || 'system',
       Comment: comment || `${actionType}: ${serialOld}`,
     })
-  }
-
-  const syncPMFromCylinders = async ({ silent = false } = {}) => {
-    if (syncingRef.current || !cylinderPMSource.length) return { updated: 0, inserted: 0 }
-    syncingRef.current = true
-    if (!silent) setSyncingPM(true)
-    try {
-      const pmByMachine = new Map(data.map(pm => [normalizeMachineCode(pm.Machine_MC), pm]))
-      let updated = 0
-      let inserted = 0
-      const today = format(new Date(), 'yyyy-MM-dd')
-      for (const cyl of cylinderPMSource) {
-        const machine = String(cyl?.[cylCurrentMachineField] || '').trim()
-        const serialOld = String(cyl?.Serial_OLD || '').trim()
-        const location = String(cyl?.Location || '').trim()
-        const existing = pmByMachine.get(normalizeMachineCode(machine))
-        if (existing) {
-          const locationChanged = Object.hasOwn(existing, 'Location') && String(existing.Location || '') !== location
-          if (
-            String(existing.Machine_MC || '') === machine &&
-            String(existing.Machine_KI || '') === serialOld &&
-            !locationChanged
-          ) continue
-          await updatePMWithLocationFallback(existing.id || existing._id, {
-            ...existing,
-            Machine_MC: machine,
-            Machine_KI: serialOld,
-            Location: location,
-          })
-          updated += 1
-        } else {
-          await createPMWithLocationFallback({
-            Machine_MC: machine,
-            Machine_KI: serialOld,
-            Location: location,
-            PM_Type: 'RUNTIME',
-            Frequency_Type: 'CALENDAR',
-            Frequency_Value: 90,
-            Next_PM_Date: today,
-            Priority: 'MEDIUM',
-            Status: 'SCHEDULED',
-          })
-          inserted += 1
-        }
-      }
-      if (updated || inserted) await load()
-      if (!silent && (updated || inserted)) {
-        toast.success('ซิงก์ข้อมูลจากเมนูกระบอกแล้ว', `อัปเดต ${updated} แถว, เพิ่ม ${inserted} แถว`)
-      }
-      return { updated, inserted }
-    } catch (e) {
-      if (!silent) toast.error('ซิงก์ข้อมูลจากเมนูกระบอกไม่สำเร็จ', e.message)
-      throw e
-    } finally {
-      syncingRef.current = false
-      if (!silent) setSyncingPM(false)
-    }
   }
 
   const updatePMPlansFromCylinders = async () => {
@@ -648,18 +594,24 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
           if (changed) {
             await updatePMWithLocationFallback(existing.id || existing._id, nextPayload)
+            await createPMLog({
+              actionType: 'UPDATE_PLAN',
+              serialOld,
+              oldRow: existing,
+              newRow: nextPayload,
+              comment: `อัพเดตข้อมูลแผน PM ซีเรียล ${serialOld}`,
+            })
             updated += 1
           } else {
+            await createPMLog({
+              actionType: 'LOG_PM',
+              serialOld,
+              oldRow: existing,
+              newRow: nextPayload,
+              comment: `บันทึก Log PM สำหรับซีเรียล ${serialOld}`,
+            })
             checked += 1
           }
-
-          await createPMLog({
-            actionType: changed ? 'UPDATE_PLAN' : 'CHECK_PLAN',
-            serialOld,
-            oldRow: existing,
-            newRow: nextPayload,
-            comment: `อัพเดตแผน PM ซีเรียล ${serialOld}`,
-          })
         } else {
           const payload = {
             Machine_MC: machine,
@@ -671,12 +623,12 @@ export default function PMPlan({ defaultTab = 'plan' }) {
             Last_PM_Date: syncForm.Last_PM_Date,
             Next_PM_Date: syncNextPMDate,
             Assigned_Tech: syncForm.Assigned_Tech,
-            ImageUrl: syncForm.ImageUrl,
-            Remark: appendPMImageMeta(syncForm.Remark, syncForm.ImageUrl),
             Priority: 'MEDIUM',
             Status: 'SCHEDULED',
+            ImageUrl: syncForm.ImageUrl,
+            Remark: appendPMImageMeta(syncForm.Remark, syncForm.ImageUrl),
           }
-          await createPMWithLocationFallback(payload)
+          await PMPlanAPI.create(payload)
           inserted += 1
           await createPMLog({
             actionType: 'CREATE_PLAN',
@@ -703,69 +655,61 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     }
   }
 
-  useEffect(() => {
-    if (autoSyncDoneRef.current || loading || !cylinderPMSource.length) return
-    autoSyncDoneRef.current = true
-    // แผน PM อัพเดตเมื่อผู้ใช้กดปุ่มเท่านั้น เพื่อให้มี Log PM ทุกครั้ง
-  }, [cylinderPMSource, loading])
+  // Quick Action to start Center Check with auto-populated data
+  const handleStartCenterCheck = (row, explicitType) => {
+    const rawType = String(row.Type || getPMCylinderType(row) || '').trim()
+    const detectedType = explicitType || (
+      rawType.toUpperCase().includes('DOUBLE') || rawType.toUpperCase() === 'D'
+        ? 'Double'
+        : 'Single'
+    )
+    const cyl = getPMCylinder(row) || cylinderByCurrentMachine.get(normalizeMachineCode(row.Machine_MC))
 
-  const handleMachineKIChange = (v) => setForm(p => {
-    const cyl = cylinders.find(c => c.Serial_OLD === v)
-    return { ...p, Machine_KI: v, Machine_MC: cyl?.[cylCurrentMachineField] || p.Machine_MC }
-  })
+    setCenterCheckPreset({
+      type: detectedType,
+      mc: row.Machine_MC || '',
+      serial: row.Machine_KI || cyl?.Serial_OLD || cyl?.Serial_NOW || '',
+      mechanic: row.Assigned_Tech || user?.full_name || '',
+      prev_doc_date: row.Last_PM_Date || '',
+      remark: row.Remark ? stripImageUrlMeta(row.Remark) : '',
+      location: row.Location || cyl?.Location || '',
+    })
+    setActiveTab('center_check')
+    toast.info(
+      `เปิดฟอร์มเช็คศูนย์ ${detectedType === 'Double' ? 'Double Jersey' : 'Single Jersey'}`,
+      `ดึงข้อมูลเครื่อง ${row.Machine_MC} (${row.Machine_KI || ''}) เรียบร้อย`
+    )
+  }
 
-  const handleMachineMCChange = (v) => setForm(p => {
-    const currentCyl = cylinders.find(c => c.Serial_OLD === p.Machine_KI)
-    if (currentCyl?.[cylCurrentMachineField] === v) return { ...p, Machine_MC: v }
-    const cyl = cylinders.find(c => c[cylCurrentMachineField] === v)
-    return { ...p, Machine_MC: v, Machine_KI: cyl?.Serial_OLD || '' }
-  })
-
-  useEffect(() => {
-    if (!modal || !['30', '60', '90'].includes(String(form.PM_Type))) return
-    const days = Number(form.PM_Type)
-    if (form.Frequency_Value === days) return
-    setForm(p => ({ ...p, Frequency_Type: 'CALENDAR', Frequency_Value: days }))
-  }, [form.Frequency_Value, form.PM_Type, modal])
-
-  useEffect(() => {
-    if (!modal || !form.Last_PM_Date) return
-    const days = ['30', '60', '90'].includes(String(form.PM_Type))
-      ? Number(form.PM_Type)
-      : Number(form.Frequency_Value)
-    if (!days || days <= 0) return
-    const next = addDays(new Date(form.Last_PM_Date), days)
-    const formatted = format(next, 'yyyy-MM-dd')
-    if (form.Next_PM_Date === formatted) return
-    setForm(p => ({ ...p, Next_PM_Date: formatted }))
-  }, [form.Last_PM_Date, form.PM_Type, form.Frequency_Value, modal])
-
-  const searched = cylinderDrivenPMRows.filter(p =>
-    [getPMMachine(p), getPMLocation(p), p.Machine_KI, p.PM_Type, p.Assigned_Tech, p.Department, getPMImageUrl(p), stripImageUrlMeta(p.Remark)].some(v =>
-      String(v||'').toLowerCase().includes(search.toLowerCase())
+  const searched = cylinderDrivenPMRows.filter((p) =>
+    [getPMMachine(p), getPMLocation(p), p.Machine_KI, getPMCylinderType(p), p.PM_Type, p.Assigned_Tech, p.Department, getPMImageUrl(p), stripImageUrlMeta(p.Remark)].some((v) =>
+      String(v || '').toLowerCase().includes(search.toLowerCase())
     )
   )
-  const normalizedRows = searched.map(p => ({
+
+  const normalizedRows = searched.map((p) => ({
     ...p,
     Machine_MC: getPMMachine(p),
     Location: getPMLocation(p),
+    Type: getPMCylinderType(p),
     PM_Type: getPMCycleValue(p),
     PM_Type_DB: p.PM_Type,
     Countdown_Days: getPMCountdown(p.Next_PM_Date).days,
   }))
+
   const pmLocationOptions = useMemo(() => {
     const seen = new Set()
     return normalizedRows
-      .map(row => String(row.Location || '').trim())
+      .map((row) => String(row.Location || '').trim())
       .filter(Boolean)
-      .filter(value => {
+      .filter((value) => {
         const key = value.toLowerCase()
         if (seen.has(key)) return false
         seen.add(key)
         return true
       })
       .sort((a, b) => a.localeCompare(b, 'th', { numeric: true, sensitivity: 'base' }))
-      .map(value => ({ value, label: value }))
+      .map((value) => ({ value, label: value }))
   }, [normalizedRows])
 
   const wbCols = useWebBuilderMenu('/pm')
@@ -773,31 +717,34 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     ? orderPMColumns([
         ...wbCols.filter((col) => col.field !== 'Frequency_Value'),
         ...[
-          { field:'Location', label:'ตำแหน่ง', type:'text', width:'120px' },
-          { field:'ImageUrl', label:'URL', type:'text', width:'220px' },
-          { field:'ImagePreview', label:'รูป', type:'text', width:'110px' },
-          { field:'Countdown_Days', label:'นับถอยหลัง', type:'number', width:'130px' },
+          { field: 'Location', label: 'ตำแหน่ง', type: 'text', width: '120px' },
+          { field: 'Type', label: 'ประเภท', type: 'text', width: '130px' },
+          { field: 'Center_Check', label: 'เช็คศูนย์', type: 'action', width: '200px' },
+          { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
+          { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
+          { field: 'Countdown_Days', label: 'นับถอยหลัง', type: 'number', width: '130px' },
         ].filter((required) => !wbCols.some((col) => col.field === required.field)),
       ])
     : null, [wbCols])
-  const cols   = normalizedWbCols || orderPMColumns(getPMFallbackCols(t))
+  const cols = normalizedWbCols || orderPMColumns(getPMFallbackCols(t))
 
-  const FS_COLS = useMemo(() => cols.map(col => {
-    const key   = col.field || col.key
+  const FS_COLS = useMemo(() => cols.map((col) => {
+    const key = col.field || col.key
     const label = pmColumnLabel(col, t)
-    if (key === 'Location')
+    if (key === 'Location') {
       return { key, label, sortable: true, filter: { type: 'select', opts: pmLocationOptions } }
+    }
     return { key, label, sortable: true }
   }), [cols, t, pmLocationOptions])
 
   useEffect(() => {
-    const valid = new Set(FS_COLS.map(c => c.key))
-    setFilterSort(p => {
-      const stale     = Object.keys(p.filters).filter(k => !valid.has(k) && (Array.isArray(p.filters[k]) ? p.filters[k].length > 0 : !!p.filters[k]))
+    const valid = new Set(FS_COLS.map((c) => c.key))
+    setFilterSort((p) => {
+      const stale = Object.keys(p.filters).filter((k) => !valid.has(k) && (Array.isArray(p.filters[k]) ? p.filters[k].length > 0 : !!p.filters[k]))
       const staleSort = p.sort.key && !valid.has(p.sort.key)
       if (!stale.length && !staleSort) return p
       const newFilters = { ...p.filters }
-      stale.forEach(k => delete newFilters[k])
+      stale.forEach((k) => delete newFilters[k])
       return { sort: staleSort ? { key: '', dir: 'asc' } : p.sort, filters: newFilters }
     })
   }, [FS_COLS])
@@ -806,9 +753,14 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
   const [detailRec, setDetailRec] = useState(null)
 
-  const openNew  = () => { setForm(EMPTY);   setModal(true) }
   const openEdit = (p) => {
-    setForm({ ...p, PM_Type: '90', Frequency_Value: 90, ImageUrl: getPMImageUrl(p), Remark: stripImageUrlMeta(p.Remark) })
+    setForm({
+      ...p,
+      PM_Type: '90',
+      Frequency_Value: 90,
+      ImageUrl: getPMImageUrl(p),
+      Remark: stripImageUrlMeta(p.Remark),
+    })
     setModal(true)
     setDetailRec(null)
   }
@@ -856,7 +808,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     const cyl = cylinderBySerial.get(normalizeSerial(form.Machine_KI))
     const sourceMachine = String(cyl?.[cylCurrentMachineField] || form.Machine_MC || '').trim()
     const sourceLocation = String(cyl?.Location || form.Location || '').trim()
-    const oldRow = data.find(row => (row.id || row._id) === (form.id || form._id)) || null
+    const oldRow = data.find((row) => (row.id || row._id) === (form.id || form._id)) || null
     const { PM_Type_DB, ...cleanForm } = form
     const payload = {
       ...cleanForm,
@@ -879,7 +831,9 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       })
       toast.success(isEdit ? 'แก้ไขแผน PM สำเร็จ' : 'เพิ่มแผน PM สำเร็จ', `เครื่อง ${form.Machine_MC}`)
       setModal(false)
-    } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
+    }
     setSaving(false)
   }
 
@@ -888,13 +842,190 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     try {
       await remove(id)
       toast.success('ลบแผน PM สำเร็จ')
-    } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด', e.message)
+    }
   }
 
+  const renderPMCell = (row, col) => {
+    const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
+      ? getPMImageUrl(row)
+      : col.field === 'Countdown_Days'
+        ? getPMCountdown(row.Next_PM_Date).days
+        : col.field === 'Remark'
+          ? stripImageUrlMeta(row.Remark)
+          : row[col.field]
+
+    if (col.field === 'Type') {
+      const rawType = String(row.Type || getPMCylinderType(row) || '').trim()
+      const isSingle = rawType === 'S' || rawType.toUpperCase().includes('SINGLE')
+      const isDouble = rawType === 'D' || rawType.toUpperCase().includes('DOUBLE')
+      if (isSingle) {
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+            Single (S)
+          </span>
+        )
+      }
+      if (isDouble) {
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+            Double (D)
+          </span>
+        )
+      }
+      if (rawType) {
+        return <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">{rawType}</span>
+      }
+      return <span style={{ color: 'var(--text-400)' }}>—</span>
+    }
+
+    if (col.field === 'Center_Check') {
+      const rawType = String(row.Type || getPMCylinderType(row) || '').trim()
+      const isDouble = rawType === 'D' || rawType.toUpperCase().includes('DOUBLE')
+      const isSingle = rawType === 'S' || rawType.toUpperCase().includes('SINGLE')
+
+      if (isDouble) {
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleStartCenterCheck(row, 'Double')
+            }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-500/20 whitespace-nowrap"
+            title="เปิดฟอร์มเช็คศูนย์ Double Jersey พร้อมดึงข้อมูลเครื่องนี้อัตโนมัติ"
+          >
+            <Target size={13} />
+            <span>เช็คศูนย์ Double Jersey</span>
+          </button>
+        )
+      }
+
+      if (isSingle || !rawType) {
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleStartCenterCheck(row, 'Single')
+            }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-sm shadow-blue-500/20 whitespace-nowrap"
+            title="เปิดฟอร์มเช็คศูนย์ Single Jersey พร้อมดึงข้อมูลเครื่องนี้อัตโนมัติ"
+          >
+            <Target size={13} />
+            <span>เช็คศูนย์ Single Jersey</span>
+          </button>
+        )
+      }
+
+      return (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => handleStartCenterCheck(row, 'Single')}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 whitespace-nowrap"
+          >
+            <Target size={11} />
+            <span>Single</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleStartCenterCheck(row, 'Double')}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-indigo-600 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 whitespace-nowrap"
+          >
+            <Target size={11} />
+            <span>Double</span>
+          </button>
+        </div>
+      )
+    }
+
+    if (val === null || val === undefined || val === '') {
+      return <span style={{ color: 'var(--text-400)' }}>—</span>
+    }
+
+    if (col.field === 'Machine_MC') {
+      return <span className="font-bold text-slate-800 dark:text-slate-100">{String(val)}</span>
+    }
+
+    if (col.field === 'Machine_KI') {
+      return <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">{String(val)}</span>
+    }
+
+    if (col.field === 'Location') {
+      return (
+        <span className="font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-xs">
+          {String(val)}
+        </span>
+      )
+    }
+
+    if (col.field === 'ImageUrl') {
+      return (
+        <a
+          href={String(val)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-mono text-[11px] flex items-center gap-1 hover:underline max-w-[200px] truncate"
+        >
+          <span className="truncate">{String(val)}</span>
+          <ExternalLink size={11} className="flex-shrink-0 opacity-70" />
+        </a>
+      )
+    }
+
+    if (col.field === 'ImagePreview') {
+      return (
+        <a
+          href={String(val)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20"
+        >
+          <ImageIcon size={12} />
+          <span>เปิดรูป</span>
+        </a>
+      )
+    }
+
+    if (col.type === 'select') {
+      const optColor = col.options?.find((o) => o.value === val || o.label === val)?.color
+      if (optColor) return <StatusBadge value={val} color={optColor} />
+    }
+
+    if (col.field === 'Status') return <StatusBadge value={val} />
+    if (col.field === 'Priority') return <StatusBadge value={val} />
+    if (col.field === 'PM_Type') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+          {formatPMCycle(row)}
+        </span>
+      )
+    }
+    if (col.field === 'Countdown_Days') return <PMCountdownBadge date={row.Next_PM_Date} />
+
+    if (col.type === 'date' || col.field.includes('Date')) {
+      try {
+        return (
+          <span className={`text-xs font-mono ${row.Status === 'OVERDUE' && col.field === 'Next_PM_Date' ? 'text-red-500 font-bold' : 'text-slate-600 dark:text-slate-400'}`}>
+            {format(new Date(val), 'dd/MM/yyyy')}
+          </span>
+        )
+      } catch {
+        return <span>{val}</span>
+      }
+    }
+
+    if (col.type === 'number') return <span className="font-mono text-xs">{val}</span>
+    return <span className="text-xs">{String(val)}</span>
+  }
 
   return (
     <div className="space-y-4">
-      {/* Sub-tab switcher */}
+      {/* ── SUB-TAB SWITCHER ─────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 w-full sm:w-fit">
         <button
           type="button"
@@ -942,338 +1073,516 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       </div>
 
       {activeTab === 'center_check' ? (
-        <CenterCheck />
+        <CenterCheck
+          initialPreset={centerCheckPreset}
+          onClearPreset={() => setCenterCheckPreset(null)}
+          onBackToPMPlan={() => setActiveTab('plan')}
+        />
       ) : activeTab === 'log' ? (
         <PMLog />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-3">
-            <SearchInput value={search} onChange={setSearch} placeholder={t('pm_search')} />
-            <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-            <GoogleSheetSyncButton
-              sheetName="แผน PM"
-              columns={cols}
-              rows={displayRows}
-              valueGetters={{
-                PM_Type: formatPMCycle,
-                Countdown_Days: (row) => getPMCountdown(row.Next_PM_Date).label,
-                ImageUrl: getPMImageUrl,
-                ImagePreview: getPMImageUrl,
-                Remark: (row) => stripImageUrlMeta(row.Remark),
-              }}
-            />
-            <button className="btn-primary ml-auto" onClick={openSyncPMModal} disabled={syncingPM || !canAdd || !cylinderPMSource.length}>
-              <RefreshCw size={14} className={syncingPM ? 'animate-spin' : ''}/> {syncingPM ? 'กำลังอัพเดต...' : 'อัพเดตแผน PM'}
-            </button>
-          </div>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              {cols.map(c => <th key={c.field||c.id}>{pmColumnLabel(c, t)}</th>)}
-              <th>{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={cols.length+1} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('loading')}</td></tr>}
-            {!loading && displayRows.map((p, i) => (
-              <tr key={p._id || p.id || i} onClick={() => setDetailRec(p)} style={{cursor:'pointer'}}>
-                {cols.map(c => <td key={c.field||c.id}>{renderPMCell(p, c)}</td>)}
-                <td onClick={e => e.stopPropagation()}>
-                  <div className="flex gap-2">
-                    {canEdit && p.__hasPMPlan && <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(p)}><Pencil size={12}/></button>}
-                    {canDelete && p.__hasPMPlan && <button className="btn-danger py-1 px-2 text-xs"  onClick={() => del(p._id || p.id)}><Trash2 size={12}/></button>}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!loading && !displayRows.length && <tr><td colSpan={cols.length+1} className="text-center py-8" style={{color:'var(--text-400)'}}>{t('no_data')}</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      <DetailDrawer
-        open={!!detailRec} onClose={() => setDetailRec(null)}
-        title={detailRec?.Machine_MC} subtitle={detailRec?.Machine_KI || detailRec?.PM_Type}
-        icon={Calendar} accentColor="#10b981" iconColor="#34d399"
-        badge={detailRec && <StatusBadge value={detailRec.Status} />}
-        canEdit={canEdit && detailRec?.__hasPMPlan} canDelete={canDelete && detailRec?.__hasPMPlan}
-        onEdit={() => openEdit(detailRec)}
-        onDelete={() => { del(detailRec._id || detailRec.id); setDetailRec(null) }}
-        groups={detailRec ? [
-          { label: t('dr_main_info'), fields: [
-            { label: 'เครื่องปัจจุบัน',  value: detailRec.Machine_MC },
-            { label: 'ตำแหน่ง',          value: detailRec.Location },
-            { label: 'ซีเรียลเดิม',       value: detailRec.Machine_KI, mono: true },
-            { label: 'รอบ PM (วัน)',      value: formatPMCycle(detailRec) },
-            { label: t('pm_th_dept'),     value: detailRec.Department },
-            { label: t('priority'),       value: detailRec.Priority },
-            { label: t('pm_th_tech'),     value: detailRec.Assigned_Tech },
-          ]},
-          { label: t('dr_schedule'), fields: [
-            { label: t('field_last_pm'),  value: detailRec.Last_PM_Date ? format(new Date(detailRec.Last_PM_Date),'dd/MM/yyyy') : null },
-            { label: t('pm_th_next'),     value: detailRec.Next_PM_Date ? format(new Date(detailRec.Next_PM_Date),'dd/MM/yyyy') : null },
-            { label: 'นับถอยหลัง',        value: getPMCountdown(detailRec.Next_PM_Date).label,
-              node: <PMCountdownBadge date={detailRec.Next_PM_Date} /> },
-            { label: 'รูปแบบ',            value: detailRec.Frequency_Type },
-            { label: t('field_est_hours'),value: detailRec.Estimated_Hours },
-            { label: 'แผนเวลาหยุดเครื่อง', value: detailRec.Downtime_Plan },
-          ]},
-          { label: t('dr_details'), single: true, fields: [
-            { label: 'ลิงก์รูป',         value: getPMImageUrl(detailRec), full: true },
-            { label: t('field_req_parts'), value: detailRec.Required_Parts, full: true },
-            { label: t('remark'),          value: stripImageUrlMeta(detailRec.Remark), full: true },
-          ]},
-        ] : []}
-      />
-
-      <Modal open={syncModal} onClose={() => setSyncModal(false)}
-        title="อัพเดตแผน PM จากเมนูกระบอก" size="xl"
-        footer={<>
-          <button className="btn-outline" onClick={() => setSyncModal(false)}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={updatePMPlansFromCylinders} disabled={syncingPM || !pmSyncPreviewRows.length || !syncCycleDays || !syncNextPMDate}>
-            <RefreshCw size={14} className={syncingPM ? 'animate-spin' : ''}/>
-            {syncingPM ? 'กำลังอัพเดต...' : 'ยืนยันอัพเดต + เพิ่ม Log PM'}
-          </button>
-        </>}
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="card p-3">
-              <div className="text-xs" style={{color:'var(--text-400)'}}>รายการจากกระบอก In-use</div>
-              <div className="text-2xl font-bold">{pmSyncPreviewRows.length}</div>
-            </div>
-            <div className="card p-3">
-              <div className="text-xs" style={{color:'var(--text-400)'}}>เพิ่มใหม่</div>
-              <div className="text-2xl font-bold">{pmSyncPreviewRows.filter(r => r.action === 'เพิ่มใหม่').length}</div>
-            </div>
-            <div className="card p-3">
-              <div className="text-xs" style={{color:'var(--text-400)'}}>อัพเดต/เพิ่ม Log</div>
-              <div className="text-2xl font-bold">{pmSyncPreviewRows.filter(r => r.action !== 'เพิ่มใหม่').length}</div>
-            </div>
-          </div>
-
-          <div className="text-sm" style={{color:'var(--text-500)'}}>
-            ระบบจะดึง `ซีเรียลเดิม`, `เครื่องปัจจุบัน`, `ตำแหน่ง` จากเมนูกระบอกอัตโนมัติ และเพิ่มแถวใน Log PM ทุกครั้งที่ยืนยัน
-          </div>
-
-          <div className="card p-4">
-            <div className="font-semibold mb-3">เลือกข้อมูลจากเมนูกระบอก</div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="label">Location อัตโนมัติ</label>
-                <input
-                  className="input"
-                  list="pm-sync-location-list"
-                  value={syncForm.Location}
-                  onChange={e => handleSyncSourceChange('Location', e.target.value)}
-                  placeholder="ทั้งหมด / เลือกหรือพิมพ์"
-                />
-                <datalist id="pm-sync-location-list">
-                  {syncLocationOptions.map(value => <option key={value} value={value} />)}
-                </datalist>
-              </div>
-              <div>
-                <label className="label">เครื่องปัจจุบัน อัตโนมัติ</label>
-                <input
-                  className="input"
-                  list="pm-sync-machine-list"
-                  value={syncForm.Machine_MC}
-                  onChange={e => handleSyncSourceChange('Machine_MC', e.target.value)}
-                  placeholder="ทั้งหมด / เลือกหรือพิมพ์"
-                />
-                <datalist id="pm-sync-machine-list">
-                  {syncMachineOptions.map(value => <option key={value} value={value} />)}
-                </datalist>
-              </div>
-              <div>
-                <label className="label">ซีเรียลเดิม อัตโนมัติ</label>
-                <input
-                  className="input"
-                  list="pm-sync-serial-list"
-                  value={syncForm.Machine_KI}
-                  onChange={e => handleSyncSourceChange('Machine_KI', e.target.value)}
-                  placeholder="ทั้งหมด / เลือกหรือพิมพ์"
-                />
-                <datalist id="pm-sync-serial-list">
-                  {syncSerialOptions.map(value => <option key={value} value={value} />)}
-                </datalist>
-              </div>
-            </div>
-          </div>
-
-          <div className="card p-4">
-            <div className="font-semibold mb-3">ข้อมูล PM ที่จะบันทึก</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <label className="label">รอบ PM</label>
-                <select
-                  className="input"
-                  value={syncForm.PM_Cycle}
-                  onChange={e => setSyncForm(p => ({ ...p, PM_Cycle: e.target.value }))}
-                >
-                  <option value="30">30 วัน</option>
-                  <option value="90">90 วัน</option>
-                  <option value="120">120 วัน</option>
-                  <option value="CUSTOM">Custom</option>
-                </select>
-              </div>
-              {syncForm.PM_Cycle === 'CUSTOM' && (
-                <div>
-                  <label className="label">Custom (วัน)</label>
-                  <input
-                    className="input"
-                    type="number"
-                    min="1"
-                    value={syncForm.Custom_PM_Days}
-                    onChange={e => setSyncForm(p => ({ ...p, Custom_PM_Days: e.target.value }))}
-                  />
-                </div>
-              )}
-              <div>
-                <label className="label">PM ล่าสุด</label>
-                <input
-                  className="input"
-                  type="date"
-                  value={syncForm.Last_PM_Date}
-                  onChange={e => setSyncForm(p => ({ ...p, Last_PM_Date: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="label">PM ครั้งถัดไป</label>
-                <input className="input" value={syncNextPMDate || ''} readOnly />
-              </div>
-              <div>
-                <label className="label">นับถอยหลัง</label>
-                <div className="input flex items-center">
-                  {syncNextPMDate ? <PMCountdownBadge date={syncNextPMDate} /> : '—'}
-                </div>
-              </div>
-              <div>
-                <label className="label">ช่าง</label>
-                <input
-                  className="input"
-                  value={syncForm.Assigned_Tech}
-                  onChange={e => setSyncForm(p => ({ ...p, Assigned_Tech: e.target.value }))}
-                  placeholder="ชื่อช่าง"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="label">URL รูป</label>
-                <input
-                  className="input"
-                  value={syncForm.ImageUrl}
-                  onChange={e => setSyncForm(p => ({ ...p, ImageUrl: e.target.value }))}
-                  placeholder="https://..."
-                />
-              </div>
-              <div>
-                <label className="label">รูป</label>
-                <div className="input flex items-center">
-                  {syncForm.ImageUrl
-                    ? <a href={syncForm.ImageUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">เปิดรูป</a>
-                    : '—'}
-                </div>
-              </div>
-              <div className="md:col-span-4">
-                <label className="label">หมายเหตุ</label>
-                <textarea
-                  className="input"
-                  rows={2}
-                  value={syncForm.Remark}
-                  onChange={e => setSyncForm(p => ({ ...p, Remark: e.target.value }))}
-                  placeholder="เพิ่มหมายเหตุ"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="table-wrap" style={{maxHeight: 420, overflow: 'auto'}}>
-            <table>
-              <thead>
-                <tr>
-                  <th>ซีเรียลเดิม</th>
-                  <th>เครื่องปัจจุบัน</th>
-                  <th>ตำแหน่ง</th>
-                  <th>รอบ PM</th>
-                  <th>รายการที่จะทำ</th>
-                  <th>ซ้ำ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pmSyncPreviewRows.map((row, i) => (
-                  <tr key={`${row.serialOld}-${row.machine}-${i}`}>
-                    <td className="font-mono text-xs">{row.serialOld}</td>
-                    <td>{row.machine}</td>
-                    <td>{row.location || '—'}</td>
-                    <td><span className="badge badge-blue">{syncCycleDays ? `${syncCycleDays} วัน` : '—'}</span></td>
-                    <td><StatusBadge value={row.action} /></td>
-                    <td>{row.duplicateCount ? `${row.duplicateCount} แถว` : '—'}</td>
-                  </tr>
-                ))}
-                {!pmSyncPreviewRows.length && (
-                  <tr><td colSpan={6} className="text-center py-8" style={{color:'var(--text-400)'}}>ไม่พบข้อมูล In-use จากเมนูกระบอก</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal open={modal} onClose={() => setModal(false)}
-        title={t('pm_edit')} size="lg"
-        footer={<>
-          <button className="btn-outline" onClick={() => setModal(false)}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? t('saving') : t('save')}</button>
-        </>}
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">ซีเรียลเดิม</label>
-            <input className="input" value={form.Machine_KI || ''} readOnly />
-          </div>
-          <div>
-            <label className="label">เครื่องปัจจุบัน *</label>
-            <input className="input" value={form.Machine_MC || ''} readOnly />
-          </div>
-          <F form={form} setForm={setForm} label="PM ล่าสุด"           id="Last_PM_Date"   type="date" />
-          <F form={form} setForm={setForm} label="PM ครั้งถัดไป *"     id="Next_PM_Date"   type="date" />
-          <div>
-            <label className="label">รอบ PM (วัน)</label>
-            <input className="input" value="90 วัน" readOnly />
-          </div>
-          <F form={form} setForm={setForm} label={t('pm_th_tech')}    id="Assigned_Tech" />
-          <div className="col-span-2">
-            <F form={form} setForm={setForm} label="ลิงก์รูป (Google Drive)" id="ImageUrl" useBuilder={false} />
-            <div style={{ marginTop: 10 }}>
-              <label className="label">อัปโหลดรูปประวัติเช็คศูนย์</label>
-              <input
-                className="input"
-                type="file"
-                accept="image/*"
-                disabled={uploadingImage}
-                onChange={(e) => onPickImageFile(e.target.files?.[0])}
+          {/* ── TOOLBAR ───────────────────────────────────────────── */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 flex-1">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder="ค้นหา Machine, Type, ช่าง, Location..."
+                className="w-full sm:w-80"
               />
-              {uploadingImage && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-500)' }}>กำลังอัปโหลดรูป...</div>}
-              {form.ImageUrl && (
-                <div style={{ marginTop: 8, fontSize: 12 }}>
-                  <a href={form.ImageUrl} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', wordBreak: 'break-all' }}>
-                    {form.ImageUrl}
-                  </a>
-                </div>
-              )}
+              <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+              <GoogleSheetSyncButton
+                sheetName="แผน PM"
+                columns={cols}
+                rows={displayRows}
+                valueGetters={{
+                  Type: (row) => row.Type || getPMCylinderType(row),
+                  PM_Type: formatPMCycle,
+                  Countdown_Days: (row) => getPMCountdown(row.Next_PM_Date).label,
+                  ImageUrl: getPMImageUrl,
+                  ImagePreview: getPMImageUrl,
+                  Remark: (row) => stripImageUrlMeta(row.Remark),
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+                onClick={openSyncPMModal}
+                disabled={syncingPM || !canAdd || !cylinderPMSource.length}
+              >
+                <RefreshCw size={14} className={syncingPM ? 'animate-spin' : ''} />
+                <span>{syncingPM ? 'กำลังอัพเดต...' : 'อัพเดตแผน PM'}</span>
+              </button>
             </div>
           </div>
-          <F
-            form={form}
-            setForm={setForm}
-            label={t('remark')}
-            id="Remark"
-            onChange={value => setForm(p => ({ ...p, Remark: appendPMImageMeta(value, p.ImageUrl) }))}
+
+          {/* ── DATA TABLE ────────────────────────────────────────── */}
+          <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="table w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                    {cols.map((c) => (
+                      <th key={c.field || c.id} style={c.width ? { width: c.width, minWidth: c.width } : undefined} className="py-3 px-3 text-left whitespace-nowrap">
+                        {pmColumnLabel(c, t)}
+                      </th>
+                    ))}
+                    <th className="py-3 px-3 text-center w-20">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {loading && (
+                    <tr>
+                      <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                        <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
+                        <span>{t('loading')}</span>
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && displayRows.map((p, i) => (
+                    <tr
+                      key={p._id || p.id || i}
+                      onClick={() => setDetailRec(p)}
+                      className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                    >
+                      {cols.map((c) => (
+                        <td key={c.field || c.id} style={c.width ? { width: c.width, minWidth: c.width } : undefined} className="py-2.5 px-3 whitespace-nowrap">
+                          {renderPMCell(p, c)}
+                        </td>
+                      ))}
+                      <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          {canEdit && p.__hasPMPlan && (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(p)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                              title="แก้ไขข้อมูลแผน PM"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                          )}
+                          {canDelete && p.__hasPMPlan && (
+                            <button
+                              type="button"
+                              onClick={() => del(p._id || p.id)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                              title="ลบแผน PM"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!loading && !displayRows.length && (
+                    <tr>
+                      <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                        <Calendar size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                        <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+                        <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "อัพเดตแผน PM" เพื่อดึงข้อมูลกระบอก In-use</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
+          <DetailDrawer
+            open={!!detailRec}
+            onClose={() => setDetailRec(null)}
+            title={detailRec?.Machine_MC}
+            subtitle={detailRec ? `${detailRec.Machine_KI || ''} · ${detailRec.Type || getPMCylinderType(detailRec) || 'กระบอก'}` : ''}
+            icon={Calendar}
+            accentColor="#2563eb"
+            badge={detailRec && <StatusBadge value={detailRec.Status} />}
+            canEdit={canEdit && detailRec?.__hasPMPlan}
+            canDelete={canDelete && detailRec?.__hasPMPlan}
+            onEdit={() => openEdit(detailRec)}
+            onDelete={() => {
+              del(detailRec._id || detailRec.id)
+              setDetailRec(null)
+            }}
+            groups={detailRec ? [
+              {
+                label: t('dr_main_info'),
+                fields: [
+                  { label: 'เครื่องปัจจุบัน', value: detailRec.Machine_MC },
+                  { label: 'ตำแหน่ง', value: detailRec.Location },
+                  { label: 'ซีเรียลเดิม', value: detailRec.Machine_KI, mono: true },
+                  { label: 'ประเภท (จากกระบอก)', value: detailRec.Type || getPMCylinderType(detailRec) },
+                  { label: 'รอบ PM (วัน)', value: formatPMCycle(detailRec) },
+                  { label: t('pm_th_dept'), value: detailRec.Department },
+                  { label: t('priority'), value: detailRec.Priority },
+                  { label: t('pm_th_tech'), value: detailRec.Assigned_Tech },
+                ].filter((f) => f.value),
+              },
+              {
+                label: t('dr_schedule'),
+                fields: [
+                  { label: t('field_last_pm'), value: detailRec.Last_PM_Date ? format(new Date(detailRec.Last_PM_Date), 'dd/MM/yyyy') : null },
+                  { label: t('pm_th_next'), value: detailRec.Next_PM_Date ? format(new Date(detailRec.Next_PM_Date), 'dd/MM/yyyy') : null },
+                  {
+                    label: 'นับถอยหลัง',
+                    value: getPMCountdown(detailRec.Next_PM_Date).label,
+                    node: <PMCountdownBadge date={detailRec.Next_PM_Date} />,
+                  },
+                  { label: 'รูปแบบ', value: detailRec.Frequency_Type },
+                  { label: t('field_est_hours'), value: detailRec.Estimated_Hours },
+                  { label: 'แผนเวลาหยุดเครื่อง', value: detailRec.Downtime_Plan },
+                ].filter((f) => f.value),
+              },
+              {
+                label: t('dr_details'),
+                single: true,
+                fields: [
+                  { label: 'ลิงก์รูป', value: getPMImageUrl(detailRec), full: true },
+                  { label: t('field_req_parts'), value: detailRec.Required_Parts, full: true },
+                  { label: t('remark'), value: stripImageUrlMeta(detailRec.Remark), full: true },
+                ].filter((f) => f.value),
+              },
+            ].filter((g) => g.fields.length > 0) : []}
           />
-        </div>
-      </Modal>
+
+          {/* ── SYNC MODAL ────────────────────────────────────────── */}
+          <Modal
+            open={syncModal}
+            onClose={() => setSyncModal(false)}
+            title="อัพเดตแผน PM จากเมนูกระบอก"
+            size="xl"
+            footer={
+              <div className="flex items-center justify-end gap-2 w-full">
+                <button type="button" className="btn-outline px-4" onClick={() => setSyncModal(false)}>
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary px-5"
+                  onClick={updatePMPlansFromCylinders}
+                  disabled={syncingPM || !pmSyncPreviewRows.length || !syncCycleDays || !syncNextPMDate}
+                >
+                  <RefreshCw size={14} className={syncingPM ? 'animate-spin' : ''} />
+                  <span>{syncingPM ? 'กำลังอัพเดต...' : 'ยืนยันอัพเดต + เพิ่ม Log PM'}</span>
+                </button>
+              </div>
+            }
+          >
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="card p-3 border border-slate-200 dark:border-slate-800">
+                  <div className="text-slate-500 font-bold">รายการจากกระบอก In-use</div>
+                  <div className="text-2xl font-black mt-0.5 text-blue-600">{pmSyncPreviewRows.length}</div>
+                </div>
+                <div className="card p-3 border border-slate-200 dark:border-slate-800">
+                  <div className="text-slate-500 font-bold">เพิ่มใหม่</div>
+                  <div className="text-2xl font-black mt-0.5 text-emerald-600">
+                    {pmSyncPreviewRows.filter((r) => r.action === 'เพิ่มใหม่').length}
+                  </div>
+                </div>
+                <div className="card p-3 border border-slate-200 dark:border-slate-800">
+                  <div className="text-slate-500 font-bold">อัพเดต/เพิ่ม Log</div>
+                  <div className="text-2xl font-black mt-0.5 text-indigo-600">
+                    {pmSyncPreviewRows.filter((r) => r.action !== 'เพิ่มใหม่').length}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-slate-500">
+                ระบบจะดึง `ซีเรียลเดิม`, `เครื่องปัจจุบัน`, `ตำแหน่ง`, `ประเภท` จากเมนูกระบอกอัตโนมัติ และเพิ่มแถวใน Log PM ทุกครั้งที่ยืนยัน
+              </div>
+
+              <div className="card p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="font-bold text-slate-700 dark:text-slate-300">เลือกข้อมูลจากเมนูกระบอก</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="label font-bold">Location อัตโนมัติ</label>
+                    <input
+                      className="input text-xs"
+                      list="pm-sync-location-list"
+                      value={syncForm.Location}
+                      onChange={(e) => handleSyncSourceChange('Location', e.target.value)}
+                      placeholder="ทั้งหมด / เลือกหรือพิมพ์"
+                    />
+                    <datalist id="pm-sync-location-list">
+                      {syncLocationOptions.map((value) => (
+                        <option key={value} value={value} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="label font-bold">เครื่องปัจจุบัน อัตโนมัติ</label>
+                    <input
+                      className="input text-xs"
+                      list="pm-sync-machine-list"
+                      value={syncForm.Machine_MC}
+                      onChange={(e) => handleSyncSourceChange('Machine_MC', e.target.value)}
+                      placeholder="ทั้งหมด / เลือกหรือพิมพ์"
+                    />
+                    <datalist id="pm-sync-machine-list">
+                      {syncMachineOptions.map((value) => (
+                        <option key={value} value={value} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="label font-bold">ซีเรียลเดิม อัตโนมัติ</label>
+                    <input
+                      className="input text-xs"
+                      list="pm-sync-serial-list"
+                      value={syncForm.Machine_KI}
+                      onChange={(e) => handleSyncSourceChange('Machine_KI', e.target.value)}
+                      placeholder="ทั้งหมด / เลือกหรือพิมพ์"
+                    />
+                    <datalist id="pm-sync-serial-list">
+                      {syncSerialOptions.map((value) => (
+                        <option key={value} value={value} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="font-bold text-slate-700 dark:text-slate-300">ข้อมูล PM ที่จะบันทึก</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="label font-bold">รอบ PM</label>
+                    <select
+                      className="select text-xs"
+                      value={syncForm.PM_Cycle}
+                      onChange={(e) => setSyncForm((p) => ({ ...p, PM_Cycle: e.target.value }))}
+                    >
+                      <option value="30">30 วัน</option>
+                      <option value="90">90 วัน</option>
+                      <option value="120">120 วัน</option>
+                      <option value="CUSTOM">Custom</option>
+                    </select>
+                  </div>
+                  {syncForm.PM_Cycle === 'CUSTOM' && (
+                    <div>
+                      <label className="label font-bold">Custom (วัน)</label>
+                      <input
+                        className="input text-xs"
+                        type="number"
+                        min="1"
+                        value={syncForm.Custom_PM_Days}
+                        onChange={(e) => setSyncForm((p) => ({ ...p, Custom_PM_Days: e.target.value }))}
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="label font-bold">PM ล่าสุด</label>
+                    <input
+                      className="input text-xs"
+                      type="date"
+                      value={syncForm.Last_PM_Date}
+                      onChange={(e) => setSyncForm((p) => ({ ...p, Last_PM_Date: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="label font-bold">PM ครั้งถัดไป</label>
+                    <input className="input text-xs font-mono" value={syncNextPMDate || ''} readOnly />
+                  </div>
+                  <div>
+                    <label className="label font-bold">นับถอยหลัง</label>
+                    <div className="input text-xs flex items-center">
+                      {syncNextPMDate ? <PMCountdownBadge date={syncNextPMDate} /> : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label font-bold">ช่าง</label>
+                    <input
+                      className="input text-xs"
+                      value={syncForm.Assigned_Tech}
+                      onChange={(e) => setSyncForm((p) => ({ ...p, Assigned_Tech: e.target.value }))}
+                      placeholder="ชื่อช่าง"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="label font-bold">URL รูป</label>
+                    <input
+                      className="input text-xs"
+                      value={syncForm.ImageUrl}
+                      onChange={(e) => setSyncForm((p) => ({ ...p, ImageUrl: e.target.value }))}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="md:col-span-4">
+                    <label className="label font-bold">หมายเหตุ</label>
+                    <textarea
+                      className="input text-xs"
+                      rows={2}
+                      value={syncForm.Remark}
+                      onChange={(e) => setSyncForm((p) => ({ ...p, Remark: e.target.value }))}
+                      placeholder="เพิ่มหมายเหตุ"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card overflow-hidden border border-slate-200 dark:border-slate-800" style={{ maxHeight: 350, overflow: 'auto' }}>
+                <table className="table w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold">
+                      <th className="py-2 px-3 text-left">ซีเรียลเดิม</th>
+                      <th className="py-2 px-3 text-left">เครื่องปัจจุบัน</th>
+                      <th className="py-2 px-3 text-left">ตำแหน่ง</th>
+                      <th className="py-2 px-3 text-left">รอบ PM</th>
+                      <th className="py-2 px-3 text-left">รายการที่จะทำ</th>
+                      <th className="py-2 px-3 text-left">ซ้ำ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {pmSyncPreviewRows.map((row, i) => (
+                      <tr key={`${row.serialOld}-${row.machine}-${i}`}>
+                        <td className="font-mono font-bold py-2 px-3 text-blue-600">{row.serialOld}</td>
+                        <td className="py-2 px-3 font-semibold">{row.machine}</td>
+                        <td className="py-2 px-3">{row.location || '—'}</td>
+                        <td className="py-2 px-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-600">
+                            {syncCycleDays ? `${syncCycleDays} วัน` : '—'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3">
+                          <StatusBadge value={row.action} />
+                        </td>
+                        <td className="py-2 px-3 font-mono text-slate-500">{row.duplicateCount ? `${row.duplicateCount} แถว` : '—'}</td>
+                      </tr>
+                    ))}
+                    {!pmSyncPreviewRows.length && (
+                      <tr>
+                        <td colSpan={6} className="text-center py-8 text-slate-400">
+                          ไม่พบข้อมูล In-use จากเมนูกระบอก
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </Modal>
+
+          {/* ── ADD / EDIT MODAL ──────────────────────────────────── */}
+          <Modal
+            open={modal}
+            onClose={() => setModal(false)}
+            title={t('pm_edit')}
+            size="lg"
+            footer={
+              <div className="flex items-center justify-end gap-2 w-full">
+                <button type="button" className="btn-outline px-4" onClick={() => setModal(false)}>
+                  {t('cancel')}
+                </button>
+                <button type="button" className="btn-primary px-5" onClick={submit} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>{t('saving')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} />
+                      <span>{t('save')}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            }
+          >
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="label font-bold">ซีเรียลเดิม</label>
+                  <input className="input font-mono" value={form.Machine_KI || ''} readOnly />
+                </div>
+                <div>
+                  <label className="label font-bold">เครื่องปัจจุบัน *</label>
+                  <input className="input font-bold" value={form.Machine_MC || ''} readOnly />
+                </div>
+                <F form={form} setForm={setForm} label="PM ล่าสุด" id="Last_PM_Date" type="date" />
+                <F form={form} setForm={setForm} label="PM ครั้งถัดไป *" id="Next_PM_Date" type="date" />
+                <div>
+                  <label className="label font-bold">รอบ PM (วัน)</label>
+                  <input className="input font-bold text-blue-600" value="90 วัน" readOnly />
+                </div>
+                <F form={form} setForm={setForm} label={t('pm_th_tech')} id="Assigned_Tech" placeholder="ชื่อช่างที่รับผิดชอบ" />
+              </div>
+
+              {/* Photo upload section */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <ImageIcon size={14} className="text-blue-500" />
+                  <span>รูปถ่ายประวัติเช็คศูนย์ / สภาพเครื่อง</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label font-bold">อัปโหลดรูปเข้า Google Drive</label>
+                    <label className="btn-primary text-xs py-2 px-3 cursor-pointer flex items-center gap-1.5 justify-center">
+                      {uploadingImage ? (
+                        <>
+                          <RefreshCw size={13} className="animate-spin" />
+                          <span>กำลังอัปโหลด...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={13} />
+                          <span>เลือกไฟล์รูปถ่าย</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingImage}
+                        onChange={(e) => onPickImageFile(e.target.files?.[0])}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <div>
+                    <F form={form} setForm={setForm} label="หรือวางลิงก์รูป (URL)" id="ImageUrl" useBuilder={false} placeholder="https://..." />
+                  </div>
+
+                  {form.ImageUrl && (
+                    <div className="col-span-1 sm:col-span-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <ImageIcon size={16} className="text-blue-600 flex-shrink-0" />
+                        <span className="font-mono text-blue-700 dark:text-blue-300 truncate">{form.ImageUrl}</span>
+                      </div>
+                      <a
+                        href={form.ImageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-outline text-[11px] py-1 px-2 flex-shrink-0 flex items-center gap-1"
+                      >
+                        <span>ดูรูป</span>
+                        <ExternalLink size={10} />
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="col-span-1 sm:col-span-2">
+                    <F
+                      form={form}
+                      setForm={setForm}
+                      label={t('remark')}
+                      id="Remark"
+                      placeholder="หมายเหตุหรือรายละเอียดเพิ่มเติม"
+                      onChange={(value) => setForm((p) => ({ ...p, Remark: appendPMImageMeta(value, p.ImageUrl) }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Modal>
         </>
       )}
     </div>
