@@ -131,7 +131,9 @@ function buildRepairDetailLines(request, cylinder) {
 export async function notifySupervisor(request, cylinder) {
   const cfg     = await loadTelegramSettingsDB()
   const baseUrl = getAppBaseUrl()
-  const approveLink = `${baseUrl}/repair/${request.cylinder_serial}?req=${request.id}&step=approve`
+  const serial  = encodeURIComponent(request.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || '')
+  const reqId   = encodeURIComponent(request.id || request._id || '')
+  const approveLink = `${baseUrl}/repair/${serial}?req=${reqId}&step=approve`
 
   const text = [
     `🔧 <b>แจ้งซ่อมกระบอก</b>`,
@@ -150,7 +152,9 @@ export async function notifySupervisor(request, cylinder) {
 export async function notifyTechnician(request) {
   const cfg      = await loadTelegramSettingsDB()
   const baseUrl  = getAppBaseUrl()
-  const completeLink = `${baseUrl}/repair/${request.cylinder_serial}?req=${request.id}&step=complete`
+  const serial   = encodeURIComponent(request.cylinder_serial || '')
+  const reqId    = encodeURIComponent(request.id || request._id || '')
+  const completeLink = `${baseUrl}/repair/${serial}?req=${reqId}&step=complete`
 
   const text = [
     `✅ <b>ได้รับมอบหมายงานซ่อม</b>`,

@@ -82,7 +82,11 @@ function StepReport({ serial, cylinder, onSubmitted }) {
         })
         .select().single()
       if (err) throw err
-      await notifySupervisor(data, cylinder)
+      try {
+        await notifySupervisor(data, cylinder)
+      } catch (tgErr) {
+        console.warn('Telegram notification warning:', tgErr)
+      }
       onSubmitted(data)
     } catch (e) {
       setError(e.message)
@@ -176,7 +180,13 @@ function StepApprove({ request, onUpdated }) {
         .eq('id', request.id)
         .select().single()
       if (err) throw err
-      if (action === 'approve') await notifyTechnician(data)
+      if (action === 'approve') {
+        try {
+          await notifyTechnician(data)
+        } catch (tgErr) {
+          console.warn('Telegram technician notify warning:', tgErr)
+        }
+      }
       onUpdated(data)
     } catch (e) { setError(e.message) }
     setSaving('')
@@ -274,7 +284,11 @@ function StepComplete({ request, onUpdated }) {
         .eq('id', request.id)
         .select().single()
       if (err) throw err
-      await notifyCompleted(data)
+      try {
+        await notifyCompleted(data)
+      } catch (tgErr) {
+        console.warn('Telegram completed notify warning:', tgErr)
+      }
       onUpdated(data)
     } catch (e) { setError(e.message) }
     setSaving(false)
@@ -364,10 +378,21 @@ export default function RepairPage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
-      // Fetch cylinder info
-      const { data: cyl } = await supabase
-        .from('cylinders').select('*')
-        .eq('Serial_NOW', serial).maybeSingle()
+      const decodedSerial = decodeURIComponent(serial || '').trim()
+      let cyl = null
+      if (decodedSerial) {
+        // Fetch cylinder info: check Serial_NOW first, fallback to Serial_OLD
+        const { data: foundNow } = await supabase
+          .from('cylinders').select('*')
+          .eq('Serial_NOW', decodedSerial).maybeSingle()
+        cyl = foundNow
+        if (!cyl) {
+          const { data: foundOld } = await supabase
+            .from('cylinders').select('*')
+            .eq('Serial_OLD', decodedSerial).maybeSingle()
+          cyl = foundOld
+        }
+      }
       setCylinder(cyl)
 
       // Fetch request if ID provided

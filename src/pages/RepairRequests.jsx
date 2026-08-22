@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useMemo } from 'react'
-import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2 } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import { RepairRequestAPI, CylinderAPI, REPAIR_STATUS } from '../api/entities'
@@ -13,7 +13,8 @@ import F from '../components/ui/FormField'
 import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
-import { getAppBaseUrl } from '../utils/telegram'
+import { getAppBaseUrl, notifySupervisor } from '../utils/telegram'
+import CylinderQRModal from '../components/CylinderQR'
 import { useT } from '../contexts/LanguageContext'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 
@@ -54,7 +55,7 @@ function getMissingRepairColumn(error) {
 export default function RepairRequests() {
   const { t } = useT()
   const { user } = useAuth()
-  const { canEdit, canDelete } = usePagePerms('workorders')
+  const { canAdd, canEdit, canDelete } = usePagePerms('workorders')
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(RepairRequestAPI)
   const [search,    setSearch]    = useState('')
@@ -64,6 +65,7 @@ export default function RepairRequests() {
   const [saving,    setSaving]    = useState(false)
   const [cylinders, setCylinders] = useState([])
   const [filterSort, setFilterSort] = useState(INIT_FS)
+  const [qrModalCylinder, setQrModalCylinder] = useState(null)
 
   useEffect(() => {
     CylinderAPI.list().then(setCylinders).catch(() => setCylinders([]))
@@ -88,6 +90,16 @@ export default function RepairRequests() {
     }))
   }
 
+  const openAdd = () => {
+    const userName = user?.full_name || user?.username || ''
+    setForm({
+      ...EMPTY,
+      reported_by: userName,
+    })
+    setModal(true)
+    setDetailRec(null)
+  }
+
   const openEdit = (r) => {
     const userName = user?.full_name || user?.username || ''
     setForm({
@@ -110,15 +122,24 @@ export default function RepairRequests() {
     try {
       let payload = { ...form, cylinder_serial: serialForSave }
       const removedColumns = []
+      let savedRecord = null
       while (true) {
         try {
-          await save(payload)
+          savedRecord = await save(payload)
           break
         } catch (error) {
           const missingColumn = getMissingRepairColumn(error)
           if (!OPTIONAL_DB_FIELDS.includes(missingColumn) || removedColumns.includes(missingColumn)) throw error
           removedColumns.push(missingColumn)
           payload = omitKeys(payload, [missingColumn])
+        }
+      }
+      if (!isEdit && savedRecord) {
+        try {
+          const matchingCyl = cylMap[serialForSave] || cylinders.find((c) => c.Serial_NOW === serialForSave || c.Serial_OLD === serialForSave)
+          await notifySupervisor(savedRecord, matchingCyl)
+        } catch (tgErr) {
+          console.warn('Telegram notification warning:', tgErr)
         }
       }
       toast.success(isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', `${form.request_no || serialForSave}`)
@@ -280,9 +301,17 @@ export default function RepairRequests() {
         <SearchInput value={search} onChange={setSearch} placeholder={t('rr_search')} />
         <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
         <GoogleSheetSyncButton sheetName="แจ้งซ่อม" columns={cols} rows={displayRows} />
-        <button className="btn-ghost ml-auto" onClick={load} disabled={loading}>
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> {t('refresh')}
-        </button>
+        <div className="flex items-center gap-2 ml-auto">
+          {canAdd && (
+            <button className="btn-primary text-xs flex items-center gap-1.5 shadow-sm" onClick={openAdd}>
+              <Plus size={14} />
+              <span>แจ้งซ่อมใหม่</span>
+            </button>
+          )}
+          <button className="btn-ghost" onClick={load} disabled={loading}>
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> {t('refresh')}
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -306,6 +335,17 @@ export default function RepairRequests() {
                 {cols.map(c => <td key={c.field||c.id}>{renderRRCell(r, c)}</td>)}
                 <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className="btn-outline py-1 px-2 text-xs"
+                      onClick={() => {
+                        const matchCyl = cylMap[r.cylinder_serial] || cylinders.find((c) => c.Serial_NOW === r.cylinder_serial || c.Serial_OLD === r.cylinder_serial) || { Serial_NOW: r.cylinder_serial, NewMC: r.machine_mc, Location: r.cylinder_location }
+                        setQrModalCylinder(matchCyl)
+                      }}
+                      title="ดู QR Code สำหรับสแกนแจ้งซ่อม"
+                    >
+                      <QrCode size={12} />
+                    </button>
                     {canEdit && (
                       <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(r)} title="แก้ไข">
                         <Pencil size={12} />
@@ -376,9 +416,9 @@ export default function RepairRequests() {
         ) : null}
       />
 
-      {/* Edit Modal */}
+      {/* Edit / Create Modal */}
       <Modal open={modal} onClose={() => setModal(false)}
-        title="แก้ไขใบแจ้งซ่อม" size="lg"
+        title={form._id || form.id ? 'แก้ไขใบแจ้งซ่อม' : 'สร้างใบแจ้งซ่อมใหม่'} size="lg"
         footer={<>
           <button className="btn-outline" onClick={() => setModal(false)}>{t('cancel')}</button>
           <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? t('saving') : t('save')}</button>
@@ -392,15 +432,32 @@ export default function RepairRequests() {
           </div>
         )}
         <div className="grid grid-cols-2 gap-4">
-          <F form={form} setForm={setForm} label="เลขที่ใบแจ้งซ่อม" id="request_no" />
+          <div>
+            <label className="label">ซีเรียลกระบอก *</label>
+            <input
+              type="text"
+              list="cylinder-serial-options"
+              className="input font-mono font-bold"
+              placeholder="เลือกหรือพิมพ์ซีเรียล..."
+              value={form.cylinder_serial || ''}
+              onChange={(e) => handleSerialChange(e.target.value)}
+              required
+            />
+            <datalist id="cylinder-serial-options">
+              {serialOptions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </div>
           <F form={form} setForm={setForm} label="สถานะ" id="status" opts={REPAIR_STATUS} useBuilder={false} />
+          <F form={form} setForm={setForm} label="เลขที่ใบแจ้งซ่อม" id="request_no" placeholder="เว้นว่างเพื่อสร้างอัตโนมัติ" />
           <F form={form} setForm={setForm} label="เครื่องปัจจุบัน (อัตโนมัติ)" id="machine_mc" />
           <F form={form} setForm={setForm} label="KI" id="KI" />
           <F form={form} setForm={setForm} label="Design" id="Design" />
           <F form={form} setForm={setForm} label={t('cyl_th_loc')} id="cylinder_location" />
           <F form={form} setForm={setForm} label={t('rr_field_reported_by')} id="reported_by" />
           <div className="col-span-2">
-            <F form={form} setForm={setForm} label={t('rr_field_problem')} id="problem_description" type="textarea" />
+            <F form={form} setForm={setForm} label={t('rr_field_problem')} id="problem_description" type="textarea" placeholder="ระบุอาการเสีย หรือปัญหาที่พบ..." />
           </div>
           <F form={form} setForm={setForm} label={t('wo_th_tech')} id="technician_name" />
           <F form={form} setForm={setForm} label={t('rr_field_approved_by')} id="approved_by" />
@@ -416,6 +473,13 @@ export default function RepairRequests() {
           <F form={form} setForm={setForm} label={t('rr_field_completed_at')} id="completed_at" type="datetime-local" />
         </div>
       </Modal>
+
+      {/* QR Code Modal for Scanning/Printing */}
+      <CylinderQRModal
+        open={!!qrModalCylinder}
+        onClose={() => setQrModalCylinder(null)}
+        cylinder={qrModalCylinder}
+      />
     </div>
   )
 }
