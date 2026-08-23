@@ -163,7 +163,7 @@ export default function Dashboard() {
         inProgressRepairs,
         waitPartsRepairs,
         pendingRepairsList: pendingRepairs,
-        recentWO: workorders.slice(-5).reverse(),
+        recentWO: workorders.slice(0, 5),
       })
       setLoading(false)
     })

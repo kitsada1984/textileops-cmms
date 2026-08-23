@@ -378,31 +378,40 @@ export default function RepairPage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
-      const decodedSerial = decodeURIComponent(serial || '').trim()
-      let cyl = null
-      if (decodedSerial) {
-        // Fetch cylinder info: check Serial_NOW first, fallback to Serial_OLD
-        const { data: foundNow } = await supabase
-          .from('cylinders').select('*')
-          .eq('Serial_NOW', decodedSerial).maybeSingle()
-        cyl = foundNow
-        if (!cyl) {
-          const { data: foundOld } = await supabase
-            .from('cylinders').select('*')
-            .eq('Serial_OLD', decodedSerial).maybeSingle()
-          cyl = foundOld
-        }
-      }
-      setCylinder(cyl)
+      try {
+        let decodedSerial = String(serial || '').trim()
+        try {
+          decodedSerial = decodeURIComponent(decodedSerial).trim()
+        } catch {}
 
-      // Fetch request if ID provided
-      if (reqId) {
-        const { data: req } = await supabase
-          .from('repair_requests').select('*')
-          .eq('id', reqId).maybeSingle()
-        setRequest(req)
+        let cyl = null
+        if (decodedSerial) {
+          // Fetch cylinder info: check Serial_NOW first, fallback to Serial_OLD
+          const { data: foundNow } = await supabase
+            .from('cylinders').select('*')
+            .eq('Serial_NOW', decodedSerial).maybeSingle()
+          cyl = foundNow
+          if (!cyl) {
+            const { data: foundOld } = await supabase
+              .from('cylinders').select('*')
+              .eq('Serial_OLD', decodedSerial).maybeSingle()
+            cyl = foundOld
+          }
+        }
+        setCylinder(cyl)
+
+        // Fetch request if ID provided
+        if (reqId) {
+          const { data: req } = await supabase
+            .from('repair_requests').select('*')
+            .eq('id', reqId).maybeSingle()
+          setRequest(req)
+        }
+      } catch (e) {
+        console.error('Error loading repair data:', e)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     load()
   }, [serial, reqId])

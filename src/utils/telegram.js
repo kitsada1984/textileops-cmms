@@ -97,21 +97,33 @@ function getTechnicianChatId(cfg, technicianName) {
   return supers[0] || null
 }
 
+export function escapeHtml(str) {
+  if (str === null || str === undefined) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 async function sendMessage(token, chatId, text) {
   if (!token || !chatId) return { ok: false, error: 'ไม่มี Bot Token หรือ Chat ID' }
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const fetchOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: false }),
-    })
+    }
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+      fetchOptions.signal = AbortSignal.timeout(10000)
+    }
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, fetchOptions)
     return await res.json()
   } catch (e) {
     return { ok: false, error: e.message }
   }
 }
 
-const fv = (v) => (v === null || v === undefined || v === '' ? '—' : String(v))
+const fv = (v) => (v === null || v === undefined || v === '' ? '—' : escapeHtml(String(v)))
 
 function buildRepairDetailLines(request, cylinder) {
   return [
@@ -120,8 +132,8 @@ function buildRepairDetailLines(request, cylinder) {
     `🏭 Current Machine: <b>${fv(request.machine_mc || cylinder?.NewMC)}</b>`,
     `📍 ตำแหน่ง: ${fv(request.cylinder_location || cylinder?.Location)}`,
     `📐 Standard: ${fv(request.cylinder_standard || cylinder?.Standard)}`,
-    request.KI ? `🧾 KI: ${request.KI}` : null,
-    request.Design ? `🎨 Design: ${request.Design}` : null,
+    request.KI ? `🧾 KI: ${escapeHtml(request.KI)}` : null,
+    request.Design ? `🎨 Design: ${escapeHtml(request.Design)}` : null,
     `⚠️ ปัญหา: ${fv(request.problem_description)}`,
     `👤 ผู้แจ้ง: ${fv(request.reported_by)}`,
     `⏰ เวลาแจ้ง: ${new Date(request.created_at || Date.now()).toLocaleString('th-TH')}`,
@@ -160,7 +172,7 @@ export async function notifyTechnician(request) {
     `✅ <b>ได้รับมอบหมายงานซ่อม</b>`,
     ``,
     ...buildRepairDetailLines(request),
-    request.approval_notes ? `📝 หมายเหตุจาก Supervisor: ${request.approval_notes}` : null,
+    request.approval_notes ? `📝 หมายเหตุจาก Supervisor: ${escapeHtml(request.approval_notes)}` : null,
     ``,
     `🔗 <a href="${completeLink}">คลิกเพื่อบันทึกผลการซ่อม</a>`,
   ].filter(l => l !== null).join('\n')
@@ -176,9 +188,9 @@ export async function notifyCompleted(request) {
     ``,
     ...buildRepairDetailLines(request),
     ``,
-    `🔧 วิธีแก้ไข: ${request.repair_details}`,
-    request.parts_used ? `🔩 อะไหล่ที่ใช้: ${request.parts_used}` : null,
-    `👷 ช่าง: ${request.completed_by || request.technician_name}`,
+    `🔧 วิธีแก้ไข: ${escapeHtml(request.repair_details)}`,
+    request.parts_used ? `🔩 อะไหล่ที่ใช้: ${escapeHtml(request.parts_used)}` : null,
+    `👷 ช่าง: ${escapeHtml(request.completed_by || request.technician_name)}`,
     `⏰ เสร็จ: ${new Date(request.completed_at || Date.now()).toLocaleString('th-TH')}`,
   ].filter(l => l !== null).join('\n')
 

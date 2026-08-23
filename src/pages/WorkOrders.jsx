@@ -1456,7 +1456,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-black font-mono">
-                        {tech.Name[0]?.toUpperCase()}
+                        {(tech?.Name || '?')[0]?.toUpperCase()}
                       </div>
                       <div>
                         <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">

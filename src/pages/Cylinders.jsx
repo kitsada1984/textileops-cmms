@@ -24,7 +24,7 @@ import {
 import useWebBuilderMenu, { useWebBuilderColumn } from '../hooks/useWebBuilderMenu'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
-import { CylinderAPI, CYL_STATUS } from '../api/entities'
+import { AuditLogAPI, CylinderAPI, CYL_STATUS } from '../api/entities'
 import Modal from '../components/ui/Modal'
 import StatusBadge from '../components/ui/StatusBadge'
 import SearchInput from '../components/ui/SearchInput'
@@ -601,6 +601,22 @@ export default function Cylinders() {
 
     await updateCylinderWithImageFallback(payload.newIn.id || payload.newIn._id, payload.newIn)
     await updateCylinderWithImageFallback(payload.newOut.id || payload.newOut._id, payload.newOut)
+
+    try {
+      await AuditLogAPI.create({
+        Module: 'CYLINDERS',
+        ActionType: 'SWAP',
+        RecordID: `${payload.newIn.Serial_NOW || ''} <-> ${payload.newOut.Serial_NOW || ''}`,
+        FieldName: 'SwapCylinder',
+        OldValue: JSON.stringify({ in: meta.inId, out: meta.outId }),
+        NewValue: JSON.stringify({
+          in: { id: payload.newIn.id, serial: payload.newIn.Serial_NOW, loc: payload.newIn.Location },
+          out: { id: payload.newOut.id, serial: payload.newOut.Serial_NOW, loc: payload.newOut.Location },
+        }),
+        Comment: `สลับกระบอก ${payload.newIn.Serial_NOW} กับ ${payload.newOut.Serial_NOW}`,
+      })
+    } catch {}
+
     await load()
     toast.success('สลับกระบอกสำเร็จ', `${payload.newIn.Serial_NOW} ↔ ${payload.newOut.Serial_NOW}`)
   }

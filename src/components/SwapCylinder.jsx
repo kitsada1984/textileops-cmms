@@ -431,8 +431,8 @@ export function buildCylinderSwapPayload(cylIn, cylOut, swapCols = []) {
   const actualSwapKeys = getActualSwapKeys(swapCols)
 
   actualSwapKeys.filter((key) => key !== 'ImageUrl').forEach(key => {
-    newIn[key]  = cylOut[key]
-    newOut[key] = cylIn[key]
+    newIn[key]  = cylOut[key] ?? null
+    newOut[key] = cylIn[key] ?? null
   })
 
   if (actualSwapKeys.includes('ImageUrl')) {
