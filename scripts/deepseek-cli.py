@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 r"""
-DeepSeek CLI - Command-line interface for DeepSeek AI models (deepseek-chat, deepseek-reasoner, deepseek-v4-pro)
+DeepSeek CLI - Command-line interface for DeepSeek AI models
+Default Model: deepseek-v4-flash (via Alibaba Cloud Bailian Token Plan)
 Usage:
     .\deepseek "คำถามของคุณ"
     .\deepseek -m deepseek-reasoner "คำถามทางตรรกะ/คณิตศาสตร์"
@@ -35,8 +36,8 @@ except ImportError:
 def load_deepseek_credentials():
     config_file = Path.home() / '.qwen' / 'settings.json'
     api_key = None
-    base_url = "https://api.deepseek.com"
-    default_model = "deepseek-chat"
+    base_url = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+    default_model = "deepseek-v4-flash-0731"
 
     # Try loading from .qwen/settings.json
     if config_file.exists():
@@ -44,44 +45,61 @@ def load_deepseek_credentials():
             with open(config_file, 'r', encoding='utf-8') as f:
                 cfg = json.load(f)
             env_vars = cfg.get('env', {})
-            api_key = env_vars.get('DEEPSEEK_API_KEY')
+            # Prefer Bailian token plan key if using Bailian endpoint
+            api_key = env_vars.get('DASHSCOPE_API_KEY') or env_vars.get('DEEPSEEK_API_KEY')
         except Exception:
             pass
 
     # Fallback to env variables
     if not api_key:
-        api_key = os.getenv("DEEPSEEK_API_KEY")
-    if os.getenv("DEEPSEEK_BASE_URL"):
-        base_url = os.getenv("DEEPSEEK_BASE_URL")
+        api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
 
     return api_key, base_url, default_model
 
-def get_client():
-    api_key, base_url, _ = load_deepseek_credentials()
+def get_client(model_name: str = None):
+    api_key, base_url, default_model = load_deepseek_credentials()
+    target_model = model_name or default_model
+
+    # If user explicitly requested deepseek-chat or deepseek-reasoner on direct API
+    if target_model in ['deepseek-chat', 'deepseek-reasoner']:
+        config_file = Path.home() / '.qwen' / 'settings.json'
+        direct_key = None
+        if config_file.exists():
+            try:
+                cfg = json.load(open(config_file, 'r', encoding='utf-8'))
+                direct_key = cfg.get('env', {}).get('DEEPSEEK_API_KEY')
+            except Exception:
+                pass
+        if direct_key:
+            return OpenAI(api_key=direct_key, base_url="https://api.deepseek.com"), target_model
+
+    # Default to Bailian Token Plan (deepseek-v4-flash / deepseek-v4-pro)
     if not api_key:
-        print("\n⚠️ ไม่พบ DEEPSEEK_API_KEY")
-        api_key = input("👉 กรุณากรอก DeepSeek API Key: ").strip()
+        print("\n⚠️ ไม่พบ API Key")
+        api_key = input("👉 กรุณากรอก API Key: ").strip()
         if not api_key:
             print("❌ ยกเลิกการทำงาน")
             sys.exit(1)
 
-    return OpenAI(api_key=api_key, base_url=base_url)
+    # Normalize deepseek-v4-flash model alias
+    if target_model in ['deepseek-v4-flash', 'deepseek-v4']:
+        target_model = 'deepseek-v4-flash-0731'
+
+    return OpenAI(api_key=api_key, base_url=base_url), target_model
 
 def ask_deepseek(prompt: str, model: str = None):
-    _, _, default_model = load_deepseek_credentials()
-    model = model or default_model
-    client = get_client()
+    client, resolved_model = get_client(model)
 
     if console:
-        console.print(f"[bold cyan]🧠 DeepSeek ({model}) กำลังคิดและประมวลผล...[/bold cyan]")
+        console.print(f"[bold cyan]⚡ DeepSeek ({resolved_model}) กำลังประมวลผล...[/bold cyan]")
     else:
-        print(f"🧠 DeepSeek ({model}) กำลังประมวลผล...")
+        print(f"⚡ DeepSeek ({resolved_model}) กำลังประมวลผล...")
 
     try:
         response = client.chat.completions.create(
-            model=model,
+            model=resolved_model,
             messages=[
-                {"role": "system", "content": "You are DeepSeek, an advanced AI reasoning and coding assistant. You speak clear Thai and English."},
+                {"role": "system", "content": "You are DeepSeek (deepseek-v4-flash), a high-speed, intelligent AI assistant for TextileOps CMMS. You speak clear Thai and English."},
                 {"role": "user", "content": prompt}
             ],
         )
@@ -91,14 +109,14 @@ def ask_deepseek(prompt: str, model: str = None):
         content = message.content
 
         if reasoning and console:
-            console.print(Panel(Markdown(reasoning), title="[bold yellow]💭 DeepSeek Reasoning (กระบวนการคิด)[/bold yellow]", border_style="yellow"))
+            console.print(Panel(Markdown(reasoning), title="[bold yellow]💭 DeepSeek Reasoning[/bold yellow]", border_style="yellow"))
 
         if console:
-            console.print(Panel(Markdown(content), title=f"[bold green]DeepSeek Response ({model})[/bold green]", border_style="blue"))
+            console.print(Panel(Markdown(content), title=f"[bold green]DeepSeek Response ({resolved_model})[/bold green]", border_style="blue"))
         else:
             if reasoning:
                 print(f"\n--- Reasoning ---\n{reasoning}\n")
-            print(f"\n--- DeepSeek ({model}) ---\n{content}\n")
+            print(f"\n--- DeepSeek ({resolved_model}) ---\n{content}\n")
         return content
     except Exception as e:
         if console:
@@ -108,16 +126,14 @@ def ask_deepseek(prompt: str, model: str = None):
         return None
 
 def interactive_chat(model: str = None):
-    _, _, default_model = load_deepseek_credentials()
-    model = model or default_model
-    client = get_client()
+    client, resolved_model = get_client(model)
 
     if console:
-        console.print(Panel.fit(f"[bold green]✨ เข้าสู่โหมดสนทนา DeepSeek Interactive Chat ({model})[/bold green]\nพิมพ์ [bold red]'exit'[/bold red] หรือ [bold red]'quit'[/bold red] เพื่อออกจากระบบ", border_style="green"))
+        console.print(Panel.fit(f"[bold green]✨ เข้าสู่โหมดสนทนา DeepSeek Interactive Chat ({resolved_model})[/bold green]\nพิมพ์ [bold red]'exit'[/bold red] หรือ [bold red]'quit'[/bold red] เพื่อออกจากระบบ", border_style="green"))
     else:
-        print(f"✨ เข้าสู่โหมดสนทนา DeepSeek ({model}) (พิมพ์ 'exit' เพื่อออก)")
+        print(f"✨ เข้าสู่โหมดสนทนา DeepSeek ({resolved_model}) (พิมพ์ 'exit' เพื่อออก)")
 
-    messages = [{"role": "system", "content": "You are DeepSeek, a helpful and precise AI assistant. You speak clear Thai and English."}]
+    messages = [{"role": "system", "content": "You are DeepSeek (deepseek-v4-flash), a high-speed, intelligent AI assistant. You speak clear Thai and English."}]
 
     while True:
         try:
@@ -131,7 +147,7 @@ def interactive_chat(model: str = None):
             messages.append({"role": "user", "content": user_input})
 
             response = client.chat.completions.create(
-                model=model,
+                model=resolved_model,
                 messages=messages,
             )
 
@@ -144,7 +160,7 @@ def interactive_chat(model: str = None):
                 console.print(Panel(Markdown(reasoning), title="[bold yellow]💭 DeepSeek Reasoning[/bold yellow]", border_style="yellow"))
 
             if console:
-                console.print(Panel(Markdown(reply), title=f"[bold cyan]DeepSeek ({model})[/bold cyan]", border_style="blue"))
+                console.print(Panel(Markdown(reply), title=f"[bold cyan]DeepSeek ({resolved_model})[/bold cyan]", border_style="blue"))
             else:
                 if reasoning:
                     print(f"\n[Reasoning]: {reasoning}")
@@ -157,9 +173,9 @@ def interactive_chat(model: str = None):
 
 def main():
     _, _, default_model = load_deepseek_credentials()
-    parser = argparse.ArgumentParser(description="DeepSeek CLI - สั่งการ AI DeepSeek บน Terminal")
+    parser = argparse.ArgumentParser(description="DeepSeek CLI - สั่งการ AI DeepSeek บน Terminal (Default: deepseek-v4-flash)")
     parser.add_argument("prompt", nargs="?", help="ข้อความหรือคำถามที่ต้องการถาม DeepSeek")
-    parser.add_argument("--model", "-m", default=default_model, help="ชื่อโมเดล เช่น deepseek-chat, deepseek-reasoner, deepseek-v4-pro")
+    parser.add_argument("--model", "-m", default=default_model, help=f"ชื่อโมเดล เช่น deepseek-v4-flash, deepseek-v4-pro, deepseek-reasoner, deepseek-chat")
     parser.add_argument("--chat", "-c", action="store_true", help="เปิดโหมดสนทนาโต้ตอบ (Interactive Chat)")
 
     args = parser.parse_args()
