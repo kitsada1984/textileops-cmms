@@ -75,9 +75,15 @@ def get_client():
 
     return OpenAI(api_key=api_key, base_url=base_url)
 
-def ask_qwen(prompt: str, model: str = None):
+def normalize_qwen_model(model_name: str = None):
     _, _, default_model = load_bailian_credentials()
-    model = model or default_model
+    model = (model_name or default_model).lower().strip()
+    if model in ['qwen3.8max', 'qwen-3.8-max', '3.8max', '3.8-max', 'qwen3.8', 'qwen-3.8', 'qwen']:
+        return 'qwen3.8-max'
+    return model
+
+def ask_qwen(prompt: str, model: str = None):
+    model = normalize_qwen_model(model)
     client = get_client()
 
     if console:
@@ -108,8 +114,7 @@ def ask_qwen(prompt: str, model: str = None):
         return None
 
 def interactive_chat(model: str = None):
-    _, _, default_model = load_bailian_credentials()
-    model = model or default_model
+    model = normalize_qwen_model(model)
     client = get_client()
 
     if console:
