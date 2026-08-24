@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  FileText,
+  Printer,
 } from 'lucide-react'
 import useWebBuilderMenu from '../hooks/useWebBuilderMenu'
 import { format } from 'date-fns'
@@ -35,6 +37,8 @@ import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generateMachinePdfProps } from '../utils/pdfDocGenerators'
 
 const MACHINE_IMAGE_FOLDER = 'แท็กเครื่องจักร'
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
@@ -209,6 +213,7 @@ export default function Machines() {
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [detailRec, setDetailRec] = useState(null)
+  const [pdfItem, setPdfItem] = useState(null)
   const [showSummary, setShowSummary] = useState(false)
   const [previewImageModal, setPreviewImageModal] = useState(null)
 
@@ -637,6 +642,14 @@ export default function Machines() {
                   ))}
                   <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPdfItem(m)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                        title="ดูเอกสาร PDF และพิมพ์"
+                      >
+                        <FileText size={13} />
+                      </button>
                       {canEdit && (
                         <button
                           type="button"
@@ -686,6 +699,7 @@ export default function Machines() {
         badge={detailRec && <StatusBadge value={detailRec.Status} />}
         canEdit={canEdit}
         canDelete={canDelete}
+        onPdf={() => setPdfItem(detailRec)}
         onEdit={() => openEdit(detailRec)}
         onDelete={() => {
           del(detailRec._id || detailRec.id)
@@ -950,6 +964,15 @@ export default function Machines() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
+      {pdfItem && (
+        <PdfPreviewModal
+          open={!!pdfItem}
+          onClose={() => setPdfItem(null)}
+          {...generateMachinePdfProps(pdfItem)}
+        />
       )}
     </div>
   )

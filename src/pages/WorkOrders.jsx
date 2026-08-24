@@ -46,6 +46,8 @@ import { useAuth } from '../contexts/AuthContext'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
 import RepairRequests from './RepairRequests'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generateWorkOrderPdfProps } from '../utils/pdfDocGenerators'
 
 const DEFAULT_KPI_TARGETS = {
   REPAIR: 1.0,
@@ -2047,104 +2049,23 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
       {/* 5. Print A4 PDF Report Modal */}
       {printModalOpen && printJob && (
-        <Modal
+        <PdfPreviewModal
           open={printModalOpen}
           onClose={() => setPrintModalOpen(false)}
-          title={`พิมพ์ใบสั่งงาน ${printJob.Job_ID || printJob['Job ID']}`}
-        >
-          <div className="space-y-4 text-xs">
-            {/* Printable Paper Preview Box */}
-            <div id="printArea" className="p-6 rounded-2xl bg-white text-slate-900 border border-slate-300 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between border-b-2 border-slate-800 pb-3">
-                <div>
-                  <h1 className="text-base font-black uppercase tracking-wider">
-                    Gemma Knits Co., Ltd.
-                  </h1>
-                  <h2 className="text-xs font-bold text-slate-700">
-                    ใบสั่งงานซ่อมบำรุงและปรับเครื่อง (Maintenance Job Order)
-                  </h2>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-black font-mono text-blue-600">
-                    {printJob.Job_ID || printJob['Job ID']}
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    วันที่: {printJob.StartDate || '—'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <span className="text-slate-500 font-semibold">รหัสเครื่องจักร (M/C):</span>{' '}
-                  <b className="font-mono text-sm">{printJob.MC || '—'}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">รหัสงาน (KI):</span>{' '}
-                  <b className="font-mono text-sm">{printJob.KI || '—'}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">แบบงาน (Design):</span>{' '}
-                  <b>{printJob.Design || '—'}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">ประเภทงาน (Job Type):</span>{' '}
-                  <b>{printJob.JobType === 'DESIGN' ? 'ปรับแบบ' : printJob.JobType === 'PM' ? 'PM' : 'แก้ไข'}</b>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-slate-500 font-semibold">ช่างผู้ปฏิบัติงาน:</span>{' '}
-                  <b>{printJob.Technicians || '—'}</b>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-slate-500 font-semibold">รายละเอียด / อาการเสีย:</span>{' '}
-                  <p className="mt-1 p-2 rounded-lg bg-slate-100 border border-slate-200">{printJob.Comment || '—'}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-300 text-xs">
-                <div>
-                  <span className="text-slate-500">เวลาเริ่มงาน:</span>
-                  <div className="font-mono font-bold">{printJob.StartDate} {printJob.StartTime}</div>
-                </div>
-                <div>
-                  <span className="text-slate-500">เวลาจบงาน:</span>
-                  <div className="font-mono font-bold">{printJob.EndDate ? `${printJob.EndDate} ${printJob.EndTime || ''}` : 'ยังไม่จบงาน'}</div>
-                </div>
-                <div>
-                  <span className="text-slate-500">ระยะเวลารวม:</span>
-                  <div className="font-mono font-bold text-blue-600">{printJob.WorkingDurationText || '—'}</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-6 text-center text-[10px]">
-                <div className="border-t border-slate-400 pt-1">
-                  ลายเซ็นช่างผู้ปฏิบัติงาน
-                </div>
-                <div className="border-t border-slate-400 pt-1">
-                  ลายเซ็นหัวหน้างาน / ผู้ตรวจสอบ
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setPrintModalOpen(false)}
-                className="btn-outline"
-              >
-                ปิด
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="btn-primary"
-              >
-                <Printer size={14} />
-                <span>พิมพ์เอกสาร (Print)</span>
-              </button>
-            </div>
-          </div>
-        </Modal>
+          {...generateWorkOrderPdfProps({
+            ...printJob,
+            WONumber: printJob.Job_ID || printJob['Job ID'],
+            OrderDate: printJob.StartDate,
+            WOType: printJob.JobType === 'DESIGN' ? 'ปรับแบบ (Design)' : printJob.JobType === 'PM' ? 'บำรุงรักษา (PM)' : 'แก้ไขเครื่อง (Repair)',
+            MachineID: printJob.MC,
+            AssignedTo: printJob.Technicians,
+            Title: printJob.Design ? `งานปรับแบบ: ${printJob.Design}` : `งานซ่อมบำรุง: ${printJob.MC}`,
+            Description: printJob.Comment,
+            Duration: printJob.WorkingDurationText || printJob.WorkingHoursDecimal,
+            StartTime: `${printJob.StartDate || ''} ${printJob.StartTime || ''}`.trim(),
+            EndTime: printJob.EndDate ? `${printJob.EndDate} ${printJob.EndTime || ''}`.trim() : 'ยังไม่เสร็จสิ้น',
+          })}
+        />
       )}
     </div>
   )

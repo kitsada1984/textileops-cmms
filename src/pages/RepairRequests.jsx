@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode } from 'lucide-react'
+import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import { RepairRequestAPI, CylinderAPI, REPAIR_STATUS } from '../api/entities'
@@ -17,6 +17,8 @@ import { getAppBaseUrl, notifySupervisor } from '../utils/telegram'
 import CylinderQRModal from '../components/CylinderQR'
 import { useT } from '../contexts/LanguageContext'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
 
 const EMPTY = {
   request_no: '', status: 'PENDING',
@@ -60,6 +62,7 @@ export default function RepairRequests() {
   const { data, loading, load, save, remove } = useEntity(RepairRequestAPI)
   const [search,    setSearch]    = useState('')
   const [detailRec, setDetailRec] = useState(null)
+  const [pdfItem,   setPdfItem]   = useState(null)
   const [modal,     setModal]     = useState(false)
   const [form,      setForm]      = useState(EMPTY)
   const [saving,    setSaving]    = useState(false)
@@ -346,6 +349,13 @@ export default function RepairRequests() {
                     >
                       <QrCode size={12} />
                     </button>
+                    <button
+                      className="btn-outline py-1 px-2 text-xs"
+                      onClick={() => setPdfItem(r)}
+                      title="ดูเอกสาร PDF และพิมพ์"
+                    >
+                      <FileText size={12} />
+                    </button>
                     {canEdit && (
                       <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(r)} title="แก้ไข">
                         <Pencil size={12} />
@@ -396,6 +406,7 @@ export default function RepairRequests() {
         )})() : null}
         accentColor="#6366f1"
         canEdit={canEdit} canDelete={canDelete}
+        onPdf={() => setPdfItem(detailRec)}
         onEdit={() => openEdit(detailRec)}
         onDelete={() => { del(detailRec._id || detailRec.id); setDetailRec(null) }}
         groups={drawerGroups}
@@ -480,6 +491,15 @@ export default function RepairRequests() {
         onClose={() => setQrModalCylinder(null)}
         cylinder={qrModalCylinder}
       />
+
+      {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
+      {pdfItem && (
+        <PdfPreviewModal
+          open={!!pdfItem}
+          onClose={() => setPdfItem(null)}
+          {...generateRepairRequestPdfProps(pdfItem)}
+        />
+      )}
     </div>
   )
 }

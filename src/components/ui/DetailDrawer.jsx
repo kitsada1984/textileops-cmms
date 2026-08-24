@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Pencil, Trash2 } from 'lucide-react'
+import { X, Pencil, Trash2, Printer } from 'lucide-react'
 
 export default function DetailDrawer({
   open,
@@ -14,6 +14,7 @@ export default function DetailDrawer({
   groups = [],
   onEdit,
   onDelete,
+  onPdf,
   canEdit = true,
   canDelete = true,
   accentColor = '#6366f1',
@@ -142,8 +143,35 @@ export default function DetailDrawer({
             </div>
 
             {/* Action buttons */}
-            {((canEdit || canDelete) && (onEdit || onDelete)) || extraActions ? (
+            {((canEdit || canDelete) && (onEdit || onDelete)) || onPdf || extraActions ? (
               <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+                {onPdf && (
+                  <button onClick={onPdf} style={{
+                    flex: onEdit ? 'none' : 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 6, padding: '9px 16px',
+                    borderRadius: 11, fontSize: 12, fontWeight: 700,
+                    cursor: 'pointer', transition: 'all 160ms',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: '0 2px 8px rgba(37,99,235,0.35)',
+                    letterSpacing: '0.01em',
+                  }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(37,99,235,0.5)'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(37,99,235,0.35)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                    title="ดูเอกสาร PDF และสั่งพิมพ์"
+                  >
+                    <Printer size={12} /> PDF / พิมพ์
+                  </button>
+                )}
                 {canEdit && onEdit && (
                   <button onClick={onEdit} style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',

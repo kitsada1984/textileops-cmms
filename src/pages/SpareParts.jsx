@@ -15,6 +15,7 @@ import {
   X,
   Layers,
   Sparkles,
+  FileText,
 } from 'lucide-react'
 import useEntity from '../hooks/useEntity'
 import { SparePartAPI, PART_STATUS } from '../api/entities'
@@ -32,6 +33,8 @@ import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { generatePartCode, getPartStockStatus } from '../utils/inventory'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generateSparePartPdfProps } from '../utils/pdfDocGenerators'
 import {
   appendSparePartImageMeta,
   buildSparePartImagePayload,
@@ -181,6 +184,7 @@ export default function SpareParts() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [filterSort, setFilterSort] = useState(INIT_FS)
   const [detailRec, setDetailRec] = useState(null)
+  const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
 
   // Summary statistics
@@ -579,6 +583,14 @@ export default function SpareParts() {
                   ))}
                   <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPdfItem(p)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                        title="ดูเอกสาร PDF และพิมพ์"
+                      >
+                        <FileText size={13} />
+                      </button>
                       {canEdit && (
                         <button
                           type="button"
@@ -628,6 +640,7 @@ export default function SpareParts() {
         badge={detailRec && <StatusBadge value={getSparePartStatus(detailRec)} />}
         canEdit={canEdit}
         canDelete={canDelete}
+        onPdf={() => setPdfItem(detailRec)}
         onEdit={() => openEdit(detailRec)}
         onDelete={() => {
           del(detailRec._id || detailRec.id)
@@ -834,6 +847,15 @@ export default function SpareParts() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
+      {pdfItem && (
+        <PdfPreviewModal
+          open={!!pdfItem}
+          onClose={() => setPdfItem(null)}
+          {...generateSparePartPdfProps(pdfItem)}
+        />
       )}
     </div>
   )

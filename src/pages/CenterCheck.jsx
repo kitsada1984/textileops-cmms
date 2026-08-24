@@ -40,6 +40,8 @@ import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generateCenterCheckPdfProps } from '../utils/pdfDocGenerators'
 
 const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 
@@ -1342,130 +1344,14 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       )}
 
       {/* ══════════════════════════════════════════════════════════ */}
-      {/* ── MODAL: 2. PRINT A4 SHEET ─────────────────────────────── */}
+      {/* ── MODAL: 2. PRINT A4 SHEET (PDF PREVIEW MODAL) ──────────── */}
       {/* ══════════════════════════════════════════════════════════ */}
       {printRecord && (
-        <Modal
+        <PdfPreviewModal
           open={!!printRecord}
           onClose={() => setPrintRecord(null)}
-          title={`พิมพ์ใบบันทึก ${printRecord.doc_no}`}
-        >
-          <div className="space-y-4 text-xs">
-            {/* Printable A4 Paper Preview */}
-            <div id="printCenterCheckArea" className="p-6 rounded-2xl bg-white text-slate-900 border border-slate-300 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between border-b-2 border-slate-800 pb-3">
-                <div>
-                  <h1 className="text-base font-black uppercase tracking-wider">
-                    Gemma Knits Co., Ltd.
-                  </h1>
-                  <h2 className="text-xs font-bold text-slate-700">
-                    ใบบันทึกการตั้งศูนย์เครื่องถักกลม ({printRecord.type} Jersey Center Setting Check Sheet)
-                  </h2>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-black font-mono text-blue-600">
-                    {printRecord.doc_no}
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    วันที่: {printRecord.doc_date}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div>
-                  <span className="text-slate-500 font-semibold">รหัสเครื่องจักร (M/C):</span>{' '}
-                  <b className="font-mono text-sm">{printRecord.mc}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">Serial No.:</span>{' '}
-                  <b className="font-mono">{printRecord.serial || '—'}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">ช่างตั้งศูนย์:</span>{' '}
-                  <b>{printRecord.mechanic || '—'}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">Counter ล่าสุด:</span>{' '}
-                  <b className="font-mono">{Number(printRecord.counter_latest || 0).toLocaleString()}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">Counter ก่อน:</span>{' '}
-                  <b className="font-mono">{Number(printRecord.counter_prev || 0).toLocaleString()}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">ผลต่างรอบ:</span>{' '}
-                  <b className="font-mono text-blue-600">+{Number(printRecord.counter_total || 0).toLocaleString()} รอบ</b>
-                </div>
-              </div>
-
-              <table className="w-full text-[11px] border-collapse border border-slate-400">
-                <thead>
-                  <tr className="bg-slate-200 text-slate-900 border border-slate-400 font-bold text-center">
-                    <th className="p-1 border border-slate-400 w-8">ข้อ</th>
-                    <th className="p-1 border border-slate-400 text-left">รายการตรวจ</th>
-                    <th className="p-1 border border-slate-400 w-20">ค่ามาตรฐาน</th>
-                    <th className="p-1 border border-slate-400 w-16">ก่อนทำ</th>
-                    <th className="p-1 border border-slate-400 w-16">หลังทำ</th>
-                    <th className="p-1 border border-slate-400 w-16">ผล</th>
-                    <th className="p-1 border border-slate-400 text-left">ข้อสังเกต</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(printRecord.items || []).map((it, idx) => (
-                    <tr key={idx} className="border border-slate-400">
-                      <td className="p-1 border border-slate-400 text-center font-bold">{it.no || idx + 1}</td>
-                      <td className="p-1 border border-slate-400">{it.item}</td>
-                      <td className="p-1 border border-slate-400 text-center font-mono">{it.std}</td>
-                      <td className="p-1 border border-slate-400 text-center font-mono">{it.val_before || '—'}</td>
-                      <td className="p-1 border border-slate-400 text-center font-mono font-bold">{it.val_after || '—'}</td>
-                      <td className="p-1 border border-slate-400 text-center font-bold">{it.result}</td>
-                      <td className="p-1 border border-slate-400">{it.remark || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div className="grid grid-cols-2 gap-4 text-xs pt-2">
-                <div>
-                  <span className="text-slate-500">สภาพเข็ม:</span> <b>{printRecord.needle_cond || '—'}</b>
-                </div>
-                <div>
-                  <span className="text-slate-500">การเรียงเข็ม:</span> <b>{printRecord.needle_arr || '—'}</b>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6 pt-8 text-center text-[10px]">
-                <div className="border-t border-slate-400 pt-1">
-                  ลงชื่อ: <b>{printRecord.sign_name || printRecord.mechanic || '...........................................'}</b><br />
-                  ช่างผู้ตั้งศูนย์ ({printRecord.sign_date || printRecord.doc_date})
-                </div>
-                <div className="border-t border-slate-400 pt-1">
-                  ลงชื่อ: <b>{printRecord.sup_name || '...........................................'}</b><br />
-                  หัวหน้างาน / ผู้ตรวจสอบ ({printRecord.sup_date || printRecord.doc_date})
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setPrintRecord(null)}
-                className="btn-outline"
-              >
-                ปิด
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="btn-primary"
-              >
-                <Printer size={14} />
-                <span>พิมพ์ออกเครื่องพิมพ์ (Print)</span>
-              </button>
-            </div>
-          </div>
-        </Modal>
+          {...generateCenterCheckPdfProps(printRecord)}
+        />
       )}
 
       {/* ══════════════════════════════════════════════════════════ */}

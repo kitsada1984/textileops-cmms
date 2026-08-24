@@ -18,6 +18,7 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  FileText,
 } from 'lucide-react'
 import { format, addDays, differenceInCalendarDays, startOfDay } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -38,6 +39,8 @@ import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { useAuth } from '../contexts/AuthContext'
 import PMLog from './PMLog'
 import CenterCheck from './CenterCheck'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generatePMPlanPdfProps } from '../utils/pdfDocGenerators'
 
 const PM_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
@@ -788,6 +791,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   const displayRows = useMemo(() => applyFilterSort(normalizedRows, FS_COLS, filterSort), [normalizedRows, FS_COLS, filterSort])
 
   const [detailRec, setDetailRec] = useState(null)
+  const [pdfItem, setPdfItem] = useState(null)
 
   const openEdit = (p) => {
     setForm({
@@ -1323,6 +1327,14 @@ export default function PMPlan({ defaultTab = 'plan' }) {
                       ))}
                       <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setPdfItem(p)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                            title="ดูเอกสาร PDF และพิมพ์"
+                          >
+                            <FileText size={13} />
+                          </button>
                           {canEdit && p.__hasPMPlan && (
                             <button
                               type="button"
@@ -1372,6 +1384,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
             badge={detailRec && <StatusBadge value={detailRec.Status} />}
             canEdit={canEdit && detailRec?.__hasPMPlan}
             canDelete={canDelete && detailRec?.__hasPMPlan}
+            onPdf={() => setPdfItem(detailRec)}
             onEdit={() => openEdit(detailRec)}
             onDelete={() => {
               del(detailRec._id || detailRec.id)
@@ -1751,6 +1764,15 @@ export default function PMPlan({ defaultTab = 'plan' }) {
             </div>
           </Modal>
         </>
+      )}
+
+      {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
+      {pdfItem && (
+        <PdfPreviewModal
+          open={!!pdfItem}
+          onClose={() => setPdfItem(null)}
+          {...generatePMPlanPdfProps(pdfItem)}
+        />
       )}
     </div>
   )

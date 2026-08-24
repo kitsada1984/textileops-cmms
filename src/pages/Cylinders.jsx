@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  FileText,
 } from 'lucide-react'
 import useWebBuilderMenu, { useWebBuilderColumn } from '../hooks/useWebBuilderMenu'
 import { format } from 'date-fns'
@@ -39,6 +40,8 @@ import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generateCylinderPdfProps } from '../utils/pdfDocGenerators'
 import {
   appendCylinderImageMeta,
   getCylinderImageUrl,
@@ -269,6 +272,7 @@ export default function Cylinders() {
   const [swapOpen, setSwapOpen] = useState(false)
   const [swapCfgOpen, setSwapCfgOpen] = useState(false)
   const [openingSwap, setOpeningSwap] = useState(false)
+  const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
 
   const renderCylinderImageUrl = (row) => {
@@ -833,6 +837,14 @@ export default function Cylinders() {
                     <div className="flex items-center justify-center gap-1">
                       <button
                         type="button"
+                        onClick={() => setPdfItem(c)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                        title="ดูเอกสาร PDF และพิมพ์"
+                      >
+                        <FileText size={13} />
+                      </button>
+                      <button
+                        type="button"
                         onClick={(e) => openQR(c, e)}
                         className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                         title="QR Code"
@@ -888,6 +900,7 @@ export default function Cylinders() {
         badge={detailRec && <StatusBadge value={detailRec.Status_Now || 'STANDARD'} />}
         canEdit={canEdit}
         canDelete={canDelete}
+        onPdf={() => setPdfItem(detailRec)}
         onEdit={() => openEdit(detailRec)}
         onDelete={() => {
           del(detailRec._id || detailRec.id)
@@ -1144,6 +1157,15 @@ export default function Cylinders() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
+      {pdfItem && (
+        <PdfPreviewModal
+          open={!!pdfItem}
+          onClose={() => setPdfItem(null)}
+          {...generateCylinderPdfProps(pdfItem)}
+        />
       )}
     </div>
   )

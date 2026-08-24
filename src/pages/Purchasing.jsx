@@ -19,6 +19,7 @@ import {
   Mail,
   User,
   Building,
+  FileText,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -37,6 +38,8 @@ import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { generateStockTxnId, getPartStockStatus, toNumber } from '../utils/inventory'
 import { appendSparePartImageMeta, getSparePartImageUrl } from '../utils/sparePartImage'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generatePurchasingPdfProps } from '../utils/pdfDocGenerators'
 
 const STATUS_CFG = {
   ORDERED: { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)', color: '#2563eb', dot: '#2563eb' },
@@ -273,6 +276,7 @@ export default function Purchasing() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [filterSort, setFilterSort] = useState(INIT_FS)
   const [detailRec, setDetailRec] = useState(null)
+  const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
 
   // Summary statistics
@@ -788,6 +792,14 @@ export default function Purchasing() {
                   ))}
                   <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPdfItem(p)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                        title="ดูเอกสาร PDF และพิมพ์"
+                      >
+                        <FileText size={13} />
+                      </button>
                       {canEdit && (
                         <button
                           type="button"
@@ -837,6 +849,7 @@ export default function Purchasing() {
         badge={detailRec && <StatusPill value={detailRec.Status} />}
         canEdit={canEdit}
         canDelete={canDelete}
+        onPdf={() => setPdfItem(detailRec)}
         onEdit={() => openEdit(detailRec)}
         onDelete={() => {
           del(detailRec._id || detailRec.id)
@@ -1094,6 +1107,15 @@ export default function Purchasing() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
+      {pdfItem && (
+        <PdfPreviewModal
+          open={!!pdfItem}
+          onClose={() => setPdfItem(null)}
+          {...generatePurchasingPdfProps(pdfItem)}
+        />
       )}
     </div>
   )
