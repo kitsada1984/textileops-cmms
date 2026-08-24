@@ -645,7 +645,7 @@ export default function Machines() {
                       <button
                         type="button"
                         onClick={() => setPdfItem(m)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                        className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
                         title="ดูเอกสาร PDF และพิมพ์"
                       >
                         <FileText size={13} />

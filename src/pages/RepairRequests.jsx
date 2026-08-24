@@ -350,7 +350,7 @@ export default function RepairRequests() {
                       <QrCode size={12} />
                     </button>
                     <button
-                      className="btn-outline py-1 px-2 text-xs"
+                      className="btn-outline py-1 px-2 text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border-rose-200"
                       onClick={() => setPdfItem(r)}
                       title="ดูเอกสาร PDF และพิมพ์"
                     >
