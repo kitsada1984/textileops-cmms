@@ -36,6 +36,8 @@ import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { generateStockTxnId, getPartStockStatus, getSignedStockDelta, toNumber } from '../utils/inventory'
 import { getSparePartImageUrl } from '../utils/sparePartImage'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
+import ImagePreviewModal from '../components/ui/ImagePreviewModal'
+import ImageThumbnail from '../components/ui/ImageThumbnail'
 
 const SM_FIELD_KEYS = {
   created_date: 'sm_th_date',
@@ -472,14 +474,11 @@ export default function StockMovement() {
       const imgUrl = String(val)
       return (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
+          <ImageThumbnail
+            url={imgUrl}
+            alt={`${row.Part_Code} - ${row.Part_Name_EN || ''}`}
             onClick={() => setPreviewImageModal({ url: imgUrl, title: `${row.Part_Code} - ${row.Part_Name_EN || ''}` })}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
-          >
-            <ImageIcon size={13} />
-            <span>เปิดรูป</span>
-          </button>
+          />
         </div>
       )
     }
@@ -835,41 +834,12 @@ export default function StockMovement() {
       </Modal>
 
       {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
-      {previewImageModal && (
-        <Modal
-          open={!!previewImageModal}
-          onClose={() => setPreviewImageModal(null)}
-          title={`🖼️ ${previewImageModal.title}`}
-        >
-          <div className="space-y-4 text-center">
-            <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center max-h-[70vh]">
-              <img
-                src={previewImageModal.url}
-                alt={previewImageModal.title}
-                className="max-h-[65vh] w-auto object-contain mx-auto"
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs pt-2">
-              <a
-                href={previewImageModal.url}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-outline text-xs flex items-center gap-1.5"
-              >
-                <ExternalLink size={13} />
-                <span>เปิดในแท็บใหม่ (Full Size)</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => setPreviewImageModal(null)}
-                className="btn-primary text-xs px-4"
-              >
-                ปิด
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <ImagePreviewModal
+        open={!!previewImageModal}
+        onClose={() => setPreviewImageModal(null)}
+        url={previewImageModal?.url}
+        title={previewImageModal?.title}
+      />
     </div>
   )
 }

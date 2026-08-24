@@ -40,6 +40,8 @@ import { appendSparePartImageMeta, getSparePartImageUrl } from '../utils/sparePa
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generatePurchasingPdfProps } from '../utils/pdfDocGenerators'
+import ImagePreviewModal from '../components/ui/ImagePreviewModal'
+import ImageThumbnail from '../components/ui/ImageThumbnail'
 
 const STATUS_CFG = {
   ORDERED: { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)', color: '#2563eb', dot: '#2563eb' },
@@ -635,14 +637,11 @@ export default function Purchasing() {
       const imgUrl = String(val)
       return (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
+          <ImageThumbnail
+            url={imgUrl}
+            alt={`PO: ${row.PO_Number}`}
             onClick={() => setPreviewImageModal({ url: imgUrl, title: `PO: ${row.PO_Number}` })}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
-          >
-            <ImageIcon size={13} />
-            <span>เปิดรูป</span>
-          </button>
+          />
         </div>
       )
     }
@@ -866,8 +865,21 @@ export default function Purchasing() {
               { label: 'ชื่ออะไหล่', value: getPOPartName(detailRec) },
               { label: 'หมวดหมู่', value: getPOCategory(detailRec) },
               { label: 'รายละเอียด', value: detailRec.Detail },
-              { label: 'ลิงก์รูปภาพ', value: getPOImageUrl(detailRec), full: true },
-            ].filter((f) => f.value),
+              ...(getPOImageUrl(detailRec) ? [{
+                label: 'รูปถ่ายใบสั่งซื้อ / อะไหล่',
+                full: true,
+                node: (
+                  <div className="pt-1">
+                    <ImageThumbnail
+                      url={getPOImageUrl(detailRec)}
+                      alt={`PO: ${detailRec.PO_Number}`}
+                      size={48}
+                      onClick={() => setPreviewImageModal({ url: getPOImageUrl(detailRec), title: `PO: ${detailRec.PO_Number}` })}
+                    />
+                  </div>
+                ),
+              }] : []),
+            ].filter((f) => f && (f.node || f.value)),
           },
           {
             label: 'จำนวนและยอดเงิน',
@@ -1073,41 +1085,12 @@ export default function Purchasing() {
       </Modal>
 
       {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
-      {previewImageModal && (
-        <Modal
-          open={!!previewImageModal}
-          onClose={() => setPreviewImageModal(null)}
-          title={`🖼️ ${previewImageModal.title}`}
-        >
-          <div className="space-y-4 text-center">
-            <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center max-h-[70vh]">
-              <img
-                src={previewImageModal.url}
-                alt={previewImageModal.title}
-                className="max-h-[65vh] w-auto object-contain mx-auto"
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs pt-2">
-              <a
-                href={previewImageModal.url}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-outline text-xs flex items-center gap-1.5"
-              >
-                <ExternalLink size={13} />
-                <span>เปิดในแท็บใหม่ (Full Size)</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => setPreviewImageModal(null)}
-                className="btn-primary text-xs px-4"
-              >
-                ปิด
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <ImagePreviewModal
+        open={!!previewImageModal}
+        onClose={() => setPreviewImageModal(null)}
+        url={previewImageModal?.url}
+        title={previewImageModal?.title}
+      />
 
       {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
       {pdfItem && (

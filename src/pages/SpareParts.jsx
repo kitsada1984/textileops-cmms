@@ -35,6 +35,8 @@ import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateSparePartPdfProps } from '../utils/pdfDocGenerators'
+import ImagePreviewModal from '../components/ui/ImagePreviewModal'
+import ImageThumbnail from '../components/ui/ImageThumbnail'
 import {
   appendSparePartImageMeta,
   buildSparePartImagePayload,
@@ -422,14 +424,11 @@ export default function SpareParts() {
       const imgUrl = String(val)
       return (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
+          <ImageThumbnail
+            url={imgUrl}
+            alt={`${row.Part_Code} - ${getSparePartName(row)}`}
             onClick={() => setPreviewImageModal({ url: imgUrl, title: `${row.Part_Code} - ${getSparePartName(row)}` })}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
-          >
-            <ImageIcon size={13} />
-            <span>เปิดรูป</span>
-          </button>
+          />
         </div>
       )
     }
@@ -656,8 +655,21 @@ export default function SpareParts() {
               { label: t('field_unit'), value: detailRec.Unit },
               { label: t('field_warehouse'), value: detailRec.Location_Store },
               { label: t('field_supplier'), value: detailRec.Supplier },
-              { label: 'ลิงก์รูปถ่าย', value: getSparePartImageUrl(detailRec), full: true },
-            ].filter((f) => f.value),
+              ...(getSparePartImageUrl(detailRec) ? [{
+                label: 'รูปถ่ายอะไหล่',
+                full: true,
+                node: (
+                  <div className="pt-1">
+                    <ImageThumbnail
+                      url={getSparePartImageUrl(detailRec)}
+                      alt={`${detailRec.Part_Code} - ${getSparePartName(detailRec)}`}
+                      size={48}
+                      onClick={() => setPreviewImageModal({ url: getSparePartImageUrl(detailRec), title: `${detailRec.Part_Code} - ${getSparePartName(detailRec)}` })}
+                    />
+                  </div>
+                ),
+              }] : []),
+            ].filter((f) => f && (f.node || f.value)),
           },
           {
             label: 'สต๊อกและราคา',
@@ -813,41 +825,12 @@ export default function SpareParts() {
       </Modal>
 
       {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
-      {previewImageModal && (
-        <Modal
-          open={!!previewImageModal}
-          onClose={() => setPreviewImageModal(null)}
-          title={`🖼️ ${previewImageModal.title}`}
-        >
-          <div className="space-y-4 text-center">
-            <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center max-h-[70vh]">
-              <img
-                src={previewImageModal.url}
-                alt={previewImageModal.title}
-                className="max-h-[65vh] w-auto object-contain mx-auto"
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs pt-2">
-              <a
-                href={previewImageModal.url}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-outline text-xs flex items-center gap-1.5"
-              >
-                <ExternalLink size={13} />
-                <span>เปิดในแท็บใหม่ (Full Size)</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => setPreviewImageModal(null)}
-                className="btn-primary text-xs px-4"
-              >
-                ปิด
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <ImagePreviewModal
+        open={!!previewImageModal}
+        onClose={() => setPreviewImageModal(null)}
+        url={previewImageModal?.url}
+        title={previewImageModal?.title}
+      />
 
       {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
       {pdfItem && (

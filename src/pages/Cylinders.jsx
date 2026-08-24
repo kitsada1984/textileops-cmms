@@ -42,6 +42,8 @@ import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateCylinderPdfProps } from '../utils/pdfDocGenerators'
+import ImagePreviewModal from '../components/ui/ImagePreviewModal'
+import ImageThumbnail from '../components/ui/ImageThumbnail'
 import {
   appendCylinderImageMeta,
   getCylinderImageUrl,
@@ -297,14 +299,11 @@ export default function Cylinders() {
     if (!imageUrl) return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
     return (
       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
+        <ImageThumbnail
+          url={imageUrl}
+          alt={`กระบอก ${row.Serial_NOW || row.Standard || ''}`}
           onClick={() => setPreviewImageModal({ url: imageUrl, title: `กระบอก ${row.Serial_NOW || row.Standard || ''}` })}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-all border border-blue-500/20"
-        >
-          <ImageIcon size={13} />
-          <span>เปิดรูป</span>
-        </button>
+        />
       </div>
     )
   }
@@ -929,8 +928,21 @@ export default function Cylinders() {
               { label: t('cyl_th_loc'), value: detailRec.Location },
               { label: t('cyl_th_newmc'), value: detailRec.NewMC },
               { label: t('cyl_th_machine_ref'), value: detailRec.Machine_Ref },
-              { label: 'ลิงก์รูปถ่าย', value: getCylinderImageUrl(detailRec), full: true },
-            ].filter((f) => f.value),
+              ...(getCylinderImageUrl(detailRec) ? [{
+                label: 'รูปถ่ายกระบอกเข็ม',
+                full: true,
+                node: (
+                  <div className="pt-1">
+                    <ImageThumbnail
+                      url={getCylinderImageUrl(detailRec)}
+                      alt={`กระบอก ${detailRec.Serial_NOW}`}
+                      size={48}
+                      onClick={() => setPreviewImageModal({ url: getCylinderImageUrl(detailRec), title: `กระบอก ${detailRec.Serial_NOW}` })}
+                    />
+                  </div>
+                ),
+              }] : []),
+            ].filter((f) => f && (f.node || f.value)),
           },
           {
             label: t('dr_specs'),
@@ -1123,41 +1135,12 @@ export default function Cylinders() {
       </Modal>
 
       {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
-      {previewImageModal && (
-        <Modal
-          open={!!previewImageModal}
-          onClose={() => setPreviewImageModal(null)}
-          title={`🖼️ ${previewImageModal.title}`}
-        >
-          <div className="space-y-4 text-center">
-            <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center max-h-[70vh]">
-              <img
-                src={previewImageModal.url}
-                alt={previewImageModal.title}
-                className="max-h-[65vh] w-auto object-contain mx-auto"
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs pt-2">
-              <a
-                href={previewImageModal.url}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-outline text-xs flex items-center gap-1.5"
-              >
-                <ExternalLink size={13} />
-                <span>เปิดในแท็บใหม่ (Full Size)</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => setPreviewImageModal(null)}
-                className="btn-primary text-xs px-4"
-              >
-                ปิด
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <ImagePreviewModal
+        open={!!previewImageModal}
+        onClose={() => setPreviewImageModal(null)}
+        url={previewImageModal?.url}
+        title={previewImageModal?.title}
+      />
 
       {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
       {pdfItem && (
