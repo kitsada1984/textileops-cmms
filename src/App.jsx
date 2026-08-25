@@ -47,7 +47,6 @@ const NAV_SECTIONS = [
       { to: '/cylinders',  icon: Disc,            key: 'nav_cylinders',  permKey: 'cylinders' },
       { to: '/workorders',    icon: ClipboardList,   key: 'nav_workorders',    permKey: 'workorders' },
       { to: '/pm',            icon: Calendar,        key: 'nav_pm',            permKey: 'pm' },
-      { to: '/center-check',  icon: Target,          key: 'nav_center_check',  permKey: 'pm' },
       { to: '/design-bom',    icon: FileText,        key: 'nav_design_bom',    permKey: 'designbom' },
     ]
   },
