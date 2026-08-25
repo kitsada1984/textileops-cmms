@@ -415,6 +415,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
   // Save Record Form
   const handleSubmitForm = async (e) => {
     e.preventDefault()
+    if (saving) return
     if (!formData.mc?.trim()) {
       toast.warning('กรุณาระบุรหัสเครื่องจักร (M/C)')
       return

@@ -451,6 +451,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   // Submit Start New Job
   const handleStartJob = async (e) => {
     e?.preventDefault()
+    if (submittingStart) return
     if (!mc.trim()) { toast.error('กรุณาระบุรหัสเครื่อง (M/C)'); return }
     if (!ki.trim()) { toast.error('กรุณาระบุรหัสงาน (KI)'); return }
     if (selectedTechs.length === 0) { toast.error('กรุณาเลือกช่างผู้ปฏิบัติงานอย่างน้อย 1 คน'); return }
@@ -523,6 +524,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Submit Complete Job
   const handleCompleteJob = async () => {
+    if (compSubmitting) return
     if (!compJob || !compEndDate || !compEndTime) return
     setCompSubmitting(true)
     try {

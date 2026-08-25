@@ -186,6 +186,7 @@ function StepApprove({ request, onUpdated }) {
   }
 
   const handle = async (action) => {
+    if (saving) return
     if (action === 'approve' && !tech.trim()) return setError('กรุณาระบุชื่อช่าง')
     setSaving(action); setError('')
     try {
@@ -290,6 +291,7 @@ function StepComplete({ request, onUpdated }) {
   }
 
   const submit = async () => {
+    if (saving) return
     if (!details.trim()) return setError('กรุณาระบุรายละเอียดการซ่อม')
     if (!tech.trim()) return setError('กรุณาระบุชื่อช่าง')
     setSaving(true); setError('')

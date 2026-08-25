@@ -15,6 +15,7 @@ import { LanguageProvider, useT } from './contexts/LanguageContext'
 import { ToastProvider } from './components/ui/Toast'
 import { AuthProvider, useAuth, canAccess } from './contexts/AuthContext'
 import { WebBuilderConfigProvider } from './contexts/WebBuilderConfigContext'
+import ErrorBoundary from './components/common/ErrorBoundary'
 
 import Dashboard     from './pages/Dashboard'
 import Machines      from './pages/Machines'
@@ -76,25 +77,27 @@ const NAV_SECTIONS = [
 
 function PageRoutes() {
   return (
-    <Routes>
-      <Route path="/"           element={<Dashboard />} />
-      <Route path="/machines"   element={<Machines />} />
-      <Route path="/cylinders"  element={<Cylinders />} />
-      <Route path="/workorders"      element={<WorkOrders />} />
-      <Route path="/repair-requests" element={<WorkOrders defaultTab="repair_requests" />} />
-      <Route path="/pm"           element={<PMPlan />} />
-      <Route path="/pm-log"       element={<PMPlan defaultTab="log" />} />
-      <Route path="/center-check" element={<PMPlan defaultTab="center_check" />} />
-      <Route path="/design-bom"   element={<DesignBom />} />
-      <Route path="/spareparts" element={<SpareParts />} />
-      <Route path="/purchasing" element={<Purchasing />} />
-      <Route path="/stock"      element={<StockMovement />} />
-      <Route path="/reports"    element={<Reports />} />
-      <Route path="/logs"       element={<Logs />} />
-      <Route path="/users"      element={<UsersPage />} />
-      <Route path="/webbuilder" element={<WebBuilder />} />
-      <Route path="/settings"   element={<SettingsPage />} />
-    </Routes>
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/"           element={<Dashboard />} />
+        <Route path="/machines"   element={<Machines />} />
+        <Route path="/cylinders"  element={<Cylinders />} />
+        <Route path="/workorders"      element={<WorkOrders />} />
+        <Route path="/repair-requests" element={<WorkOrders defaultTab="repair_requests" />} />
+        <Route path="/pm"           element={<PMPlan />} />
+        <Route path="/pm-log"       element={<PMPlan defaultTab="log" />} />
+        <Route path="/center-check" element={<PMPlan defaultTab="center_check" />} />
+        <Route path="/design-bom"   element={<DesignBom />} />
+        <Route path="/spareparts" element={<SpareParts />} />
+        <Route path="/purchasing" element={<Purchasing />} />
+        <Route path="/stock"      element={<StockMovement />} />
+        <Route path="/reports"    element={<Reports />} />
+        <Route path="/logs"       element={<Logs />} />
+        <Route path="/users"      element={<UsersPage />} />
+        <Route path="/webbuilder" element={<WebBuilder />} />
+        <Route path="/settings"   element={<SettingsPage />} />
+      </Routes>
+    </ErrorBoundary>
   )
 }
 

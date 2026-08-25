@@ -839,6 +839,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   }
 
   const submit = async () => {
+    if (saving) return
     if (!form.Machine_MC) return toast.warning('กรุณากรอกข้อมูล', 'กรุณากรอก Machine MC')
     if (!form.Next_PM_Date) return toast.warning('กรุณากรอกข้อมูล', 'กรุณากรอก PM ครั้งถัดไป')
     if (form.PM_Type === 'CUSTOM' && !Number(form.Frequency_Value)) return toast.warning('กรุณากรอกข้อมูล', 'กรุณาระบุจำนวนวัน')

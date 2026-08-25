@@ -14,7 +14,24 @@ export default function useEntity(api) {
     finally    { setLoading(false) }
   }, [api])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+
+    let lastFetch = Date.now()
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastFetch > 8000) {
+        lastFetch = Date.now()
+        load()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleVisibility)
+    }
+  }, [load])
 
   const save = async (item) => {
     const res = item._id || item.id

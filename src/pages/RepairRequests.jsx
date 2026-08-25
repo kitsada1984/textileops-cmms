@@ -115,6 +115,7 @@ export default function RepairRequests() {
   }
 
   const submit = async () => {
+    if (saving) return
     const isEdit = !!(form._id || form.id)
     const existing = isEdit
       ? data.find((r) => (r._id || r.id) === (form._id || form.id))

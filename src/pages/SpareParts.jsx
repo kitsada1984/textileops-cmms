@@ -295,6 +295,7 @@ export default function SpareParts() {
   }
 
   const submit = async () => {
+    if (saving) return
     if (!form.Part_Code || !form.Part_Name_EN) {
       toast.warning('กรุณากรอกข้อมูล', t('sp_req'))
       return
