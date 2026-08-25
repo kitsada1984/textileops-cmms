@@ -238,7 +238,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     setFormData({
       doc_no: newDocNo,
       doc_date: todayStr,
-      mechanic: '',
+      mechanic: 'ช.หนึ่ง',
       mc: '',
       serial: '',
       location: '',
@@ -253,7 +253,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       days_since_last: 0,
       items: defaultItems,
       remark: '',
-      sign_name: '',
+      sign_name: 'ช.หนึ่ง',
       sign_date: todayStr,
       sup_name: '',
       sup_date: todayStr,
@@ -746,10 +746,10 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
-                            {Number(r.counter_latest || 0).toLocaleString()}
+                            {r.counter_latest ? Number(r.counter_latest).toLocaleString() : '—'}
                           </td>
                           <td className="py-3 px-4 text-right font-mono font-bold text-teal-600 dark:text-teal-400">
-                            +{Number(r.counter_total || 0).toLocaleString()}
+                            {r.counter_total ? `+${Number(r.counter_total).toLocaleString()}` : '—'}
                           </td>
                           <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
                             {r.mechanic || '—'}

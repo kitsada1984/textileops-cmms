@@ -104,7 +104,7 @@ async function run() {
     docCounters[counterKey] = (docCounters[counterKey] || 0) + 1
     const docNo = `${counterKey}-${String(docCounters[counterKey]).padStart(3, '0')}`
 
-    const mechanic = detectTech(pm.Remark || pm.Assigned_Tech)
+    const mechanic = 'ช.หนึ่ง'
     const needleCond = detectNeedle(pm.Remark)
     const templateItems = isDouble ? DOUBLE_ITEMS : SINGLE_ITEMS
 
@@ -117,10 +117,6 @@ async function run() {
       result: 'ผ่าน',
       remark: '',
     }))
-
-    const baseCounter = 120000 + (idx + 1) * 3200
-    const roundDelta = Math.floor(6500 + Math.random() * 4500)
-    const prevDate = new Date(new Date(docDate).getTime() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10)
 
     return {
       id: `cc_${dateCompact}_${mcName.replace(/[^a-zA-Z0-9]/g, '_')}`,
@@ -135,11 +131,11 @@ async function run() {
       needle_arr: 'ตามแบบมาตรฐาน',
       needle_images: [],
       comment: pm.Remark ? `ตรวจเช็คศูนย์ตามรอบ PM: ${pm.Remark.slice(0, 120)}` : 'ตรวจเช็คศูนย์ตามรอบ PM ประจำเครื่อง',
-      counter_latest: baseCounter,
-      counter_prev: baseCounter - roundDelta,
-      counter_total: roundDelta,
-      prev_doc_date: prevDate,
-      days_since_last: 90,
+      counter_latest: '',
+      counter_prev: '',
+      counter_total: '',
+      prev_doc_date: '',
+      days_since_last: 0,
       items: items,
       remark: 'ตั้งศูนย์และตรวจสอบตามมาตรฐานเรียบร้อย',
       sign_name: mechanic,

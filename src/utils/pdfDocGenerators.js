@@ -242,9 +242,9 @@ export function generateCenterCheckPdfProps(chk) {
       {
         title: 'ข้อมูลมิเตอร์และสภาพเข็ม (Counters & Needle Condition)',
         fields: [
-          { label: 'มิเตอร์ล่าสุด (Latest Counter)', value: chk.counter_latest ? Number(chk.counter_latest).toLocaleString() : '0' },
-          { label: 'มิเตอร์ก่อนหน้า (Prev Counter)', value: chk.counter_prev ? Number(chk.counter_prev).toLocaleString() : '0' },
-          { label: 'ยอดรอบที่เดิน (Total Cycles)', value: chk.counter_total ? Number(chk.counter_total).toLocaleString() : '0' },
+          { label: 'มิเตอร์ล่าสุด (Latest Counter)', value: chk.counter_latest ? Number(chk.counter_latest).toLocaleString() : '—' },
+          { label: 'มิเตอร์ก่อนหน้า (Prev Counter)', value: chk.counter_prev ? Number(chk.counter_prev).toLocaleString() : '—' },
+          { label: 'ยอดรอบที่เดิน (Total Cycles)', value: chk.counter_total ? Number(chk.counter_total).toLocaleString() : '—' },
           { label: 'จำนวนวันนับจากครั้งก่อน', value: chk.days_since_last ? `${chk.days_since_last} วัน` : '—' },
           { label: 'สภาพเข็ม (Needle Condition)', value: chk.needle_cond || 'ปกติ' },
           { label: 'การจัดเรียงเข็ม (Needle Arrangement)', value: chk.needle_arr || 'ตามแบบมาตรฐาน' },
