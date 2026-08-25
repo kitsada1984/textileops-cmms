@@ -76,19 +76,23 @@ function StatCard({ icon: Icon, label, value, sub, color = 'slate' }) {
   return (
     <div className="stat-card">
       <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: ICON_BG[color], boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+        className="stat-icon w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: ICON_BG[color], boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
       >
-        <Icon size={19} className="text-white" />
+        <Icon size={18} className="text-white" />
       </div>
-      <div>
-        <div className="text-2xl font-bold leading-none" style={{ color: 'var(--text-900)' }}>
+      <div className="min-w-0 flex-1">
+        <div className="stat-val text-xl sm:text-2xl font-black leading-tight truncate" style={{ color: 'var(--text-900)' }}>
           {value ?? '—'}
         </div>
-        <div className="text-sm font-medium mt-1" style={{ color: 'var(--text-600)' }}>
+        <div className="stat-label text-xs sm:text-sm font-semibold mt-0.5 truncate" style={{ color: 'var(--text-600)' }} title={label}>
           {label}
         </div>
-        {sub && <div className="text-xs mt-0.5" style={{ color: 'var(--text-400)' }}>{sub}</div>}
+        {sub && (
+          <div className="stat-sub text-[10.5px] sm:text-xs mt-0.5 truncate text-slate-500" title={sub}>
+            {sub}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -238,7 +242,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── 8-STAT CARDS SUMMARY ───────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard icon={Cpu}           label={t('dash_total_mc')}   value={stats.totalMachines} sub={`${stats.running} ${t('dash_running_sub')}`}    color="slate"   />
         <StatCard icon={AlertTriangle} label={t('dash_breakdown')}  value={stats.breakdown}     sub={statusLabel('BREAKDOWN')}                         color="red"     />
         <StatCard icon={Wrench}        label="งานแจ้งซ่อมค้าง"      value={stats.pendingRepairsCount ?? 0} sub={`${stats.pendingApprove || 0} รออนุมัติ · ${stats.inProgressRepairs || 0} กำลังซ่อม`} color="amber" />

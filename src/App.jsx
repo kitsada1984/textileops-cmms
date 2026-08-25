@@ -487,7 +487,7 @@ function AppInner() {
         {viewMode === 'mobile' ? (
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70">
             <div
-              className="w-full max-w-[430px] min-h-[calc(100vh-100px)] rounded-3xl overflow-hidden shadow-2xl border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 my-auto"
+              className="w-full max-w-[430px] min-h-[calc(100vh-100px)] rounded-3xl overflow-hidden shadow-2xl border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 my-auto is-mobile-view"
               style={{
                 background: 'var(--bg-page)',
                 boxShadow: dark
@@ -496,12 +496,12 @@ function AppInner() {
               }}
             >
               {/* Simulated Phone Top Notch & Status */}
-              <div className="h-6 flex items-center justify-between px-5 text-[10px] font-bold text-slate-400 select-none bg-slate-100/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+              <div className="h-6 flex items-center justify-between px-5 text-[10px] font-bold text-slate-400 select-none bg-slate-100/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
                 <span>09:41</span>
                 <div className="w-16 h-3 rounded-full bg-slate-300 dark:bg-slate-700 mx-auto" />
                 <span>100% 🔋</span>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              <div className="flex-1 overflow-y-auto p-3 space-y-4 mobile-content-area">
                 <PageRoutes />
               </div>
             </div>

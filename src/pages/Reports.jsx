@@ -108,17 +108,17 @@ export default function Reports() {
         <div className="card-header">
           <h3 className="font-semibold text-sm" style={{color:'var(--text-900)'}}>{t('rpt_summary')}</h3>
         </div>
-        <div className="card-body grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card-body grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
           {[
             [t('rpt_total_mc'),   stats.machines.length],
             [t('rpt_running'),    stats.machines.filter(m=>m.Status==='RUNNING').length],
             [t('rpt_total_wo'),   stats.workorders.length],
             [t('rpt_done_wo'),    stats.workorders.filter(w=>w.Status==='COMPLETED').length],
           ].map(([label, value]) => (
-            <div key={label} className="text-center p-4 rounded-2xl"
+            <div key={label} className="text-center p-3 sm:p-4 rounded-2xl min-w-0"
               style={{background:'var(--bg-thead)',border:'1px solid var(--border-subtle)'}}>
-              <div className="text-2xl font-bold" style={{color:'var(--text-900)'}}>{value}</div>
-              <div className="text-xs mt-1" style={{color:'var(--text-500)'}}>{label}</div>
+              <div className="text-xl sm:text-2xl font-bold truncate" style={{color:'var(--text-900)'}}>{value}</div>
+              <div className="text-xs mt-1 truncate" style={{color:'var(--text-500)'}} title={label}>{label}</div>
             </div>
           ))}
         </div>

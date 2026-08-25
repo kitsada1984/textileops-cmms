@@ -775,64 +775,64 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       {currentTab === 'dashboard' && (
         <div className="space-y-6">
           {/* Top 4 KPI Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
             <div className="stat-card">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
-                <ClipboardList size={20} />
+              <div className="stat-icon w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md flex-shrink-0">
+                <ClipboardList size={18} />
               </div>
-              <div>
-                <div className="text-2xl font-black" style={{ color: 'var(--text-900)' }}>
+              <div className="min-w-0 flex-1">
+                <div className="stat-val text-xl sm:text-2xl font-black truncate" style={{ color: 'var(--text-900)' }}>
                   {kpiStats.total}
                 </div>
-                <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-500)' }}>
+                <div className="stat-label text-xs sm:text-sm font-semibold mt-0.5 truncate" style={{ color: 'var(--text-500)' }}>
                   งานทั้งหมด
                 </div>
-                <div className="text-[10px] text-blue-500 font-bold">Total Work Orders</div>
+                <div className="stat-sub text-[10px] text-blue-500 font-bold truncate">Total Work Orders</div>
               </div>
             </div>
 
             <div className="stat-card">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md">
-                <Clock size={20} />
+              <div className="stat-icon w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md flex-shrink-0">
+                <Clock size={18} />
               </div>
-              <div>
-                <div className="text-2xl font-black text-amber-500">
+              <div className="min-w-0 flex-1">
+                <div className="stat-val text-xl sm:text-2xl font-black text-amber-500 truncate">
                   {kpiStats.active}
                 </div>
-                <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-500)' }}>
+                <div className="stat-label text-xs sm:text-sm font-semibold mt-0.5 truncate" style={{ color: 'var(--text-500)' }}>
                   กำลังปฏิบัติงาน
                 </div>
-                <div className="text-[10px] text-amber-500 font-bold">In Progress</div>
+                <div className="stat-sub text-[10px] text-amber-500 font-bold truncate">In Progress</div>
               </div>
             </div>
 
             <div className="stat-card">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md">
-                <CheckCircle2 size={20} />
+              <div className="stat-icon w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md flex-shrink-0">
+                <CheckCircle2 size={18} />
               </div>
-              <div>
-                <div className="text-2xl font-black text-emerald-500">
+              <div className="min-w-0 flex-1">
+                <div className="stat-val text-xl sm:text-2xl font-black text-emerald-500 truncate">
                   {kpiStats.completed}
                 </div>
-                <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-500)' }}>
+                <div className="stat-label text-xs sm:text-sm font-semibold mt-0.5 truncate" style={{ color: 'var(--text-500)' }}>
                   งานเสร็จสิ้นแล้ว
                 </div>
-                <div className="text-[10px] text-emerald-500 font-bold">Completed</div>
+                <div className="stat-sub text-[10px] text-emerald-500 font-bold truncate">Completed</div>
               </div>
             </div>
 
             <div className="stat-card">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-md">
-                <Target size={20} />
+              <div className="stat-icon w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-md flex-shrink-0">
+                <Target size={18} />
               </div>
-              <div>
-                <div className="text-2xl font-black text-purple-500">
+              <div className="min-w-0 flex-1">
+                <div className="stat-val text-xl sm:text-2xl font-black text-purple-500 truncate">
                   {kpiStats.overallRate}%
                 </div>
-                <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-500)' }}>
+                <div className="stat-label text-xs sm:text-sm font-semibold mt-0.5 truncate" style={{ color: 'var(--text-500)' }}>
                   อัตราผ่าน KPI รวม
                 </div>
-                <div className="text-[10px] text-purple-500 font-bold">Overall SLA Rate</div>
+                <div className="stat-sub text-[10px] text-purple-500 font-bold truncate">Overall SLA Rate</div>
               </div>
             </div>
           </div>

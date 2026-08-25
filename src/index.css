@@ -625,3 +625,131 @@ html.dark .glass-panel {
   border: 1px solid var(--border) !important;
   box-shadow: var(--shadow-card) !important;
 }
+
+/* ── Mobile Simulator & Mobile Responsive Overrides ─────────── */
+.is-mobile-view {
+  font-size: 13px;
+}
+
+.is-mobile-view .stat-card {
+  padding: 0.7rem 0.85rem !important;
+  gap: 0.6rem !important;
+  border-radius: 1rem !important;
+  min-height: 72px !important;
+}
+.is-mobile-view .stat-card .stat-icon {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 0.65rem !important;
+}
+.is-mobile-view .stat-card .stat-icon svg {
+  width: 1.1rem !important;
+  height: 1.1rem !important;
+}
+.is-mobile-view .stat-card .stat-val {
+  font-size: 1.25rem !important;
+  line-height: 1.2 !important;
+}
+.is-mobile-view .stat-card .stat-label {
+  font-size: 0.725rem !important;
+  line-height: 1.15 !important;
+}
+.is-mobile-view .stat-card .stat-sub {
+  font-size: 0.65rem !important;
+  line-height: 1.1 !important;
+}
+
+@media (max-width: 640px) {
+  .stat-card {
+    padding: 0.7rem 0.85rem !important;
+    gap: 0.6rem !important;
+    border-radius: 1rem !important;
+    min-height: 72px !important;
+  }
+  .stat-card .stat-icon {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    border-radius: 0.65rem !important;
+  }
+  .stat-card .stat-icon svg {
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+  }
+  .stat-card .stat-val {
+    font-size: 1.25rem !important;
+    line-height: 1.2 !important;
+  }
+  .stat-card .stat-label {
+    font-size: 0.725rem !important;
+    line-height: 1.15 !important;
+  }
+  .stat-card .stat-sub {
+    font-size: 0.65rem !important;
+    line-height: 1.1 !important;
+  }
+}
+
+/* Force balanced grids inside Mobile Simulator mode regardless of desktop viewport */
+.is-mobile-view .grid-cols-2.md\:grid-cols-4,
+.is-mobile-view .grid-cols-2.sm\:grid-cols-4,
+.is-mobile-view .grid.grid-cols-4,
+.is-mobile-view .grid.sm\:grid-cols-4,
+.is-mobile-view .grid.md\:grid-cols-4,
+.is-mobile-view .grid.lg\:grid-cols-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.5rem !important;
+}
+
+.is-mobile-view .grid.md\:grid-cols-3,
+.is-mobile-view .grid.sm\:grid-cols-3,
+.is-mobile-view .grid.lg\:grid-cols-3 {
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  gap: 0.5rem !important;
+}
+
+.is-mobile-view .grid.md\:grid-cols-2,
+.is-mobile-view .grid.sm\:grid-cols-2 {
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  gap: 0.5rem !important;
+}
+
+.is-mobile-view .grid.sm\:grid-cols-5,
+.is-mobile-view .grid.sm\:grid-cols-6,
+.is-mobile-view .grid.lg\:grid-cols-6 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.5rem !important;
+}
+
+.is-mobile-view .table-wrap {
+  border-radius: 1rem !important;
+  max-height: calc(100vh - 280px) !important;
+  -webkit-overflow-scrolling: touch;
+}
+.is-mobile-view .table-wrap th,
+.is-mobile-view .table-wrap td {
+  padding: 0.6rem 0.75rem !important;
+  font-size: 11.5px !important;
+}
+
+@media (max-width: 640px) {
+  .table-wrap {
+    border-radius: 1rem !important;
+    max-height: calc(100vh - 280px) !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-wrap th,
+  .table-wrap td {
+    padding: 0.6rem 0.75rem !important;
+    font-size: 11.5px !important;
+  }
+}
+
+.is-mobile-view .card-header {
+  padding: 0.85rem 1rem !important;
+}
+
+.is-mobile-view .card-body {
+  padding: 0.85rem 1rem !important;
+}
+
+
