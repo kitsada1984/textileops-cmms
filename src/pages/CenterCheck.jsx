@@ -42,6 +42,7 @@ import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateCenterCheckPdfProps } from '../utils/pdfDocGenerators'
+import initialCenterChecks from '../data/initialCenterChecks.json'
 
 const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 
@@ -107,7 +108,8 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
 
   // Normalized list of records
   const records = useMemo(() => {
-    return (rawRecords || []).map((r) => ({
+    const list = rawRecords && rawRecords.length > 0 ? rawRecords : initialCenterChecks
+    return list.map((r) => ({
       ...r,
       type: r.type || 'Single',
       doc_no: r.doc_no || r.Doc_No || '—',
@@ -764,7 +766,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                             </span>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => setViewRecord(r)}
@@ -777,10 +779,11 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                               <button
                                 type="button"
                                 onClick={() => setPrintRecord(r)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors"
-                                title="พิมพ์รายงาน A4"
+                                className="px-2 py-1 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800/60 transition-colors flex items-center gap-1 font-bold text-[11px]"
+                                title="ดู PDF / พิมพ์รายงานตรวจเช็คศูนย์"
                               >
-                                <Printer size={14} />
+                                <FileText size={12} />
+                                <span>PDF</span>
                               </button>
 
                               {canEdit && (
