@@ -176,10 +176,10 @@ export function TechSkillBar({ skillLevel }) {
 }
 
 const DEFAULT_TECHS = [
-  { Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE' },
-  { Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE' },
-  { Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'เตรียมเครื่อง, แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
-  { Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
+  { id: 'TECH-001', Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE' },
+  { id: 'TECH-002', Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE' },
+  { id: 'TECH-003', Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'เตรียมเครื่อง, แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
+  { id: 'TECH-004', Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
 ]
 
 export default function WorkOrders({ defaultTab = 'records' }) {
@@ -251,7 +251,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [printModalOpen, setPrintModalOpen] = useState(false)
   const [printJob, setPrintJob] = useState(null)
 
-  // Load Technicians & KPI Settings from Supabase
+  // Load Technicians & KPI Settings from Supabase / Storage
   const loadTechsAndSettings = async () => {
     setTechLoading(true)
     try {
@@ -262,6 +262,25 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
       if (techRes.status === 'fulfilled' && Array.isArray(techRes.value) && techRes.value.length > 0) {
         setTechnicians(techRes.value)
+      } else {
+        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('txops_tbl_technicians') : null
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored)
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setTechnicians(parsed)
+            } else {
+              setTechnicians(DEFAULT_TECHS)
+              localStorage.setItem('txops_tbl_technicians', JSON.stringify(DEFAULT_TECHS))
+            }
+          } catch {
+            setTechnicians(DEFAULT_TECHS)
+            localStorage.setItem('txops_tbl_technicians', JSON.stringify(DEFAULT_TECHS))
+          }
+        } else {
+          setTechnicians(DEFAULT_TECHS)
+          try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(DEFAULT_TECHS)) } catch {}
+        }
       }
 
       if (kpiRes.status === 'fulfilled' && Array.isArray(kpiRes.value)) {
@@ -276,6 +295,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       }
     } catch (err) {
       console.warn('Could not load technicians/settings, using defaults:', err)
+      setTechnicians(DEFAULT_TECHS)
     } finally {
       setTechLoading(false)
     }
@@ -577,11 +597,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     }
   }
 
-  // Add / Edit Technician
+  // Add / Edit / Delete Technician
   const openAddTech = () => {
+    const nextId = `TECH-00${technicians.length + 1}`
     setEditingTechId(null)
     setTechForm({
-      Technician_ID: `TECH-00${technicians.length + 1}`,
+      id: nextId,
+      Technician_ID: nextId,
       Name: '',
       Phone: '',
       SkillLevel: 'Senior',
@@ -592,33 +614,81 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }
 
   const openEditTech = (tech) => {
-    setEditingTechId(tech.id || tech.Technician_ID)
-    setTechForm({ ...tech })
+    const techId = tech.id || tech.Technician_ID
+    setEditingTechId(techId)
+    setTechForm({
+      ...tech,
+      id: techId,
+      Technician_ID: tech.Technician_ID || techId,
+      Name: tech.Name || '',
+      Phone: tech.Phone || '',
+      SkillLevel: tech.SkillLevel || 'Senior',
+      Specialization: tech.Specialization || '',
+      Status: tech.Status || 'ACTIVE',
+    })
     setTechModalOpen(true)
   }
 
   const handleSaveTech = async () => {
     if (!techForm.Name.trim()) { toast.error('กรุณาระบุชื่อช่าง'); return }
+    const targetId = editingTechId || techForm.id || techForm.Technician_ID || `TECH-00${technicians.length + 1}`
+    const payload = {
+      ...techForm,
+      id: targetId,
+      Technician_ID: techForm.Technician_ID || targetId,
+    }
+
     try {
       if (editingTechId) {
-        await TechnicianAPI.update(editingTechId, techForm)
-        setTechnicians((prev) => prev.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...techForm } : t)))
-        toast.success('อัปเดตข้อมูลช่างเรียบร้อย', techForm.Name)
+        await TechnicianAPI.update(editingTechId, payload)
+        setTechnicians((prev) => {
+          const next = prev.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
+          try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
+          return next
+        })
+        toast.success('อัปเดตข้อมูลช่างเรียบร้อย', payload.Name)
       } else {
-        const created = await TechnicianAPI.create(techForm)
-        setTechnicians((prev) => [...prev, created || techForm])
-        toast.success('เพิ่มช่างใหม่เรียบร้อย', techForm.Name)
+        const created = await TechnicianAPI.create(payload)
+        const itemToAdd = created || payload
+        setTechnicians((prev) => {
+          const next = [...prev, itemToAdd]
+          try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
+          return next
+        })
+        toast.success('เพิ่มช่างใหม่เรียบร้อย', payload.Name)
       }
       setTechModalOpen(false)
     } catch (err) {
-      // Fallback local update
+      console.warn('Backend update failed, saving locally:', err)
       setTechnicians((prev) => {
-        if (editingTechId) return prev.map((t) => (t.Technician_ID === editingTechId ? { ...t, ...techForm } : t))
-        return [...prev, { ...techForm, Technician_ID: `TECH-00${prev.length + 1}` }]
+        let next
+        if (editingTechId) {
+          next = prev.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
+        } else {
+          next = [...prev, payload]
+        }
+        try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
+        return next
       })
-      toast.success('บันทึกข้อมูลช่างเรียบร้อย (Local)', techForm.Name)
+      toast.success('บันทึกข้อมูลช่างเรียบร้อย', payload.Name)
       setTechModalOpen(false)
     }
+  }
+
+  const handleDeleteTech = async (tech) => {
+    const techId = tech.id || tech.Technician_ID
+    if (!confirm(`ยืนยันการลบช่าง "${tech.Name}" ออกจากระบบหรือไม่?`)) return
+    try {
+      await TechnicianAPI.delete(techId)
+    } catch (e) {
+      console.warn('Backend delete fallback:', e)
+    }
+    setTechnicians((prev) => {
+      const next = prev.filter((t) => t.id !== techId && t.Technician_ID !== techId)
+      try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
+      return next
+    })
+    toast.success('ลบข้อมูลช่างเรียบร้อย', tech.Name)
   }
 
   // Save KPI Settings
@@ -1452,7 +1522,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
               return (
                 <div
-                  key={idx}
+                  key={tech.id || tech.Technician_ID || idx}
                   className="card p-5 space-y-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between">
@@ -1497,15 +1567,26 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     </div>
                   </div>
 
-                  {canEdit && (
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                      <button
-                        onClick={() => openEditTech(tech)}
-                        className="btn-outline px-3 py-1.5 text-xs flex items-center gap-1.5 font-bold"
-                      >
-                        <Pencil size={13} />
-                        <span>แก้ไขข้อมูล</span>
-                      </button>
+                  {(canEdit || canDelete) && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end items-center gap-2">
+                      {canEdit && (
+                        <button
+                          onClick={() => openEditTech(tech)}
+                          className="btn-outline px-3 py-1.5 text-xs flex items-center gap-1.5 font-bold"
+                        >
+                          <Pencil size={13} />
+                          <span>แก้ไขข้อมูล</span>
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDeleteTech(tech)}
+                          className="btn-outline px-2.5 py-1.5 text-xs flex items-center gap-1 font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/40"
+                          title="ลบรายชื่อช่าง"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

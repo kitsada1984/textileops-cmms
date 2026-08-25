@@ -124,11 +124,23 @@ function setLocalTable(tableName, rows) {
   } catch {}
 }
 
+function matchLocalRecord(r, targetId) {
+  if (!r || !targetId) return false
+  const tid = String(targetId).trim()
+  return (
+    String(r.id || '').trim() === tid ||
+    String(r._id || '').trim() === tid ||
+    String(r.Technician_ID || '').trim() === tid ||
+    String(r.doc_no || '').trim() === tid ||
+    String(r.Key || '').trim() === tid
+  )
+}
+
 export function createEntityClient(tableName) {
   return {
     list: async () => {
       try {
-        const { data, error } = await supabase.from(tableName).select('*').order('created_at', { ascending: false })
+        const { data, error } = await supabase.from(tableName).select('*')
         if (error) {
           if (isMissingTableError(error)) {
             return getLocalTable(tableName)
@@ -156,7 +168,7 @@ export function createEntityClient(tableName) {
         if (error) {
           if (isMissingTableError(error)) {
             const list = getLocalTable(tableName)
-            return list.find((r) => (r.id || r._id) === id) || null
+            return list.find((r) => matchLocalRecord(r, id)) || null
           }
           throw new Error(error.message)
         }
@@ -164,7 +176,7 @@ export function createEntityClient(tableName) {
       } catch (err) {
         if (isMissingTableError(err)) {
           const list = getLocalTable(tableName)
-          return list.find((r) => (r.id || r._id) === id) || null
+          return list.find((r) => matchLocalRecord(r, id)) || null
         }
         throw err
       }
@@ -181,7 +193,7 @@ export function createEntityClient(tableName) {
           if (isMissingTableError(error)) {
             const newItem = {
               ...payload,
-              id: id || `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+              id: id || payload.Technician_ID || `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             }
@@ -196,7 +208,7 @@ export function createEntityClient(tableName) {
         if (isMissingTableError(err)) {
           const newItem = {
             ...payload,
-            id: id || `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            id: id || payload.Technician_ID || `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }
@@ -222,7 +234,10 @@ export function createEntityClient(tableName) {
         if (error) {
           if (isMissingTableError(error)) {
             const list = getLocalTable(tableName)
-            const updatedList = list.map((r) => ((r.id || r._id) === id ? { ...r, ...payload, id } : r))
+            const exists = list.some((r) => matchLocalRecord(r, id))
+            const updatedList = exists
+              ? list.map((r) => (matchLocalRecord(r, id) ? { ...r, ...payload, id } : r))
+              : [{ ...payload, id }, ...list]
             setLocalTable(tableName, updatedList)
             return { ...payload, id }
           }
@@ -232,7 +247,10 @@ export function createEntityClient(tableName) {
       } catch (err) {
         if (isMissingTableError(err)) {
           const list = getLocalTable(tableName)
-          const updatedList = list.map((r) => ((r.id || r._id) === id ? { ...r, ...payload, id } : r))
+          const exists = list.some((r) => matchLocalRecord(r, id))
+          const updatedList = exists
+            ? list.map((r) => (matchLocalRecord(r, id) ? { ...r, ...payload, id } : r))
+            : [{ ...payload, id }, ...list]
           setLocalTable(tableName, updatedList)
           return { ...payload, id }
         }
@@ -246,17 +264,17 @@ export function createEntityClient(tableName) {
         if (error) {
           if (isMissingTableError(error)) {
             const list = getLocalTable(tableName)
-            setLocalTable(tableName, list.filter((r) => (r.id || r._id) !== id))
+            setLocalTable(tableName, list.filter((r) => !matchLocalRecord(r, id)))
             return
           }
           throw new Error(error.message)
         }
         const list = getLocalTable(tableName)
-        setLocalTable(tableName, list.filter((r) => (r.id || r._id) !== id))
+        setLocalTable(tableName, list.filter((r) => !matchLocalRecord(r, id)))
       } catch (err) {
         if (isMissingTableError(err)) {
           const list = getLocalTable(tableName)
-          setLocalTable(tableName, list.filter((r) => (r.id || r._id) !== id))
+          setLocalTable(tableName, list.filter((r) => !matchLocalRecord(r, id)))
           return
         }
         throw err

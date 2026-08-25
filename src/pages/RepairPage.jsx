@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB } from '../utils/telegram'
+import { TechnicianAPI } from '../api/entities'
 import { CheckCircle, Clock, Wrench, AlertTriangle, ChevronRight, Loader } from 'lucide-react'
 import gemmaLogo from '../assets/logo-gemma.png'
 
@@ -154,7 +155,22 @@ function StepApprove({ request, onUpdated }) {
   const [error,  setError]  = useState('')
 
   useEffect(() => {
-    loadTelegramSettingsDB().then(cfg => setTechList(cfg.technicians || []))
+    Promise.allSettled([
+      loadTelegramSettingsDB(),
+      TechnicianAPI.list(),
+    ]).then(([tgRes, techRes]) => {
+      const tgTechs = tgRes.status === 'fulfilled' ? (tgRes.value?.technicians || []) : []
+      const regTechs = techRes.status === 'fulfilled' && Array.isArray(techRes.value) ? techRes.value.map(t => ({ name: t.Name || t.name, chat_id: '' })) : []
+      const names = new Set()
+      const merged = []
+      for (const t of [...tgTechs, ...regTechs]) {
+        if (t.name && !names.has(t.name)) {
+          names.add(t.name)
+          merged.push(t)
+        }
+      }
+      setTechList(merged)
+    })
   }, [])
 
   if (['APPROVED','IN_PROGRESS','COMPLETED'].includes(request.status)) {
