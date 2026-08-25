@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Cpu, Disc, ClipboardList, Calendar,
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
-  FileText, Monitor, Smartphone,
+  FileText, Monitor, Smartphone, Target,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
@@ -47,6 +47,7 @@ const NAV_SECTIONS = [
       { to: '/cylinders',  icon: Disc,            key: 'nav_cylinders',  permKey: 'cylinders' },
       { to: '/workorders',    icon: ClipboardList,   key: 'nav_workorders',    permKey: 'workorders' },
       { to: '/pm',            icon: Calendar,        key: 'nav_pm',            permKey: 'pm' },
+      { to: '/center-check',  icon: Target,          key: 'nav_center_check',  permKey: 'pm' },
       { to: '/design-bom',    icon: FileText,        key: 'nav_design_bom',    permKey: 'designbom' },
     ]
   },
