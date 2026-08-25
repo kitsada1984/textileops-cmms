@@ -1,12 +1,166 @@
 import { createEntityClient } from './supabaseClient'
+import { supabase } from '../supabase'
+import initialCenterChecks from '../data/initialCenterChecks.json'
+
+export const DEFAULT_TECHS = [
+  { id: 'TECH-001', Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE' },
+  { id: 'TECH-002', Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE' },
+  { id: 'TECH-003', Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'เตรียมเครื่อง, แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
+  { id: 'TECH-004', Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
+]
 
 export const MachineAPI         = createEntityClient('machines')
 export const CylinderAPI        = createEntityClient('cylinders')
 export const WorkOrderAPI       = createEntityClient('workorders')
-export const TechnicianAPI      = createEntityClient('technicians')
+
+export const TechnicianAPI = {
+  list: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('workorders')
+        .select('Comment')
+        .eq('WO_ID', 'SYS_TECHNICIANS')
+        .maybeSingle()
+      if (!error && data?.Comment) {
+        const parsed = JSON.parse(data.Comment)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(parsed)) } catch {}
+          return parsed
+        }
+      }
+    } catch (e) {
+      console.warn('Technician cloud load error:', e)
+    }
+    try {
+      const local = JSON.parse(localStorage.getItem('txops_tbl_technicians') || '[]')
+      if (Array.isArray(local) && local.length > 0) return local
+    } catch {}
+    return DEFAULT_TECHS
+  },
+  saveAll: async (techsList) => {
+    try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(techsList)) } catch {}
+    try {
+      const { data: existing } = await supabase
+        .from('workorders')
+        .select('id')
+        .eq('WO_ID', 'SYS_TECHNICIANS')
+      if (existing && existing.length > 0) {
+        await supabase
+          .from('workorders')
+          .update({
+            Comment: JSON.stringify(techsList),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing[0].id)
+      } else {
+        await supabase.from('workorders').insert({
+          MC: '__SYSTEM__',
+          Problem: '__SYS_CONFIG__',
+          WO_ID: 'SYS_TECHNICIANS',
+          Comment: JSON.stringify(techsList),
+          Status: 'COMPLETED',
+        })
+      }
+    } catch (e) {
+      console.warn('Technician cloud save error:', e)
+    }
+  },
+  create: async (item) => {
+    const list = await TechnicianAPI.list()
+    const nextId = item.id || item.Technician_ID || `TECH-00${list.length + 1}`
+    const newItem = { ...item, id: nextId, Technician_ID: nextId }
+    const updated = [...list, newItem]
+    await TechnicianAPI.saveAll(updated)
+    return newItem
+  },
+  update: async (id, item) => {
+    const list = await TechnicianAPI.list()
+    const updated = list.map((t) => (t.id === id || t.Technician_ID === id ? { ...t, ...item, id } : t))
+    await TechnicianAPI.saveAll(updated)
+    return { ...item, id }
+  },
+  delete: async (id) => {
+    const list = await TechnicianAPI.list()
+    const updated = list.filter((t) => t.id !== id && t.Technician_ID !== id)
+    await TechnicianAPI.saveAll(updated)
+  },
+}
+
 export const KpiSettingsAPI     = createEntityClient('kpi_settings')
 export const PMPlanAPI          = createEntityClient('pmplans')
-export const CenterCheckAPI     = createEntityClient('center_checks')
+
+export const CenterCheckAPI = {
+  list: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('workorders')
+        .select('Comment')
+        .eq('WO_ID', 'SYS_CENTER_CHECKS')
+        .maybeSingle()
+      if (!error && data?.Comment) {
+        const parsed = JSON.parse(data.Comment)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          try { localStorage.setItem('txops_tbl_center_checks', JSON.stringify(parsed)) } catch {}
+          return parsed
+        }
+      }
+    } catch (e) {
+      console.warn('CenterCheck cloud load error:', e)
+    }
+    try {
+      const local = JSON.parse(localStorage.getItem('txops_tbl_center_checks') || '[]')
+      if (Array.isArray(local) && local.length > 0) return local
+    } catch {}
+    return initialCenterChecks
+  },
+  saveAll: async (checksList) => {
+    try { localStorage.setItem('txops_tbl_center_checks', JSON.stringify(checksList)) } catch {}
+    try {
+      const { data: existing } = await supabase
+        .from('workorders')
+        .select('id')
+        .eq('WO_ID', 'SYS_CENTER_CHECKS')
+      if (existing && existing.length > 0) {
+        await supabase
+          .from('workorders')
+          .update({
+            Comment: JSON.stringify(checksList),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing[0].id)
+      } else {
+        await supabase.from('workorders').insert({
+          MC: '__SYSTEM__',
+          Problem: '__SYS_CONFIG__',
+          WO_ID: 'SYS_CENTER_CHECKS',
+          Comment: JSON.stringify(checksList),
+          Status: 'COMPLETED',
+        })
+      }
+    } catch (e) {
+      console.warn('CenterCheck cloud save error:', e)
+    }
+  },
+  create: async (item) => {
+    const list = await CenterCheckAPI.list()
+    const newItem = { ...item, id: item.id || `cc_${Date.now()}` }
+    const updated = [newItem, ...list]
+    await CenterCheckAPI.saveAll(updated)
+    return newItem
+  },
+  update: async (id, item) => {
+    const list = await CenterCheckAPI.list()
+    const updated = list.map((c) => (c.id === id || c.doc_no === id ? { ...c, ...item, id } : c))
+    await CenterCheckAPI.saveAll(updated)
+    return { ...item, id }
+  },
+  delete: async (id) => {
+    const list = await CenterCheckAPI.list()
+    const updated = list.filter((c) => c.id !== id && c.doc_no !== id)
+    await CenterCheckAPI.saveAll(updated)
+  },
+}
+
 export const ChecklistConfigAPI = createEntityClient('checklist_configs')
 export const SparePartAPI       = createEntityClient('spareparts')
 export const AuditLogAPI        = createEntityClient('audit_logs')
