@@ -62,7 +62,6 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
                 color: '#60a5fa',
                 size: 'xs',
                 weight: 'bold',
-                letterSpacing: '1px',
               },
               {
                 type: 'text',
@@ -142,7 +141,7 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
                 borderColor: '#fee2e2',
                 borderWidth: '1px',
                 contents: [
-                  { type: 'text', text: '⚠️ อาการเสีย / ปัญหา:', color: '#dc2626', size: 'xxs', weight: 'bold' },
+                  { type: 'text', text: '⚠️ อาการเสีย / ปัญหา:', color: '#dc2626', size: 'xs', weight: 'bold' },
                   { type: 'text', text: problem, color: '#991b1b', size: 'xs', wrap: true, margin: 'xs', weight: 'bold' },
                 ],
               },
@@ -153,8 +152,8 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
                 spacing: 'sm',
                 margin: 'sm',
                 contents: [
-                  { type: 'text', text: 'ผู้แจ้ง / เวลา:', color: '#64748b', size: 'xxs', flex: 3 },
-                  { type: 'text', text: `${reporter} · ${timeStr}`, wrap: true, color: '#64748b', size: 'xxs', flex: 7 },
+                  { type: 'text', text: 'ผู้แจ้ง / เวลา:', color: '#64748b', size: 'xs', flex: 3 },
+                  { type: 'text', text: `${reporter} · ${timeStr}`, wrap: true, color: '#64748b', size: 'xs', flex: 7 },
                 ],
               },
             ],
