@@ -118,7 +118,9 @@ export async function notifyLineNewRepair(request, cylinder) {
       return { ok: false, skipped: true, reason: 'LINE notification disabled' }
     }
 
-    if (cfg.provider === 'line_oa') {
+    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+
+    if (effectiveProvider === 'line_oa') {
       if (!cfg.channel_access_token || !cfg.target_group_id) {
         return { ok: false, skipped: true, reason: 'LINE Channel Access Token or Group ID not configured' }
       }
@@ -131,7 +133,7 @@ export async function notifyLineNewRepair(request, cylinder) {
         targetId: cfg.target_group_id,
         messages: [flexMsg],
       })
-    } else if (cfg.provider === 'line_notify') {
+    } else {
       if (!cfg.notify_token) {
         return { ok: false, skipped: true, reason: 'LINE Notify Token not configured' }
       }
@@ -166,7 +168,9 @@ export async function testLineNotification() {
     return { ok: false, error: 'กรุณาเปิดสวิตช์ใช้งานการแจ้งเตือน LINE ก่อนทดสอบ' }
   }
 
-  if (cfg.provider === 'line_oa') {
+  const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+
+  if (effectiveProvider === 'line_oa') {
     if (!cfg.channel_access_token?.trim()) {
       return { ok: false, error: 'กรุณากรอก LINE Channel Access Token ก่อนทดสอบ' }
     }
@@ -182,7 +186,7 @@ export async function testLineNotification() {
       targetId: cfg.target_group_id.trim(),
       messages: [testFlex],
     })
-  } else if (cfg.provider === 'line_notify') {
+  } else {
     if (!cfg.notify_token?.trim()) {
       return { ok: false, error: 'กรุณากรอก LINE Notify Token ก่อนทดสอบ' }
     }
@@ -194,6 +198,4 @@ export async function testLineNotification() {
       textMessage: `\n🔔 ทดสอบการแจ้งเตือนจาก TextileOps CMMS สำเร็จเรียบร้อย!\n👉 แตะเปิดแอป PWA: ${appUrl}?openExternalBrowser=1`,
     })
   }
-
-  return { ok: false, error: 'ไม่พบประเภทผู้ให้บริการ LINE' }
 }
