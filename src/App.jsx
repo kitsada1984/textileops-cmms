@@ -108,6 +108,7 @@ function AppInner() {
   const [sideOpen, setSideOpen] = useState(false)
   const [dark, setDark]         = useState(() => localStorage.getItem('theme') !== 'light')
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('app_view_mode') || 'web')
+  const [pwaModalOpen, setPwaModalOpen] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -259,7 +260,7 @@ function AppInner() {
             type="button"
             onClick={() => {
               setSideOpen(false)
-              window.dispatchEvent(new CustomEvent('open-pwa-install'))
+              setPwaModalOpen(true)
             }}
             style={{
               width: '100%',
@@ -457,7 +458,7 @@ function AppInner() {
             {/* PWA Install Button */}
             <button
               type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install'))}
+              onClick={() => setPwaModalOpen(true)}
               title="ติดตั้งแอป TextileOps บนมือถือ (PWA)"
               style={{
                 height: 32,
@@ -573,7 +574,7 @@ function AppInner() {
           </main>
         )}
       </div>
-      <PWAInstallPrompt />
+      <PWAInstallPrompt open={pwaModalOpen} onClose={() => setPwaModalOpen(false)} />
     </div>
   )
 }
