@@ -192,19 +192,36 @@ export default function DesignBom() {
     return values.map((v) => ({ value: v, label: v }))
   }, [data])
 
-  const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
-    selectOptions: {
-      MC: mcOptions,
-      Design: designOptions,
-      KI: kiOptions,
-      BOM: bomOptions,
-    },
-    valueGetters: {
-      ImageUrl: getDesignImageUrl,
-      ImagePreview: getDesignImageUrl,
-      Comment: (row) => stripImageUrlMeta(row.Comment),
-    },
-  }), [cols, mcOptions, designOptions, kiOptions, bomOptions])
+  const FS_COLS = useMemo(() => {
+    return cols.map((col) => {
+      const key = col.field || col.key
+      const label = col.label || key
+      const isFilterable = ['MC', 'Design', 'KI', 'BOM'].includes(key)
+
+      let filterConfig = undefined
+      if (isFilterable) {
+        let opts = []
+        if (key === 'MC') opts = mcOptions
+        else if (key === 'Design') opts = designOptions
+        else if (key === 'KI') opts = kiOptions
+        else if (key === 'BOM') opts = bomOptions
+        filterConfig = { type: 'select', opts }
+      }
+
+      return {
+        key,
+        label,
+        sortable: true,
+        getValue:
+          key === 'ImageUrl' || key === 'ImagePreview'
+            ? getDesignImageUrl
+            : key === 'Comment'
+            ? (row) => stripImageUrlMeta(row.Comment)
+            : undefined,
+        filter: filterConfig,
+      }
+    })
+  }, [cols, mcOptions, designOptions, kiOptions, bomOptions])
 
   const displayRows = useMemo(() => applyFilterSort(filtered, FS_COLS, filterSort), [filtered, FS_COLS, filterSort])
 
