@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw, UserPlus, Smartphone, Download, MessageSquare, Bell, Eye, EyeOff } from 'lucide-react'
+import { Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw, UserPlus, Smartphone, Download, MessageSquare, Bell, Eye, EyeOff, Copy } from 'lucide-react'
 import { useT } from '../contexts/LanguageContext'
 import { useAuth, hashPassword } from '../contexts/AuthContext'
 import { APP_VERSION, APP_BUILD_DATE } from '../version'
 import { fetchTelegramContacts, loadTelegramSettings, saveTelegramSettings, saveTelegramSettingsDB, loadTelegramSettingsDB, testTelegram } from '../utils/telegram'
-import { loadLineSettings, saveLineSettingsDB, loadLineSettingsDB, testLineNotification, DEFAULT_LINE_SETTINGS } from '../utils/line'
+import { fetchLineContacts, loadLineSettings, saveLineSettingsDB, loadLineSettingsDB, testLineNotification, DEFAULT_LINE_SETTINGS } from '../utils/line'
 
 const TABLES = [
   ['machines','เครื่องจักร'], ['cylinders','กระบอก'], ['workorders','ใบสั่งงาน'],
@@ -53,6 +53,9 @@ export default function SettingsPage() {
   const [lineIsOk, setLineIsOk] = useState(true)
   const [lineTesting, setLineTesting] = useState(false)
   const [showLineToken, setShowLineToken] = useState(false)
+  const [lineContacts, setLineContacts] = useState([])
+  const [lineContactLoading, setLineContactLoading] = useState(false)
+  const [webhookCopied, setWebhookCopied] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -159,6 +162,39 @@ export default function SettingsPage() {
       setLineMsg(`ผิดพลาด: ${e.message}`)
     }
     setLineTesting(false)
+  }
+
+  const loadLineContactsList = async () => {
+    setLineContactLoading(true)
+    setLineMsg('')
+    try {
+      const r = await fetchLineContacts()
+      if (r.ok && r.contacts) {
+        setLineContacts(r.contacts)
+        setLineIsOk(true)
+        setLineMsg(r.contacts.length
+          ? `✓ พบผู้ใช้ที่ทัก LINE บอท ${r.contacts.length} บัญชี`
+          : 'ยังไม่พบบัญชี LINE ใหม่ ให้ช่างหรือหัวหน้าเปิดแชตกับบอทแล้วพิมพ์ข้อความทักทายก่อนครับ')
+      } else {
+        setLineIsOk(false)
+        setLineMsg('ไม่พบรายชื่อในระบบ Webhook')
+      }
+    } catch (e) {
+      setLineIsOk(false)
+      setLineMsg(`ผิดพลาด: ${e.message}`)
+    }
+    setLineContactLoading(false)
+  }
+
+  const addLineContact = (role, contact) => {
+    const key = role === 'supervisor' ? 'supervisors' : 'technicians'
+    setLine((p) => {
+      const current = p[key] || []
+      if (current.some((item) => item.user_id === contact.user_id)) return p
+      return { ...p, [key]: [...current, { name: contact.name, user_id: contact.user_id }] }
+    })
+    setLineIsOk(true)
+    setLineMsg(`เพิ่ม ${contact.name} ใน ${role === 'supervisor' ? 'หัวหน้างาน' : 'ช่างเทคนิค'} เรียบร้อยแล้ว (กดบันทึกเพื่อเริ่มใช้งาน)`)
   }
 
   const loadTgContacts = async () => {
@@ -505,10 +541,40 @@ export default function SettingsPage() {
 
           {/* Form fields for LINE OA */}
           {line.provider === 'line_oa' && (
-            <div className="space-y-4 pt-1">
+            <div className="space-y-5 pt-1">
+              
+              {/* Webhook URL Helper Box */}
+              <div className="p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="font-bold text-blue-800 dark:text-blue-200 flex items-center gap-1.5">
+                    <span>📡 LINE Webhook URL (สำหรับรับ ID ช่างและหัวหน้าอัตโนมัติ)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `${(line.app_base_url || window.location.origin).replace(/\/$/, '')}/api/line-webhook`
+                      navigator.clipboard.writeText(url)
+                      setWebhookCopied(true)
+                      setTimeout(() => setWebhookCopied(false), 2500)
+                    }}
+                    className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-1 text-[11px] transition-all"
+                  >
+                    {webhookCopied ? <CheckCircle size={12} /> : <Copy size={12} />}
+                    <span>{webhookCopied ? 'คัดลอกแล้ว!' : 'คัดลอก URL'}</span>
+                  </button>
+                </div>
+                <div className="font-mono bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-blue-200/80 dark:border-blue-900 text-blue-900 dark:text-blue-300 select-all overflow-x-auto text-[11px]">
+                  {`${(line.app_base_url || window.location.origin).replace(/\/$/, '')}/api/line-webhook`}
+                </div>
+                <p className="text-[10.5px] text-blue-700/80 dark:text-blue-400 mt-1.5 leading-normal">
+                  📌 <b>วิธีใช้งาน:</b> นำ URL นี้ไปวางใน <b>LINE Developers Console</b> &gt; แท็บ <b>Messaging API</b> &gt; <b>Webhook URL</b> แล้วกดเปิด <b>Use webhook</b> จากนั้นเมื่อช่างหรือหัวหน้าทักบอท ระบบจะเก็บ ID ให้ทันทีครับ
+                </p>
+              </div>
+
+              {/* Channel Access Token */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="label mb-0">LINE Channel Access Token (Long-Lived)</label>
+                  <label className="label mb-0">LINE Channel Access Token (Long-Lived) *</label>
                   <button
                     type="button"
                     onClick={() => setShowLineToken((s) => !s)}
@@ -530,19 +596,210 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              <div>
-                <label className="label">Group ID หรือ User ID ปลายทาง</label>
-                <input
-                  className="input font-mono text-xs"
-                  type="text"
-                  value={line.target_group_id || ''}
-                  onChange={(e) => setLine((p) => ({ ...p, target_group_id: e.target.value }))}
-                  placeholder="เช่น C1234567890abcdef... หรือ Uxxxxxxxx..."
-                />
-                <p className="text-[10.5px] text-slate-400 mt-1">
-                  ระบุ Group ID ของกลุ่ม LINE ช่าง (เริ่มต้นด้วยตัว C) หรือ User ID (ขึ้นต้นด้วย U)
-                </p>
+              {/* Auto Contacts Fetcher from LINE Webhook */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      รายชื่อที่ทัก LINE บอทเข้ามา (ดึงอัตโนมัติ)
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      ให้ช่างหรือหัวหน้าเปิดแชตแล้วพิมพ์ทักบอท จากนั้นกดดึงรายชื่อเพื่อกดเพิ่มได้ทันที
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={loadLineContactsList}
+                    disabled={lineContactLoading}
+                    className="btn-outline px-3 py-1 text-xs flex items-center gap-1.5"
+                  >
+                    <RefreshCw size={12} className={lineContactLoading ? 'animate-spin' : ''} />
+                    <span>{lineContactLoading ? 'กำลังดึง...' : 'ดึงรายชื่อจาก LINE'}</span>
+                  </button>
+                </div>
+
+                {lineContacts.length > 0 && (
+                  <div className="space-y-2 mt-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                    {lineContacts.map((c, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {c.picture_url ? (
+                            <img src={c.picture_url} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 text-[10px] flex-shrink-0">
+                              {c.name?.[0] || 'L'}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{c.name}</div>
+                            <div className="font-mono text-[10px] text-slate-400 truncate">{c.user_id}</div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => addLineContact('supervisor', c)}
+                            className="px-2.5 py-1 rounded bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800 flex items-center gap-1"
+                          >
+                            <UserPlus size={11} /> + หัวหน้า
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addLineContact('technician', c)}
+                            className="px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1"
+                          >
+                            <UserPlus size={11} /> + ช่าง
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Supervisors List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      รายชื่อหัวหน้างาน / ผู้รับแจ้งซ่อม (Supervisors)
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      จะได้รับแจ้งเตือนเมื่อมีคนแจ้งซ่อมใหม่ และเมื่อช่างปิดงานซ่อม
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLine((p) => ({ ...p, supervisors: [...(p.supervisors || []), { name: '', user_id: '' }] }))}
+                    className="text-xs text-blue-500 hover:underline font-bold flex items-center gap-1"
+                  >
+                    <UserPlus size={12} /> <span>+ เพิ่มหัวหน้า</span>
+                  </button>
+                </div>
+
+                {(!line.supervisors || line.supervisors.length === 0) && (
+                  <div className="text-xs text-slate-400 py-1.5">ยังไม่มีรายชื่อหัวหน้า — กด + เพิ่ม</div>
+                )}
+
+                <div className="space-y-2">
+                  {(line.supervisors || []).map((s, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        className="input text-xs"
+                        value={s.name || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.supervisors || [])]
+                            a[i] = { ...a[i], name: e.target.value }
+                            return { ...p, supervisors: a }
+                          })
+                        }
+                        placeholder="ชื่อหัวหน้า"
+                        style={{ flex: '0 0 130px' }}
+                      />
+                      <input
+                        className="input font-mono text-xs"
+                        value={s.user_id || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.supervisors || [])]
+                            a[i] = { ...a[i], user_id: e.target.value }
+                            return { ...p, supervisors: a }
+                          })
+                        }
+                        placeholder="User ID เช่น U66f2b... หรือ Group ID C..."
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLine((p) => ({
+                            ...p,
+                            supervisors: (p.supervisors || []).filter((_, j) => j !== i),
+                          }))
+                        }
+                        className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 hover:text-red-500 flex items-center justify-center flex-shrink-0 text-sm font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Technicians List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      รายชื่อช่างเทคนิค (Technicians)
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      เมื่อหัวหน้ากดมอบหมายช่างคนไหน ระบบจะยิงใบสั่งงานตรงเข้า LINE ช่างคนนั้นทันที
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLine((p) => ({ ...p, technicians: [...(p.technicians || []), { name: '', user_id: '' }] }))}
+                    className="text-xs text-blue-500 hover:underline font-bold flex items-center gap-1"
+                  >
+                    <UserPlus size={12} /> <span>+ เพิ่มช่าง</span>
+                  </button>
+                </div>
+
+                {(!line.technicians || line.technicians.length === 0) && (
+                  <div className="text-xs text-slate-400 py-1.5">ยังไม่มีรายชื่อช่าง — กด + เพิ่ม</div>
+                )}
+
+                <div className="space-y-2">
+                  {(line.technicians || []).map((t, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        className="input text-xs"
+                        value={t.name || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.technicians || [])]
+                            a[i] = { ...a[i], name: e.target.value }
+                            return { ...p, technicians: a }
+                          })
+                        }
+                        placeholder="ชื่อช่าง (เช่น หนึ่ง)"
+                        style={{ flex: '0 0 130px' }}
+                      />
+                      <input
+                        className="input font-mono text-xs"
+                        value={t.user_id || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.technicians || [])]
+                            a[i] = { ...a[i], user_id: e.target.value }
+                            return { ...p, technicians: a }
+                          })
+                        }
+                        placeholder="User ID เช่น Uxxxxxxxx..."
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLine((p) => ({
+                            ...p,
+                            technicians: (p.technicians || []).filter((_, j) => j !== i),
+                          }))
+                        }
+                        className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 hover:text-red-500 flex items-center justify-center flex-shrink-0 text-sm font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
           )}
 

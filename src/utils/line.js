@@ -17,6 +17,8 @@ export const DEFAULT_LINE_SETTINGS = {
   provider: 'line_oa', // 'line_oa' (Messaging API) | 'line_notify'
   channel_access_token: '',
   target_group_id: '',
+  supervisors: [{ name: 'กฤษดา', user_id: 'U66f2b207af94e739c10a3cf937af2965' }],
+  technicians: [{ name: 'หนึ่ง', user_id: '' }],
   channel_secret: '',
   notify_token: '',
   is_enabled: true,
@@ -29,7 +31,13 @@ export const DEFAULT_LINE_SETTINGS = {
 export const loadLineSettings = () => {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
-    return saved ? { ...DEFAULT_LINE_SETTINGS, ...saved } : { ...DEFAULT_LINE_SETTINGS }
+    if (!saved) return { ...DEFAULT_LINE_SETTINGS }
+    return {
+      ...DEFAULT_LINE_SETTINGS,
+      ...saved,
+      supervisors: saved.supervisors || (saved.target_group_id ? [{ name: 'หัวหน้างาน', user_id: saved.target_group_id }] : DEFAULT_LINE_SETTINGS.supervisors),
+      technicians: saved.technicians || DEFAULT_LINE_SETTINGS.technicians,
+    }
   } catch {
     return { ...DEFAULT_LINE_SETTINGS }
   }
@@ -51,7 +59,12 @@ export const loadLineSettingsDB = async () => {
 
     if (!error && data?.value) {
       const parsed = JSON.parse(data.value)
-      const merged = { ...DEFAULT_LINE_SETTINGS, ...parsed }
+      const merged = {
+        ...DEFAULT_LINE_SETTINGS,
+        ...parsed,
+        supervisors: parsed.supervisors || (parsed.target_group_id ? [{ name: 'หัวหน้างาน', user_id: parsed.target_group_id }] : DEFAULT_LINE_SETTINGS.supervisors),
+        technicians: parsed.technicians || DEFAULT_LINE_SETTINGS.technicians,
+      }
       saveLineSettings(merged)
       return merged
     }
@@ -78,6 +91,45 @@ export const saveLineSettingsDB = async (cfg) => {
   } catch (e) {
     console.warn('LINE settings DB save warning:', e)
   }
+}
+
+/**
+ * Fetches auto-captured LINE contacts from Webhook storage
+ */
+export async function fetchLineContacts() {
+  try {
+    const { data } = await supabase
+      .from('appconfigs')
+      .select('value')
+      .eq('key', 'line_contacts')
+      .maybeSingle()
+
+    if (data?.value) {
+      const contacts = JSON.parse(data.value)
+      return { ok: true, contacts: Array.isArray(contacts) ? contacts : [] }
+    }
+  } catch (e) {
+    console.warn('Fetch LINE contacts error:', e)
+  }
+  return { ok: true, contacts: [] }
+}
+
+export function getSupervisorLineIds(cfg) {
+  if (cfg.supervisors?.length) {
+    return cfg.supervisors.map(s => s.user_id?.trim()).filter(Boolean)
+  }
+  if (cfg.target_group_id?.trim()) {
+    return [cfg.target_group_id.trim()]
+  }
+  return []
+}
+
+export function getTechnicianLineId(cfg, technicianName) {
+  const match = cfg.technicians?.find(t => t.name === technicianName)
+  if (match?.user_id?.trim()) return match.user_id.trim()
+  if (cfg.target_group_id?.trim()) return cfg.target_group_id.trim()
+  const supers = getSupervisorLineIds(cfg)
+  return supers[0] || null
 }
 
 /**
@@ -116,6 +168,9 @@ export async function sendLineNotification(payload) {
 /**
  * Sends New Repair Request Notification to LINE (Non-blocking background handler)
  */
+/**
+ * Sends New Repair Request Notification to LINE (Step 1: Broadcast to all supervisors)
+ */
 export async function notifyLineNewRepair(request, cylinder) {
   try {
     const cfg = await loadLineSettingsDB()
@@ -126,18 +181,29 @@ export async function notifyLineNewRepair(request, cylinder) {
     const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
 
     if (effectiveProvider === 'line_oa') {
-      if (!cfg.channel_access_token || !cfg.target_group_id) {
-        return { ok: false, skipped: true, reason: 'LINE Channel Access Token or Group ID not configured' }
+      if (!cfg.channel_access_token) {
+        return { ok: false, skipped: true, reason: 'LINE Channel Access Token not configured' }
+      }
+
+      const targetIds = getSupervisorLineIds(cfg)
+      if (!targetIds.length) {
+        return { ok: false, skipped: true, reason: 'No Supervisor LINE User IDs or Group ID configured' }
       }
 
       const flexMsg = buildRepairRequestFlexMessage(request, cylinder, cfg.app_base_url)
 
-      return await sendLineNotification({
-        type: 'flex',
-        token: cfg.channel_access_token,
-        targetId: cfg.target_group_id,
-        messages: [flexMsg],
-      })
+      const results = await Promise.all(
+        targetIds.map(targetId =>
+          sendLineNotification({
+            type: 'flex',
+            token: cfg.channel_access_token,
+            targetId,
+            messages: [flexMsg],
+          })
+        )
+      )
+
+      return results[0] || { ok: true }
     } else {
       if (!cfg.notify_token) {
         return { ok: false, skipped: true, reason: 'LINE Notify Token not configured' }
@@ -165,7 +231,7 @@ export async function notifyLineNewRepair(request, cylinder) {
 }
 
 /**
- * Sends Technician Assignment Notification to LINE (Step 2)
+ * Sends Technician Assignment Notification to LINE (Step 2: Directly to designated technician)
  */
 export async function notifyLineTechnician(request) {
   try {
@@ -177,8 +243,13 @@ export async function notifyLineTechnician(request) {
     const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
 
     if (effectiveProvider === 'line_oa') {
-      if (!cfg.channel_access_token || !cfg.target_group_id) {
-        return { ok: false, skipped: true, reason: 'LINE Channel Access Token or Group ID not configured' }
+      if (!cfg.channel_access_token) {
+        return { ok: false, skipped: true, reason: 'LINE Channel Access Token not configured' }
+      }
+
+      const targetId = getTechnicianLineId(cfg, request.technician_name)
+      if (!targetId) {
+        return { ok: false, skipped: true, reason: `No LINE User ID found for technician: ${request.technician_name}` }
       }
 
       const flexMsg = buildTechnicianAssignedFlexMessage(request, cfg.app_base_url)
@@ -186,7 +257,7 @@ export async function notifyLineTechnician(request) {
       return await sendLineNotification({
         type: 'flex',
         token: cfg.channel_access_token,
-        targetId: cfg.target_group_id,
+        targetId,
         messages: [flexMsg],
       })
     } else {
@@ -216,7 +287,7 @@ export async function notifyLineTechnician(request) {
 }
 
 /**
- * Sends Repair Completed Notification to LINE (Step 3)
+ * Sends Repair Completed Notification to LINE (Step 3: Broadcast to all supervisors)
  */
 export async function notifyLineCompleted(request) {
   try {
@@ -228,18 +299,29 @@ export async function notifyLineCompleted(request) {
     const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
 
     if (effectiveProvider === 'line_oa') {
-      if (!cfg.channel_access_token || !cfg.target_group_id) {
-        return { ok: false, skipped: true, reason: 'LINE Channel Access Token or Group ID not configured' }
+      if (!cfg.channel_access_token) {
+        return { ok: false, skipped: true, reason: 'LINE Channel Access Token not configured' }
+      }
+
+      const targetIds = getSupervisorLineIds(cfg)
+      if (!targetIds.length) {
+        return { ok: false, skipped: true, reason: 'No Supervisor LINE User IDs configured' }
       }
 
       const flexMsg = buildRepairCompletedFlexMessage(request, cfg.app_base_url)
 
-      return await sendLineNotification({
-        type: 'flex',
-        token: cfg.channel_access_token,
-        targetId: cfg.target_group_id,
-        messages: [flexMsg],
-      })
+      const results = await Promise.all(
+        targetIds.map(targetId =>
+          sendLineNotification({
+            type: 'flex',
+            token: cfg.channel_access_token,
+            targetId,
+            messages: [flexMsg],
+          })
+        )
+      )
+
+      return results[0] || { ok: true }
     } else {
       if (!cfg.notify_token) {
         return { ok: false, skipped: true, reason: 'LINE Notify Token not configured' }
@@ -282,18 +364,27 @@ export async function testLineNotification() {
     if (!cfg.channel_access_token?.trim()) {
       return { ok: false, error: 'กรุณากรอก LINE Channel Access Token ก่อนทดสอบ' }
     }
-    if (!cfg.target_group_id?.trim()) {
-      return { ok: false, error: 'กรุณากรอก Group ID หรือ User ID กลุ่มช่าง ก่อนทดสอบ' }
+    const targetIds = getSupervisorLineIds(cfg)
+    if (!targetIds.length) {
+      return { ok: false, error: 'กรุณาระบุ User ID หรือ Group ID อย่างน้อย 1 รายการก่อนทดสอบ' }
     }
 
     const testFlex = buildTestFlexMessage(cfg.app_base_url)
 
-    return await sendLineNotification({
-      type: 'flex',
-      token: cfg.channel_access_token.trim(),
-      targetId: cfg.target_group_id.trim(),
-      messages: [testFlex],
-    })
+    const results = await Promise.all(
+      targetIds.map(targetId =>
+        sendLineNotification({
+          type: 'flex',
+          token: cfg.channel_access_token.trim(),
+          targetId,
+          messages: [testFlex],
+        })
+      )
+    )
+
+    const failed = results.find(r => !r.ok)
+    if (failed) return failed
+    return { ok: true, results }
   } else {
     if (!cfg.notify_token?.trim()) {
       return { ok: false, error: 'กรุณากรอก LINE Notify Token ก่อนทดสอบ' }

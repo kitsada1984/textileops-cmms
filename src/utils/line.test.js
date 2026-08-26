@@ -102,14 +102,16 @@ describe('LINE Settings Persistence', () => {
     expect(s.channel_access_token).toBe('')
   })
 
-  it('saves and reloads settings from localStorage', () => {
+  it('saves and reloads settings with supervisors and technicians', () => {
     saveLineSettings({
       ...DEFAULT_LINE_SETTINGS,
       channel_access_token: 'test-token-123',
-      target_group_id: 'C9999999',
+      supervisors: [{ name: 'หัวหน้ากฤษดา', user_id: 'U11111' }],
+      technicians: [{ name: 'ช่างหนึ่ง', user_id: 'U22222' }],
     })
     const loaded = loadLineSettings()
     expect(loaded.channel_access_token).toBe('test-token-123')
-    expect(loaded.target_group_id).toBe('C9999999')
+    expect(loaded.supervisors[0].user_id).toBe('U11111')
+    expect(loaded.technicians[0].user_id).toBe('U22222')
   })
 })
