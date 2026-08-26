@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB } from '../utils/telegram'
+import { notifyLineNewRepair } from '../utils/line'
 import { TechnicianAPI } from '../api/entities'
 import { CheckCircle, Clock, Wrench, AlertTriangle, ChevronRight, Loader } from 'lucide-react'
 import gemmaLogo from '../assets/logo-gemma.png'
@@ -87,6 +88,11 @@ function StepReport({ serial, cylinder, onSubmitted }) {
         await notifySupervisor(data, cylinder)
       } catch (tgErr) {
         console.warn('Telegram notification warning:', tgErr)
+      }
+      try {
+        await notifyLineNewRepair(data, cylinder)
+      } catch (lineErr) {
+        console.warn('LINE notification warning:', lineErr)
       }
       onSubmitted(data)
     } catch (e) {

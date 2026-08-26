@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw, UserPlus, Smartphone, Download } from 'lucide-react'
+import { Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw, UserPlus, Smartphone, Download, MessageSquare, Bell, Eye, EyeOff } from 'lucide-react'
 import { useT } from '../contexts/LanguageContext'
 import { useAuth, hashPassword } from '../contexts/AuthContext'
 import { APP_VERSION, APP_BUILD_DATE } from '../version'
 import { fetchTelegramContacts, loadTelegramSettings, saveTelegramSettings, saveTelegramSettingsDB, loadTelegramSettingsDB, testTelegram } from '../utils/telegram'
+import { loadLineSettings, saveLineSettingsDB, loadLineSettingsDB, testLineNotification, DEFAULT_LINE_SETTINGS } from '../utils/line'
 
 const TABLES = [
   ['machines','เครื่องจักร'], ['cylinders','กระบอก'], ['workorders','ใบสั่งงาน'],
@@ -46,6 +47,13 @@ export default function SettingsPage() {
   const [tgContacts, setTgContacts] = useState([])
   const [tgContactLoading, setTgContactLoading] = useState(false)
 
+  // LINE Notification State
+  const [line, setLine] = useState(DEFAULT_LINE_SETTINGS)
+  const [lineMsg, setLineMsg] = useState('')
+  const [lineIsOk, setLineIsOk] = useState(true)
+  const [lineTesting, setLineTesting] = useState(false)
+  const [showLineToken, setShowLineToken] = useState(false)
+
   useEffect(() => {
     ;(async () => {
       const { data } = await supabase.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
@@ -63,6 +71,10 @@ export default function SettingsPage() {
         setTg(local)
         saveTelegramSettingsDB(local)
       }
+
+      // Load LINE settings from DB
+      const lineCfg = await loadLineSettingsDB()
+      if (lineCfg) setLine(lineCfg)
     })()
   }, [])
 
@@ -120,6 +132,33 @@ export default function SettingsPage() {
       setTgMsg(`ผิดพลาด: ${e.message}`)
     }
     setTgTesting(false)
+  }
+
+  const saveLine = async () => {
+    await saveLineSettingsDB(line)
+    setLineIsOk(true)
+    setLineMsg('บันทึกการตั้งค่า LINE สำเร็จ ✓')
+    setTimeout(() => setLineMsg(''), 4000)
+  }
+
+  const handleTestLine = async () => {
+    await saveLineSettingsDB(line)
+    setLineTesting(true)
+    setLineMsg('')
+    try {
+      const r = await testLineNotification()
+      if (r.ok) {
+        setLineIsOk(true)
+        setLineMsg('✓ ส่งข้อความแจ้งเตือนทดสอบเข้า LINE สำเร็จเรียบร้อย!')
+      } else {
+        setLineIsOk(false)
+        setLineMsg(`ผิดพลาด: ${r.error || 'ไม่สามารถส่งข้อความเข้า LINE ได้'}`)
+      }
+    } catch (e) {
+      setLineIsOk(false)
+      setLineMsg(`ผิดพลาด: ${e.message}`)
+    }
+    setLineTesting(false)
   }
 
   const loadTgContacts = async () => {
@@ -393,6 +432,179 @@ export default function SettingsPage() {
               <Send size={13}/> {tgTesting ? 'กำลังส่ง…' : 'ทดสอบการเชื่อมต่อ'}
             </button>
           </div>
+        </div>
+      </SectionCard>
+
+      {/* LINE Notification Settings */}
+      <SectionCard icon={MessageSquare} title="ตั้งค่าการแจ้งเตือน LINE (LINE Official Account & Group)">
+        <div className="space-y-5">
+          
+          {/* Toggle Enabled */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <div>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <span>เปิดใช้งานแจ้งเตือนผ่าน LINE</span>
+                <span className={`w-2 h-2 rounded-full ${line.is_enabled ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                ส่งข้อความ Flex Card พร้อมปุ่มเปิดรับงาน PWA เข้ากลุ่ม LINE ของช่างอัตโนมัติ
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(line.is_enabled)}
+                onChange={(e) => setLine((p) => ({ ...p, is_enabled: e.target.checked }))}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
+          {/* Provider Selection */}
+          <div>
+            <label className="label">ประเภทผู้ให้บริการ LINE</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setLine((p) => ({ ...p, provider: 'line_oa' }))}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  line.provider === 'line_oa'
+                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm'
+                    : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">🟢 LINE Official Account / Bot</span>
+                  {line.provider === 'line_oa' && <CheckCircle size={14} className="text-emerald-500" />}
+                </div>
+                <div className="text-[10.5px] mt-1 font-normal opacity-80">
+                  ส่ง Flex Card สวยงาม มีปุ่มกดเปิด PWA Standalone (แนะนำสูงสุด)
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLine((p) => ({ ...p, provider: 'line_notify' }))}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  line.provider === 'line_notify'
+                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm'
+                    : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">🟩 LINE Notify Token</span>
+                  {line.provider === 'line_notify' && <CheckCircle size={14} className="text-emerald-500" />}
+                </div>
+                <div className="text-[10.5px] mt-1 font-normal opacity-80">
+                  ส่งข้อความแบบ Text แจ้งเตือนเข้ากลุ่มทั่วไป
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Form fields for LINE OA */}
+          {line.provider === 'line_oa' && (
+            <div className="space-y-4 pt-1">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="label mb-0">LINE Channel Access Token (Long-Lived)</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowLineToken((s) => !s)}
+                    className="text-[11px] text-blue-500 hover:underline flex items-center gap-1"
+                  >
+                    {showLineToken ? <EyeOff size={12} /> : <Eye size={12} />}
+                    <span>{showLineToken ? 'ซ่อน' : 'แสดง'}</span>
+                  </button>
+                </div>
+                <input
+                  className="input font-mono text-xs"
+                  type={showLineToken ? 'text' : 'password'}
+                  value={line.channel_access_token || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, channel_access_token: e.target.value }))}
+                  placeholder="คัดลอกจาก LINE Developers Console > Messaging API"
+                />
+                <p className="text-[10.5px] text-slate-400 mt-1">
+                  ออก Token จากแท็บ Messaging API ใน <a href="https://developers.line.biz/" target="_blank" rel="noreferrer" className="text-blue-500 underline">LINE Developers Console</a>
+                </p>
+              </div>
+
+              <div>
+                <label className="label">Group ID หรือ User ID ปลายทาง</label>
+                <input
+                  className="input font-mono text-xs"
+                  type="text"
+                  value={line.target_group_id || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, target_group_id: e.target.value }))}
+                  placeholder="เช่น C1234567890abcdef... หรือ Uxxxxxxxx..."
+                />
+                <p className="text-[10.5px] text-slate-400 mt-1">
+                  ระบุ Group ID ของกลุ่ม LINE ช่าง (เริ่มต้นด้วยตัว C) หรือ User ID (ขึ้นต้นด้วย U)
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Form fields for LINE Notify */}
+          {line.provider === 'line_notify' && (
+            <div className="space-y-4 pt-1">
+              <div>
+                <label className="label">LINE Notify Token</label>
+                <input
+                  className="input font-mono text-xs"
+                  type="password"
+                  value={line.notify_token || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, notify_token: e.target.value }))}
+                  placeholder="กรอก Access Token จาก notify-bot.line.me"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* App Base URL */}
+          <div>
+            <label className="label">URL หลักของแอปสำหรับปุ่มกดรับงาน</label>
+            <input
+              className="input font-mono text-xs"
+              value={line.app_base_url || ''}
+              onChange={(e) => setLine((p) => ({ ...p, app_base_url: e.target.value }))}
+              placeholder={window.location.origin}
+            />
+            <p className="text-[10.5px] text-slate-400 mt-1">
+              ระบบจะต่อท้ายด้วย <code>?openExternalBrowser=1</code> อัตโนมัติเพื่อให้เด้งเปิดแอป PWA บนมือถือ
+            </p>
+          </div>
+
+          {/* Status Alert Banner */}
+          {lineMsg && (
+            <div
+              className={`text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 ${
+                lineIsOk
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+              }`}
+            >
+              {lineIsOk ? <CheckCircle size={14} className="flex-shrink-0" /> : <AlertCircle size={14} className="flex-shrink-0" />}
+              <span>{lineMsg}</span>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3 pt-2">
+            <button className="btn-primary" onClick={saveLine}>
+              <Save size={14} /> <span>บันทึกการตั้งค่า LINE</span>
+            </button>
+            <button
+              onClick={handleTestLine}
+              disabled={lineTesting}
+              className="btn-outline flex items-center gap-1.5 text-xs font-bold"
+            >
+              <Send size={13} />
+              <span>{lineTesting ? 'กำลังส่งข้อความทดสอบ...' : '🔔 ทดสอบส่งข้อความเข้า LINE'}</span>
+            </button>
+          </div>
+
         </div>
       </SectionCard>
 

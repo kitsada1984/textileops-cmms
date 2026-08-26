@@ -14,6 +14,7 @@ import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
 import { getAppBaseUrl, notifySupervisor } from '../utils/telegram'
+import { notifyLineNewRepair } from '../utils/line'
 import CylinderQRModal from '../components/CylinderQR'
 import { useT } from '../contexts/LanguageContext'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
@@ -139,11 +140,16 @@ export default function RepairRequests() {
         }
       }
       if (!isEdit && savedRecord) {
+        const matchingCyl = cylMap[serialForSave] || cylinders.find((c) => c.Serial_NOW === serialForSave || c.Serial_OLD === serialForSave)
         try {
-          const matchingCyl = cylMap[serialForSave] || cylinders.find((c) => c.Serial_NOW === serialForSave || c.Serial_OLD === serialForSave)
           await notifySupervisor(savedRecord, matchingCyl)
         } catch (tgErr) {
           console.warn('Telegram notification warning:', tgErr)
+        }
+        try {
+          await notifyLineNewRepair(savedRecord, matchingCyl)
+        } catch (lineErr) {
+          console.warn('LINE notification warning:', lineErr)
         }
       }
       toast.success(isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', `${form.request_no || serialForSave}`)
