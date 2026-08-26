@@ -59,7 +59,7 @@ export function buildFilterSortColumns(cols = [], {
         getValue: valueGetters[key],
       }
 
-      if (type === 'select') {
+      if (type === 'select' || selectOptions[key]) {
         const opts = selectOptions[key] || col.options || []
         return { ...base, filter: { type: 'select', opts } }
       }

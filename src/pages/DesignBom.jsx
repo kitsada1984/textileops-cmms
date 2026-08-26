@@ -172,13 +172,39 @@ export default function DesignBom() {
     )
   }, [data, search])
 
+  const mcOptions = useMemo(() => {
+    const values = Array.from(new Set(data.map((r) => String(r.MC || '').trim()).filter(Boolean))).sort()
+    return values.map((v) => ({ value: v, label: v }))
+  }, [data])
+
+  const designOptions = useMemo(() => {
+    const values = Array.from(new Set(data.map((r) => String(r.Design || '').trim()).filter(Boolean))).sort()
+    return values.map((v) => ({ value: v, label: v }))
+  }, [data])
+
+  const kiOptions = useMemo(() => {
+    const values = Array.from(new Set(data.map((r) => String(r.KI || '').trim()).filter(Boolean))).sort()
+    return values.map((v) => ({ value: v, label: v }))
+  }, [data])
+
+  const bomOptions = useMemo(() => {
+    const values = Array.from(new Set(data.map((r) => String(r.BOM || '').trim()).filter(Boolean))).sort()
+    return values.map((v) => ({ value: v, label: v }))
+  }, [data])
+
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
+    selectOptions: {
+      MC: mcOptions,
+      Design: designOptions,
+      KI: kiOptions,
+      BOM: bomOptions,
+    },
     valueGetters: {
       ImageUrl: getDesignImageUrl,
       ImagePreview: getDesignImageUrl,
       Comment: (row) => stripImageUrlMeta(row.Comment),
     },
-  }), [cols])
+  }), [cols, mcOptions, designOptions, kiOptions, bomOptions])
 
   const displayRows = useMemo(() => applyFilterSort(filtered, FS_COLS, filterSort), [filtered, FS_COLS, filterSort])
 
