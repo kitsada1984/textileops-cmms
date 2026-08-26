@@ -3,7 +3,12 @@
  * LINE Messaging API & LINE Notify Integration for TextileOps CMMS
  */
 import { supabase } from '../supabase'
-import { buildRepairRequestFlexMessage, buildTestFlexMessage } from './lineFlexBuilder'
+import {
+  buildRepairRequestFlexMessage,
+  buildTechnicianAssignedFlexMessage,
+  buildRepairCompletedFlexMessage,
+  buildTestFlexMessage,
+} from './lineFlexBuilder'
 
 const STORAGE_KEY = 'line_settings'
 const DB_KEY      = 'line_settings'
@@ -155,6 +160,109 @@ export async function notifyLineNewRepair(request, cylinder) {
     }
   } catch (err) {
     console.warn('[LINE Notify Error]', err)
+    return { ok: false, error: err.message }
+  }
+}
+
+/**
+ * Sends Technician Assignment Notification to LINE (Step 2)
+ */
+export async function notifyLineTechnician(request) {
+  try {
+    const cfg = await loadLineSettingsDB()
+    if (!cfg.is_enabled || !cfg.notify_on_approve) {
+      return { ok: false, skipped: true, reason: 'LINE notification on approve disabled' }
+    }
+
+    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+
+    if (effectiveProvider === 'line_oa') {
+      if (!cfg.channel_access_token || !cfg.target_group_id) {
+        return { ok: false, skipped: true, reason: 'LINE Channel Access Token or Group ID not configured' }
+      }
+
+      const flexMsg = buildTechnicianAssignedFlexMessage(request, cfg.app_base_url)
+
+      return await sendLineNotification({
+        type: 'flex',
+        token: cfg.channel_access_token,
+        targetId: cfg.target_group_id,
+        messages: [flexMsg],
+      })
+    } else {
+      if (!cfg.notify_token) {
+        return { ok: false, skipped: true, reason: 'LINE Notify Token not configured' }
+      }
+
+      const serial = request.cylinder_serial || '—'
+      const machine = request.machine_mc || '—'
+      const tech = request.technician_name || 'ช่างเทคนิค'
+      const notes = request.approval_notes ? ` (หมายเหตุ: ${request.approval_notes})` : ''
+      const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+      const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?req=${encodeURIComponent(request.id || '')}&step=complete&openExternalBrowser=1`
+
+      const textMessage = `\n✅ [มอบหมายช่างแล้ว]\nเครื่อง: ${machine}\nกระบอก: ${serial}\nช่างผู้รับผิดชอบ: ${tech}${notes}\n👉 แตะบันทึกผลการซ่อม: ${directUrl}`
+
+      return await sendLineNotification({
+        type: 'notify',
+        notifyToken: cfg.notify_token,
+        textMessage,
+      })
+    }
+  } catch (err) {
+    console.warn('[LINE Technician Notify Error]', err)
+    return { ok: false, error: err.message }
+  }
+}
+
+/**
+ * Sends Repair Completed Notification to LINE (Step 3)
+ */
+export async function notifyLineCompleted(request) {
+  try {
+    const cfg = await loadLineSettingsDB()
+    if (!cfg.is_enabled || !cfg.notify_on_complete) {
+      return { ok: false, skipped: true, reason: 'LINE notification on complete disabled' }
+    }
+
+    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+
+    if (effectiveProvider === 'line_oa') {
+      if (!cfg.channel_access_token || !cfg.target_group_id) {
+        return { ok: false, skipped: true, reason: 'LINE Channel Access Token or Group ID not configured' }
+      }
+
+      const flexMsg = buildRepairCompletedFlexMessage(request, cfg.app_base_url)
+
+      return await sendLineNotification({
+        type: 'flex',
+        token: cfg.channel_access_token,
+        targetId: cfg.target_group_id,
+        messages: [flexMsg],
+      })
+    } else {
+      if (!cfg.notify_token) {
+        return { ok: false, skipped: true, reason: 'LINE Notify Token not configured' }
+      }
+
+      const serial = request.cylinder_serial || '—'
+      const machine = request.machine_mc || '—'
+      const details = request.repair_details || 'ซ่อมบำรุงเรียบร้อย'
+      const parts = request.parts_used ? ` (อะไหล่: ${request.parts_used})` : ''
+      const tech = request.completed_by || request.technician_name || 'ช่างเทคนิค'
+      const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+      const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?req=${encodeURIComponent(request.id || '')}&openExternalBrowser=1`
+
+      const textMessage = `\n🎉 [ซ่อมเสร็จเรียบร้อย]\nเครื่อง: ${machine}\nกระบอก: ${serial}\nวิธีแก้ไข: ${details}${parts}\nช่างผู้ซ่อม: ${tech}\n👉 ดูประวัติงานซ่อม: ${directUrl}`
+
+      return await sendLineNotification({
+        type: 'notify',
+        notifyToken: cfg.notify_token,
+        textMessage,
+      })
+    }
+  } catch (err) {
+    console.warn('[LINE Completed Notify Error]', err)
     return { ok: false, error: err.message }
   }
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB } from '../utils/telegram'
-import { notifyLineNewRepair } from '../utils/line'
+import { notifyLineNewRepair, notifyLineTechnician, notifyLineCompleted } from '../utils/line'
 import { TechnicianAPI } from '../api/entities'
 import { CheckCircle, Clock, Wrench, AlertTriangle, ChevronRight, Loader } from 'lucide-react'
 import gemmaLogo from '../assets/logo-gemma.png'
@@ -209,6 +209,11 @@ function StepApprove({ request, onUpdated }) {
         } catch (tgErr) {
           console.warn('Telegram technician notify warning:', tgErr)
         }
+        try {
+          await notifyLineTechnician(data)
+        } catch (lineErr) {
+          console.warn('LINE technician notify warning:', lineErr)
+        }
       }
       onUpdated(data)
     } catch (e) { setError(e.message) }
@@ -312,6 +317,11 @@ function StepComplete({ request, onUpdated }) {
         await notifyCompleted(data)
       } catch (tgErr) {
         console.warn('Telegram completed notify warning:', tgErr)
+      }
+      try {
+        await notifyLineCompleted(data)
+      } catch (lineErr) {
+        console.warn('LINE completed notify warning:', lineErr)
       }
       onUpdated(data)
     } catch (e) { setError(e.message) }

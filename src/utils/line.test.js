@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { buildPWALineUrl, buildRepairRequestFlexMessage, buildTestFlexMessage } from './lineFlexBuilder'
+import {
+  buildPWALineUrl,
+  buildRepairRequestFlexMessage,
+  buildTechnicianAssignedFlexMessage,
+  buildRepairCompletedFlexMessage,
+  buildTestFlexMessage,
+} from './lineFlexBuilder'
 import { loadLineSettings, saveLineSettings, DEFAULT_LINE_SETTINGS } from './line'
 
 describe('LINE Flex Builder & Deep Linking', () => {
@@ -39,6 +45,41 @@ describe('LINE Flex Builder & Deep Linking', () => {
     expect(ctaButton.action.type).toBe('uri')
     expect(ctaButton.action.uri).toContain('openExternalBrowser=1')
     expect(ctaButton.action.uri).toContain('CYL-101')
+  })
+
+  it('generates valid Flex Message for technician assignment (Step 2)', () => {
+    const request = {
+      id: 'req-002',
+      request_no: 'REQ-2026-002',
+      cylinder_serial: 'CYL-202',
+      machine_mc: 'MC-302',
+      cylinder_location: 'โรงทอ 2',
+      problem_description: 'เข็มหัก',
+      technician_name: 'ช่างหนึ่ง',
+      approval_notes: 'รีบดำเนินการก่อนเที่ยง',
+    }
+    const flex = buildTechnicianAssignedFlexMessage(request, 'https://textileops-cmms.vercel.app')
+    expect(flex.type).toBe('flex')
+    expect(flex.altText).toContain('ช่างหนึ่ง')
+    expect(flex.contents.body).toBeDefined()
+    expect(flex.contents.footer.contents[0].action.uri).toContain('step=complete')
+  })
+
+  it('generates valid Flex Message for repair completed (Step 3)', () => {
+    const request = {
+      id: 'req-003',
+      request_no: 'REQ-2026-003',
+      cylinder_serial: 'CYL-303',
+      machine_mc: 'MC-303',
+      repair_details: 'เปลี่ยนลูกปืนและล้างทำความสะอาด',
+      parts_used: 'Bearing 6204 x 2',
+      completed_by: 'ช่างหนึ่ง',
+      completed_at: '2026-08-26T12:00:00.000Z',
+    }
+    const flex = buildRepairCompletedFlexMessage(request, 'https://textileops-cmms.vercel.app')
+    expect(flex.type).toBe('flex')
+    expect(flex.altText).toContain('ซ่อมเสร็จแล้ว')
+    expect(flex.contents.body).toBeDefined()
   })
 
   it('generates valid Test Flex Message payload', () => {
