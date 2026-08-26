@@ -289,39 +289,48 @@ function FilterField({ col, value, onChange, onToggle }) {
       </div>
 
       {type === 'select' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {options.length === 0 ? (
-            <span style={{ fontSize: 11, color: 'var(--text-400)', fontStyle: 'italic' }}>ยังไม่มีรายการให้เลือก</span>
-          ) : (
-            options.map(opt => {
-              const ov = optionValue(opt)
-              const ol = optionLabel(opt)
-              const selected = Array.isArray(value) ? value.includes(ov) : value === ov
-              return (
-                <button
-                  key={String(ov)}
-                  type="button"
-                  onClick={() => onToggle(col.key, ov, col.filter.multi !== false)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '6px 11px',
-                    borderRadius: 999,
-                    fontSize: 11,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    border: `1px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
-                    background: selected ? 'var(--accent-gradient)' : 'var(--bg-thead)',
-                    color: selected ? '#fff' : 'var(--text-700)',
-                    boxShadow: selected ? '0 4px 12px rgba(37,99,235,0.25)' : 'none',
-                  }}
-                >
-                  {selected && <Check size={10} strokeWidth={3} />}
-                  {ol}
-                </button>
-              )
-            })
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            className="input text-xs"
+            type="text"
+            value={Array.isArray(value) ? value.join(', ') : (value || '')}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={`พิมพ์ค้นหา หรือคลิกเลือก ${col.label}...`}
+            style={{ fontSize: 12, minHeight: 36 }}
+          />
+
+          {options.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 110, overflowY: 'auto' }}>
+              {options.map(opt => {
+                const ov = optionValue(opt)
+                const ol = optionLabel(opt)
+                const selected = Array.isArray(value) ? value.includes(ov) : String(value || '') === String(ov)
+                return (
+                  <button
+                    key={String(ov)}
+                    type="button"
+                    onClick={() => onToggle(col.key, ov, col.filter.multi !== false)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 9px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: `1px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
+                      background: selected ? 'var(--accent-gradient)' : 'var(--bg-thead)',
+                      color: selected ? '#fff' : 'var(--text-700)',
+                      boxShadow: selected ? '0 2px 8px rgba(37,99,235,0.25)' : 'none',
+                    }}
+                  >
+                    {selected && <Check size={10} strokeWidth={3} />}
+                    {ol}
+                  </button>
+                )
+              })}
+            </div>
           )}
         </div>
       )}

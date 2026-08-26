@@ -92,8 +92,13 @@ function matchFilter(row, col, value) {
   const type = col.filter?.type || 'text'
 
   if (type === 'select') {
-    const selected = Array.isArray(value) ? value : [value]
-    return selected.map(String).includes(String(raw ?? ''))
+    if (Array.isArray(value)) {
+      if (value.length === 0) return true
+      return value.some((v) => normalizeText(raw).includes(normalizeText(v)))
+    }
+    const valStr = normalizeText(value)
+    if (!valStr) return true
+    return normalizeText(raw).includes(valStr)
   }
 
   if (type === 'number') {

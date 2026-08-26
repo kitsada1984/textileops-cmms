@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
-import { DesignBomAPI } from '../api/entities'
+import { DesignBomAPI, MachineAPI } from '../api/entities'
 import useWebBuilderMenu from '../hooks/useWebBuilderMenu'
 import Modal from '../components/ui/Modal'
 import SearchInput from '../components/ui/SearchInput'
@@ -151,9 +151,19 @@ export default function DesignBom() {
   const [detailRec, setDetailRec] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [filterSort, setFilterSort] = useState(INIT_FS)
+  const [machineList, setMachineList] = useState([])
 
   const wbCols = useWebBuilderMenu('/design-bom')
   const cols = resolveDesignColumns(wbCols)
+
+  useEffect(() => {
+    MachineAPI.list()
+      .then((res) => {
+        const rows = res?.data || res || []
+        setMachineList(rows)
+      })
+      .catch(() => {})
+  }, [])
 
   // Summary statistics
   const stats = useMemo(() => {
@@ -173,9 +183,11 @@ export default function DesignBom() {
   }, [data, search])
 
   const mcOptions = useMemo(() => {
-    const values = Array.from(new Set(data.map((r) => String(r.MC || '').trim()).filter(Boolean))).sort()
+    const fromData = data.map((r) => String(r.MC || '').trim()).filter(Boolean)
+    const fromMachines = machineList.map((m) => String(m.MC || m.Machine_ID || '').trim()).filter(Boolean)
+    const values = Array.from(new Set([...fromData, ...fromMachines])).sort()
     return values.map((v) => ({ value: v, label: v }))
-  }, [data])
+  }, [data, machineList])
 
   const designOptions = useMemo(() => {
     const values = Array.from(new Set(data.map((r) => String(r.Design || '').trim()).filter(Boolean))).sort()
