@@ -17,6 +17,7 @@ import { AuthProvider, useAuth, canAccess } from './contexts/AuthContext'
 import { WebBuilderConfigProvider } from './contexts/WebBuilderConfigContext'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import PWAInstallPrompt from './components/ui/PWAInstallPrompt'
+import MobileBottomNav from './components/common/MobileBottomNav'
 
 import Dashboard     from './pages/Dashboard'
 import Machines      from './pages/Machines'
@@ -547,33 +548,28 @@ function AppInner() {
 
         {/* Page content */}
         {viewMode === 'mobile' ? (
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70">
+          <div className="flex-1 overflow-y-auto p-0 sm:p-2 lg:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70">
             <div
-              className="w-full max-w-[430px] min-h-[calc(100vh-100px)] rounded-3xl overflow-hidden shadow-2xl border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 my-auto is-mobile-view"
+              className="w-full max-w-full lg:max-w-[440px] min-h-full lg:min-h-[calc(100vh-100px)] lg:rounded-3xl overflow-y-auto shadow-none lg:shadow-2xl border-0 lg:border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 is-mobile-view pb-20 lg:pb-4"
               style={{
                 background: 'var(--bg-page)',
-                boxShadow: dark
-                  ? '0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(51,65,85,0.7)'
-                  : '0 20px 45px rgba(15,23,42,0.12), 0 0 0 1px rgba(226,232,240,0.8)',
               }}
             >
-              {/* Simulated Phone Top Notch & Status */}
-              <div className="h-6 flex items-center justify-between px-5 text-[10px] font-bold text-slate-400 select-none bg-slate-100/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
-                <span>09:41</span>
-                <div className="w-16 h-3 rounded-full bg-slate-300 dark:bg-slate-700 mx-auto" />
-                <span>100% 🔋</span>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-4 mobile-content-area">
+              <div className="flex-1 p-3 sm:p-4 space-y-4 mobile-content-area">
                 <PageRoutes />
               </div>
             </div>
           </div>
         ) : (
-          <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
+          <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 pb-20 lg:pb-6">
             <PageRoutes />
           </main>
         )}
       </div>
+
+      {/* Mobile Bottom Navigation Bar (Visible on mobile/tablet screens) */}
+      <MobileBottomNav onOpenMenu={() => setSideOpen(true)} />
+
       <PWAInstallPrompt open={pwaModalOpen} onClose={() => setPwaModalOpen(false)} />
     </div>
   )

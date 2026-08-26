@@ -287,6 +287,10 @@ html.dark {
     @apply flex justify-end gap-3 px-4 sm:px-6 py-3.5 sm:py-4 rounded-b-2xl;
     border-top: 1px solid var(--border-subtle);
     background: var(--bg-modal-footer);
+    padding-bottom: max(0.875rem, env(safe-area-inset-bottom, 0.875rem));
+  }
+  .safe-area-pb {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem));
   }
 
   /* ── Sidebar nav (dark mode) ────────────────────────────── */
