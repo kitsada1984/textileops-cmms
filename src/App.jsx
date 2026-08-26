@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Cpu, Disc, ClipboardList, Calendar,
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
-  FileText, Monitor, Smartphone, Target,
+  FileText, Monitor, Smartphone, Target, Download,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
@@ -253,6 +253,36 @@ function AppInner() {
           })}
         </nav>
 
+        {/* PWA Mobile App Quick Install in Sidebar */}
+        <div style={{ padding: '0 12px 10px', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setSideOpen(false)
+              window.dispatchEvent(new CustomEvent('open-pwa-install'))
+            }}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              borderRadius: 12,
+              background: dark ? 'rgba(59,130,246,0.12)' : '#eff6ff',
+              border: dark ? '1px solid rgba(59,130,246,0.25)' : '1px solid #dbeafe',
+              color: dark ? '#60a5fa' : '#2563eb',
+              fontSize: 12,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+          >
+            <Smartphone size={14} />
+            <span>ติดตั้งแอปบนมือถือ</span>
+          </button>
+        </div>
+
         {/* User footer */}
         <div style={{
           padding: '12px 14px 16px',
@@ -423,6 +453,33 @@ function AppInner() {
                 <span className="hidden sm:inline">มือถือ</span>
               </button>
             </div>
+
+            {/* PWA Install Button */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install'))}
+              title="ติดตั้งแอป TextileOps บนมือถือ (PWA)"
+              style={{
+                height: 32,
+                padding: '0 11px',
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(37,99,235,0.35)',
+                transition: 'all 150ms',
+              }}
+            >
+              <Download size={13} />
+              <span className="hidden md:inline">ติดตั้งแอป</span>
+              <span className="md:hidden">แอป</span>
+            </button>
 
             <div style={{
               fontSize: 12, fontWeight: 500,
