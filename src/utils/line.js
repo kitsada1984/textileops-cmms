@@ -125,11 +125,13 @@ export function getSupervisorLineIds(cfg) {
 }
 
 export function getTechnicianLineId(cfg, technicianName) {
-  const match = cfg.technicians?.find(t => t.name === technicianName)
+  const norm = (s) => String(s || '').trim().toLowerCase()
+  const target = norm(technicianName)
+  const match = cfg.technicians?.find(t => norm(t.name) === target)
   if (match?.user_id?.trim()) return match.user_id.trim()
   try {
     const stored = JSON.parse(localStorage.getItem('txops_tbl_technicians') || '[]')
-    const reg = stored.find(t => t.Name === technicianName || t.name === technicianName)
+    const reg = stored.find(t => norm(t.Name) === target || norm(t.name) === target)
     if (reg?.Line_ID?.trim() || reg?.line_id?.trim()) return (reg.Line_ID || reg.line_id).trim()
   } catch {}
   if (cfg.target_group_id?.trim()) return cfg.target_group_id.trim()

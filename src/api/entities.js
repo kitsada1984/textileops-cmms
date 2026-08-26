@@ -2,12 +2,7 @@ import { createEntityClient } from './supabaseClient'
 import { supabase } from '../supabase'
 import initialCenterChecks from '../data/initialCenterChecks.json'
 
-export const DEFAULT_TECHS = [
-  { id: 'TECH-001', Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' },
-  { id: 'TECH-002', Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' },
-  { id: 'TECH-003', Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'เตรียมเครื่อง, แก้ปัญหาเครื่อง', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' },
-  { id: 'TECH-004', Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' },
-]
+export const DEFAULT_TECHS = []
 
 export const MachineAPI         = createEntityClient('machines')
 export const CylinderAPI        = createEntityClient('cylinders')
@@ -23,7 +18,7 @@ export const TechnicianAPI = {
         .maybeSingle()
       if (!error && data?.Comment) {
         const parsed = JSON.parse(data.Comment)
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(parsed)) } catch {}
           return parsed
         }
@@ -32,8 +27,8 @@ export const TechnicianAPI = {
       console.warn('Technician cloud load error:', e)
     }
     try {
-      const local = JSON.parse(localStorage.getItem('txops_tbl_technicians') || '[]')
-      if (Array.isArray(local) && local.length > 0) return local
+      const local = JSON.parse(localStorage.getItem('txops_tbl_technicians') || 'null')
+      if (Array.isArray(local)) return local
     } catch {}
     return DEFAULT_TECHS
   },

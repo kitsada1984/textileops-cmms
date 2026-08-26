@@ -47,6 +47,7 @@ import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
 import RepairRequests from './RepairRequests'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { supabase } from '../supabase'
 import { generateWorkOrderPdfProps } from '../utils/pdfDocGenerators'
 
 const DEFAULT_KPI_TARGETS = {
@@ -118,56 +119,36 @@ export function getTechSkillInfo(skillLevel = 'Senior') {
     maxLevel: 4,
     percent: 25,
     label: 'Junior',
-    sublabel: 'ช่างฝึกหัด / ผู้ช่วย',
+    sublabel: 'ช่างฝึกหัด / ผู้ช่วยช่าง',
     icon: '🔰',
-    gradient: 'from-amber-400 to-amber-500',
-    activeBg: 'bg-amber-500',
-    textColor: 'text-amber-600 dark:text-amber-400',
-    badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
+    gradient: 'from-emerald-400 to-teal-500',
+    activeBg: 'bg-emerald-500',
+    textColor: 'text-emerald-600 dark:text-emerald-400',
+    badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
   }
 }
 
-export function TechSkillBar({ skillLevel }) {
-  const skill = getTechSkillInfo(skillLevel)
-  const steps = [
-    { num: 1, label: 'Junior' },
-    { num: 2, label: 'Tech' },
-    { num: 3, label: 'Senior' },
-    { num: 4, label: 'Master' },
-  ]
-
+export function TechSkillBar({ skillLevel = 'Senior' }) {
+  const info = getTechSkillInfo(skillLevel)
   return (
-    <div className="space-y-2 p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800/80">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-bold text-slate-500 flex items-center gap-1">
-          <span>ระดับทักษะ:</span>
+        <span className="font-bold flex items-center gap-1 text-slate-700 dark:text-slate-200">
+          <span>{info.icon}</span>
+          <span className={info.textColor}>{info.label}</span>
         </span>
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${skill.badgeClass}`}>
-          <span>{skill.icon}</span>
-          <span>{skill.label}</span>
-          <span className="opacity-75 text-[10px] font-mono">({skill.level}/4)</span>
-        </span>
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">{info.sublabel}</span>
       </div>
-
-      {/* 4-Segmented Progress Bar */}
-      <div className="grid grid-cols-4 gap-1.5 pt-0.5">
-        {steps.map((s) => {
-          const isFilled = skill.level >= s.num
+      <div className="flex gap-1">
+        {[1, 2, 3, 4].map((step) => {
+          const isFilled = step <= info.level
           return (
-            <div key={s.num} className="space-y-1">
-              <div
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  isFilled
-                    ? `bg-gradient-to-r ${skill.gradient} shadow-sm`
-                    : 'bg-slate-200 dark:bg-slate-800'
-                }`}
-              />
-              <div className={`text-[10px] text-center font-medium leading-none ${
-                isFilled ? `${skill.textColor} font-bold` : 'text-slate-400 opacity-60'
-              }`}>
-                {s.label}
-              </div>
-            </div>
+            <div
+              key={step}
+              className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                isFilled ? info.activeBg : 'bg-slate-200 dark:bg-slate-800'
+              }`}
+            />
           )
         })}
       </div>
@@ -175,18 +156,16 @@ export function TechSkillBar({ skillLevel }) {
   )
 }
 
-const DEFAULT_TECHS = [
-  { id: 'TECH-001', Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE' },
-  { id: 'TECH-002', Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE' },
-  { id: 'TECH-003', Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'เตรียมเครื่อง, แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
-  { id: 'TECH-004', Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
-]
+const DEFAULT_TECHS = []
 
 export default function WorkOrders({ defaultTab = 'records' }) {
   const { t } = useT()
   const { user } = useAuth()
   const toast = useToast()
-  const { canAdd, canEdit, canDelete } = usePagePerms('workorders')
+  const pagePerms = usePagePerms('workorders')
+  const canAdd = pagePerms.canAdd ?? true
+  const canEdit = pagePerms.canEdit ?? true
+  const canDelete = pagePerms.canDelete ?? true
 
   // Entity Hook for WorkOrders
   const {
@@ -239,7 +218,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [editSubmitting, setEditSubmitting] = useState(false)
 
   const [techModalOpen, setTechModalOpen] = useState(false)
-  const [techForm, setTechForm] = useState({ Name: '', Phone: '', SkillLevel: 'Senior', Specialization: '', Status: 'ACTIVE' })
+  const [techForm, setTechForm] = useState({ Name: '', Phone: '', SkillLevel: 'Senior', Specialization: '', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' })
   const [editingTechId, setEditingTechId] = useState(null)
 
   const [kpiModalOpen, setKpiModalOpen] = useState(false)
@@ -260,7 +239,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         KpiSettingsAPI.list(),
       ])
 
-      if (techRes.status === 'fulfilled' && Array.isArray(techRes.value) && techRes.value.length > 0) {
+      if (techRes.status === 'fulfilled' && Array.isArray(techRes.value)) {
         setTechnicians(techRes.value)
       } else {
         const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('txops_tbl_technicians') : null
@@ -637,21 +616,33 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     setTechModalOpen(true)
   }
 
-  // Sync Technicians to LINE and Telegram notification settings in Supabase
+  // Sync Technicians to LINE and Telegram notification settings in Supabase & LocalStorage
   const syncTechToNotifications = async (techList) => {
     try {
+      if (typeof window !== 'undefined') {
+        try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(techList)) } catch {}
+      }
       const { data: lineData } = await supabase.from('appconfigs').select('value').eq('key', 'line_settings').maybeSingle()
+      let lineCfg = {}
       if (lineData?.value) {
-        const lineCfg = JSON.parse(lineData.value)
-        lineCfg.technicians = techList.map((t) => ({ name: t.Name, user_id: t.Line_ID || t.line_id || '' }))
-        await supabase.from('appconfigs').upsert({ key: 'line_settings', value: JSON.stringify(lineCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+        try { lineCfg = JSON.parse(lineData.value) } catch {}
+      } else {
+        try { lineCfg = JSON.parse(localStorage.getItem('txops_tbl_line_settings') || '{}') } catch {}
       }
+      lineCfg.technicians = techList.map((t) => ({ name: t.Name, user_id: (t.Line_ID || t.line_id || '').trim() }))
+      await supabase.from('appconfigs').upsert({ key: 'line_settings', value: JSON.stringify(lineCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      try { localStorage.setItem('txops_tbl_line_settings', JSON.stringify(lineCfg)) } catch {}
+
       const { data: tgData } = await supabase.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
+      let tgCfg = {}
       if (tgData?.value) {
-        const tgCfg = JSON.parse(tgData.value)
-        tgCfg.technicians = techList.map((t) => ({ name: t.Name, chat_id: t.Telegram_ID || t.telegram_id || '' }))
-        await supabase.from('appconfigs').upsert({ key: 'telegram_settings', value: JSON.stringify(tgCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+        try { tgCfg = JSON.parse(tgData.value) } catch {}
+      } else {
+        try { tgCfg = JSON.parse(localStorage.getItem('txops_tbl_telegram_settings') || '{}') } catch {}
       }
+      tgCfg.technicians = techList.map((t) => ({ name: t.Name, chat_id: (t.Telegram_ID || t.telegram_id || '').trim() }))
+      await supabase.from('appconfigs').upsert({ key: 'telegram_settings', value: JSON.stringify(tgCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      try { localStorage.setItem('txops_tbl_telegram_settings', JSON.stringify(tgCfg)) } catch {}
     } catch (e) {
       console.warn('Sync tech to notifications error:', e)
     }
@@ -1545,109 +1536,134 @@ export default function WorkOrders({ defaultTab = 'records' }) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {technicians.map((tech, idx) => {
-              const isActive = tech.Status !== 'INACTIVE'
-              const specList = tech.Specialization
-                ? String(tech.Specialization).split(',').map((s) => s.trim()).filter(Boolean)
-                : []
-
-              return (
-                <div
-                  key={tech.id || tech.Technician_ID || idx}
-                  className="card p-5 space-y-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
+          {technicians.length === 0 ? (
+            <div className="card p-12 text-center space-y-4 border-dashed border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 rounded-2xl">
+              <div className="w-16 h-16 rounded-3xl bg-blue-500/10 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center shadow-inner">
+                <UserCheck size={32} />
+              </div>
+              <div className="max-w-md mx-auto space-y-1.5">
+                <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100">
+                  ยังไม่มีรายชื่อในทะเบียนช่าง
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  คุณสามารถเพิ่มรายชื่อช่าง (เช่น ช.ต๋อง, ช.หนุ่ม) พร้อมระบุ LINE ID และ Telegram ID เพื่อรับการแจ้งเตือนงานซ่อมโดยตรง
+                </p>
+              </div>
+              <div>
+                <button
+                  onClick={openAddTech}
+                  className="btn-primary inline-flex items-center gap-2 px-6 py-2.5 shadow-md text-sm font-bold"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-black font-mono">
-                        {(tech?.Name || '?')[0]?.toUpperCase()}
+                  <UserPlus size={16} />
+                  <span>+ เพิ่มช่างคนแรก</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {technicians.map((tech, idx) => {
+                const isActive = tech.Status !== 'INACTIVE'
+                const specList = tech.Specialization
+                  ? String(tech.Specialization).split(',').map((s) => s.trim()).filter(Boolean)
+                  : []
+
+                return (
+                  <div
+                    key={tech.id || tech.Technician_ID || idx}
+                    className="card p-5 space-y-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-black font-mono">
+                          {(tech?.Name || '?')[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
+                            {tech.Name}
+                          </h3>
+                          <div className="text-xs font-mono text-slate-500 mt-0.5">
+                            {tech.Phone || '—'}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
-                          {tech.Name}
-                        </h3>
-                        <div className="text-xs font-mono text-slate-500 mt-0.5">
-                          {tech.Phone || '—'}
+
+                      <span className={`badge ${isActive ? 'badge-green' : 'badge-gray'}`}>
+                        {isActive ? 'พร้อมทำงาน' : 'ปิดใช้งาน'}
+                      </span>
+                    </div>
+
+                    {/* Visual Skill Level Bar */}
+                    <TechSkillBar skillLevel={tech.SkillLevel} />
+
+                    {/* Specializations Tags */}
+                    <div className="space-y-1.5 text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <span className="font-bold text-slate-500 block">ความถนัด:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {specList.length > 0 ? (
+                          specList.map((item, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                            >
+                              <span>{item}</span>
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-400 text-xs italic">งานซ่อมบำรุงทั่วไป</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Notification IDs Badges */}
+                    <div className="space-y-1.5 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="font-bold text-slate-500 block">การแจ้งเตือนงานซ่อม:</span>
+                      <div className="flex flex-col gap-1.5 text-[11px] font-mono">
+                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 font-sans">
+                            <span>🟢 LINE ID</span>
+                          </span>
+                          <span className="truncate max-w-[170px] text-right font-medium text-slate-700 dark:text-slate-200">
+                            {tech.Line_ID || tech.line_id || <span className="text-slate-400 font-sans italic">ยังไม่ได้ระบุ</span>}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                          <span className="text-sky-600 dark:text-sky-400 font-bold flex items-center gap-1 font-sans">
+                            <span>✈️ Telegram</span>
+                          </span>
+                          <span className="truncate max-w-[170px] text-right font-medium text-slate-700 dark:text-slate-200">
+                            {tech.Telegram_ID || tech.telegram_id || <span className="text-slate-400 font-sans italic">ยังไม่ได้ระบุ</span>}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    <span className={`badge ${isActive ? 'badge-green' : 'badge-gray'}`}>
-                      {isActive ? 'พร้อมทำงาน' : 'ปิดใช้งาน'}
-                    </span>
-                  </div>
-
-                  {/* Visual Skill Level Bar */}
-                  <TechSkillBar skillLevel={tech.SkillLevel} />
-
-                  {/* Specializations Tags */}
-                  <div className="space-y-1.5 text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
-                    <span className="font-bold text-slate-500 block">ความถนัด:</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {specList.length > 0 ? (
-                        specList.map((item, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                    {(canEdit || canDelete) && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end items-center gap-2">
+                        {canEdit && (
+                          <button
+                            onClick={() => openEditTech(tech)}
+                            className="btn-outline px-3 py-1.5 text-xs flex items-center gap-1.5 font-bold"
                           >
-                            <span>{item}</span>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-slate-400 text-xs italic">งานซ่อมบำรุงทั่วไป</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Notification IDs Badges */}
-                  <div className="space-y-1.5 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className="font-bold text-slate-500 block">การแจ้งเตือนงานซ่อม:</span>
-                    <div className="flex flex-col gap-1.5 text-[11px] font-mono">
-                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 font-sans">
-                          <span>🟢 LINE ID</span>
-                        </span>
-                        <span className="truncate max-w-[170px] text-right font-medium text-slate-700 dark:text-slate-200">
-                          {tech.Line_ID || tech.line_id || <span className="text-slate-400 font-sans italic">ยังไม่ได้ระบุ</span>}
-                        </span>
+                            <Pencil size={13} />
+                            <span>แก้ไขข้อมูล</span>
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDeleteTech(tech)}
+                            className="btn-outline px-2.5 py-1.5 text-xs flex items-center gap-1 font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/40"
+                            title="ลบรายชื่อช่าง"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
-                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                        <span className="text-sky-600 dark:text-sky-400 font-bold flex items-center gap-1 font-sans">
-                          <span>✈️ Telegram</span>
-                        </span>
-                        <span className="truncate max-w-[170px] text-right font-medium text-slate-700 dark:text-slate-200">
-                          {tech.Telegram_ID || tech.telegram_id || <span className="text-slate-400 font-sans italic">ยังไม่ได้ระบุ</span>}
-                        </span>
-                      </div>
-                    </div>
+                    )}
                   </div>
-
-                  {(canEdit || canDelete) && (
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end items-center gap-2">
-                      {canEdit && (
-                        <button
-                          onClick={() => openEditTech(tech)}
-                          className="btn-outline px-3 py-1.5 text-xs flex items-center gap-1.5 font-bold"
-                        >
-                          <Pencil size={13} />
-                          <span>แก้ไขข้อมูล</span>
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button
-                          onClick={() => handleDeleteTech(tech)}
-                          className="btn-outline px-2.5 py-1.5 text-xs flex items-center gap-1 font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/40"
-                          title="ลบรายชื่อช่าง"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

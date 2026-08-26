@@ -89,11 +89,13 @@ function getSupervisorIds(cfg) {
 }
 
 export function getTechnicianChatId(cfg, technicianName) {
-  const match = cfg.technicians?.find(t => t.name === technicianName)
+  const norm = (s) => String(s || '').trim().toLowerCase()
+  const target = norm(technicianName)
+  const match = cfg.technicians?.find(t => norm(t.name) === target)
   if (match?.chat_id) return match.chat_id
   try {
     const stored = JSON.parse(localStorage.getItem('txops_tbl_technicians') || '[]')
-    const reg = stored.find(t => t.Name === technicianName || t.name === technicianName)
+    const reg = stored.find(t => norm(t.Name) === target || norm(t.name) === target)
     if (reg?.Telegram_ID || reg?.telegram_id || reg?.chat_id) return reg.Telegram_ID || reg.telegram_id || reg.chat_id
   } catch {}
   if (cfg.technician_chat_id) return cfg.technician_chat_id
