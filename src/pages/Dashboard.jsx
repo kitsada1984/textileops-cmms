@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Cpu,
   Disc,
@@ -15,6 +15,8 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Clock,
+  ExternalLink,
+  Eye,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import {
@@ -33,6 +35,7 @@ import { useToast } from '../components/ui/Toast'
 import { syncRowsToGoogleSheet } from '../utils/googleSheetsSync'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
 import { getAppBaseUrl } from '../utils/telegram'
+import DetailDrawer from '../components/ui/DetailDrawer'
 
 const ICON_BG = {
   slate:   'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -72,20 +75,39 @@ const SHEET_APIS = {
   stocktransactions: StockTxnAPI,
 }
 
-function StatCard({ icon: Icon, label, value, sub, color = 'slate' }) {
-  return (
-    <div className="stat-card">
+function StatCard({ icon: Icon, label, value, sub, color = 'slate', to, onClick }) {
+  const content = (
+    <div
+      className={`stat-card transition-all duration-200 ${
+        to || onClick
+          ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.99] border-transparent hover:border-blue-500/40 group'
+          : ''
+      }`}
+    >
       <div
-        className="stat-icon w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+        className="stat-icon w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110"
         style={{ background: ICON_BG[color], boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
       >
         <Icon size={18} className="text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="stat-val text-xl sm:text-2xl font-black leading-tight truncate" style={{ color: 'var(--text-900)' }}>
-          {value ?? '—'}
+        <div
+          className="stat-val text-xl sm:text-2xl font-black leading-tight truncate flex items-center justify-between"
+          style={{ color: 'var(--text-900)' }}
+        >
+          <span>{value ?? '—'}</span>
+          {(to || onClick) && (
+            <ArrowUpRight
+              size={14}
+              className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+          )}
         </div>
-        <div className="stat-label text-xs sm:text-sm font-semibold mt-0.5 truncate" style={{ color: 'var(--text-600)' }} title={label}>
+        <div
+          className="stat-label text-xs sm:text-sm font-semibold mt-0.5 truncate group-hover:text-blue-500 transition-colors"
+          style={{ color: 'var(--text-600)' }}
+          title={label}
+        >
           {label}
         </div>
         {sub && (
@@ -96,6 +118,22 @@ function StatCard({ icon: Icon, label, value, sub, color = 'slate' }) {
       </div>
     </div>
   )
+
+  if (to) {
+    return (
+      <Link to={to} className="block no-underline">
+        {content}
+      </Link>
+    )
+  }
+  if (onClick) {
+    return (
+      <div onClick={onClick} role="button" tabIndex={0} className="w-full text-left">
+        {content}
+      </div>
+    )
+  }
+  return content
 }
 
 function RepairStatusBadge({ status }) {
@@ -125,10 +163,13 @@ function formatDateTime(val) {
 
 export default function Dashboard() {
   const { t } = useT()
+  const navigate = useNavigate()
   const toast = useToast()
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [syncingAll, setSyncingAll] = useState(false)
+  const [selectedRepair, setSelectedRepair] = useState(null)
+  const [selectedWO, setSelectedWO] = useState(null)
 
   useEffect(() => {
     Promise.allSettled([
@@ -227,6 +268,56 @@ export default function Dashboard() {
     </div>
   )
 
+  // Groups for Repair Request Detail Drawer
+  const repairDrawerGroups = selectedRepair ? [
+    {
+      title: 'ข้อมูลการแจ้งซ่อม',
+      items: [
+        { label: 'เลขที่แจ้งซ่อม', value: selectedRepair.request_no || (selectedRepair.id ? `REQ-${selectedRepair.id.slice(0, 8)}` : '—') },
+        { label: 'เครื่องจักร (M/C)', value: selectedRepair.machine_mc || '—' },
+        { label: 'ซีเรียลกระบอก', value: selectedRepair.cylinder_serial || '—' },
+        { label: 'ตำแหน่งติดตั้ง', value: selectedRepair.cylinder_location || '—' },
+        { label: 'สถานะ', value: <RepairStatusBadge status={selectedRepair.status} /> },
+      ],
+    },
+    {
+      title: 'รายละเอียดและผู้รับผิดชอบ',
+      items: [
+        { label: 'อาการเสีย / ปัญหา', value: selectedRepair.problem_description || '—' },
+        { label: 'ผู้แจ้งซ่อม', value: selectedRepair.reported_by || '—' },
+        { label: 'วันที่แจ้ง', value: formatDateTime(selectedRepair.created_at) },
+        { label: 'ช่างผู้รับผิดชอบ', value: selectedRepair.technician_name || 'ยังไม่มอบหมาย' },
+        { label: 'รายละเอียดการซ่อม', value: selectedRepair.repair_details || '—' },
+        { label: 'อะไหล่ที่ใช้', value: selectedRepair.parts_used || '—' },
+      ],
+    },
+  ] : []
+
+  // Groups for Work Order Detail Drawer
+  const woDrawerGroups = selectedWO ? [
+    {
+      title: 'ข้อมูลใบสั่งงาน',
+      items: [
+        { label: 'Job ID / WO ID', value: selectedWO.Job_ID || selectedWO['Job ID'] || selectedWO.WO_ID || '—' },
+        { label: 'รหัสเครื่อง (M/C)', value: selectedWO.MC || '—' },
+        { label: 'รหัสงาน (KI)', value: selectedWO.KI || '—' },
+        { label: 'ลายผ้า / Design', value: selectedWO.Design || '—' },
+        { label: 'ประเภทงาน', value: selectedWO.JobType || selectedWO.Priority || '—' },
+        { label: 'สถานะ', value: statusLabel(selectedWO.Status) || selectedWO.Status },
+      ],
+    },
+    {
+      title: 'รายละเอียดและเวลาปฏิบัติงาน',
+      items: [
+        { label: 'หมายเหตุ / ปัญหา', value: selectedWO.Comment || selectedWO.Problem || selectedWO.Detail || '—' },
+        { label: 'ช่างผู้ปฏิบัติงาน', value: selectedWO.Technicians || selectedWO.Tech || '—' },
+        { label: 'วันที่เริ่มงาน', value: selectedWO.StartDate || selectedWO.DateStart || '—' },
+        { label: 'วันที่เสร็จสิ้น', value: selectedWO.EndDate || selectedWO.DateEnd || '—' },
+        { label: 'ผู้เปิดงาน', value: selectedWO.CreatedBy || '—' },
+      ],
+    },
+  ] : []
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-end gap-3">
@@ -241,19 +332,75 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* ── 8-STAT CARDS SUMMARY ───────────────────────────────── */}
+      {/* ── 8-STAT CARDS SUMMARY (CLICKABLE TO RESPECTIVE PAGES) ───────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-        <StatCard icon={Cpu}           label={t('dash_total_mc')}   value={stats.totalMachines} sub={`${stats.running} ${t('dash_running_sub')}`}    color="slate"   />
-        <StatCard icon={AlertTriangle} label={t('dash_breakdown')}  value={stats.breakdown}     sub={statusLabel('BREAKDOWN')}                         color="red"     />
-        <StatCard icon={Wrench}        label="งานแจ้งซ่อมค้าง"      value={stats.pendingRepairsCount ?? 0} sub={`${stats.pendingApprove || 0} รออนุมัติ · ${stats.inProgressRepairs || 0} กำลังซ่อม`} color="amber" />
-        <StatCard icon={ClipboardList} label={t('dash_open_wo')}    value={stats.openWO}        sub={`${stats.overdueWO} ${t('dash_overdue_sub')}`}   color="blue"    />
-        <StatCard icon={Calendar}      label={t('dash_pm_sched')}   value={stats.pmScheduled}   sub={`${stats.pmOverdue} ${t('dash_overdue_sub')}`}   color="orange"  />
-        <StatCard icon={Package}       label={t('dash_low_stock')}  value={stats.lowStock}      sub={`${stats.outOfStock} ${t('dash_out_sub')}`}      color="orange"  />
-        <StatCard icon={Disc}          label={t('dash_pm_overdue')} value={stats.pmOverdue}     sub={statusLabel('OVERDUE')}                           color="rose"    />
-        <StatCard icon={TrendingUp}    label={t('dash_recent_wo')}  value={stats.recentWO?.length || 0} sub={t('dash_latest_sub')}                    color="violet"  />
+        <StatCard
+          icon={Cpu}
+          label={t('dash_total_mc')}
+          value={stats.totalMachines}
+          sub={`${stats.running} ${t('dash_running_sub')}`}
+          color="slate"
+          to="/machines"
+        />
+        <StatCard
+          icon={AlertTriangle}
+          label={t('dash_breakdown')}
+          value={stats.breakdown}
+          sub={statusLabel('BREAKDOWN')}
+          color="red"
+          to="/machines"
+        />
+        <StatCard
+          icon={Wrench}
+          label="งานแจ้งซ่อมค้าง"
+          value={stats.pendingRepairsCount ?? 0}
+          sub={`${stats.pendingApprove || 0} รออนุมัติ · ${stats.inProgressRepairs || 0} กำลังซ่อม`}
+          color="amber"
+          to="/repair-requests"
+        />
+        <StatCard
+          icon={ClipboardList}
+          label={t('dash_open_wo')}
+          value={stats.openWO}
+          sub={`${stats.overdueWO} ${t('dash_overdue_sub')}`}
+          color="blue"
+          to="/workorders"
+        />
+        <StatCard
+          icon={Calendar}
+          label={t('dash_pm_sched')}
+          value={stats.pmScheduled}
+          sub={`${stats.pmOverdue} ${t('dash_overdue_sub')}`}
+          color="orange"
+          to="/pm"
+        />
+        <StatCard
+          icon={Package}
+          label={t('dash_low_stock')}
+          value={stats.lowStock}
+          sub={`${stats.outOfStock} ${t('dash_out_sub')}`}
+          color="orange"
+          to="/spareparts"
+        />
+        <StatCard
+          icon={Disc}
+          label={t('dash_pm_overdue')}
+          value={stats.pmOverdue}
+          sub={statusLabel('OVERDUE')}
+          color="rose"
+          to="/pm"
+        />
+        <StatCard
+          icon={TrendingUp}
+          label={t('dash_recent_wo')}
+          value={stats.recentWO?.length || 0}
+          sub={t('dash_latest_sub')}
+          color="violet"
+          to="/workorders"
+        />
       </div>
 
-      {/* ── PENDING REPAIR REQUESTS SECTION ──────────────────────── */}
+      {/* ── PENDING REPAIR REQUESTS SECTION (CLICKABLE ROWS) ──────────────────── */}
       <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="card-header flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/50 p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -268,7 +415,7 @@ export default function Dashboard() {
                 </span>
               </h2>
               <p className="text-[11px] text-slate-500">
-                รายการแจ้งซ่อมที่รออนุมัติ กำลังดำเนินการ หรือรออะไหล่
+                คลิกที่รายการเพื่อดูรายละเอียด หรือกดเปิดดูงานซ่อม
               </p>
             </div>
           </div>
@@ -301,9 +448,10 @@ export default function Dashboard() {
               {(stats.pendingRepairsList || []).map((req, i) => (
                 <tr
                   key={req.id || req._id || i}
-                  className="hover:bg-blue-50/30 dark:hover:bg-slate-800/40 transition-colors"
+                  onClick={() => setSelectedRepair(req)}
+                  className="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
                 >
-                  <td className="py-2.5 px-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                  <td className="py-2.5 px-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap group-hover:underline">
                     {req.request_no || (req.id ? `REQ-${req.id.slice(0, 8)}` : '—')}
                   </td>
                   <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
@@ -334,7 +482,7 @@ export default function Dashboard() {
                   <td className="py-2.5 px-3 whitespace-nowrap">
                     <RepairStatusBadge status={req.status} />
                   </td>
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <a
                       href={`${baseUrl}/repair/${encodeURIComponent(req.cylinder_serial || '')}?req=${encodeURIComponent(req.id || req._id || '')}&step=view`}
                       target="_blank"
@@ -361,14 +509,23 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── RECENT WORK ORDERS SECTION ───────────────────────────── */}
+      {/* ── RECENT WORK ORDERS SECTION (CLICKABLE ROWS) ───────────────────────── */}
       <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="card-header flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/50 p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <ClipboardList size={16} className="text-blue-600 dark:text-blue-400" />
-            <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">{t('dash_wo_table')}</h2>
+            <div>
+              <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">{t('dash_wo_table')}</h2>
+              <p className="text-[11px] text-slate-500">คลิกที่รายการเพื่อดูรายละเอียดใบสั่งงาน</p>
+            </div>
           </div>
-          <span className="badge badge-gray">{stats.recentWO?.length || 0}</span>
+          <Link
+            to="/workorders"
+            className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1.5 font-bold hover:text-blue-600 transition-colors"
+          >
+            <span>จัดการใบสั่งงานทั้งหมด</span>
+            <ArrowRight size={13} />
+          </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="table w-full text-xs">
@@ -383,8 +540,12 @@ export default function Dashboard() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {(stats.recentWO || []).map((wo, i) => (
-                <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="py-2.5 px-3 font-mono text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                <tr
+                  key={i}
+                  onClick={() => setSelectedWO(wo)}
+                  className="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                >
+                  <td className="py-2.5 px-3 font-mono text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap group-hover:underline">
                     {wo.Job_ID || wo['Job ID'] || wo.WO_ID || (wo.id ? `JOB-${wo.id.slice(0, 8)}` : '—')}
                   </td>
                   <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">{wo.MC}</td>
@@ -412,6 +573,83 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+
+      {/* ── DETAIL DRAWER: REPAIR REQUEST ──────────────────────────────────── */}
+      {selectedRepair && (
+        <DetailDrawer
+          open={!!selectedRepair}
+          onClose={() => setSelectedRepair(null)}
+          title={`งานแจ้งซ่อม: ${selectedRepair.request_no || (selectedRepair.id ? `REQ-${selectedRepair.id.slice(0, 8)}` : '—')}`}
+          subtitle={`${selectedRepair.machine_mc || ''} ${selectedRepair.cylinder_serial ? `(ซีเรียล: ${selectedRepair.cylinder_serial})` : ''}`}
+          icon={Wrench}
+          iconBg="rgba(245, 158, 11, 0.15)"
+          iconColor="#f59e0b"
+          accentColor="#f59e0b"
+          badge={<RepairStatusBadge status={selectedRepair.status} />}
+          groups={repairDrawerGroups}
+          canEdit={false}
+          canDelete={false}
+          extraActions={
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={`${baseUrl}/repair/${encodeURIComponent(selectedRepair.cylinder_serial || '')}?req=${encodeURIComponent(selectedRepair.id || selectedRepair._id || '')}&step=view`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 font-bold"
+              >
+                <ExternalLink size={13} />
+                <span>เปิดหน้าใบแจ้งซ่อม</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRepair(null)
+                  navigate('/repair-requests')
+                }}
+                className="btn-outline text-xs py-2 px-3.5 flex items-center gap-1.5 font-bold"
+              >
+                <span>ไปที่หน้าจัดการแจ้งซ่อม</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+          }
+        />
+      )}
+
+      {/* ── DETAIL DRAWER: WORK ORDER ──────────────────────────────────────── */}
+      {selectedWO && (
+        <DetailDrawer
+          open={!!selectedWO}
+          onClose={() => setSelectedWO(null)}
+          title={`ใบสั่งงาน: ${selectedWO.Job_ID || selectedWO['Job ID'] || selectedWO.WO_ID || '—'}`}
+          subtitle={`เครื่องจักร: ${selectedWO.MC || '—'} · รหัสงาน: ${selectedWO.KI || '—'}`}
+          icon={ClipboardList}
+          iconBg="rgba(59, 130, 246, 0.15)"
+          iconColor="#3b82f6"
+          accentColor="#3b82f6"
+          badge={
+            <span className={`badge ${selectedWO.Status==='COMPLETED'?'badge-green':selectedWO.Status==='IN_PROGRESS'?'badge-orange':selectedWO.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
+              {selectedWO.Status==='COMPLETED'?'เสร็จสิ้น':selectedWO.Status==='IN_PROGRESS'?'กำลังทำ':(statusLabel(selectedWO.Status) || selectedWO.Status)}
+            </span>
+          }
+          groups={woDrawerGroups}
+          canEdit={false}
+          canDelete={false}
+          extraActions={
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedWO(null)
+                navigate('/workorders')
+              }}
+              className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5 font-bold"
+            >
+              <span>ไปที่หน้าจัดการใบสั่งงาน</span>
+              <ArrowRight size={13} />
+            </button>
+          }
+        />
+      )}
     </div>
   )
 }
