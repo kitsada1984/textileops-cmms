@@ -1,88 +1,229 @@
 import { useState, useEffect } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB } from '../utils/telegram'
 import { notifyLineNewRepair, notifyLineTechnician, notifyLineCompleted } from '../utils/line'
 import { TechnicianAPI } from '../api/entities'
-import { CheckCircle, Clock, Wrench, AlertTriangle, ChevronRight, Loader } from 'lucide-react'
+import {
+  CheckCircle,
+  Clock,
+  Wrench,
+  AlertTriangle,
+  ChevronRight,
+  Loader,
+  ExternalLink,
+  CheckCircle2,
+  MapPin,
+  Cpu,
+} from 'lucide-react'
 import gemmaLogo from '../assets/logo-gemma.png'
 
 const STATUS_LABEL = {
-  PENDING:    { label: 'รอการอนุมัติ',  color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  APPROVED:   { label: 'อนุมัติแล้ว',   color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
-  REJECTED:   { label: 'ไม่อนุมัติ',    color: '#ef4444', bg: 'rgba(239,68,68,0.1)'  },
-  IN_PROGRESS:{ label: 'กำลังซ่อม',     color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-  COMPLETED:  { label: 'ซ่อมเสร็จ',     color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  PENDING:    { label: 'รอการอนุมัติ',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
+  APPROVED:   { label: 'อนุมัติแล้ว',   color: '#6366f1', bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.3)' },
+  REJECTED:   { label: 'ไม่อนุมัติ',    color: '#ef4444', bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.3)'  },
+  IN_PROGRESS:{ label: 'กำลังซ่อม',     color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)' },
+  COMPLETED:  { label: 'ซ่อมเสร็จแล้ว', color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)' },
 }
 
 function Card({ children, style }) {
   return (
-    <div style={{
-      background: '#fff', borderRadius: 20,
-      border: '1px solid #e8edf5',
-      boxShadow: '0 4px 24px rgba(0,8,24,0.08)',
-      overflow: 'hidden',
-      ...style,
-    }}>{children}</div>
+    <div
+      style={{
+        background: '#ffffff',
+        borderRadius: 20,
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 10px 30px -5px rgba(0,0,0,0.2), 0 4px 12px -2px rgba(0,0,0,0.1)',
+        overflow: 'hidden',
+        width: '100%',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
   )
 }
 
-function Btn({ onClick, disabled, loading, children, variant = 'primary' }) {
+function Btn({ onClick, disabled, loading, children, variant = 'primary', style }) {
   const styles = {
-    primary: { background: 'linear-gradient(135deg,#1a2745,#0d1629)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 2px 8px rgba(10,20,50,0.3)' },
-    success: { background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(16,185,129,0.35)' },
-    danger:  { background: 'linear-gradient(135deg,#f43f5e,#dc2626)', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' },
-    outline: { background: '#fff', color: '#415a78', border: '1px solid #dce2ef', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' },
+    primary: {
+      background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+      color: '#ffffff',
+      border: 'none',
+      boxShadow: '0 4px 12px rgba(37,99,235,0.35)',
+    },
+    success: {
+      background: 'linear-gradient(135deg, #10b981, #059669)',
+      color: '#ffffff',
+      border: 'none',
+      boxShadow: '0 4px 12px rgba(16,185,129,0.35)',
+    },
+    danger: {
+      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+      color: '#ffffff',
+      border: 'none',
+      boxShadow: '0 4px 12px rgba(239,68,68,0.3)',
+    },
+    outline: {
+      background: '#ffffff',
+      color: '#334155',
+      border: '1px solid #cbd5e1',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+    },
   }
+
   return (
-    <button onClick={onClick} disabled={disabled || loading} style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-      padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 700,
-      cursor: (disabled || loading) ? 'not-allowed' : 'pointer',
-      opacity: (disabled || loading) ? 0.6 : 1,
-      transition: 'all 150ms',
-      ...styles[variant],
-    }}>
-      {loading && <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || loading}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        width: '100%',
+        minHeight: 46,
+        padding: '12px 20px',
+        borderRadius: 12,
+        fontSize: 15,
+        fontWeight: 700,
+        cursor: disabled || loading ? 'not-allowed' : 'pointer',
+        opacity: disabled || loading ? 0.65 : 1,
+        transition: 'all 180ms ease',
+        touchAction: 'manipulation',
+        ...styles[variant],
+        ...style,
+      }}
+    >
+      {loading && <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />}
       {children}
     </button>
   )
 }
 
-function FieldRow({ label, value }) {
+function FieldRow({ label, value, highlight }) {
   if (!value) return null
   return (
-    <div style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: '1px solid #f0f4fb' }}>
-      <span style={{ width: 140, flexShrink: 0, fontSize: 12, fontWeight: 700, color: '#90aabf', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: '#0f1d35', flex: 1 }}>{value}</span>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        gap: 8,
+        padding: '8px 0',
+        borderBottom: '1px solid #f1f5f9',
+      }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', flexShrink: 0 }}>
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: highlight ? 800 : 600,
+          color: highlight ? '#2563eb' : '#0f172a',
+          textAlign: 'right',
+          wordBreak: 'break-word',
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  )
+}
+
+/* ── Mobile Steps Progress Header ────────────────────────────────────────── */
+function StepHeader({ activeStep, title, subtitle }) {
+  const steps = [
+    { num: 1, label: 'แจ้งซ่อม' },
+    { num: 2, label: 'อนุมัติ/มอบหมาย' },
+    { num: 3, label: 'บันทึกผล' },
+  ]
+
+  return (
+    <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        {steps.map((s, i) => {
+          const isActive = s.num === activeStep
+          const isDone = s.num < activeStep
+          return (
+            <div key={s.num} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: isDone ? '#10b981' : isActive ? '#2563eb' : '#e2e8f0',
+                    color: isDone || isActive ? '#ffffff' : '#64748b',
+                  }}
+                >
+                  {isDone ? '✓' : s.num}
+                </div>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: isActive ? 800 : 600,
+                    color: isActive ? '#1e293b' : '#94a3b8',
+                  }}
+                >
+                  {s.label}
+                </span>
+              </div>
+              {i < steps.length - 1 && (
+                <div
+                  style={{
+                    flex: 1,
+                    height: 2,
+                    background: isDone ? '#10b981' : '#e2e8f0',
+                    margin: '0 8px',
+                  }}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      <div>
+        <h2 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: 0 }}>{title}</h2>
+        {subtitle && <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>{subtitle}</p>}
+      </div>
     </div>
   )
 }
 
 /* ── Step 1: Report ──────────────────────────────────────────────────────── */
 function StepReport({ serial, cylinder, onSubmitted }) {
-  const [problem,    setProblem]    = useState('')
-  const [reporter,   setReporter]   = useState('')
-  const [saving,     setSaving]     = useState(false)
-  const [error,      setError]      = useState('')
+  const [problem, setProblem] = useState('')
+  const [reporter, setReporter] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async () => {
-    if (!problem.trim()) return setError('กรุณาระบุปัญหา')
+    if (!problem.trim()) return setError('กรุณาระบุรายละเอียดอาการเสีย')
     if (!reporter.trim()) return setError('กรุณาระบุชื่อผู้แจ้ง')
-    setSaving(true); setError('')
+    setSaving(true)
+    setError('')
     try {
       const { data, error: err } = await supabase
         .from('repair_requests')
         .insert({
-          cylinder_serial:     serial,
-          cylinder_location:   cylinder?.Location || null,
-          cylinder_standard:   cylinder?.Standard || null,
-          machine_mc:          cylinder?.NewMC || null,
+          cylinder_serial: serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || null,
+          cylinder_location: cylinder?.Location || null,
+          cylinder_standard: cylinder?.Standard || null,
+          machine_mc: cylinder?.NewMC || null,
           problem_description: problem.trim(),
-          reported_by:         reporter.trim(),
-          status:              'PENDING',
+          reported_by: reporter.trim(),
+          status: 'PENDING',
         })
-        .select().single()
+        .select()
+        .single()
       if (err) throw err
       try {
         await notifySupervisor(data, cylinder)
@@ -103,49 +244,107 @@ function StepReport({ serial, cylinder, onSubmitted }) {
 
   return (
     <div>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #eaeff8' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>ขั้นตอนที่ 1</div>
-        <div style={{ fontSize: 20, fontWeight: 900, color: '#06101e' }}>แจ้งซ่อมกระบอก</div>
-      </div>
-      <div style={{ padding: '24px' }}>
-        {cylinder && (
-          <div style={{ background: '#f6f8fd', borderRadius: 12, padding: '14px 16px', marginBottom: 20, border: '1px solid #eaeff8' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#90aabf', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>ข้อมูลกระบอก</div>
-            {cylinder.NewMC    && <div style={{ fontSize: 12, color: '#607d9a', marginTop: 3 }}>🏭 {cylinder.NewMC}</div>}
-            {cylinder.Location && <div style={{ fontSize: 12, color: '#607d9a', marginTop: 3 }}>📍 {cylinder.Location}</div>}
+      <StepHeader
+        activeStep={1}
+        title="🔧 แจ้งซ่อมเครื่องจักร / กระบอก"
+        subtitle="กรอกข้อมูลเพื่อส่งแจ้งเตือนเข้า LINE & Telegram หัวหน้าช่างทันที"
+      />
+      <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Machine info banner */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
+            borderRadius: 14,
+            padding: '12px 14px',
+            border: '1px solid #bae6fd',
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', marginBottom: 4 }}>
+            🎯 ข้อมูลเครื่องจักรเป้าหมาย
           </div>
-        )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Cpu size={14} className="text-blue-600" /> M/C: {cylinder?.NewMC || '—'}
+            </span>
+            <span style={{ color: '#94a3b8' }}>•</span>
+            <span style={{ color: '#2563eb' }}>ซีเรียล: {serial || cylinder?.Serial_NOW || '—'}</span>
+            {cylinder?.Location && (
+              <>
+                <span style={{ color: '#94a3b8' }}>•</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#475569' }}>
+                  <MapPin size={13} /> {cylinder.Location}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#607d9a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-            ปัญหา / อาการเสีย *
+        {/* Problem textarea */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+            ⚠️ ปัญหา / อาการเสียที่พบ *
           </label>
           <textarea
-            value={problem} onChange={e => setProblem(e.target.value)}
-            rows={4} placeholder="อธิบายปัญหาที่พบ..."
-            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #dce2ef', fontSize: 14, resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+            value={problem}
+            onChange={(e) => setProblem(e.target.value)}
+            rows={4}
+            placeholder="อธิบายปัญหาที่พบ เช่น เข็มหัก, กระบอกติด, มีเสียงดังผิดปกติ..."
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: 12,
+              border: '1px solid #cbd5e1',
+              fontSize: 16,
+              resize: 'vertical',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+              background: '#f8fafc',
+            }}
           />
         </div>
 
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#607d9a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-            ชื่อผู้แจ้ง *
+        {/* Reporter name */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+            👤 ชื่อผู้แจ้ง *
           </label>
           <input
-            value={reporter} onChange={e => setReporter(e.target.value)}
-            placeholder="ชื่อ-นามสกุล หรือรหัสพนักงาน"
-            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #dce2ef', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+            value={reporter}
+            onChange={(e) => setReporter(e.target.value)}
+            placeholder="ชื่อ-นามสกุล หรือชื่อเล่นผู้แจ้ง"
+            style={{
+              width: '100%',
+              minHeight: 46,
+              padding: '10px 14px',
+              borderRadius: 12,
+              border: '1px solid #cbd5e1',
+              fontSize: 16,
+              outline: 'none',
+              boxSizing: 'border-box',
+              background: '#f8fafc',
+            }}
           />
         </div>
 
         {error && (
-          <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#dc2626', fontSize: 13, marginBottom: 16 }}>
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: '#fef2f2',
+              border: '1px solid #fee2e2',
+              color: '#dc2626',
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
             ⚠️ {error}
           </div>
         )}
 
-        <Btn onClick={submit} loading={saving} variant="primary">
-          <ChevronRight size={16} /> ยืนยันแจ้งซ่อม
+        <Btn onClick={submit} loading={saving} variant="primary" style={{ marginTop: 4 }}>
+          <ChevronRight size={18} /> ยืนยันส่งใบแจ้งซ่อม
         </Btn>
       </div>
     </div>
@@ -155,18 +354,18 @@ function StepReport({ serial, cylinder, onSubmitted }) {
 /* ── Step 2: Approve ─────────────────────────────────────────────────────── */
 function StepApprove({ request, onUpdated }) {
   const [techList, setTechList] = useState([])
-  const [tech,   setTech]   = useState(request.technician_name || '')
-  const [notes,  setNotes]  = useState(request.approval_notes || '')
+  const [tech, setTech] = useState(request.technician_name || '')
+  const [notes, setNotes] = useState(request.approval_notes || '')
   const [saving, setSaving] = useState('')
-  const [error,  setError]  = useState('')
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    Promise.allSettled([
-      loadTelegramSettingsDB(),
-      TechnicianAPI.list(),
-    ]).then(([tgRes, techRes]) => {
-      const tgTechs = tgRes.status === 'fulfilled' ? (tgRes.value?.technicians || []) : []
-      const regTechs = techRes.status === 'fulfilled' && Array.isArray(techRes.value) ? techRes.value.map(t => ({ name: t.Name || t.name, chat_id: '' })) : []
+    Promise.allSettled([loadTelegramSettingsDB(), TechnicianAPI.list()]).then(([tgRes, techRes]) => {
+      const tgTechs = tgRes.status === 'fulfilled' ? tgRes.value?.technicians || [] : []
+      const regTechs =
+        techRes.status === 'fulfilled' && Array.isArray(techRes.value)
+          ? techRes.value.map((t) => ({ name: t.Name || t.name, chat_id: '' }))
+          : []
       const names = new Set()
       const merged = []
       for (const t of [...tgTechs, ...regTechs]) {
@@ -179,13 +378,13 @@ function StepApprove({ request, onUpdated }) {
     })
   }, [])
 
-  if (['APPROVED','IN_PROGRESS','COMPLETED'].includes(request.status)) {
+  if (['APPROVED', 'IN_PROGRESS', 'COMPLETED'].includes(request.status)) {
     return (
-      <div style={{ padding: 24 }}>
-        <div style={{ textAlign: 'center', padding: '16px 0' }}>
-          <CheckCircle size={40} style={{ color: '#10b981', margin: '0 auto 12px' }} />
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#06101e' }}>อนุมัติแล้ว</div>
-          <div style={{ fontSize: 13, color: '#607d9a', marginTop: 4 }}>ช่าง: {request.technician_name}</div>
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <CheckCircle size={44} style={{ color: '#10b981', margin: '0 auto 12px' }} />
+        <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a' }}>อนุมัติและมอบหมายเรียบร้อย</div>
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+          ช่างผู้รับผิดชอบ: <strong style={{ color: '#2563eb' }}>{request.technician_name}</strong>
         </div>
       </div>
     )
@@ -193,15 +392,23 @@ function StepApprove({ request, onUpdated }) {
 
   const handle = async (action) => {
     if (saving) return
-    if (action === 'approve' && !tech.trim()) return setError('กรุณาระบุชื่อช่าง')
-    setSaving(action); setError('')
+    if (action === 'approve' && !tech.trim()) return setError('กรุณาเลือกหรือระบุชื่อช่างผู้รับผิดชอบ')
+    setSaving(action)
+    setError('')
     try {
       const status = action === 'approve' ? 'APPROVED' : 'REJECTED'
       const { data, error: err } = await supabase
         .from('repair_requests')
-        .update({ status, technician_name: tech.trim(), approval_notes: notes.trim(), approved_at: new Date().toISOString(), approved_by: tech.trim() || 'Supervisor' })
+        .update({
+          status,
+          technician_name: tech.trim(),
+          approval_notes: notes.trim(),
+          approved_at: new Date().toISOString(),
+          approved_by: tech.trim() || 'Supervisor',
+        })
         .eq('id', request.id)
-        .select().single()
+        .select()
+        .single()
       if (err) throw err
       if (action === 'approve') {
         try {
@@ -216,65 +423,115 @@ function StepApprove({ request, onUpdated }) {
         }
       }
       onUpdated(data)
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      setError(e.message)
+    }
     setSaving('')
   }
 
-  const inputStyle = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #dce2ef', fontSize: 14, outline: 'none', boxSizing: 'border-box', background: '#fff' }
+  const inputStyle = {
+    width: '100%',
+    minHeight: 46,
+    padding: '10px 14px',
+    borderRadius: 12,
+    border: '1px solid #cbd5e1',
+    fontSize: 16,
+    outline: 'none',
+    boxSizing: 'border-box',
+    background: '#f8fafc',
+  }
 
   return (
     <div>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #eaeff8' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>ขั้นตอนที่ 2 · Supervisor</div>
-        <div style={{ fontSize: 20, fontWeight: 900, color: '#06101e' }}>อนุมัติและมอบหมายช่าง</div>
-      </div>
-      <div style={{ padding: 24 }}>
-        <div style={{ background: '#f6f8fd', borderRadius: 12, padding: '14px 16px', marginBottom: 20, border: '1px solid #eaeff8' }}>
-          <FieldRow label="ซีเรียล" value={request.cylinder_serial} />
-          <FieldRow label="เครื่องปัจจุบัน" value={request.machine_mc} />
-          <FieldRow label="ปัญหา" value={request.problem_description} />
+      <StepHeader
+        activeStep={2}
+        title="👨‍💼 อนุมัติและมอบหมายช่าง"
+        subtitle="เลือกช่างเพื่อยิงใบสั่งงานตรงเข้า LINE & Telegram ของช่างทันที"
+      />
+      <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Detail Box */}
+        <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
+          <FieldRow label="เลขที่ใบแจ้ง" value={request.request_no} />
+          <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
+          <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight />
+          <FieldRow label="อาการเสีย" value={request.problem_description} />
           <FieldRow label="ผู้แจ้ง" value={request.reported_by} />
-          <FieldRow label="เลขที่" value={request.request_no} />
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#607d9a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-            มอบหมายช่าง *
+        {/* Technician selector */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+            👨‍🔧 มอบหมายช่างปฏิบัติงาน *
           </label>
           <select
-            value={techList.some(t => t.name === tech) ? tech : (tech ? '__custom__' : '')}
-            onChange={e => setTech(e.target.value === '__custom__' ? '' : e.target.value)}
-            style={inputStyle}>
-            <option value="">— เลือกช่าง —</option>
+            value={techList.some((t) => t.name === tech) ? tech : tech ? '__custom__' : ''}
+            onChange={(e) => setTech(e.target.value === '__custom__' ? '' : e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">— กรุณาเลือกช่าง —</option>
             {techList.map((t, i) => (
-              <option key={i} value={t.name}>{t.name}</option>
+              <option key={i} value={t.name}>
+                {t.name}
+              </option>
             ))}
-            <option value="__custom__">อื่นๆ (พิมพ์เอง)</option>
+            <option value="__custom__">➕ พิมพ์ระบุชื่อเอง</option>
           </select>
-          {!techList.some(t => t.name === tech) && (
-            <input value={tech}
-              onChange={e => setTech(e.target.value)}
-              placeholder="พิมพ์ชื่อช่าง..."
-              style={{ ...inputStyle, marginTop: 8 }} />
+          {!techList.some((t) => t.name === tech) && (
+            <input
+              value={tech}
+              onChange={(e) => setTech(e.target.value)}
+              placeholder="พิมพ์ชื่อช่างผู้รับผิดชอบ..."
+              style={{ ...inputStyle, marginTop: 8 }}
+            />
           )}
         </div>
 
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#607d9a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-            หมายเหตุ (ถึงช่าง)
+        {/* Notes */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+            📝 หมายเหตุ / คำสั่งการเพิ่มเติม (ถึงช่าง)
           </label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)}
-            rows={3} placeholder="คำแนะนำหรือรายละเอียดเพิ่มเติม..."
-            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #dce2ef', fontSize: 14, resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            placeholder="เช่น ให้เปลี่ยนซีลยางและตรวจเช็คศูนย์ด้วย..."
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              borderRadius: 12,
+              border: '1px solid #cbd5e1',
+              fontSize: 16,
+              resize: 'vertical',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+              background: '#f8fafc',
+            }}
+          />
         </div>
 
-        {error && <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#dc2626', fontSize: 13, marginBottom: 16 }}>⚠️ {error}</div>}
+        {error && (
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: '#fef2f2',
+              border: '1px solid #fee2e2',
+              color: '#dc2626',
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            ⚠️ {error}
+          </div>
+        )}
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Btn onClick={() => handle('approve')} loading={saving === 'approve'} variant="success">
-            <CheckCircle size={15} /> ยืนยันอนุมัติซ่อม
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <Btn onClick={() => handle('approve')} loading={saving === 'approve'} variant="success" style={{ flex: 2 }}>
+            <CheckCircle size={18} /> ยืนยันอนุมัติและมอบหมาย
           </Btn>
-          <Btn onClick={() => handle('reject')} loading={saving === 'reject'} variant="danger">
+          <Btn onClick={() => handle('reject')} loading={saving === 'reject'} variant="danger" style={{ flex: 1 }}>
             ไม่อนุมัติ
           </Btn>
         </div>
@@ -286,17 +543,17 @@ function StepApprove({ request, onUpdated }) {
 /* ── Step 3: Complete ────────────────────────────────────────────────────── */
 function StepComplete({ request, onUpdated }) {
   const [details, setDetails] = useState(request.repair_details || '')
-  const [parts,   setParts]   = useState(request.parts_used || '')
-  const [tech,    setTech]    = useState(request.technician_name || '')
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState('')
+  const [parts, setParts] = useState(request.parts_used || '')
+  const [tech, setTech] = useState(request.technician_name || '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   if (request.status === 'COMPLETED') {
     return (
-      <div style={{ padding: 24, textAlign: 'center' }}>
-        <CheckCircle size={48} style={{ color: '#10b981', margin: '8px auto 16px' }} />
-        <div style={{ fontSize: 18, fontWeight: 900, color: '#06101e' }}>ซ่อมเสร็จเรียบร้อย</div>
-        <div style={{ fontSize: 13, color: '#607d9a', marginTop: 6 }}>บันทึกเรียบร้อยแล้ว</div>
+      <div style={{ padding: 28, textAlign: 'center' }}>
+        <CheckCircle size={48} style={{ color: '#10b981', margin: '0 auto 12px' }} />
+        <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>ปิดงานซ่อมเสร็จสมบูรณ์</div>
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>บันทึกผลการซ่อมเข้าสู่ระบบเรียบร้อยแล้ว</div>
       </div>
     )
   }
@@ -304,14 +561,22 @@ function StepComplete({ request, onUpdated }) {
   const submit = async () => {
     if (saving) return
     if (!details.trim()) return setError('กรุณาระบุรายละเอียดการซ่อม')
-    if (!tech.trim()) return setError('กรุณาระบุชื่อช่าง')
-    setSaving(true); setError('')
+    if (!tech.trim()) return setError('กรุณาระบุชื่อช่างผู้ปฏิบัติงาน')
+    setSaving(true)
+    setError('')
     try {
       const { data, error: err } = await supabase
         .from('repair_requests')
-        .update({ status: 'COMPLETED', repair_details: details.trim(), parts_used: parts.trim(), completed_at: new Date().toISOString(), completed_by: tech.trim() })
+        .update({
+          status: 'COMPLETED',
+          repair_details: details.trim(),
+          parts_used: parts.trim(),
+          completed_at: new Date().toISOString(),
+          completed_by: tech.trim(),
+        })
         .eq('id', request.id)
-        .select().single()
+        .select()
+        .single()
       if (err) throw err
       try {
         await notifyCompleted(data)
@@ -324,48 +589,120 @@ function StepComplete({ request, onUpdated }) {
         console.warn('LINE completed notify warning:', lineErr)
       }
       onUpdated(data)
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      setError(e.message)
+    }
     setSaving(false)
   }
 
   return (
     <div>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #eaeff8' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>ขั้นตอนที่ 3 · ช่างเทคนิค</div>
-        <div style={{ fontSize: 20, fontWeight: 900, color: '#06101e' }}>บันทึกผลการซ่อม</div>
-      </div>
-      <div style={{ padding: 24 }}>
-        <div style={{ background: '#f6f8fd', borderRadius: 12, padding: '14px 16px', marginBottom: 20, border: '1px solid #eaeff8' }}>
-          <FieldRow label="ซีเรียล" value={request.cylinder_serial} />
-          <FieldRow label="เครื่องปัจจุบัน" value={request.machine_mc} />
-          <FieldRow label="ปัญหา" value={request.problem_description} />
-          <FieldRow label="ผู้แจ้ง" value={request.reported_by} />
-          {request.approval_notes && <FieldRow label="หมายเหตุ Supervisor" value={request.approval_notes} />}
+      <StepHeader
+        activeStep={3}
+        title="🔧 บันทึกผลการซ่อมบำรุง"
+        subtitle="บันทึกรายละเอียดงานที่ทำ และอะไหล่ที่เปลี่ยนเพื่อปิดงาน"
+      />
+      <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Info Box */}
+        <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
+          <FieldRow label="เลขที่ใบแจ้ง" value={request.request_no} />
+          <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
+          <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight />
+          <FieldRow label="ปัญหาที่แจ้ง" value={request.problem_description} />
+          {request.approval_notes && (
+            <FieldRow label="คำสั่งหัวหน้า" value={request.approval_notes} highlight />
+          )}
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#607d9a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>ชื่อช่างที่ทำการซ่อม *</label>
-          <input value={tech} onChange={e => setTech(e.target.value)} placeholder="ชื่อช่าง"
-            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #dce2ef', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+        {/* Tech name */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+            👨‍🔧 ชื่อช่างผู้ดำเนินการซ่อม *
+          </label>
+          <input
+            value={tech}
+            onChange={(e) => setTech(e.target.value)}
+            placeholder="ชื่อช่าง"
+            style={{
+              width: '100%',
+              minHeight: 46,
+              padding: '10px 14px',
+              borderRadius: 12,
+              border: '1px solid #cbd5e1',
+              fontSize: 16,
+              outline: 'none',
+              boxSizing: 'border-box',
+              background: '#f8fafc',
+            }}
+          />
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#607d9a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>รายละเอียดการซ่อม *</label>
-          <textarea value={details} onChange={e => setDetails(e.target.value)} rows={4}
-            placeholder="อธิบายวิธีการแก้ไขปัญหา..."
-            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #dce2ef', fontSize: 14, resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+        {/* Repair details */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+            🛠️ รายละเอียดการซ่อม / วิธีแก้ไข *
+          </label>
+          <textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            rows={4}
+            placeholder="อธิบายวิธีแก้ไข เช่น เปลี่ยนเข็มเบอร์ 14 ใหม่, ตั้งศูนย์กระบอก, หยอดน้ำมันหล่อลื่น..."
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: 12,
+              border: '1px solid #cbd5e1',
+              fontSize: 16,
+              resize: 'vertical',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+              background: '#f8fafc',
+            }}
+          />
         </div>
 
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#607d9a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>อะไหล่ที่ใช้ (ถ้ามี)</label>
-          <input value={parts} onChange={e => setParts(e.target.value)} placeholder="ชื่อและจำนวนอะไหล่..."
-            style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #dce2ef', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+        {/* Parts used */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+            📦 อะไหล่ที่เบิกใช้ (ถ้ามี)
+          </label>
+          <input
+            value={parts}
+            onChange={(e) => setParts(e.target.value)}
+            placeholder="เช่น เข็ม 2 เล่ม, ซีลยาง 1 วง..."
+            style={{
+              width: '100%',
+              minHeight: 46,
+              padding: '10px 14px',
+              borderRadius: 12,
+              border: '1px solid #cbd5e1',
+              fontSize: 16,
+              outline: 'none',
+              boxSizing: 'border-box',
+              background: '#f8fafc',
+            }}
+          />
         </div>
 
-        {error && <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#dc2626', fontSize: 13, marginBottom: 16 }}>⚠️ {error}</div>}
+        {error && (
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: '#fef2f2',
+              border: '1px solid #fee2e2',
+              color: '#dc2626',
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            ⚠️ {error}
+          </div>
+        )}
 
-        <Btn onClick={submit} loading={saving} variant="success">
-          <CheckCircle size={15} /> ยืนยันซ่อมเสร็จ
+        <Btn onClick={submit} loading={saving} variant="success" style={{ marginTop: 4 }}>
+          <CheckCircle size={18} /> ยืนยันบันทึกปิดงานซ่อม
         </Btn>
       </div>
     </div>
@@ -376,38 +713,60 @@ function StepComplete({ request, onUpdated }) {
 function StatusView({ request }) {
   const s = STATUS_LABEL[request.status] || STATUS_LABEL.PENDING
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, padding: '12px 16px', borderRadius: 12, background: s.bg, border: `1px solid ${s.color}30` }}>
+    <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 16px',
+          borderRadius: 14,
+          background: s.bg,
+          border: `1px solid ${s.border}`,
+        }}
+      >
         <div style={{ width: 10, height: 10, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-        <span style={{ fontSize: 14, fontWeight: 800, color: s.color }}>{s.label}</span>
-        <span style={{ fontSize: 12, color: '#90aabf', marginLeft: 'auto' }}>{request.request_no}</span>
+        <span style={{ fontSize: 15, fontWeight: 800, color: s.color }}>{s.label}</span>
+        <span style={{ fontSize: 12, color: '#64748b', marginLeft: 'auto', fontFamily: 'monospace' }}>
+          {request.request_no}
+        </span>
       </div>
-      <FieldRow label="ซีเรียล" value={request.cylinder_serial} />
-      <FieldRow label="เครื่องปัจจุบัน" value={request.machine_mc} />
-      <FieldRow label="ตำแหน่ง" value={request.cylinder_location} />
-      <FieldRow label="ปัญหา" value={request.problem_description} />
-      <FieldRow label="ผู้แจ้ง" value={request.reported_by} />
-      <FieldRow label="วันที่แจ้ง" value={request.created_at ? new Date(request.created_at).toLocaleString('th-TH') : null} />
-      <FieldRow label="ช่าง" value={request.technician_name} />
-      <FieldRow label="หมายเหตุ" value={request.approval_notes} />
-      <FieldRow label="รายละเอียดซ่อม" value={request.repair_details} />
-      <FieldRow label="อะไหล่ที่ใช้" value={request.parts_used} />
-      <FieldRow label="เสร็จเมื่อ" value={request.completed_at ? new Date(request.completed_at).toLocaleString('th-TH') : null} />
+
+      <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
+        <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight />
+        <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
+        <FieldRow label="ตำแหน่งติดตั้ง" value={request.cylinder_location} />
+        <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} />
+        <FieldRow label="ผู้แจ้ง" value={request.reported_by} />
+        <FieldRow
+          label="วันที่แจ้ง"
+          value={request.created_at ? new Date(request.created_at).toLocaleString('th-TH') : null}
+        />
+        <FieldRow label="ช่างผู้รับผิดชอบ" value={request.technician_name} highlight />
+        <FieldRow label="คำสั่งหัวหน้า" value={request.approval_notes} />
+        <FieldRow label="รายละเอียดการซ่อม" value={request.repair_details} />
+        <FieldRow label="อะไหล่ที่ใช้" value={request.parts_used} />
+        <FieldRow
+          label="เสร็จสิ้นเมื่อ"
+          value={request.completed_at ? new Date(request.completed_at).toLocaleString('th-TH') : null}
+        />
+      </div>
     </div>
   )
 }
 
-/* ── Main RepairPage ─────────────────────────────────────────────────────── */
+/* ── Main RepairPage Component ───────────────────────────────────────────── */
 export default function RepairPage() {
-  const { serial }             = useParams()
-  const [searchParams]         = useSearchParams()
-  const reqId                  = searchParams.get('req')
-  const step                   = searchParams.get('step')   // approve | complete | view
+  const { serial } = useParams()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const reqId = searchParams.get('req')
+  const step = searchParams.get('step') // approve | complete | view
 
   const [cylinder, setCylinder] = useState(null)
-  const [request,  setRequest]  = useState(null)
-  const [loading,  setLoading]  = useState(true)
-  const [done,     setDone]     = useState(false)
+  const [request, setRequest] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [done, setDone] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -420,25 +779,29 @@ export default function RepairPage() {
 
         let cyl = null
         if (decodedSerial) {
-          // Fetch cylinder info: check Serial_NOW first, fallback to Serial_OLD
           const { data: foundNow } = await supabase
-            .from('cylinders').select('*')
-            .eq('Serial_NOW', decodedSerial).maybeSingle()
+            .from('cylinders')
+            .select('*')
+            .eq('Serial_NOW', decodedSerial)
+            .maybeSingle()
           cyl = foundNow
           if (!cyl) {
             const { data: foundOld } = await supabase
-              .from('cylinders').select('*')
-              .eq('Serial_OLD', decodedSerial).maybeSingle()
+              .from('cylinders')
+              .select('*')
+              .eq('Serial_OLD', decodedSerial)
+              .maybeSingle()
             cyl = foundOld
           }
         }
         setCylinder(cyl)
 
-        // Fetch request if ID provided
         if (reqId) {
           const { data: req } = await supabase
-            .from('repair_requests').select('*')
-            .eq('id', reqId).maybeSingle()
+            .from('repair_requests')
+            .select('*')
+            .eq('id', reqId)
+            .maybeSingle()
           setRequest(req)
         }
       } catch (e) {
@@ -455,23 +818,37 @@ export default function RepairPage() {
     setDone(true)
   }
 
-  const renderStep = () => {
-    if (loading) return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <Loader size={28} style={{ color: '#6366f1', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
-        <div style={{ marginTop: 12, color: '#90aabf', fontSize: 13 }}>กำลังโหลด...</div>
-      </div>
-    )
-    if (done && request) return (
-      <div style={{ padding: 32, textAlign: 'center' }}>
-        <CheckCircle size={48} style={{ color: '#10b981', margin: '0 auto 16px' }} />
-        <div style={{ fontSize: 18, fontWeight: 900, color: '#06101e', marginBottom: 6 }}>
-          {request.status === 'COMPLETED' ? 'บันทึกผลซ่อมเรียบร้อย' : request.status === 'PENDING' ? 'ส่งแจ้งซ่อมเรียบร้อย' : 'บันทึกเรียบร้อย'}
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div style={{ padding: 48, textAlign: 'center' }}>
+          <Loader size={32} style={{ color: '#2563eb', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+          <div style={{ marginTop: 14, color: '#64748b', fontSize: 14, fontWeight: 700 }}>กำลังโหลดข้อมูล...</div>
         </div>
-        <div style={{ fontSize: 13, color: '#607d9a', marginBottom: 20 }}>เลขที่ {request.request_no}</div>
-        {request && <StatusView request={request} />}
-      </div>
-    )
+      )
+    }
+
+    if (done && request) {
+      return (
+        <div style={{ padding: '28px 20px', textAlign: 'center' }}>
+          <CheckCircle2 size={54} style={{ color: '#10b981', margin: '0 auto 14px' }} />
+          <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>
+            {request.status === 'COMPLETED'
+              ? 'บันทึกผลซ่อมเรียบร้อย'
+              : request.status === 'PENDING'
+              ? 'ส่งแจ้งซ่อมเรียบร้อย'
+              : 'บันทึกเรียบร้อย'}
+          </div>
+          <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>เลขที่ {request.request_no}</div>
+          <StatusView request={request} />
+          <div style={{ marginTop: 16 }}>
+            <Btn onClick={() => navigate('/repair-requests')} variant="primary">
+              📋 ดูรายการแจ้งซ่อมทั้งหมด
+            </Btn>
+          </div>
+        </div>
+      )
+    }
 
     if (step === 'approve' && request) return <StepApprove request={request} onUpdated={handleDone} />
     if (step === 'complete' && request) return <StepComplete request={request} onUpdated={handleDone} />
@@ -480,25 +857,69 @@ export default function RepairPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#050a16 0%,#0c1628 50%,#050a16 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 16px' }}>
-      <style>{`@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }`}</style>
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 40%, #0f172a 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '16px 12px 32px',
+        boxSizing: 'border-box',
+      }}
+    >
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        input, select, textarea { font-family: inherit; }
+      `}</style>
 
-      {/* Logo bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-        <img src={gemmaLogo} alt="Gemma" style={{ width: 36, height: 36, borderRadius: 10 }} />
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>Gemma Knits</div>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>CMMS · Repair Request</div>
+      {/* Top Mobile App Bar */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 520,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+          padding: '0 4px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src={gemmaLogo} alt="Gemma" style={{ width: 36, height: 36, borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }} />
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>TextileOps CMMS</div>
+            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Gemma Knits Maintenance System</div>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '6px 12px',
+            borderRadius: 10,
+            background: 'rgba(255,255,255,0.12)',
+            color: '#ffffff',
+            fontSize: 12,
+            fontWeight: 700,
+            border: '1px solid rgba(255,255,255,0.2)',
+            cursor: 'pointer',
+          }}
+        >
+          <span>หน้าหลัก</span>
+          <ExternalLink size={12} />
+        </button>
       </div>
 
-      {/* Card */}
-      <Card style={{ width: '100%', maxWidth: 480 }}>
-        {renderStep()}
-      </Card>
+      {/* Card Container */}
+      <Card style={{ maxWidth: 520 }}>{renderContent()}</Card>
 
-      <div style={{ marginTop: 20, fontSize: 11, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>
-        TextileOps CMMS · {new Date().getFullYear()}
+      {/* Footer info */}
+      <div style={{ marginTop: 24, fontSize: 11, color: '#64748b', textAlign: 'center', fontWeight: 600 }}>
+        TextileOps Maintenance Management System · Version 1.3.6
       </div>
     </div>
   )

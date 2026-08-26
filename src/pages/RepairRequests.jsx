@@ -324,8 +324,141 @@ export default function RepairRequests() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="table-wrap">
+      {/* Mobile Card List View (Visible on small screens < md) */}
+      <div className="block md:hidden space-y-3">
+        {loading && (
+          <div className="text-center py-8 text-slate-400 text-sm">
+            <RefreshCw size={20} className="animate-spin mx-auto mb-2 text-indigo-500" />
+            {t('loading')}
+          </div>
+        )}
+        {!loading && displayRows.length === 0 && (
+          <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 p-6">
+            <Wrench size={32} className="mx-auto mb-2 text-slate-400" />
+            <div className="font-bold text-slate-600 dark:text-slate-300">{t('no_data')}</div>
+          </div>
+        )}
+        {!loading && displayRows.map(r => {
+          const cfg = STATUS_CFG[r.status] || {}
+          return (
+            <div
+              key={r.id}
+              onClick={() => openDetail(r)}
+              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-4 shadow-sm active:scale-[0.99] transition-all cursor-pointer relative"
+            >
+              {/* Header: Request No & Status */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md">
+                    {r.request_no || `REQ-${String(r.id).slice(0, 6)}`}
+                  </span>
+                  {r.created_at && (
+                    <span className="text-[11px] text-slate-400">
+                      {format(new Date(r.created_at), 'dd/MM/yy HH:mm')}
+                    </span>
+                  )}
+                </div>
+                <span
+                  style={{
+                    background: cfg.bg || 'var(--bg-card)',
+                    borderColor: cfg.border || 'var(--border)',
+                    color: cfg.color || 'var(--text-500)',
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border"
+                >
+                  <span style={{ background: cfg.dot || 'currentColor' }} className="w-1.5 h-1.5 rounded-full" />
+                  {STATUS_TH[r.status] || r.status}
+                </span>
+              </div>
+
+              {/* Machine & Serial Info */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-700 dark:text-slate-300 font-semibold mb-2">
+                <span>🏭 M/C: <strong className="text-slate-900 dark:text-white">{r.machine_mc || '—'}</strong></span>
+                <span>•</span>
+                <span>ซีเรียล: <strong className="text-blue-600 dark:text-blue-400">{r.cylinder_serial || '—'}</strong></span>
+                {r.cylinder_location && (
+                  <>
+                    <span>•</span>
+                    <span className="text-slate-500">📍 {r.cylinder_location}</span>
+                  </>
+                )}
+              </div>
+
+              {/* Problem snippet */}
+              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-2.5 border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 mb-3">
+                <div className="text-[11px] font-bold text-rose-500 mb-0.5">⚠️ ปัญหา:</div>
+                <div className="line-clamp-2">{r.problem_description || 'ไม่มีรายละเอียด'}</div>
+              </div>
+
+              {/* Footer: Tech & Quick Actions */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60" onClick={e => e.stopPropagation()}>
+                <div className="text-xs text-slate-500">
+                  {r.technician_name ? (
+                    <span className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold">
+                      👨‍🔧 {r.technician_name}
+                    </span>
+                  ) : (
+                    <span className="text-amber-500 font-medium">รอระบุช่าง</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300"
+                    onClick={() => {
+                      const matchCyl = cylMap[r.cylinder_serial] || cylinders.find((c) => c.Serial_NOW === r.cylinder_serial || c.Serial_OLD === r.cylinder_serial) || { Serial_NOW: r.cylinder_serial, NewMC: r.machine_mc, Location: r.cylinder_location }
+                      setQrModalCylinder(matchCyl)
+                    }}
+                    title="QR Code"
+                  >
+                    <QrCode size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="p-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                    onClick={() => setPdfItem(r)}
+                    title="PDF"
+                  >
+                    <FileText size={14} />
+                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300"
+                      onClick={() => openEdit(r)}
+                      title="แก้ไข"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                      onClick={() => del(r._id || r.id)}
+                      title="ลบ"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                  <a
+                    href={`${baseUrl}/repair/${r.cylinder_serial}?req=${r.id}&step=view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="เปิดหน้าแจ้งซ่อม"
+                    className="p-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                  >
+                    <ArrowUpRight size={14} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Desktop Table (Hidden on small screens < md) */}
+      <div className="table-wrap hidden md:block">
         <table>
           <thead>
             <tr>
