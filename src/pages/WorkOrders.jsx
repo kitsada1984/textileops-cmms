@@ -613,6 +613,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       SkillLevel: 'Senior',
       Specialization: '',
       Status: 'ACTIVE',
+      Line_ID: '',
+      Telegram_ID: '',
     })
     setTechModalOpen(true)
   }
@@ -629,8 +631,30 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       SkillLevel: tech.SkillLevel || 'Senior',
       Specialization: tech.Specialization || '',
       Status: tech.Status || 'ACTIVE',
+      Line_ID: tech.Line_ID || tech.line_id || '',
+      Telegram_ID: tech.Telegram_ID || tech.telegram_id || '',
     })
     setTechModalOpen(true)
+  }
+
+  // Sync Technicians to LINE and Telegram notification settings in Supabase
+  const syncTechToNotifications = async (techList) => {
+    try {
+      const { data: lineData } = await supabase.from('appconfigs').select('value').eq('key', 'line_settings').maybeSingle()
+      if (lineData?.value) {
+        const lineCfg = JSON.parse(lineData.value)
+        lineCfg.technicians = techList.map((t) => ({ name: t.Name, user_id: t.Line_ID || t.line_id || '' }))
+        await supabase.from('appconfigs').upsert({ key: 'line_settings', value: JSON.stringify(lineCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      }
+      const { data: tgData } = await supabase.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
+      if (tgData?.value) {
+        const tgCfg = JSON.parse(tgData.value)
+        tgCfg.technicians = techList.map((t) => ({ name: t.Name, chat_id: t.Telegram_ID || t.telegram_id || '' }))
+        await supabase.from('appconfigs').upsert({ key: 'telegram_settings', value: JSON.stringify(tgCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      }
+    } catch (e) {
+      console.warn('Sync tech to notifications error:', e)
+    }
   }
 
   const handleSaveTech = async () => {
@@ -648,6 +672,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         setTechnicians((prev) => {
           const next = prev.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
           try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
+          syncTechToNotifications(next)
           return next
         })
         toast.success('อัปเดตข้อมูลช่างเรียบร้อย', payload.Name)
@@ -657,6 +682,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         setTechnicians((prev) => {
           const next = [...prev, itemToAdd]
           try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
+          syncTechToNotifications(next)
           return next
         })
         toast.success('เพิ่มช่างใหม่เรียบร้อย', payload.Name)
@@ -672,6 +698,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           next = [...prev, payload]
         }
         try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
+        syncTechToNotifications(next)
         return next
       })
       toast.success('บันทึกข้อมูลช่างเรียบร้อย', payload.Name)
@@ -690,6 +717,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     setTechnicians((prev) => {
       const next = prev.filter((t) => t.id !== techId && t.Technician_ID !== techId)
       try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
+      syncTechToNotifications(next)
       return next
     })
     toast.success('ลบข้อมูลช่างเรียบร้อย', tech.Name)
@@ -1571,6 +1599,29 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     </div>
                   </div>
 
+                  {/* Notification IDs Badges */}
+                  <div className="space-y-1.5 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <span className="font-bold text-slate-500 block">การแจ้งเตือนงานซ่อม:</span>
+                    <div className="flex flex-col gap-1.5 text-[11px] font-mono">
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 font-sans">
+                          <span>🟢 LINE ID</span>
+                        </span>
+                        <span className="truncate max-w-[170px] text-right font-medium text-slate-700 dark:text-slate-200">
+                          {tech.Line_ID || tech.line_id || <span className="text-slate-400 font-sans italic">ยังไม่ได้ระบุ</span>}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                        <span className="text-sky-600 dark:text-sky-400 font-bold flex items-center gap-1 font-sans">
+                          <span>✈️ Telegram</span>
+                        </span>
+                        <span className="truncate max-w-[170px] text-right font-medium text-slate-700 dark:text-slate-200">
+                          {tech.Telegram_ID || tech.telegram_id || <span className="text-slate-400 font-sans italic">ยังไม่ได้ระบุ</span>}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {(canEdit || canDelete) && (
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end items-center gap-2">
                       {canEdit && (
@@ -2019,7 +2070,50 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
             </div>
 
-            {/* 5. Status */}
+            {/* 5. Notification Identifiers (LINE & Telegram) */}
+            <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+              <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <span>🔔 การแจ้งเตือนใบสั่งงานซ่อม (Direct Notifications)</span>
+              </div>
+              
+              {/* LINE User ID */}
+              <div>
+                <label className="label font-bold flex items-center gap-1.5 mb-1">
+                  <span className="text-emerald-500 font-bold">🟢</span>
+                  <span>LINE User ID (id:line)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="เช่น U66f2b207af94e739c10a3cf937af2965"
+                  value={techForm.Line_ID || ''}
+                  onChange={(e) => setTechForm({ ...techForm, Line_ID: e.target.value })}
+                  className="input font-mono text-xs"
+                />
+                <p className="text-[10.5px] text-slate-400 mt-1">
+                  ระบบจะยิงใบสั่งงานซ่อมตรงเข้า LINE ช่างคนนี้ทันทีเมื่อหัวหน้ากดมอบหมาย
+                </p>
+              </div>
+
+              {/* Telegram Chat ID */}
+              <div>
+                <label className="label font-bold flex items-center gap-1.5 mb-1">
+                  <span className="text-sky-500 font-bold">✈️</span>
+                  <span>Telegram Chat ID (id:telegram)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="เช่น 8207474130"
+                  value={techForm.Telegram_ID || ''}
+                  onChange={(e) => setTechForm({ ...techForm, Telegram_ID: e.target.value })}
+                  className="input font-mono text-xs"
+                />
+                <p className="text-[10.5px] text-slate-400 mt-1">
+                  ระบบจะยิงใบสั่งงานซ่อมตรงเข้า Telegram ช่างคนนี้ทันทีเมื่อหัวหน้ากดมอบหมาย
+                </p>
+              </div>
+            </div>
+
+            {/* 6. Status */}
             <div>
               <label className="label font-bold">สถานะ</label>
               <select

@@ -3,10 +3,10 @@ import { supabase } from '../supabase'
 import initialCenterChecks from '../data/initialCenterChecks.json'
 
 export const DEFAULT_TECHS = [
-  { id: 'TECH-001', Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE' },
-  { id: 'TECH-002', Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE' },
-  { id: 'TECH-003', Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'เตรียมเครื่อง, แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
-  { id: 'TECH-004', Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE' },
+  { id: 'TECH-001', Technician_ID: 'TECH-001', Name: 'สมชาย ช่างยนต์', Phone: '081-111-2222', SkillLevel: 'Master', Specialization: 'แก้ปัญหาเครื่อง, ตั้งศูนย์เครื่อง', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' },
+  { id: 'TECH-002', Technician_ID: 'TECH-002', Name: 'วิชัย ปรับเครื่อง', Phone: '082-333-4444', SkillLevel: 'Senior', Specialization: 'ปรับเครื่อง, เตรียมเครื่อง', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' },
+  { id: 'TECH-003', Technician_ID: 'TECH-003', Name: 'อนันต์ ซ่อมบำรุง', Phone: '083-555-6666', SkillLevel: 'Senior', Specialization: 'เตรียมเครื่อง, แก้ปัญหาเครื่อง', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' },
+  { id: 'TECH-004', Technician_ID: 'TECH-004', Name: 'กิตติศักดิ์ ช่างเครื่อง', Phone: '084-777-8888', SkillLevel: 'Technician', Specialization: 'แก้ปัญหาเครื่อง', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' },
 ]
 
 export const MachineAPI         = createEntityClient('machines')
