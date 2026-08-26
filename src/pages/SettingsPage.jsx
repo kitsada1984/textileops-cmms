@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw, UserPlus } from 'lucide-react'
+import { Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw, UserPlus, Smartphone, Download } from 'lucide-react'
 import { useT } from '../contexts/LanguageContext'
 import { useAuth, hashPassword } from '../contexts/AuthContext'
 import { APP_VERSION, APP_BUILD_DATE } from '../version'
@@ -425,6 +425,27 @@ export default function SettingsPage() {
           <button className="btn-primary" onClick={changePassword} disabled={pwdLoading}>
             <Save size={14}/> {pwdLoading ? t('saving') : t('set_pwd_btn')}
           </button>
+        </div>
+      </SectionCard>
+
+      {/* PWA Mobile App Card */}
+      <SectionCard icon={Smartphone} title="แอปพลิเคชันมือถือ (PWA Mobile App)">
+        <div className="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          <p>
+            ท่านสามารถติดตั้ง <b>TextileOps CMMS</b> เป็นแอปพลิเคชันลงบนหน้าจอมือถือ (Android / iPhone / iPad) เพื่อเปิดใช้งานแบบเต็มหน้าจอ (Full Screen) รวดเร็ว และรองรับการแจ้งเตือนงานซ่อม
+          </p>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              onClick={() => {
+                localStorage.removeItem('pwa_prompt_dismissed')
+                window.location.reload()
+              }}
+              className="btn-primary px-4 py-2 text-xs flex items-center gap-2"
+            >
+              <Download size={14} />
+              <span>แสดงปุ่มติดตั้งแอปบนมือถือ</span>
+            </button>
+          </div>
         </div>
       </SectionCard>
 

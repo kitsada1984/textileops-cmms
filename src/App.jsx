@@ -16,6 +16,7 @@ import { ToastProvider } from './components/ui/Toast'
 import { AuthProvider, useAuth, canAccess } from './contexts/AuthContext'
 import { WebBuilderConfigProvider } from './contexts/WebBuilderConfigContext'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import PWAInstallPrompt from './components/ui/PWAInstallPrompt'
 
 import Dashboard     from './pages/Dashboard'
 import Machines      from './pages/Machines'
@@ -515,6 +516,7 @@ function AppInner() {
           </main>
         )}
       </div>
+      <PWAInstallPrompt />
     </div>
   )
 }
