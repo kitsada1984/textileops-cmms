@@ -58,7 +58,7 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
             contents: [
               {
                 type: 'text',
-                text: 'TEXTILEOPS CMMS',
+                text: 'TextileOps',
                 color: '#60a5fa',
                 size: 'xs',
                 weight: 'bold',
