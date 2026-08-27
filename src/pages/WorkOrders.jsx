@@ -778,11 +778,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       </div>
 
       {/* ── 5-Tabs Navigation Bar ─────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap pb-2 sm:pb-1.5">
         <button
           type="button"
           onClick={() => setCurrentTab('records')}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
             currentTab === 'records'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -800,7 +800,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('repair_requests')}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
             currentTab === 'repair_requests'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -813,7 +813,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('dashboard')}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
             currentTab === 'dashboard'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -826,7 +826,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('technicians')}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
             currentTab === 'technicians'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -844,7 +844,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('settings')}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
             currentTab === 'settings'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'

@@ -144,7 +144,7 @@ export default function DetailDrawer({
 
             {/* Action buttons */}
             {((canEdit || canDelete) && (onEdit || onDelete)) || onPdf || extraActions ? (
-              <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
                 {onPdf && (
                   <button onClick={onPdf} style={{
                     flex: onEdit ? 'none' : 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -233,8 +233,9 @@ export default function DetailDrawer({
         {/* ── Scrollable body ── */}
         <div style={{
           flex: 1, overflowY: 'auto',
-          padding: '18px 16px 44px',
-          display: 'flex', flexDirection: 'column', gap: 20,
+          WebkitOverflowScrolling: 'touch',
+          padding: '16px 14px 44px',
+          display: 'flex', flexDirection: 'column', gap: 16,
         }}>
           {groups.map((group, gi) => {
             const visible = (group.fields || []).filter(f =>

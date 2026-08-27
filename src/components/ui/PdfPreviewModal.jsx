@@ -281,7 +281,7 @@ export default function PdfPreviewModal({
 
           {/* ── BOTTOM SECTION: QR CODE & SIGNATURES ── */}
           <div className="mt-8 pt-4 border-t-2 border-slate-800 space-y-6">
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
               {signatories.map((sig, sIdx) => (
                 <div key={sIdx} className="border border-slate-300 rounded p-2.5 flex flex-col justify-between text-center min-h-[90px] bg-slate-50/40">
                   <div className="text-[10px] font-bold text-slate-600 uppercase border-b border-slate-200 pb-1">

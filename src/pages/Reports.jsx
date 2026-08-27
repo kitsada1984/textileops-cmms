@@ -27,8 +27,8 @@ function PieChart({ data }) {
   let offset = 0
   const COLORS = ['#2563eb', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316']
   return (
-    <div className="flex items-center gap-6">
-      <svg width={160} height={160} viewBox="0 0 160 160">
+    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+      <svg width={150} height={150} viewBox="0 0 160 160" className="flex-shrink-0">
         {data.map((d, i) => {
           const pct = d.value / total
           const angle = pct * 360
@@ -45,7 +45,7 @@ function PieChart({ data }) {
           )
         })}
       </svg>
-      <div className="space-y-1 text-xs">
+      <div className="space-y-1.5 text-xs w-full sm:w-auto">
         {data.map((d, i) => (
           <div key={i} className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{background: COLORS[i % COLORS.length]}} />

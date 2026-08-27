@@ -282,7 +282,7 @@ html.dark {
     border-bottom: 1px solid var(--border-subtle);
   }
   .modal-header h2 { color: var(--text-900); font-weight: 700; letter-spacing: -0.01em; }
-  .modal-body    { @apply px-4 sm:px-6 pt-4 sm:pt-5 pb-20 overflow-y-auto flex-1; }
+  .modal-body    { @apply px-4 sm:px-6 pt-4 sm:pt-5 pb-6 sm:pb-8 overflow-y-auto flex-1; -webkit-overflow-scrolling: touch; }
   .modal-footer  {
     @apply flex justify-end gap-3 px-4 sm:px-6 py-3.5 sm:py-4 rounded-b-2xl;
     border-top: 1px solid var(--border-subtle);
@@ -291,6 +291,15 @@ html.dark {
   }
   .safe-area-pb {
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem));
+  }
+
+  /* ── No scrollbar utility ───────────────────────────────── */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
   /* ── Sidebar nav (dark mode) ────────────────────────────── */

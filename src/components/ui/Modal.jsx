@@ -22,8 +22,13 @@ export default function Modal({ open, onClose, title, children, footer, size = '
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={`modal-box w-full ${maxW}`} style={{ margin: '0 auto' }}>
         <div className="modal-header">
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <h2 className="text-sm sm:text-base font-bold" style={{ color: 'var(--text-900)' }}>{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+            title="ปิดหน้าต่าง"
+          >
             <X size={18} />
           </button>
         </div>

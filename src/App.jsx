@@ -349,10 +349,9 @@ function AppInner() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* Top bar */}
-        <header style={{
+        <header className="px-2.5 sm:px-6" style={{
           height: 56,
-          display: 'flex', alignItems: 'center', gap: 14,
-          padding: '0 24px',
+          display: 'flex', alignItems: 'center', gap: 10,
           flexShrink: 0,
           background: 'var(--bg-header)',
           borderBottom: '1px solid var(--border)',
@@ -365,54 +364,54 @@ function AppInner() {
           position: 'relative',
           zIndex: 10,
         }}>
-          <button className="lg:hidden" onClick={() => setSideOpen(true)}
-            style={{ color: 'var(--text-500)', padding: 2 }}>
+          <button className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => setSideOpen(true)}
+            title="เปิดเมนูหลัก">
             <Menu size={20}/>
           </button>
 
           {/* Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             {currentNav?.icon && (
-              <div style={{
+              <div className="hidden sm:flex" style={{
                 width: 32, height: 32, borderRadius: 10,
                 background: dark ? 'linear-gradient(135deg, rgba(59,130,246,0.18), rgba(99,102,241,0.08))' : '#f1f5f9',
                 border: dark ? '1px solid rgba(59,130,246,0.28)' : '1px solid #e2e8f0',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
                 <currentNav.icon size={14} style={{ color: dark ? '#60a5fa' : '#2563eb' }}/>
               </div>
             )}
-            <div>
-              <h1 style={{
-                fontWeight: 700, fontSize: 14.5, lineHeight: 1.2,
+            <div className="min-w-0">
+              <h1 className="truncate font-bold text-xs sm:text-sm" style={{
+                lineHeight: 1.2,
                 color: 'var(--text-900)', letterSpacing: '-0.015em',
               }}>
                 {currentNav ? t(currentNav.key) : 'TextileOps'}
               </h1>
-              <div style={{ fontSize: 9.5, color: 'var(--text-400)', fontWeight: 500, letterSpacing: '0.04em' }}>
+              <div className="hidden sm:block truncate" style={{ fontSize: 9.5, color: 'var(--text-400)', fontWeight: 500, letterSpacing: '0.04em' }}>
                 TextileOps · CMMS {APP_VERSION}
               </div>
             </div>
           </div>
 
           {/* Right controls */}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
             {/* View mode toggle (Web / Mobile) */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               background: dark ? '#1e293b' : '#f1f5f9',
               borderRadius: 12,
-              padding: 2.5,
+              padding: 2,
               border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
             }}>
               <button
                 type="button"
                 onClick={() => setViewMode('web')}
                 title="แสดงผลแบบเว็บ (Web/Desktop Mode)"
+                className="px-1.5 sm:px-2.5"
                 style={{
                   height: 28,
-                  padding: '0 9px',
                   borderRadius: 9,
                   background: viewMode === 'web' ? (dark ? '#3b82f6' : '#2563eb') : 'transparent',
                   color: viewMode === 'web' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
@@ -420,7 +419,7 @@ function AppInner() {
                   fontSize: 11.5,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 5,
+                  gap: 4,
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 200ms',
@@ -434,9 +433,9 @@ function AppInner() {
                 type="button"
                 onClick={() => setViewMode('mobile')}
                 title="แสดงผลแบบมือถือ (Mobile Mode)"
+                className="px-1.5 sm:px-2.5"
                 style={{
                   height: 28,
-                  padding: '0 9px',
                   borderRadius: 9,
                   background: viewMode === 'mobile' ? (dark ? '#3b82f6' : '#2563eb') : 'transparent',
                   color: viewMode === 'mobile' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
@@ -444,7 +443,7 @@ function AppInner() {
                   fontSize: 11.5,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 5,
+                  gap: 4,
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 200ms',
@@ -461,26 +460,25 @@ function AppInner() {
               type="button"
               onClick={() => setPwaModalOpen(true)}
               title="ติดตั้งแอป TextileOps บนมือถือ (PWA)"
+              className="px-2 sm:px-3"
               style={{
-                height: 32,
-                padding: '0 11px',
+                height: 30,
                 borderRadius: 10,
                 background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
                 color: '#ffffff',
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 11.5,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 5,
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 2px 10px rgba(37,99,235,0.35)',
+                boxShadow: '0 2px 8px rgba(37,99,235,0.35)',
                 transition: 'all 150ms',
               }}
             >
               <Download size={13} />
               <span className="hidden md:inline">ติดตั้งแอป</span>
-              <span className="md:hidden">แอป</span>
             </button>
 
             <div style={{
@@ -488,11 +486,11 @@ function AppInner() {
               color: 'var(--text-500)',
               display: 'none',
               letterSpacing: '0.01em',
-            }} className="sm:block">
+            }} className="md:block">
               {user?.full_name || user?.username}
             </div>
 
-            <div className="sm:block hidden" style={{
+            <div className="md:block hidden" style={{
               width: 1,
               height: 18,
               background: 'var(--border)',
@@ -504,44 +502,36 @@ function AppInner() {
             <button onClick={() => setDark(d => !d)}
               title={dark ? 'โหมดสว่าง' : 'โหมดมืด'}
               style={{
-                width: 34, height: 34, borderRadius: 10,
+                width: 30, height: 30, borderRadius: 10,
                 background: dark ? '#1e293b' : '#f8fafc',
                 color: dark ? '#60a5fa' : '#2563eb',
                 border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
                 cursor: 'pointer', transition: 'all 200ms',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: dark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 1px 3px rgba(15,23,42,0.04)',
+                flexShrink: 0,
               }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'rotate(18deg) scale(1.08)' }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
             >
-              {dark ? <Sun size={14}/> : <Moon size={14}/>}
+              {dark ? <Sun size={13}/> : <Moon size={13}/>}
             </button>
 
             {/* Logout */}
             <button
               onClick={logout}
+              className="p-1.5 sm:px-2.5 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-1 text-xs font-semibold"
+              title={t('logout')}
               style={{
-                height: 34, padding: '0 12px', borderRadius: 10,
-                display: 'flex', alignItems: 'center', gap: 5,
-                fontSize: 12, fontWeight: 600,
-                color: 'var(--text-500)',
+                height: 30,
                 background: 'transparent',
                 border: '1px solid transparent',
-                cursor: 'pointer', transition: 'all 150ms',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = '#ef4444'
-                e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
-                e.currentTarget.style.borderColor = 'rgba(239,68,68,0.2)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = 'var(--text-500)'
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'transparent'
+                cursor: 'pointer',
+                flexShrink: 0,
               }}
             >
-              <X size={12}/> {t('logout')}
+              <LogOut size={13}/>
+              <span className="hidden sm:inline">{t('logout')}</span>
             </button>
           </div>
         </header>
