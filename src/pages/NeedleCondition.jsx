@@ -49,6 +49,8 @@ import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
+import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import { generateNeedleConditionPdfProps } from '../utils/pdfDocGenerators'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { getDirectImageUrl } from '../utils/imageUrlUtils'
@@ -85,6 +87,7 @@ export default function NeedleCondition() {
   const [historyDrawerItem, setHistoryDrawerItem] = useState(null)
   const [detailItem, setDetailItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null) // { url, title }
+  const [pdfItem, setPdfItem] = useState(null)
 
   // Form State
   const initialForm = {
@@ -843,6 +846,16 @@ export default function NeedleCondition() {
                     {/* Action buttons */}
                     <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-1">
+                        {/* PDF & Print Button */}
+                        <button
+                          type="button"
+                          onClick={() => setPdfItem(row)}
+                          className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
+                          title="ดูเอกสาร PDF และพิมพ์รายงานสภาพเข็ม"
+                        >
+                          <FileText size={13} />
+                        </button>
+
                         {/* History button */}
                         <button
                           type="button"
@@ -1294,7 +1307,17 @@ export default function NeedleCondition() {
                         เครื่อง: {hRec.machine_mc || '—'}
                       </span>
                     </div>
-                    <div>{renderStatusBadge(hRec.status)}</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPdfItem(hRec)}
+                        className="p-1 rounded-md text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
+                        title="พิมพ์ใบรายงานตรวจสภาพเข็มรอบนี้"
+                      >
+                        <FileText size={12} />
+                      </button>
+                      {renderStatusBadge(hRec.status)}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1356,6 +1379,7 @@ export default function NeedleCondition() {
           badge={renderStatusBadge(detailItem.status)}
           canEdit={canEdit}
           canDelete={canDelete}
+          onPdf={() => setPdfItem(detailItem)}
           onEdit={() => {
             handleEdit(detailItem)
             setDetailItem(null)
@@ -1419,6 +1443,18 @@ export default function NeedleCondition() {
         url={previewImageModal?.url}
         title={previewImageModal?.title || 'รูปถ่ายสภาพเข็ม'}
       />
+
+      {/* ── PDF PREVIEW & PRINT MODAL ──────────────────────────────── */}
+      {pdfItem && (
+        <PdfPreviewModal
+          open={!!pdfItem}
+          onClose={() => setPdfItem(null)}
+          {...generateNeedleConditionPdfProps(
+            pdfItem,
+            historyMap.get(normalizeSerial(pdfItem.serial) || normalizeMachine(pdfItem.machine_mc) || pdfItem.id) || []
+          )}
+        />
+      )}
     </div>
   )
 }

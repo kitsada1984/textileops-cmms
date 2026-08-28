@@ -389,3 +389,69 @@ export function generateRepairRequestPdfProps(req) {
     ],
   }
 }
+
+export function generateNeedleConditionPdfProps(needle, historyList = []) {
+  if (!needle) return null
+  const statusLabels = {
+    NORMAL: 'ปกติ (Normal)',
+    WATCH: 'เฝ้าระวัง / เริ่มสึกหรอ (Watch)',
+    WORN: 'สึกหรอ / ควรเปลี่ยน (Worn)',
+    BROKEN: 'เข็มหัก / ลิ้นคลอน (Broken)',
+    REPLACED: 'เปลี่ยนเข็มใหม่แล้ว (Replaced)',
+  }
+
+  const tableRows = historyList.map((h, idx) => [
+    idx + 1,
+    h.doc_date ? format(new Date(h.doc_date), 'dd/MM/yyyy') : '—',
+    h.machine_mc || '—',
+    h.location || '—',
+    h.counter ? Number(h.counter).toLocaleString() : '—',
+    statusLabels[h.status] || h.status || 'ปกติ',
+    h.inspector || '—',
+  ])
+
+  return {
+    docType: 'needle',
+    title: 'ใบรายงานผลการตรวจสภาพเข็ม / NEEDLE INSPECTION REPORT',
+    docNo: `NDL-${needle.doc_date ? format(new Date(needle.doc_date), 'yyyyMMdd') : format(new Date(), 'yyyyMMdd')}-${needle.serial || needle.machine_mc || 'REC'}`,
+    docDate: needle.doc_date || new Date(),
+    status: statusLabels[needle.status] || needle.status || 'ปกติ',
+    priority: needle.machine_mc ? `เครื่อง ${needle.machine_mc}` : '',
+    remarks: needle.needle_condition
+      ? `${needle.needle_condition}${needle.remark ? `\nหมายเหตุ: ${needle.remark}` : ''}`
+      : (needle.remark || 'ตรวจสภาพเข็มและร่องเข็มเรียบร้อย'),
+    sections: [
+      {
+        title: 'ข้อมูลกระบอกและเครื่องจักร (Cylinder & Machine Information)',
+        fields: [
+          { label: 'ซีเรียลกระบอก (Serial)', value: needle.serial, mono: true },
+          { label: 'รหัสเครื่องจักร (Machine M/C)', value: needle.machine_mc, mono: true },
+          { label: 'สถานที่ติดตั้ง (Location)', value: needle.location || 'In-use' },
+          { label: 'ประเภทเครื่อง (Type)', value: needle.type || 'Single Jersey' },
+          { label: 'วันที่ตรวจล่าสุด (Inspection Date)', value: needle.doc_date ? format(new Date(needle.doc_date), 'dd/MM/yyyy') : '—' },
+          { label: 'ช่างผู้ตรวจเช็ค (Inspector)', value: needle.inspector || '—' },
+          { label: 'สถานะสภาพเข็ม (Condition Status)', value: statusLabels[needle.status] || needle.status || 'ปกติ' },
+          { label: 'จำนวนรอบ Counter ล่าสุด', value: needle.counter ? `${Number(needle.counter).toLocaleString()} รอบ` : '—', mono: true },
+        ],
+      },
+      {
+        title: 'ผลการประเมินสภาพเข็มและข้อสังเกต (Condition Assessment Details)',
+        fields: [
+          { label: 'รายละเอียดสภาพเข็ม / ข้อสังเกต', value: needle.needle_condition || 'ปกติ สมบูรณ์พร้อมใช้งาน', full: true },
+          { label: 'หมายเหตุเพิ่มเติม (Remarks)', value: needle.remark || '—', full: true },
+        ],
+      },
+    ],
+    tableData: historyList.length > 0 ? {
+      title: `ประวัติการตรวจสภาพเข็มย้อนหลัง (${historyList.length} ครั้งล่าสุด)`,
+      headers: ['ลำดับ', 'วันที่ตรวจ', 'เครื่อง (MC)', 'ตำแหน่ง', 'Counter (รอบ)', 'สภาพเข็ม', 'ผู้ตรวจ'],
+      rows: tableRows,
+    } : null,
+    signatories: [
+      { title: 'ช่างผู้ตรวจเช็คสภาพเข็ม', name: needle.inspector || '', date: needle.doc_date ? format(new Date(needle.doc_date), 'dd/MM/yyyy') : format(new Date(), 'dd/MM/yyyy') },
+      { title: 'หัวหน้างานแผน PM', name: '', date: '' },
+      { title: 'หัวหน้าส่วนผลิตผ้า', name: '', date: '' },
+      { title: 'ผู้จัดการฝ่ายโรงงาน', name: '', date: '' },
+    ],
+  }
+}
