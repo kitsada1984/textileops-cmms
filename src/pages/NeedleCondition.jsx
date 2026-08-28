@@ -52,6 +52,7 @@ import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { getDirectImageUrl } from '../utils/imageUrlUtils'
+import { normalizeImageFile } from '../utils/imageFileProcessor'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
 
@@ -412,19 +413,30 @@ export default function NeedleCondition() {
     setUploadingImage(true)
     try {
       const newUrls = []
-      for (const file of files) {
+      for (const rawFile of files) {
+        // Auto convert HEIC to JPEG & compress image
+        const normalized = await normalizeImageFile(rawFile, 1920, 0.85)
+        const fileToUpload = normalized?.file || rawFile
+        const dataUrl = normalized?.dataUrl || ''
+
         try {
-          const res = await uploadImageToGoogleDrive(file, { folderName: NEEDLE_IMAGE_FOLDER })
+          const res = await uploadImageToGoogleDrive(fileToUpload, { folderName: NEEDLE_IMAGE_FOLDER })
           const imgUrl = res?.imageUrl || res?.url
           if (imgUrl) {
             newUrls.push(imgUrl)
-          } else {
-            const dataUrl = await readFileAsDataUrl(file)
+          } else if (dataUrl) {
             newUrls.push(dataUrl)
+          } else {
+            const fallback = await readFileAsDataUrl(fileToUpload)
+            newUrls.push(fallback)
           }
         } catch {
-          const dataUrl = await readFileAsDataUrl(file)
-          newUrls.push(dataUrl)
+          if (dataUrl) {
+            newUrls.push(dataUrl)
+          } else {
+            const fallback = await readFileAsDataUrl(fileToUpload)
+            newUrls.push(fallback)
+          }
         }
       }
 
@@ -432,7 +444,7 @@ export default function NeedleCondition() {
         ...prev,
         images: [...(prev.images || []), ...newUrls],
       }))
-      toast.success('อัปโหลดรูปสำเร็จ', `เพิ่ม ${newUrls.length} รูป (โฟลเดอร์: ${NEEDLE_IMAGE_FOLDER})`)
+      toast.success('อัปโหลดรูปสำเร็จ', `เพิ่ม ${newUrls.length} รูป (แปลงเป็น JPEG คมชัดเรียบร้อย)`)
     } catch (err) {
       toast.error('อัปโหลดรูปไม่สำเร็จ', err.message)
     } finally {

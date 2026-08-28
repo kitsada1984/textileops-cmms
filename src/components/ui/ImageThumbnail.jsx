@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { Image as ImageIcon, ExternalLink } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Image as ImageIcon } from 'lucide-react'
 import { getDirectImageUrl } from '../../utils/imageUrlUtils'
+import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
 
 export default function ImageThumbnail({
   url,
@@ -11,7 +12,28 @@ export default function ImageThumbnail({
   showLabel = true,
 }) {
   const [error, setError] = useState(false)
-  const directSrc = getDirectImageUrl(url, 'w120')
+  const [resolvedSrc, setResolvedSrc] = useState('')
+
+  useEffect(() => {
+    let active = true
+    const baseSrc = getDirectImageUrl(url, 'w160')
+    if (!baseSrc) {
+      setResolvedSrc('')
+      return
+    }
+
+    if (baseSrc.startsWith('data:image/heic') || baseSrc.startsWith('data:image/heif')) {
+      convertHeicDataUrlIfNeeded(baseSrc).then((converted) => {
+        if (active) setResolvedSrc(converted)
+      })
+    } else {
+      setResolvedSrc(baseSrc)
+    }
+
+    return () => {
+      active = false
+    }
+  }, [url])
 
   if (!url) {
     return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
@@ -30,16 +52,16 @@ export default function ImageThumbnail({
         style={{ width: size, height: size }}
         className="rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 relative border border-slate-200/60 dark:border-slate-700"
       >
-        {!error && directSrc ? (
+        {!error && resolvedSrc ? (
           <img
-            src={directSrc}
+            src={resolvedSrc}
             alt={alt}
             onError={() => setError(true)}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
             loading="lazy"
           />
         ) : (
-          <ImageIcon size={14} className="text-slate-400" />
+          <ImageIcon size={14} className="text-blue-500" />
         )}
       </div>
 

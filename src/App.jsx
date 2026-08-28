@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Cpu, Disc, ClipboardList, Calendar,
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
-  FileText, Monitor, Smartphone, Target, Download,
+  FileText, Monitor, Smartphone, Target, Download, RefreshCw,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
@@ -122,6 +122,24 @@ function AppInner() {
   useEffect(() => {
     localStorage.setItem('app_view_mode', viewMode)
   }, [viewMode])
+
+  const handleForceUpdate = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        for (const reg of regs) {
+          await reg.unregister()
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys()
+        for (const key of keys) {
+          await caches.delete(key)
+        }
+      }
+    } catch {}
+    window.location.reload(true)
+  }
 
   if (user === undefined) return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
@@ -498,6 +516,27 @@ function AppInner() {
               marginLeft: 2,
               marginRight: 2,
             }} />
+
+            {/* Force Update / Clear Cache */}
+            <button
+              type="button"
+              onClick={handleForceUpdate}
+              title="อัปเดตระบบเป็นเวอร์ชันล่าสุด / ล้างแคช"
+              style={{
+                width: 30, height: 30, borderRadius: 10,
+                background: dark ? '#1e293b' : '#f8fafc',
+                color: dark ? '#94a3b8' : '#64748b',
+                border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                cursor: 'pointer', transition: 'all 200ms',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: dark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 1px 3px rgba(15,23,42,0.04)',
+                flexShrink: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#3b82f6' }}
+              onMouseLeave={e => { e.currentTarget.style.color = dark ? '#94a3b8' : '#64748b' }}
+            >
+              <RefreshCw size={13} />
+            </button>
 
             {/* Theme toggle */}
             <button onClick={() => setDark(d => !d)}

@@ -17,6 +17,7 @@ import {
   isGoogleDriveUrl,
   getGoogleDriveFileId,
 } from '../../utils/imageUrlUtils'
+import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
 
 export default function ImagePreviewModal({ open, onClose, url, title = 'รูปภาพ' }) {
   const [loading, setLoading] = useState(true)
@@ -24,6 +25,7 @@ export default function ImagePreviewModal({ open, onClose, url, title = 'รู�
   const [fallbackIndex, setFallbackIndex] = useState(0)
   const [copied, setCopied] = useState(false)
   const [useIframe, setUseIframe] = useState(false)
+  const [resolvedSrc, setResolvedSrc] = useState('')
 
   const fallbacks = getImageFallbackUrls(url)
   const currentSrc = fallbacks[fallbackIndex] || getDirectImageUrl(url, 'w1200')
@@ -41,6 +43,26 @@ export default function ImagePreviewModal({ open, onClose, url, title = 'รู�
       setUseIframe(false)
     }
   }, [open, url])
+
+  useEffect(() => {
+    let active = true
+    if (!currentSrc) {
+      setResolvedSrc('')
+      return
+    }
+
+    if (currentSrc.startsWith('data:image/heic') || currentSrc.startsWith('data:image/heif')) {
+      convertHeicDataUrlIfNeeded(currentSrc).then((converted) => {
+        if (active) setResolvedSrc(converted)
+      })
+    } else {
+      setResolvedSrc(currentSrc)
+    }
+
+    return () => {
+      active = false
+    }
+  }, [currentSrc])
 
   const handleImageError = () => {
     if (fallbackIndex < fallbacks.length - 1) {
@@ -149,9 +171,9 @@ export default function ImagePreviewModal({ open, onClose, url, title = 'รู�
             />
           ) : (
             /* Mode 2: Direct Image Tag */
-            !error && currentSrc && (
+            !error && resolvedSrc && (
               <img
-                src={currentSrc}
+                src={resolvedSrc}
                 alt={title}
                 onLoad={() => setLoading(false)}
                 onError={handleImageError}
