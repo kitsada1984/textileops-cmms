@@ -56,7 +56,7 @@ import { generateNeedleConditionPdfProps } from '../utils/pdfDocGenerators'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { getDirectImageUrl } from '../utils/imageUrlUtils'
-import { normalizeImageFile } from '../utils/imageFileProcessor'
+import { normalizeImageFile, convertHeicDataUrlIfNeeded } from '../utils/imageFileProcessor'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
 
@@ -65,6 +65,65 @@ const normalizeSerial = (val = '') =>
 
 const normalizeMachine = (val = '') =>
   String(val || '').toUpperCase().replace(/\s+/g, '').replace(/-/g, '').trim()
+
+function FormPhotoCard({ url, onRemove, onPreview, index }) {
+  const [resolvedSrc, setResolvedSrc] = useState('')
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    const baseSrc = getDirectImageUrl(url, 'w400')
+    if (!baseSrc) {
+      setResolvedSrc('')
+      return
+    }
+    if (baseSrc.startsWith('data:image/heic') || baseSrc.startsWith('data:image/heif')) {
+      convertHeicDataUrlIfNeeded(baseSrc).then((converted) => {
+        if (active) setResolvedSrc(converted)
+      })
+    } else {
+      setResolvedSrc(baseSrc)
+    }
+    return () => {
+      active = false
+    }
+  }, [url])
+
+  return (
+    <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-xs">
+      {!error && resolvedSrc ? (
+        <img
+          src={resolvedSrc}
+          alt={`Needle condition ${index}`}
+          className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+          onClick={onPreview}
+          onError={() => setError(true)}
+        />
+      ) : (
+        <div
+          onClick={onPreview}
+          className="flex flex-col items-center justify-center gap-1 cursor-pointer text-slate-400 hover:text-blue-500 transition-colors p-2 text-center"
+        >
+          <ImageIcon size={22} className="text-blue-500" />
+          <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">คลิกดูรูป</span>
+        </div>
+      )}
+
+      {/* Delete button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove()
+        }}
+        className="absolute top-1.5 right-1.5 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-10"
+        title="ลบรูปนี้"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  )
+}
 
 export default function NeedleCondition() {
   const { t } = useT()
@@ -1281,33 +1340,18 @@ export default function NeedleCondition() {
                 </div>
               ) : (
                 formData.images.map((imgUrl, imgIdx) => (
-                  <div
+                  <FormPhotoCard
                     key={imgIdx}
-                    className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-800"
-                  >
-                    <img
-                      src={getDirectImageUrl(imgUrl, 'w400')}
-                      alt={`Needle condition ${imgIdx}`}
-                      className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                      onClick={() =>
-                        setPreviewImageModal({
-                          url: imgUrl,
-                          title: `รูปถ่ายสภาพเข็ม (${imgIdx + 1})`,
-                        })
-                      }
-                      onError={(e) => {
-                        e.currentTarget.src = imgUrl
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(imgIdx)}
-                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                      title="ลบรูปนี้"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
+                    url={imgUrl}
+                    index={imgIdx + 1}
+                    onRemove={() => removePhoto(imgIdx)}
+                    onPreview={() =>
+                      setPreviewImageModal({
+                        url: imgUrl,
+                        title: `รูปถ่ายสภาพเข็ม (${imgIdx + 1})`,
+                      })
+                    }
+                  />
                 ))
               )}
             </div>
