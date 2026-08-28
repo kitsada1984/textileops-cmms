@@ -157,11 +157,11 @@ export const CenterCheckAPI = {
 }
 
 export const NEEDLE_STATUSES = [
-  { value: 'NORMAL', label: 'ปกติ (Normal)', color: 'emerald', bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-  { value: 'WATCH', label: 'เฝ้าระวัง / เริ่มสึกหรอ (Watch)', color: 'amber', bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-  { value: 'WORN', label: 'สึกหรอ / ควรเปลี่ยน (Worn)', color: 'orange', bg: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
-  { value: 'BROKEN', label: 'เข็มหัก / ลิ้นคลอน (Broken)', color: 'rose', bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
-  { value: 'REPLACED', label: 'เปลี่ยนเข็มใหม่แล้ว (Replaced)', color: 'blue', bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+  { value: 'สึกเล็กน้อย', label: 'สึกเล็กน้อย', color: 'emerald', bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+  { value: 'สึกปานกลาง', label: 'สึกปานกลาง', color: 'amber', bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+  { value: 'สึกมาก', label: 'สึกมาก', color: 'orange', bg: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
+  { value: 'สึกมาก(ควรเปลี่ยน)', label: 'สึกมาก(ควรเปลี่ยน)', color: 'rose', bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+  { value: 'ระบุเอง', label: 'ระบุเอง', color: 'blue', bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
 ]
 
 export const NeedleConditionAPI = {

@@ -393,11 +393,15 @@ export function generateRepairRequestPdfProps(req) {
 export function generateNeedleConditionPdfProps(needle, historyList = []) {
   if (!needle) return null
   const statusLabels = {
-    NORMAL: 'ปกติ (Normal)',
-    WATCH: 'เฝ้าระวัง / เริ่มสึกหรอ (Watch)',
-    WORN: 'สึกหรอ / ควรเปลี่ยน (Worn)',
-    BROKEN: 'เข็มหัก / ลิ้นคลอน (Broken)',
-    REPLACED: 'เปลี่ยนเข็มใหม่แล้ว (Replaced)',
+    'สึกเล็กน้อย': 'สึกเล็กน้อย (Minor Wear)',
+    'สึกปานกลาง': 'สึกปานกลาง (Medium Wear)',
+    'สึกมาก': 'สึกมาก (Heavy Wear)',
+    'สึกมาก(ควรเปลี่ยน)': 'สึกมาก(ควรเปลี่ยน) (Critical Wear / Replace)',
+    'NORMAL': 'สึกเล็กน้อย (Minor Wear)',
+    'WATCH': 'สึกปานกลาง (Medium Wear)',
+    'WORN': 'สึกมาก (Heavy Wear)',
+    'BROKEN': 'สึกมาก(ควรเปลี่ยน) (Critical Wear / Replace)',
+    'REPLACED': 'เปลี่ยนเข็มใหม่แล้ว (Replaced)',
   }
 
   const tableRows = historyList.map((h, idx) => [

@@ -100,7 +100,8 @@ export default function NeedleCondition() {
     type: 'Single Jersey',
     doc_date: format(new Date(), 'yyyy-MM-dd'),
     counter: '',
-    status: 'NORMAL',
+    status: 'สึกเล็กน้อย',
+    custom_status: '',
     needle_condition: '',
     remark: '',
     images: [],
@@ -196,12 +197,12 @@ export default function NeedleCondition() {
   // KPI Summary Counts
   const stats = useMemo(() => {
     const total = latestRecords.length
-    const normal = latestRecords.filter((r) => r.status === 'NORMAL').length
-    const watch = latestRecords.filter((r) => r.status === 'WATCH' || r.status === 'WORN').length
-    const broken = latestRecords.filter((r) => r.status === 'BROKEN').length
-    const replaced = latestRecords.filter((r) => r.status === 'REPLACED').length
+    const normal = latestRecords.filter((r) => r.status === 'สึกเล็กน้อย' || r.status === 'NORMAL').length
+    const watch = latestRecords.filter((r) => r.status === 'สึกปานกลาง' || r.status === 'สึกมาก' || r.status === 'WATCH' || r.status === 'WORN').length
+    const broken = latestRecords.filter((r) => r.status === 'สึกมาก(ควรเปลี่ยน)' || r.status === 'BROKEN').length
+    const custom = latestRecords.filter((r) => !['สึกเล็กน้อย', 'สึกปานกลาง', 'สึกมาก', 'สึกมาก(ควรเปลี่ยน)', 'NORMAL', 'WATCH', 'WORN', 'BROKEN'].includes(r.status)).length
 
-    return { total, normal, watch, broken, replaced }
+    return { total, normal, watch, broken, custom }
   }, [latestRecords])
 
   // Filtered & Searched Rows
@@ -481,6 +482,10 @@ export default function NeedleCondition() {
 
     setSaving(true)
     try {
+      const finalStatus = formData.status === 'ระบุเอง'
+        ? (formData.custom_status?.trim() || 'ระบุเอง')
+        : (formData.status || 'สึกเล็กน้อย')
+
       const payload = {
         serial: formData.serial,
         machine_mc: formData.machine_mc,
@@ -488,7 +493,7 @@ export default function NeedleCondition() {
         type: formData.type,
         doc_date: formData.doc_date || format(new Date(), 'yyyy-MM-dd'),
         counter: Number(formData.counter) || 0,
-        status: formData.status || 'NORMAL',
+        status: finalStatus,
         needle_condition: formData.needle_condition || '',
         remark: formData.remark || '',
         images: formData.images || [],
@@ -526,7 +531,16 @@ export default function NeedleCondition() {
     }
   }
 
+  const STANDARD_NEEDLE_STATUSES = ['สึกเล็กน้อย', 'สึกปานกลาง', 'สึกมาก', 'สึกมาก(ควรเปลี่ยน)']
+
   const handleEdit = (item) => {
+    const rawStatus = item.status === 'NORMAL' ? 'สึกเล็กน้อย' :
+      item.status === 'WATCH' ? 'สึกปานกลาง' :
+      item.status === 'WORN' ? 'สึกมาก' :
+      item.status === 'BROKEN' ? 'สึกมาก(ควรเปลี่ยน)' :
+      item.status || 'สึกเล็กน้อย'
+
+    const isStandard = STANDARD_NEEDLE_STATUSES.includes(rawStatus)
     setFormData({
       id: item.id,
       serial: item.serial || '',
@@ -535,7 +549,8 @@ export default function NeedleCondition() {
       type: item.type || 'Single Jersey',
       doc_date: item.doc_date || format(new Date(), 'yyyy-MM-dd'),
       counter: item.counter ? String(item.counter) : '',
-      status: item.status || 'NORMAL',
+      status: isStandard ? rawStatus : 'ระบุเอง',
+      custom_status: isStandard ? '' : rawStatus,
       needle_condition: item.needle_condition || '',
       remark: item.remark || '',
       images: Array.isArray(item.images) ? item.images : (item.images ? [item.images] : []),
@@ -570,9 +585,15 @@ export default function NeedleCondition() {
 
   // Helper for Status Badge
   const renderStatusBadge = (statusValue) => {
-    const config = NEEDLE_STATUSES.find((s) => s.value === statusValue) || {
-      label: statusValue || 'ปกติ',
-      bg: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+    const normalized = statusValue === 'NORMAL' ? 'สึกเล็กน้อย' :
+      statusValue === 'WATCH' ? 'สึกปานกลาง' :
+      statusValue === 'WORN' ? 'สึกมาก' :
+      statusValue === 'BROKEN' ? 'สึกมาก(ควรเปลี่ยน)' :
+      statusValue
+
+    const config = NEEDLE_STATUSES.find((s) => s.value === normalized || s.value === statusValue) || {
+      label: normalized || statusValue || 'สึกเล็กน้อย',
+      bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
     }
     return (
       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap ${config.bg}`}>
@@ -607,7 +628,7 @@ export default function NeedleCondition() {
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
               <CheckCircle2 size={13} />
-              <span>ปกติ (Normal)</span>
+              <span>สึกเล็กน้อย</span>
             </div>
             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
               {stats.normal} <span className="text-xs font-semibold text-slate-500">กระบอก</span>
@@ -623,7 +644,7 @@ export default function NeedleCondition() {
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
               <AlertTriangle size={13} />
-              <span>เฝ้าระวัง / สึกหรอ</span>
+              <span>สึกปานกลาง - มาก</span>
             </div>
             <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
               {stats.watch} <span className="text-xs font-semibold text-slate-500">กระบอก</span>
@@ -639,7 +660,7 @@ export default function NeedleCondition() {
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
               <AlertOctagon size={13} />
-              <span>เข็มหัก / ชำรุด</span>
+              <span>สึกมาก (ควรเปลี่ยน)</span>
             </div>
             <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">
               {stats.broken} <span className="text-xs font-semibold text-slate-500">กระบอก</span>
@@ -1166,6 +1187,21 @@ export default function NeedleCondition() {
                   </option>
                 ))}
               </select>
+
+              {/* Custom status input when "ระบุเอง" is selected */}
+              {formData.status === 'ระบุเอง' && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    value={formData.custom_status || ''}
+                    onChange={(e) => setFormData({ ...formData, custom_status: e.target.value })}
+                    placeholder="พิมพ์ระบุสภาพเข็มเอง..."
+                    className="input font-bold border-blue-400 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
+                    required
+                    autoFocus
+                  />
+                </div>
+              )}
             </div>
           </div>
 
