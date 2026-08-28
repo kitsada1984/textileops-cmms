@@ -41,6 +41,7 @@ export const SHEET_EXPORTS = [
       col('Tape2_No', 'Tape 2'),
       col('Tape3_No', 'Tape 3'),
       col('Tape4_No', 'Tape 4'),
+      col('Tape5_No', 'Tape 5'),
       col('Dial_Front', 'Dial หน้า'),
       col('Dial_Rear', 'Dial หลัง'),
       col('Leg1', 'ขา 1'),

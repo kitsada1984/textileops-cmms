@@ -65,6 +65,7 @@ const DEFAULT_APP_MENUS = [
       col('Model_Inverter','รุ่นอินเวอร์เตอร์','text','130px'), col('Sinker','ซิงเกอร์','text','100px'),
       col('Tape1_No','เทป 1','text','100px'), col('Tape2_No','เทป 2','text','100px'),
       col('Tape3_No','เทป 3','text','100px'), col('Tape4_No','เทป 4','text','100px'),
+      col('Tape5_No','เทป 5','text','100px'),
       col('Dial_Front','ไดอัลหน้า','text','110px'), col('Dial_Rear','ไดอัลหลัง','text','110px'),
       col('Leg1','ขา 1','text','90px'), col('Leg2','ขา 2','text','90px'),
       col('Leg3','ขา 3','text','90px'), col('Leg4','ขา 4','text','90px'),

@@ -67,6 +67,7 @@ const EMPTY = {
   Tape2_No: '',
   Tape3_No: '',
   Tape4_No: '',
+  Tape5_No: '',
   Dial_Front: '',
   Dial_Rear: '',
   Leg1: '',
@@ -162,6 +163,7 @@ const MC_FIELD_KEYS = {
   Tape2_No: 'mc_th_tape2',
   Tape3_No: 'mc_th_tape3',
   Tape4_No: 'mc_th_tape4',
+  Tape5_No: 'mc_th_tape5',
   Dial_Front: 'mc_th_dial_front',
   Dial_Rear: 'mc_th_dial_rear',
   Leg1: 'mc_th_leg1',
@@ -276,6 +278,17 @@ export default function Machines() {
     { key: 'Model', label: t('mc_th_model'), render: (m) => <span className="text-slate-700 dark:text-slate-300">{m.Model || '—'}</span> },
     { key: 'Model_Inverter', label: t('mc_th_model_inv'), render: (m) => <span className="text-slate-600 dark:text-slate-400">{m.Model_Inverter || '—'}</span> },
     { key: 'Sinker', label: t('mc_th_sinker'), render: (m) => <span className="font-mono text-slate-500">{m.Sinker || '—'}</span> },
+    { key: 'Tape1_No', label: t('mc_th_tape1'), render: (m) => <span className="font-mono">{m.Tape1_No || '—'}</span> },
+    { key: 'Tape2_No', label: t('mc_th_tape2'), render: (m) => <span className="font-mono">{m.Tape2_No || '—'}</span> },
+    { key: 'Tape3_No', label: t('mc_th_tape3'), render: (m) => <span className="font-mono">{m.Tape3_No || '—'}</span> },
+    { key: 'Tape4_No', label: t('mc_th_tape4'), render: (m) => <span className="font-mono">{m.Tape4_No || '—'}</span> },
+    { key: 'Tape5_No', label: t('mc_th_tape5'), render: (m) => <span className="font-mono">{m.Tape5_No || '—'}</span> },
+    { key: 'Dial_Front', label: t('mc_th_dial_front'), render: (m) => <span className="font-mono">{m.Dial_Front || '—'}</span> },
+    { key: 'Dial_Rear', label: t('mc_th_dial_rear'), render: (m) => <span className="font-mono">{m.Dial_Rear || '—'}</span> },
+    { key: 'Leg1', label: t('mc_th_leg1'), render: (m) => <span className="font-mono">{m.Leg1 || '—'}</span> },
+    { key: 'Leg2', label: t('mc_th_leg2'), render: (m) => <span className="font-mono">{m.Leg2 || '—'}</span> },
+    { key: 'Leg3', label: t('mc_th_leg3'), render: (m) => <span className="font-mono">{m.Leg3 || '—'}</span> },
+    { key: 'Leg4', label: t('mc_th_leg4'), render: (m) => <span className="font-mono">{m.Leg4 || '—'}</span> },
     { key: 'ImageUrl', label: 'URL', render: renderMachineImageUrl },
     { key: 'ImagePreview', label: 'รูป', render: renderMachineImagePreview },
     { key: 'Remark', label: t('mc_th_remark'), render: (m) => <span className="max-w-[130px] truncate block text-slate-500">{stripImageUrlMeta(m.Remark) || '—'}</span> },
@@ -756,6 +769,7 @@ export default function Machines() {
               { label: t('mc_th_tape2'), value: detailRec.Tape2_No },
               { label: t('mc_th_tape3'), value: detailRec.Tape3_No },
               { label: t('mc_th_tape4'), value: detailRec.Tape4_No },
+              { label: t('mc_th_tape5'), value: detailRec.Tape5_No },
               { label: t('mc_th_dial_front'), value: detailRec.Dial_Front },
               { label: t('mc_th_dial_rear'), value: detailRec.Dial_Rear },
               { label: t('mc_th_leg1'), value: detailRec.Leg1 },
@@ -861,6 +875,9 @@ export default function Machines() {
               <F form={form} setForm={setForm} label={t('mc_th_tape2')} id="Tape2_No" />
               <F form={form} setForm={setForm} label={t('mc_th_tape3')} id="Tape3_No" />
               <F form={form} setForm={setForm} label={t('mc_th_tape4')} id="Tape4_No" />
+              <F form={form} setForm={setForm} label={t('mc_th_tape5')} id="Tape5_No" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 pt-1">
               <F form={form} setForm={setForm} label={t('mc_th_dial_front')} id="Dial_Front" />
               <F form={form} setForm={setForm} label={t('mc_th_dial_rear')} id="Dial_Rear" />
               <F form={form} setForm={setForm} label={t('mc_th_leg1')} id="Leg1" />

@@ -49,6 +49,7 @@ export function generateMachinePdfProps(mc) {
           { label: 'สายพาน 2 (Tape 2 No.)', value: mc.Tape2_No },
           { label: 'สายพาน 3 (Tape 3 No.)', value: mc.Tape3_No },
           { label: 'สายพาน 4 (Tape 4 No.)', value: mc.Tape4_No },
+          { label: 'สายพาน 5 (Tape 5 No.)', value: mc.Tape5_No },
           { label: 'Dial ขาหน้า', value: mc.Dial_Front },
           { label: 'Dial ขาหลัง', value: mc.Dial_Rear },
           { label: 'ขา 1 (Leg 1)', value: mc.Leg1 },

@@ -28,6 +28,7 @@ const COLUMN_LABEL_BY_ROUTE = {
     Tape2_No: 'เทป 2',
     Tape3_No: 'เทป 3',
     Tape4_No: 'เทป 4',
+    Tape5_No: 'เทป 5',
   },
   '/cylinders': {
     Standard: 'มาตรฐาน',
