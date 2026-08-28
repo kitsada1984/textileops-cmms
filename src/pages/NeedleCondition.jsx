@@ -47,8 +47,11 @@ import Modal from '../components/ui/Modal'
 import SearchInput from '../components/ui/SearchInput'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
+import ImageThumbnail from '../components/ui/ImageThumbnail'
+import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+import { getDirectImageUrl } from '../utils/imageUrlUtils'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
 
@@ -80,7 +83,7 @@ export default function NeedleCondition() {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [historyDrawerItem, setHistoryDrawerItem] = useState(null)
   const [detailItem, setDetailItem] = useState(null)
-  const [previewImage, setPreviewImage] = useState(null)
+  const [previewImageModal, setPreviewImageModal] = useState(null) // { url, title }
 
   // Form State
   const initialForm = {
@@ -240,7 +243,7 @@ export default function NeedleCondition() {
     { field: 'type', label: 'ประเภท', type: 'text', width: '130px' },
     { field: 'counter', label: 'Counter ล่าสุด', type: 'number', width: '130px' },
     { field: 'status', label: 'สภาพเข็ม', type: 'select', width: '150px' },
-    { field: 'images', label: 'รูปภาพ', type: 'text', width: '100px' },
+    { field: 'images', label: 'รูปภาพ', type: 'text', width: '120px' },
     { field: 'doc_date', label: 'วันที่ตรวจล่าสุด', type: 'date', width: '130px' },
     { field: 'inspector', label: 'ผู้ตรวจ', type: 'text', width: '130px' },
     { field: 'needle_condition', label: 'รายละเอียดสภาพเข็ม', type: 'text', width: '180px' },
@@ -410,11 +413,11 @@ export default function NeedleCondition() {
     try {
       const newUrls = []
       for (const file of files) {
-        // Upload to Google Drive if configured, else base64
         try {
-          const res = await uploadImageToGoogleDrive(file, NEEDLE_IMAGE_FOLDER)
-          if (res?.url) {
-            newUrls.push(res.url)
+          const res = await uploadImageToGoogleDrive(file, { folderName: NEEDLE_IMAGE_FOLDER })
+          const imgUrl = res?.imageUrl || res?.url
+          if (imgUrl) {
+            newUrls.push(imgUrl)
           } else {
             const dataUrl = await readFileAsDataUrl(file)
             newUrls.push(dataUrl)
@@ -429,7 +432,7 @@ export default function NeedleCondition() {
         ...prev,
         images: [...(prev.images || []), ...newUrls],
       }))
-      toast.success('อัปโหลดรูปสำเร็จ', `เพิ่ม ${newUrls.length} รูป`)
+      toast.success('อัปโหลดรูปสำเร็จ', `เพิ่ม ${newUrls.length} รูป (โฟลเดอร์: ${NEEDLE_IMAGE_FOLDER})`)
     } catch (err) {
       toast.error('อัปโหลดรูปไม่สำเร็จ', err.message)
     } finally {
@@ -741,6 +744,7 @@ export default function NeedleCondition() {
                 const key = normalizeSerial(row.serial) || normalizeMachine(row.machine_mc) || row.id
                 const historyList = historyMap.get(key) || []
                 const imagesList = Array.isArray(row.images) ? row.images : (row.images ? [row.images] : [])
+                const firstImage = imagesList[0] || ''
 
                 return (
                   <tr
@@ -782,26 +786,35 @@ export default function NeedleCondition() {
                       {renderStatusBadge(row.status)}
                     </td>
 
-                    {/* Images thumbnail */}
+                    {/* Images thumbnail via standard ImageThumbnail component */}
                     <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      {imagesList.length > 0 ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewImage(imagesList[0])}
-                            className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:scale-110 transition-transform flex-shrink-0"
-                            title="คลิกเพื่อดูรูปขนาดใหญ่"
-                          >
-                            <img src={imagesList[0]} alt="Needle thumbnail" className="w-full h-full object-cover" />
-                          </button>
+                      {firstImage ? (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <ImageThumbnail
+                            url={firstImage}
+                            alt={`สภาพเข็ม ${row.serial || row.machine_mc || ''}`}
+                            size={32}
+                            showLabel={true}
+                            onClick={() =>
+                              setPreviewImageModal({
+                                url: firstImage,
+                                title: `สภาพเข็ม: ${row.serial || row.machine_mc || ''} (Counter: ${row.counter ? Number(row.counter).toLocaleString() : '—'})`,
+                              })
+                            }
+                          />
                           {imagesList.length > 1 && (
-                            <span className="text-[10px] font-bold font-mono text-slate-400">
+                            <button
+                              type="button"
+                              onClick={() => setHistoryDrawerItem({ key, serial: row.serial, list: historyList })}
+                              className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:scale-105 transition-transform"
+                              title="ดูรูปทั้งหมด"
+                            >
                               +{imagesList.length - 1}
-                            </span>
+                            </button>
                           )}
                         </div>
                       ) : (
-                        <span className="text-slate-400 text-xs">—</span>
+                        <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
                       )}
                     </td>
 
@@ -1196,7 +1209,7 @@ export default function NeedleCondition() {
               </label>
             </div>
 
-            {/* Photo thumbnails list */}
+            {/* Photo thumbnails list with Google Drive direct preview */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 min-h-[80px]">
               {(formData.images || []).length === 0 ? (
                 <div className="col-span-2 sm:col-span-4 flex flex-col items-center justify-center py-6 text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
@@ -1210,15 +1223,23 @@ export default function NeedleCondition() {
                     className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-800"
                   >
                     <img
-                      src={imgUrl}
+                      src={getDirectImageUrl(imgUrl, 'w400')}
                       alt={`Needle condition ${imgIdx}`}
-                      className="w-full h-full object-cover cursor-pointer"
-                      onClick={() => setPreviewImage(imgUrl)}
+                      className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                      onClick={() =>
+                        setPreviewImageModal({
+                          url: imgUrl,
+                          title: `รูปถ่ายสภาพเข็ม (${imgIdx + 1})`,
+                        })
+                      }
+                      onError={(e) => {
+                        e.currentTarget.src = imgUrl
+                      }}
                     />
                     <button
                       type="button"
                       onClick={() => removePhoto(imgIdx)}
-                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
                       title="ลบรูปนี้"
                     >
                       <X size={11} />
@@ -1285,18 +1306,22 @@ export default function NeedleCondition() {
                     </div>
                   </div>
 
-                  {/* Photos in history */}
+                  {/* Photos in history via ImageThumbnail */}
                   {hImages.length > 0 && (
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
                       {hImages.map((img, i) => (
-                        <button
+                        <ImageThumbnail
                           key={i}
-                          type="button"
-                          onClick={() => setPreviewImage(img)}
-                          className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:scale-105 transition-transform flex-shrink-0"
-                        >
-                          <img src={img} alt="History photo" className="w-full h-full object-cover" />
-                        </button>
+                          url={img}
+                          alt="History photo"
+                          size={44}
+                          onClick={() =>
+                            setPreviewImageModal({
+                              url: img,
+                              title: `ประวัติสภาพเข็ม: ${historyDrawerItem.serial} (${format(new Date(hRec.doc_date || Date.now()), 'dd/MM/yyyy')})`,
+                            })
+                          }
+                        />
                       ))}
                     </div>
                   )}
@@ -1306,30 +1331,6 @@ export default function NeedleCondition() {
           </div>
         </div>
       </Modal>
-
-      {/* ── MODAL 4: FULLSCREEN IMAGE PREVIEW ─────────────────────── */}
-      {previewImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div className="relative max-w-3xl max-h-[90vh] bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
-            <button
-              type="button"
-              onClick={() => setPreviewImage(null)}
-              className="absolute top-3 right-3 p-2 bg-slate-900/80 text-white rounded-full hover:bg-red-600 transition-colors z-10"
-              title="ปิด"
-            >
-              <X size={16} />
-            </button>
-            <img
-              src={previewImage}
-              alt="Fullscreen needle preview"
-              className="w-full h-full max-h-[85vh] object-contain"
-            />
-          </div>
-        </div>
-      )}
 
       {/* ── DETAIL DRAWER FOR SINGLE NEEDLE RECORD ────────────────── */}
       {detailItem && (
@@ -1363,7 +1364,29 @@ export default function NeedleCondition() {
                 { label: 'วันที่ตรวจล่าสุด', value: detailItem.doc_date ? format(new Date(detailItem.doc_date), 'dd/MM/yyyy') : '—', mono: true },
                 { label: 'ช่างผู้ตรวจ', value: detailItem.inspector },
                 { label: 'สถานะสภาพเข็ม', value: detailItem.status },
-              ].filter((f) => f.value),
+                ...((Array.isArray(detailItem.images) && detailItem.images.length > 0) ? [{
+                  label: `รูปถ่ายสภาพเข็ม (${detailItem.images.length} รูป)`,
+                  full: true,
+                  node: (
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
+                      {detailItem.images.map((img, idx) => (
+                        <ImageThumbnail
+                          key={idx}
+                          url={img}
+                          alt={`สภาพเข็ม ${detailItem.serial}`}
+                          size={48}
+                          onClick={() =>
+                            setPreviewImageModal({
+                              url: img,
+                              title: `สภาพเข็ม: ${detailItem.serial}`,
+                            })
+                          }
+                        />
+                      ))}
+                    </div>
+                  ),
+                }] : []),
+              ].filter((f) => f && (f.node || f.value)),
             },
             {
               label: 'รายละเอียดและข้อสังเกต',
@@ -1376,6 +1399,14 @@ export default function NeedleCondition() {
           ]}
         />
       )}
+
+      {/* ── STANDARD IMAGE PREVIEW MODAL (FULL SIZE & ZOOM) ────────── */}
+      <ImagePreviewModal
+        open={!!previewImageModal}
+        onClose={() => setPreviewImageModal(null)}
+        url={previewImageModal?.url}
+        title={previewImageModal?.title || 'รูปถ่ายสภาพเข็ม'}
+      />
     </div>
   )
 }
