@@ -21,6 +21,8 @@ import {
   Disc,
   History,
   FileSpreadsheet,
+  FileText,
+  Printer,
   Image as ImageIcon,
   Eye,
   SwitchCamera,
