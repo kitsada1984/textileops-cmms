@@ -89,6 +89,7 @@ function PageRoutes() {
         <Route path="/pm"           element={<PMPlan />} />
         <Route path="/pm-log"       element={<PMPlan defaultTab="log" />} />
         <Route path="/center-check" element={<PMPlan defaultTab="center_check" />} />
+        <Route path="/needle-condition" element={<PMPlan defaultTab="needle" />} />
         <Route path="/design-bom"   element={<DesignBom />} />
         <Route path="/spareparts" element={<SpareParts />} />
         <Route path="/purchasing" element={<Purchasing />} />

@@ -260,4 +260,26 @@ export const SHEET_EXPORTS = [
       Note: (row) => stripMetaLine(row.Note),
     },
   },
+  {
+    key: 'needleConditions',
+    sheetName: 'สภาพเข็ม',
+    columns: [
+      col('serial', 'ซีเรียล (Serial)'),
+      col('machine_mc', 'เครื่อง (MC)'),
+      col('location', 'ตำแหน่ง'),
+      col('type', 'ประเภท'),
+      col('counter', 'Counter ล่าสุด'),
+      col('status', 'สภาพเข็ม'),
+      col('needle_condition', 'รายละเอียดสภาพเข็ม'),
+      col('doc_date', 'วันที่ตรวจล่าสุด'),
+      col('inspector', 'ผู้ตรวจ'),
+      col('images', 'รูปภาพ URL'),
+      col('remark', 'หมายเหตุ'),
+      col('updated_at', 'อัปเดตล่าสุด'),
+    ],
+    valueGetters: {
+      images: (row) => (Array.isArray(row.images) ? row.images.join(', ') : row.images || ''),
+    },
+  },
 ]
+

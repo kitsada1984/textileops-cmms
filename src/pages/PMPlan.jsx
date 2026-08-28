@@ -39,6 +39,7 @@ import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { useAuth } from '../contexts/AuthContext'
 import PMLog from './PMLog'
 import CenterCheck from './CenterCheck'
+import NeedleCondition from './NeedleCondition'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generatePMPlanPdfProps } from '../utils/pdfDocGenerators'
 
@@ -1101,6 +1102,19 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
         <button
           type="button"
+          onClick={() => setActiveTab('needle')}
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+            activeTab === 'needle'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Sparkles size={15} />
+          <span>สภาพเข็ม (Needle Inspection)</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('log')}
           className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
             activeTab === 'log'
@@ -1119,6 +1133,8 @@ export default function PMPlan({ defaultTab = 'plan' }) {
           onClearPreset={() => setCenterCheckPreset(null)}
           onBackToPMPlan={() => setActiveTab('plan')}
         />
+      ) : activeTab === 'needle' ? (
+        <NeedleCondition />
       ) : activeTab === 'log' ? (
         <PMLog />
       ) : (

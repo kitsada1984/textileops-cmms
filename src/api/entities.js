@@ -156,6 +156,105 @@ export const CenterCheckAPI = {
   },
 }
 
+export const NEEDLE_STATUSES = [
+  { value: 'NORMAL', label: 'ปกติ (Normal)', color: 'emerald', bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+  { value: 'WATCH', label: 'เฝ้าระวัง / เริ่มสึกหรอ (Watch)', color: 'amber', bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+  { value: 'WORN', label: 'สึกหรอ / ควรเปลี่ยน (Worn)', color: 'orange', bg: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
+  { value: 'BROKEN', label: 'เข็มหัก / ลิ้นคลอน (Broken)', color: 'rose', bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+  { value: 'REPLACED', label: 'เปลี่ยนเข็มใหม่แล้ว (Replaced)', color: 'blue', bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+]
+
+export const NeedleConditionAPI = {
+  list: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('needle_conditions')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (!error && Array.isArray(data)) {
+        try { localStorage.setItem('txops_tbl_needle_conditions', JSON.stringify(data)) } catch {}
+        return data
+      }
+    } catch (e) {
+      console.warn('NeedleCondition direct table load error, falling back to sys config:', e)
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('workorders')
+        .select('Comment')
+        .eq('WO_ID', 'SYS_NEEDLE_CONDITIONS')
+        .maybeSingle()
+      if (!error && data?.Comment) {
+        const parsed = JSON.parse(data.Comment)
+        if (Array.isArray(parsed)) {
+          try { localStorage.setItem('txops_tbl_needle_conditions', JSON.stringify(parsed)) } catch {}
+          return parsed
+        }
+      }
+    } catch (e) {
+      console.warn('NeedleCondition cloud load error:', e)
+    }
+
+    try {
+      const local = JSON.parse(localStorage.getItem('txops_tbl_needle_conditions') || '[]')
+      if (Array.isArray(local)) return local
+    } catch {}
+    return []
+  },
+  saveAll: async (recordsList) => {
+    try { localStorage.setItem('txops_tbl_needle_conditions', JSON.stringify(recordsList)) } catch {}
+    try {
+      const { data: existing } = await supabase
+        .from('workorders')
+        .select('id')
+        .eq('WO_ID', 'SYS_NEEDLE_CONDITIONS')
+      if (existing && existing.length > 0) {
+        await supabase
+          .from('workorders')
+          .update({
+            Comment: JSON.stringify(recordsList),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing[0].id)
+      } else {
+        await supabase.from('workorders').insert({
+          MC: '__SYSTEM__',
+          Problem: '__SYS_CONFIG__',
+          WO_ID: 'SYS_NEEDLE_CONDITIONS',
+          Comment: JSON.stringify(recordsList),
+          Status: 'COMPLETED',
+        })
+      }
+    } catch (e) {
+      console.warn('NeedleCondition cloud save error:', e)
+    }
+  },
+  create: async (item) => {
+    const list = await NeedleConditionAPI.list()
+    const newItem = {
+      ...item,
+      id: item.id || `nc_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      created_at: item.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    const updated = [newItem, ...list]
+    await NeedleConditionAPI.saveAll(updated)
+    return newItem
+  },
+  update: async (id, item) => {
+    const list = await NeedleConditionAPI.list()
+    const updated = list.map((r) => (r.id === id ? { ...r, ...item, updated_at: new Date().toISOString() } : r))
+    await NeedleConditionAPI.saveAll(updated)
+    return { ...item, id }
+  },
+  delete: async (id) => {
+    const list = await NeedleConditionAPI.list()
+    const updated = list.filter((r) => r.id !== id)
+    await NeedleConditionAPI.saveAll(updated)
+  },
+}
+
 export const ChecklistConfigAPI = createEntityClient('checklist_configs')
 export const SparePartAPI       = createEntityClient('spareparts')
 export const AuditLogAPI        = createEntityClient('audit_logs')
