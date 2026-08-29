@@ -625,6 +625,7 @@ export default function RepairRequests() {
           </div>
           <F form={form} setForm={setForm} label="สถานะ" id="status" opts={REPAIR_STATUS} useBuilder={false} />
           <F form={form} setForm={setForm} label="เลขที่ใบแจ้งซ่อม" id="request_no" placeholder="เว้นว่างเพื่อสร้างอัตโนมัติ" />
+          <F form={form} setForm={setForm} label="เครื่องปัจจุบัน (อัตโนมัติ)" id="machine_mc" />
           <F form={form} setForm={setForm} label="Design (ลายผ้า)" id="Design" placeholder="ระบุลายผ้า / Design..." />
           <F form={form} setForm={setForm} label="KI" id="KI" type="number" placeholder="ระบุตัวเลข KI..." />
           <F form={form} setForm={setForm} label="เลขม้วน" id="roll_no" type="number" placeholder="ระบุเลขม้วน..." />

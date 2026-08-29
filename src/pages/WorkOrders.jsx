@@ -200,6 +200,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [mc, setMc] = useState('')
   const [ki, setKi] = useState('')
   const [design, setDesign] = useState('')
+  const [rollNo, setRollNo] = useState('')
   const [jobType, setJobType] = useState('REPAIR')
   const [selectedTechs, setSelectedTechs] = useState([])
   const [comment, setComment] = useState('')
@@ -452,6 +453,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         MC: mc.trim(),
         KI: ki.trim(),
         Design: design.trim(),
+        RollNo: rollNo.trim(),
+        roll_no: rollNo.trim(),
         JobType: jobType,
         Technicians: selectedTechs.join(', '),
         Comment: comment.trim() || 'เปิดใบสั่งงาน',
@@ -475,6 +478,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       setMc('')
       setKi('')
       setDesign('')
+      setRollNo('')
       setSelectedTechs([])
       setComment('')
     } catch (err) {
@@ -1190,8 +1194,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
 
               <form onSubmit={handleStartJob} className="space-y-4 text-xs">
-                {/* 4 Fields */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* 5 Fields */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <div>
                     <label className="label">รหัสเครื่อง (M/C) *</label>
                     <input
@@ -1222,6 +1226,17 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       value={design}
                       onChange={(e) => setDesign(e.target.value)}
                       className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">เลขม้วน (Roll No)</label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="ระบุเลขม้วน"
+                      value={rollNo}
+                      onChange={(e) => setRollNo(e.target.value)}
+                      className="input font-mono"
                     />
                   </div>
                   <div>
@@ -1363,6 +1378,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <th>M/C</th>
                   <th>KI</th>
                   <th>Design</th>
+                  <th>เลขม้วน</th>
                   <th>ประเภท</th>
                   <th>ช่างผู้ปฏิบัติงาน</th>
                   <th>สถานะ</th>
@@ -1399,6 +1415,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       {/* Design */}
                       <td className="max-w-[140px] truncate" style={{ color: 'var(--text-600)' }}>
                         {job.Design || '—'}
+                      </td>
+
+                      {/* Roll No */}
+                      <td className="font-mono" style={{ color: 'var(--text-700)' }}>
+                        {job.RollNo || job.roll_no || '—'}
                       </td>
 
                       {/* Job Type */}
@@ -1889,7 +1910,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="label">แบบงาน (Design)</label>
                 <input
@@ -1897,6 +1918,16 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   value={editJob.Design || ''}
                   onChange={(e) => setEditJob({ ...editJob, Design: e.target.value })}
                   className="input"
+                />
+              </div>
+              <div>
+                <label className="label">เลขม้วน (Roll No)</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={editJob.RollNo || editJob.roll_no || ''}
+                  onChange={(e) => setEditJob({ ...editJob, RollNo: e.target.value, roll_no: e.target.value })}
+                  className="input font-mono"
                 />
               </div>
               <div>
@@ -2253,6 +2284,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
             OrderDate: printJob.StartDate,
             WOType: printJob.JobType === 'DESIGN' ? 'ปรับแบบ (Design)' : printJob.JobType === 'PM' ? 'บำรุงรักษา (PM)' : 'แก้ไขเครื่อง (Repair)',
             MachineID: printJob.MC,
+            KI: printJob.KI,
+            Design: printJob.Design,
+            RollNo: printJob.RollNo || printJob.roll_no || '',
             AssignedTo: printJob.Technicians,
             Title: printJob.Design ? `งานปรับแบบ: ${printJob.Design}` : `งานซ่อมบำรุง: ${printJob.MC}`,
             Description: printJob.Comment,

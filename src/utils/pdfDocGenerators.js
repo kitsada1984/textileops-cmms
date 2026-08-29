@@ -129,12 +129,14 @@ export function generateWorkOrderPdfProps(wo) {
         fields: [
           { label: 'เลขที่ใบสั่งงาน (WO No.)', value: wo.WONumber || wo.OrderNo, mono: true },
           { label: 'วันที่สั่งงาน (Date)', value: wo.OrderDate ? format(new Date(wo.OrderDate), 'dd/MM/yyyy') : '—' },
+          { label: 'เครื่องจักรเป้าหมาย (Machine)', value: wo.MachineID || wo.MachineCode || wo.MachineName || wo.MC, mono: true },
+          { label: 'รหัสงาน (KI)', value: wo.KI || '—', mono: true },
+          { label: 'แบบงาน (Design)', value: wo.Design || '—' },
+          { label: 'เลขม้วน (Roll No.)', value: (wo.RollNo || wo.roll_no) ? String(wo.RollNo || wo.roll_no) : '—', mono: true },
           { label: 'ประเภทงาน (WO Type)', value: wo.WOType || wo.Type || 'PM' },
-          { label: 'ความสำคัญ (Priority)', value: wo.Priority || 'ปกติ' },
-          { label: 'เครื่องจักรเป้าหมาย (Machine)', value: wo.MachineID || wo.MachineCode || wo.MachineName, mono: true },
-          { label: 'ตำแหน่ง (Location)', value: wo.Location },
           { label: 'ช่างผู้รับผิดชอบ (Assignee)', value: wo.AssignedTo || wo.TechnicianName || '—' },
-          { label: 'สถานะงาน (Status)', value: wo.Status },
+          { label: 'ตำแหน่ง (Location)', value: wo.Location || '—' },
+          { label: 'สถานะงาน (Status)', value: wo.Status || '—' },
         ],
       },
       {
