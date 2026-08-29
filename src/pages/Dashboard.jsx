@@ -276,6 +276,9 @@ export default function Dashboard() {
         { label: 'เลขที่แจ้งซ่อม', value: selectedRepair.request_no || (selectedRepair.id ? `REQ-${selectedRepair.id.slice(0, 8)}` : '—') },
         { label: 'เครื่องจักร (M/C)', value: selectedRepair.machine_mc || '—' },
         { label: 'ซีเรียลกระบอก', value: selectedRepair.cylinder_serial || '—' },
+        { label: 'Design (ลายผ้า)', value: selectedRepair.Design || '—' },
+        { label: 'KI', value: selectedRepair.KI !== undefined && selectedRepair.KI !== null ? selectedRepair.KI : '—' },
+        { label: 'เลขม้วน', value: selectedRepair.roll_no || selectedRepair.RollNo || selectedRepair.roll_number || '—' },
         { label: 'ตำแหน่งติดตั้ง', value: selectedRepair.cylinder_location || '—' },
         { label: 'สถานะ', value: <RepairStatusBadge status={selectedRepair.status} /> },
       ],
@@ -435,6 +438,9 @@ export default function Dashboard() {
                 <th className="py-3 px-3 text-left whitespace-nowrap">เลขที่แจ้งซ่อม</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">เครื่องจักร</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">ซีเรียล</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">Design</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">KI</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">เลขม้วน</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">ตำแหน่ง</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">อาการเสีย / ปัญหา</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">ผู้แจ้ง</th>
@@ -459,6 +465,15 @@ export default function Dashboard() {
                   </td>
                   <td className="py-2.5 px-3 font-mono font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {req.cylinder_serial || '—'}
+                  </td>
+                  <td className="py-2.5 px-3 font-semibold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                    {req.Design || '—'}
+                  </td>
+                  <td className="py-2.5 px-3 font-mono font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                    {req.KI !== undefined && req.KI !== null && req.KI !== '' ? req.KI : '—'}
+                  </td>
+                  <td className="py-2.5 px-3 font-mono font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                    {req.roll_no || req.RollNo || req.roll_number || '—'}
                   </td>
                   <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                     {req.cylinder_location ? (
