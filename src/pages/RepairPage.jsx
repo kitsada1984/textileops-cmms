@@ -44,14 +44,17 @@ const STATUS_LABEL = {
 }
 
 const COMMON_ISSUES = [
-  'เข็มหัก / เข็มงอ',
-  'ร่องเข็มล้ม / สึก',
-  'ผ้าเป็นเส้น / มีรู',
-  'น้ำมันหยด / น้ำมันแห้ง',
-  'เครื่องมีเสียงดังผิดปกติ',
-  'สายพานส่งด้ายหย่อน/ขาด',
-  'ใบปัดด้ายชำรุด',
-  'ตั้งศูนย์กระบอก',
+  'เข็มหัก',
+  'เส้นเข็ม',
+  'ผ้าแตก / มีรู',
+  'น้ำมันหยด',
+  'เครื่องมีเสียงดัง',
+  'ผ้าลาย',
+  'ยางพลิก',
+  'ยางขาดบ่อย',
+  'ด้ายขาดบ่อย',
+  'ปมฝุ่น',
+  'ปมตัวหนอน',
 ]
 
 const COMMON_SOLUTIONS = [
@@ -61,17 +64,6 @@ const COMMON_SOLUTIONS = [
   'เปลี่ยนสายพานและตั้งตึง',
   'หยอดน้ำมันหล่อลื่นและตรวจเช็คระบบ',
   'ทำความสะอาดชุดส่งด้าย',
-]
-
-const DESIGN_PRESETS = [
-  'Single Jersey',
-  'Interlock',
-  'Rib 1x1',
-  'Rib 2x2',
-  'French Terry',
-  'Fleece',
-  'Jacquard',
-  'Pique',
 ]
 
 function Card({ children, style, className = '' }) {
@@ -363,98 +355,7 @@ function StepReport({ serial, cylinder, onSubmitted }) {
 
       <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         
-        {/* 🌟 ส่วนที่ 1: ข้อมูลงานผลิต (Design / KI / เลขม้วน) 🌟 */}
-        <div
-          style={{
-            background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
-            borderRadius: 18,
-            padding: '16px',
-            border: '2px solid #3b82f6',
-            boxShadow: '0 4px 16px rgba(59,130,246,0.12)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 900, color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>📋 ส่วนที่ 1: ข้อมูลงานผลิต (Production Info)</span>
-            </span>
-            <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: '#dbeafe', color: '#1e40af' }}>
-              สำคัญ
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Design Field */}
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
-                🎨 Design (ลายผ้า)
-              </label>
-              <input
-                type="text"
-                value={design}
-                onChange={(e) => setDesign(e.target.value)}
-                placeholder="พิมพ์ชื่อลายผ้า หรือเลือกด้านล่าง..."
-                style={inputStyle}
-              />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                {DESIGN_PRESETS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDesign(d)}
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: '3px 8px',
-                      borderRadius: 8,
-                      background: design === d ? '#2563eb' : '#ffffff',
-                      color: design === d ? '#ffffff' : '#475569',
-                      border: '1px solid #cbd5e1',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* KI & Roll No in 2 Columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
-                  🧾 KI (ตัวเลข)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={ki}
-                  onChange={(e) => setKi(e.target.value)}
-                  placeholder="เช่น 12345"
-                  style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 800 }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
-                  📦 เลขม้วน (ตัวเลข)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={rollNo}
-                  onChange={(e) => setRollNo(e.target.value)}
-                  placeholder="เช่น 12"
-                  style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 800 }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 🏭 ส่วนที่ 2: ข้อมูลเครื่องจักรและกระบอกสูบเป้าหมาย */}
+        {/* 🏭 ส่วนที่ 1: ข้อมูลเครื่องจักรและกระบอกสูบเป้าหมาย (M/C, ซีเรียล, ตำแหน่ง) 🏭 */}
         <div
           style={{
             background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
@@ -489,6 +390,76 @@ function StepReport({ serial, cylinder, onSubmitted }) {
                 {cylinder.Standard}
               </span>
             )}
+          </div>
+        </div>
+
+        {/* 🌟 ส่วนที่ 2: ข้อมูลงานผลิต (Design / KI / เลขม้วน) 🌟 */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
+            borderRadius: 18,
+            padding: '16px',
+            border: '2px solid #3b82f6',
+            boxShadow: '0 4px 16px rgba(59,130,246,0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, fontWeight: 900, color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>📋 ส่วนที่ 2: ข้อมูลงานผลิต (Production Info)</span>
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: '#dbeafe', color: '#1e40af' }}>
+              สำคัญ
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Design Field (Input Only) */}
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                🎨 Design (ลายผ้า)
+              </label>
+              <input
+                type="text"
+                value={design}
+                onChange={(e) => setDesign(e.target.value)}
+                placeholder="กรอกชื่อลายผ้า / Design..."
+                style={inputStyle}
+              />
+            </div>
+
+            {/* KI & Roll No in 2 Columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                  🧾 KI (ตัวเลข)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={ki}
+                  onChange={(e) => setKi(e.target.value)}
+                  placeholder="เช่น 12345"
+                  style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 800 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                  📦 เลขม้วน (ตัวเลข)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={rollNo}
+                  onChange={(e) => setRollNo(e.target.value)}
+                  placeholder="เช่น 12"
+                  style={{ ...inputStyle, fontFamily: 'monospace', fontWeight: 800 }}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
