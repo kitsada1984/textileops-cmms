@@ -479,6 +479,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       setKi('')
       setDesign('')
       setRollNo('')
+      setJobType('REPAIR')
       setSelectedTechs([])
       setComment('')
     } catch (err) {
@@ -500,7 +501,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   // Calculated duration for Complete Modal
   const compCalcDuration = useMemo(() => {
     if (!compJob || !compEndDate || !compEndTime) return { hoursDecimal: 0, durationText: '—' }
-    const start = compJob.StartTimestamp || (compJob.StartDate && `${compJob.StartDate}T${compJob.StartTime || '08:00:00'}Z`) || compJob.DateStart
+    const start = compJob.StartTimestamp || compJob.DateStart || (compJob.StartDate && compJob.StartTime ? (compJob.StartTime.includes('T') ? compJob.StartTime : `${compJob.StartDate}T${compJob.StartTime}`) : null) || compJob.created_at
     const end = `${compEndDate}T${compEndTime}:00`
     return calculateDuration(start, end)
   }, [compJob, compEndDate, compEndTime])
@@ -586,7 +587,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Add / Edit / Delete Technician
   const openAddTech = () => {
-    const nextId = `TECH-00${technicians.length + 1}`
+    const maxNum = technicians.reduce((max, t) => {
+      const match = String(t.Technician_ID || t.id || '').match(/TECH-(\d+)/i)
+      return match ? Math.max(max, parseInt(match[1], 10)) : max
+    }, 0)
+    const nextId = `TECH-${String(maxNum + 1).padStart(3, '0')}`
     setEditingTechId(null)
     setTechForm({
       id: nextId,
@@ -654,7 +659,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   const handleSaveTech = async () => {
     if (!techForm.Name.trim()) { toast.error('กรุณาระบุชื่อช่าง'); return }
-    const targetId = editingTechId || techForm.id || techForm.Technician_ID || `TECH-00${technicians.length + 1}`
+    const targetId = editingTechId || techForm.id || techForm.Technician_ID || `TECH-${Date.now()}`
     const payload = {
       ...techForm,
       id: targetId,
@@ -662,42 +667,30 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     }
 
     try {
+      let nextList
       if (editingTechId) {
         await TechnicianAPI.update(editingTechId, payload)
-        setTechnicians((prev) => {
-          const next = prev.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
-          try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
-          syncTechToNotifications(next)
-          return next
-        })
+        nextList = technicians.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
+        setTechnicians(nextList)
         toast.success('อัปเดตข้อมูลช่างเรียบร้อย', payload.Name)
       } else {
         const created = await TechnicianAPI.create(payload)
         const itemToAdd = created || payload
-        setTechnicians((prev) => {
-          const next = [...prev, itemToAdd]
-          try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
-          syncTechToNotifications(next)
-          return next
-        })
+        nextList = [...technicians, itemToAdd]
+        setTechnicians(nextList)
         toast.success('เพิ่มช่างใหม่เรียบร้อย', payload.Name)
       }
       setTechModalOpen(false)
+      syncTechToNotifications(nextList)
     } catch (err) {
       console.warn('Backend update failed, saving locally:', err)
-      setTechnicians((prev) => {
-        let next
-        if (editingTechId) {
-          next = prev.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
-        } else {
-          next = [...prev, payload]
-        }
-        try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
-        syncTechToNotifications(next)
-        return next
-      })
+      const nextList = editingTechId
+        ? technicians.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
+        : [...technicians, payload]
+      setTechnicians(nextList)
       toast.success('บันทึกข้อมูลช่างเรียบร้อย', payload.Name)
       setTechModalOpen(false)
+      syncTechToNotifications(nextList)
     }
   }
 
@@ -709,12 +702,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     } catch (e) {
       console.warn('Backend delete fallback:', e)
     }
-    setTechnicians((prev) => {
-      const next = prev.filter((t) => t.id !== techId && t.Technician_ID !== techId)
-      try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(next)) } catch {}
-      syncTechToNotifications(next)
-      return next
-    })
+    const nextList = technicians.filter((t) => t.id !== techId && t.Technician_ID !== techId)
+    setTechnicians(nextList)
+    syncTechToNotifications(nextList)
     toast.success('ลบข้อมูลช่างเรียบร้อย', tech.Name)
   }
 

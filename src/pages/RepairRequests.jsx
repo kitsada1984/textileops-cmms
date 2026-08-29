@@ -88,9 +88,9 @@ export default function RepairRequests() {
     setForm(p => ({
       ...p,
       cylinder_serial:   val,
-      machine_mc:        cyl?.NewMC        || p.machine_mc,
-      cylinder_location: cyl?.Location     || p.cylinder_location,
-      cylinder_standard: cyl?.Standard     || p.cylinder_standard,
+      machine_mc:        cyl ? cyl.NewMC    : '',
+      cylinder_location: cyl ? cyl.Location : '',
+      cylinder_standard: cyl ? cyl.Standard : '',
     }))
   }
 
@@ -105,11 +105,14 @@ export default function RepairRequests() {
   }
 
   const openEdit = (r) => {
-    const userName = user?.full_name || user?.username || ''
     setForm({
-      ...EMPTY, ...r,
-      technician_name: r.technician_name || userName,
-      approved_by:     r.approved_by     || userName,
+      ...EMPTY,
+      ...r,
+      Design:          r.Design || r.design || '',
+      KI:              r.KI !== undefined && r.KI !== null ? r.KI : (r.ki !== undefined && r.ki !== null ? r.ki : ''),
+      roll_no:         r.roll_no || r.RollNo || r.roll_number || '',
+      technician_name: r.technician_name || '',
+      approved_by:     r.approved_by     || '',
     })
     setModal(true)
     setDetailRec(null)
@@ -370,7 +373,7 @@ export default function RepairRequests() {
           const cfg = STATUS_CFG[r.status] || {}
           return (
             <div
-              key={r.id}
+              key={r._id || r.id}
               onClick={() => openDetail(r)}
               className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-4 shadow-sm active:scale-[0.99] transition-all cursor-pointer relative"
             >
@@ -378,7 +381,7 @@ export default function RepairRequests() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md">
-                    {r.request_no || `REQ-${String(r.id).slice(0, 6)}`}
+                    {r.request_no || (r._id || r.id ? `REQ-${String(r._id || r.id).slice(0, 6)}` : 'REQ')}
                   </span>
                   {r.created_at && (
                     <span className="text-[11px] text-slate-400">
@@ -520,7 +523,7 @@ export default function RepairRequests() {
               <tr><td colSpan={cols.length+1} style={{ textAlign:'center', padding:'32px 0', color:'var(--text-400)' }}>{t('no_data')}</td></tr>
             )}
             {displayRows.map(r => (
-              <tr key={r.id} className="cursor-pointer" onClick={() => openDetail(r)}>
+              <tr key={r._id || r.id} className="cursor-pointer" onClick={() => openDetail(r)}>
                 {cols.map(c => <td key={c.field||c.id}>{renderRRCell(r, c)}</td>)}
                 <td onClick={e => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -553,7 +556,7 @@ export default function RepairRequests() {
                       </button>
                     )}
                     <a
-                      href={`${baseUrl}/repair/${r.cylinder_serial}?req=${r.id}&step=view`}
+                      href={`${baseUrl}/repair/${r.cylinder_serial}?req=${r._id || r.id}&step=view`}
                       target="_blank" rel="noopener noreferrer"
                       title="เปิดหน้าแจ้งซ่อม"
                       style={{
@@ -598,7 +601,7 @@ export default function RepairRequests() {
         groups={drawerGroups}
         extraActions={detailRec ? (
           <button
-            onClick={() => window.open(`${baseUrl}/repair/${detailRec.cylinder_serial}?req=${detailRec.id}&step=view`, '_blank')}
+            onClick={() => window.open(`${baseUrl}/repair/${detailRec.cylinder_serial}?req=${detailRec._id || detailRec.id}&step=view`, '_blank')}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '9px 14px', borderRadius: 11, fontSize: 12, fontWeight: 700,

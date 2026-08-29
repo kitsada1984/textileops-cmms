@@ -294,7 +294,13 @@ export default function Machines() {
     { key: 'Remark', label: t('mc_th_remark'), render: (m) => <span className="max-w-[130px] truncate block text-slate-500">{stripImageUrlMeta(m.Remark) || '—'}</span> },
     { key: 'updated_at', label: t('mc_th_updated'), render: (m) => {
       const d = m.updated_at || m.LastUpdated
-      return d ? <span className="font-mono text-[11px] text-slate-400">{format(new Date(d), 'dd/MM/yy HH:mm')}</span> : <span className="text-slate-400">—</span>
+      if (!d) return <span className="text-slate-400">—</span>
+      try {
+        const dt = new Date(d)
+        return isNaN(dt.getTime()) ? <span className="text-slate-400">—</span> : <span className="font-mono text-[11px] text-slate-400">{format(dt, 'dd/MM/yy HH:mm')}</span>
+      } catch {
+        return <span className="text-slate-400">—</span>
+      }
     }},
     { key: 'Status', label: t('status'), render: (m) => <StatusBadge value={m.Status} /> },
   ], [t])

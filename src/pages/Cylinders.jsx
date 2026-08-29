@@ -359,7 +359,13 @@ export default function Cylinders() {
       label: t('mc_th_updated'),
       render: (c) => {
         const d = c.updated_at
-        return d ? <span className="font-mono text-[11px] text-slate-400">{format(new Date(d), 'dd/MM/yy HH:mm')}</span> : <span className="text-slate-400">—</span>
+        if (!d) return <span className="text-slate-400">—</span>
+        try {
+          const dt = new Date(d)
+          return isNaN(dt.getTime()) ? <span className="text-slate-400">—</span> : <span className="font-mono text-[11px] text-slate-400">{format(dt, 'dd/MM/yy HH:mm')}</span>
+        } catch {
+          return <span className="text-slate-400">—</span>
+        }
       },
     },
   ], [t])
@@ -594,16 +600,29 @@ export default function Cylinders() {
 
   const handleSwap = async (newIn, newOut, meta = {}) => {
     let payload = { newIn, newOut }
+    let origIn = null, origOut = null
     if (meta.inId && meta.outId && meta.swapCols) {
       const [latestIn, latestOut] = await Promise.all([
         CylinderAPI.get(meta.inId),
         CylinderAPI.get(meta.outId),
       ])
+      origIn = latestIn
+      origOut = latestOut
       payload = buildCylinderSwapPayload(latestIn, latestOut, meta.swapCols) || payload
     }
 
-    await updateCylinderWithImageFallback(payload.newIn.id || payload.newIn._id, payload.newIn)
-    await updateCylinderWithImageFallback(payload.newOut.id || payload.newOut._id, payload.newOut)
+    const inId = payload.newIn.id || payload.newIn._id
+    const outId = payload.newOut.id || payload.newOut._id
+
+    await updateCylinderWithImageFallback(inId, payload.newIn)
+    try {
+      await updateCylinderWithImageFallback(outId, payload.newOut)
+    } catch (err) {
+      if (origIn) {
+        try { await updateCylinderWithImageFallback(inId, origIn) } catch {}
+      }
+      throw err
+    }
 
     try {
       await AuditLogAPI.create({

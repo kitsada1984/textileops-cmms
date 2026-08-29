@@ -1277,10 +1277,23 @@ function StatusView({ request, onOpenPdf }) {
   const [copied, setCopied] = useState(false)
   const s = STATUS_LABEL[request.status] || STATUS_LABEL.PENDING
 
-  const copyUrl = () => {
-    navigator.clipboard.writeText(window.location.href)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const copyUrl = async () => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(window.location.href)
+      } else {
+        const input = document.createElement('input')
+        input.value = window.location.href
+        document.body.appendChild(input)
+        input.select()
+        document.execCommand('copy')
+        document.body.removeChild(input)
+      }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (e) {
+      console.warn('Clipboard copy error:', e)
+    }
   }
 
   const shareLine = () => {

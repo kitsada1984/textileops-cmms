@@ -222,13 +222,13 @@ export function generateCenterCheckPdfProps(chk) {
   if (!chk) return null
   const items = Array.isArray(chk.items) ? chk.items : []
   const tableRows = items.map((it, idx) => [
-    it.no || idx + 1,
-    it.item || '',
-    it.std || '',
-    it.val_before || '—',
-    it.val_after || '—',
-    it.result || 'ผ่าน',
-    it.remark || '',
+    it?.no || idx + 1,
+    it?.item || '',
+    it?.std || '',
+    it?.val_before || '—',
+    it?.val_after || '—',
+    it?.result || 'ผ่าน',
+    it?.remark || '',
   ])
 
   return {

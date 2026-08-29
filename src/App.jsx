@@ -77,6 +77,8 @@ const NAV_SECTIONS = [
   },
 ]
 
+const ALL_NAV_ITEMS = NAV_SECTIONS.flatMap(s => s.items)
+
 function PageRoutes() {
   return (
     <ErrorBoundary>
@@ -179,8 +181,7 @@ function AppInner() {
   )
   if (!user) return <Login />
 
-  const allItems = NAV_SECTIONS.flatMap(s => s.items)
-  const currentNav = [...allItems].sort((a, b) => b.to.length - a.to.length).find(n =>
+  const currentNav = [...ALL_NAV_ITEMS].sort((a, b) => b.to.length - a.to.length).find(n =>
     n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to)
   )
 
