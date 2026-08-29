@@ -628,47 +628,66 @@ export default function RepairRequests() {
             <span style={{ color:'var(--text-400)', marginLeft:4 }}>({user.username})</span>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">ซีเรียลกระบอก *</label>
-            <input
-              type="text"
-              list="cylinder-serial-options"
-              className="input font-mono font-bold"
-              placeholder="เลือกหรือพิมพ์ซีเรียล..."
-              value={form.cylinder_serial || ''}
-              onChange={(e) => handleSerialChange(e.target.value)}
-              required
-            />
-            <datalist id="cylinder-serial-options">
-              {serialOptions.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Column: Asset, Production & People */}
+          <div className="space-y-3">
+            <div className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
+              📋 ข้อมูลเครื่องจักร & งานผลิต
+            </div>
+            <div>
+              <label className="label">ซีเรียลกระบอก *</label>
+              <input
+                type="text"
+                list="cylinder-serial-options"
+                className="input font-mono font-bold"
+                placeholder="เลือกหรือพิมพ์ซีเรียล..."
+                value={form.cylinder_serial || ''}
+                onChange={(e) => handleSerialChange(e.target.value)}
+                required
+              />
+              <datalist id="cylinder-serial-options">
+                {serialOptions.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F form={form} setForm={setForm} label="สถานะ" id="status" opts={REPAIR_STATUS} useBuilder={false} />
+              <F form={form} setForm={setForm} label="เลขที่ใบแจ้งซ่อม" id="request_no" placeholder="สร้างอัตโนมัติ" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F form={form} setForm={setForm} label="เครื่องปัจจุบัน" id="machine_mc" />
+              <F form={form} setForm={setForm} label={t('cyl_th_loc')} id="cylinder_location" />
+            </div>
+            <F form={form} setForm={setForm} label="🎨 Design (ลายผ้า)" id="Design" placeholder="ระบุลายผ้า / Design..." />
+            <div className="grid grid-cols-2 gap-2">
+              <F form={form} setForm={setForm} label="🧾 KI" id="KI" type="number" placeholder="ตัวเลข KI..." />
+              <F form={form} setForm={setForm} label="📦 เลขม้วน" id="roll_no" type="number" placeholder="เลขม้วน..." />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F form={form} setForm={setForm} label={t('rr_field_reported_by')} id="reported_by" />
+              <F form={form} setForm={setForm} label={t('wo_th_tech')} id="technician_name" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F form={form} setForm={setForm} label={t('rr_field_approved_by')} id="approved_by" />
+              <F form={form} setForm={setForm} label={t('rr_field_approved_at')} id="approved_at" type="datetime-local" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <F form={form} setForm={setForm} label={t('rr_field_completed_by')} id="completed_by" />
+              <F form={form} setForm={setForm} label={t('rr_field_completed_at')} id="completed_at" type="datetime-local" />
+            </div>
           </div>
-          <F form={form} setForm={setForm} label="สถานะ" id="status" opts={REPAIR_STATUS} useBuilder={false} />
-          <F form={form} setForm={setForm} label="เลขที่ใบแจ้งซ่อม" id="request_no" placeholder="เว้นว่างเพื่อสร้างอัตโนมัติ" />
-          <F form={form} setForm={setForm} label="เครื่องปัจจุบัน (อัตโนมัติ)" id="machine_mc" />
-          <F form={form} setForm={setForm} label="Design (ลายผ้า)" id="Design" placeholder="ระบุลายผ้า / Design..." />
-          <F form={form} setForm={setForm} label="KI" id="KI" type="number" placeholder="ระบุตัวเลข KI..." />
-          <F form={form} setForm={setForm} label="เลขม้วน" id="roll_no" type="number" placeholder="ระบุเลขม้วน..." />
-          <F form={form} setForm={setForm} label={t('cyl_th_loc')} id="cylinder_location" />
-          <F form={form} setForm={setForm} label={t('rr_field_reported_by')} id="reported_by" />
-          <div className="col-span-2">
-            <F form={form} setForm={setForm} label={t('rr_field_problem')} id="problem_description" type="textarea" placeholder="ระบุอาการเสีย หรือปัญหาที่พบ..." />
+
+          {/* Right Column: Problem, Notes & Repair Details */}
+          <div className="space-y-3 bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60">
+            <div className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
+              ⚠️ รายละเอียดปัญหา & การแก้ไข
+            </div>
+            <F form={form} setForm={setForm} label={t('rr_field_problem')} id="problem_description" type="textarea" placeholder="ระบุอาการเสีย หรือปัญหาที่พบ..." rows={4} />
+            <F form={form} setForm={setForm} label={t('rr_field_approval_notes')} id="approval_notes" type="textarea" placeholder="คำสั่งการเพิ่มเติมจากหัวหน้าช่าง..." rows={2} />
+            <F form={form} setForm={setForm} label={t('rr_field_repair_details')} id="repair_details" type="textarea" placeholder="รายละเอียดการซ่อม / วิธีแก้ไข..." rows={3} />
+            <F form={form} setForm={setForm} label={t('rr_field_parts_used')} id="parts_used" placeholder="เช่น เข็ม 2 เล่ม, ซีลยาง..." />
           </div>
-          <F form={form} setForm={setForm} label={t('wo_th_tech')} id="technician_name" />
-          <F form={form} setForm={setForm} label={t('rr_field_approved_by')} id="approved_by" />
-          <F form={form} setForm={setForm} label={t('rr_field_approved_at')} id="approved_at" type="datetime-local" />
-          <div className="col-span-2">
-            <F form={form} setForm={setForm} label={t('rr_field_approval_notes')} id="approval_notes" type="textarea" />
-          </div>
-          <div className="col-span-2">
-            <F form={form} setForm={setForm} label={t('rr_field_repair_details')} id="repair_details" type="textarea" />
-          </div>
-          <F form={form} setForm={setForm} label={t('rr_field_parts_used')} id="parts_used" />
-          <F form={form} setForm={setForm} label={t('rr_field_completed_by')} id="completed_by" />
-          <F form={form} setForm={setForm} label={t('rr_field_completed_at')} id="completed_at" type="datetime-local" />
         </div>
       </Modal>
 
