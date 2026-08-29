@@ -13,7 +13,7 @@ import F from '../components/ui/FormField'
 import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
-import { getAppBaseUrl, notifySupervisor } from '../utils/telegram'
+import { getAppBaseUrl, notifySupervisor, normalizeRepairRecord, encodeRepairProblemDescription } from '../utils/telegram'
 import { notifyLineNewRepair } from '../utils/line'
 import CylinderQRModal from '../components/CylinderQR'
 import { useT } from '../contexts/LanguageContext'
@@ -125,7 +125,16 @@ export default function RepairRequests() {
     if (!serialForSave) return toast.warning('กรุณากรอกข้อมูล', 'ไม่พบซีเรียลกระบอกสำหรับบันทึกรายการนี้')
     setSaving(true)
     try {
-      let payload = { ...form, cylinder_serial: serialForSave }
+      let payload = {
+        ...form,
+        cylinder_serial: serialForSave,
+        problem_description: encodeRepairProblemDescription(form.problem_description, {
+          Design: form.Design,
+          KI: form.KI,
+          roll_no: form.roll_no || form.RollNo,
+          priority: form.priority || 'ปกติ',
+        }),
+      }
       const removedColumns = []
       let savedRecord = null
       while (true) {
@@ -185,25 +194,27 @@ export default function RepairRequests() {
     { field:'completed_at',        label: t('rr_field_completed_at'), type:'datetime' },
   ]
 
-  const searched = data.filter(r =>
+  const normalizedData = useMemo(() => (Array.isArray(data) ? data.map(normalizeRepairRecord) : []), [data])
+
+  const searched = normalizedData.filter(r =>
     [r.request_no, r.cylinder_serial, r.cylinder_location, r.Design, r.KI, r.roll_no, r.RollNo, r.reported_by, r.technician_name, r.problem_description]
       .some(v => String(v || '').toLowerCase().includes(search.toLowerCase()))
   )
-  const byStatus = REPAIR_STATUS.reduce((acc, s) => { acc[s.value] = data.filter(r => r.status === s.value).length; return acc }, {})
+  const byStatus = REPAIR_STATUS.reduce((acc, s) => { acc[s.value] = normalizedData.filter(r => r.status === s.value).length; return acc }, {})
 
   const wbCols = useWebBuilderMenu('/repair-requests')
   const sourceCols = (wbCols && wbCols.length > 0) ? wbCols : getRRFallbackCols()
   const cols = (() => {
     const list = [...sourceCols]
     const machineIdx = list.findIndex(c => c.field === 'machine_mc')
-    const hasDesign = list.some(c => c.field === 'Design')
-    const hasKI = list.some(c => c.field === 'KI')
+    const hasDesign = list.some(c => c.field === 'Design' || c.field === 'design')
+    const hasKI = list.some(c => c.field === 'KI' || c.field === 'ki')
     const hasRollNo = list.some(c => c.field === 'roll_no' || c.field === 'RollNo')
     const insertAt = machineIdx >= 0 ? machineIdx + 1 : 0
     if (!hasDesign) list.splice(insertAt, 0, { field: 'Design', label: 'Design', type: 'text' })
-    const kiInsertAt = list.findIndex(c => c.field === 'Design') + 1
+    const kiInsertAt = list.findIndex(c => c.field === 'Design' || c.field === 'design') + 1
     if (!hasKI) list.splice(kiInsertAt, 0, { field: 'KI', label: 'KI', type: 'number' })
-    const rollInsertAt = list.findIndex(c => c.field === 'KI') + 1
+    const rollInsertAt = list.findIndex(c => c.field === 'KI' || c.field === 'ki') + 1
     if (!hasRollNo) list.splice(rollInsertAt, 0, { field: 'roll_no', label: 'เลขม้วน', type: 'number' })
     return list
   })()
@@ -226,6 +237,18 @@ export default function RepairRequests() {
           {STATUS_TH[val] || val}
         </span>
       )
+    }
+    if (col.field === 'Design' || col.field === 'design') {
+      const d = val || row.Design || row.design
+      return d ? <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-900)' }}>{d}</span> : <span style={{ color: 'var(--text-400)' }}>-</span>
+    }
+    if (col.field === 'KI' || col.field === 'ki') {
+      const k = (val !== undefined && val !== null && val !== '') ? val : (row.KI !== undefined && row.KI !== null && row.KI !== '' ? row.KI : (row.ki ?? ''))
+      return (k !== '' && k !== undefined && k !== null) ? <span style={{ fontSize: 12, fontWeight: 800, fontFamily: 'monospace', color: '#2563eb' }}>{String(k)}</span> : <span style={{ color: 'var(--text-400)' }}>-</span>
+    }
+    if (col.field === 'roll_no' || col.field === 'RollNo' || col.field === 'roll_number') {
+      const r = val || row.roll_no || row.RollNo || row.roll_number
+      return r ? <span style={{ fontSize: 12, fontWeight: 800, fontFamily: 'monospace', color: '#059669' }}>{String(r)}</span> : <span style={{ color: 'var(--text-400)' }}>-</span>
     }
     if (col.field === 'created_at' || col.field === 'completed_at' || col.type === 'datetime')
       return <span style={{ fontSize:11, color: col.field === 'completed_at' && val ? '#10b981' : 'var(--text-500)' }}>{fmt(val)}</span>

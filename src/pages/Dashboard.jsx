@@ -34,7 +34,7 @@ import { useT } from '../contexts/LanguageContext'
 import { useToast } from '../components/ui/Toast'
 import { syncRowsToGoogleSheet } from '../utils/googleSheetsSync'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
-import { getAppBaseUrl } from '../utils/telegram'
+import { getAppBaseUrl, normalizeRepairRecord } from '../utils/telegram'
 import DetailDrawer from '../components/ui/DetailDrawer'
 
 const ICON_BG = {
@@ -182,8 +182,8 @@ export default function Dashboard() {
       const machines       = m.status === 'fulfilled' ? (m.value?.data || m.value || []) : []
       const workorders     = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
       const pm             = p.status === 'fulfilled' ? (p.value?.data || p.value || []) : []
-      const parts          = s.status === 'fulfilled' ? (s.value?.data || s.value || []) : []
-      const repairRequests = r.status === 'fulfilled' ? (r.value?.data || r.value || []) : []
+      const rawRepairRequests = r.status === 'fulfilled' ? (r.value?.data || r.value || []) : []
+      const repairRequests = rawRepairRequests.map(normalizeRepairRecord)
 
       const pendingRepairs = repairRequests
         .filter((x) => x.status !== 'COMPLETED' && x.status !== 'REJECTED')

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
-import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB } from '../utils/telegram'
+import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB, normalizeRepairRecord, encodeRepairProblemDescription } from '../utils/telegram'
 import { notifyLineNewRepair, notifyLineTechnician, notifyLineCompleted } from '../utils/line'
 import { TechnicianAPI } from '../api/entities'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
@@ -302,6 +302,13 @@ function StepReport({ serial, cylinder, onSubmitted }) {
     setSaving(true)
     setError('')
     try {
+      const encodedProblem = encodeRepairProblemDescription(problem.trim(), {
+        Design: design.trim(),
+        KI: ki.trim(),
+        roll_no: rollNo.trim(),
+        priority: urgency,
+      })
+
       let insertPayload = {
         cylinder_serial: serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || null,
         cylinder_location: cylinder?.Location || null,
@@ -310,7 +317,7 @@ function StepReport({ serial, cylinder, onSubmitted }) {
         Design: design.trim() || null,
         KI: ki.trim() ? Number(ki) : null,
         roll_no: rollNo.trim() ? Number(rollNo) : null,
-        problem_description: problem.trim(),
+        problem_description: encodedProblem,
         priority: urgency,
         reported_by: reporter.trim(),
         status: 'PENDING',
@@ -332,14 +339,14 @@ function StepReport({ serial, cylinder, onSubmitted }) {
         }
       }
       if (insertRes.error) throw insertRes.error
-      const data = {
+      const data = normalizeRepairRecord({
         ...(insertRes.data || {}),
         Design: design.trim() || insertRes.data?.Design,
         KI: ki.trim() || insertRes.data?.KI,
         roll_no: rollNo.trim() || insertRes.data?.roll_no,
         machine_mc: cylinder?.NewMC || insertRes.data?.machine_mc,
         cylinder_serial: serial || cylinder?.Serial_NOW || insertRes.data?.cylinder_serial,
-      }
+      })
 
       // Notifications
       try {
@@ -1312,7 +1319,7 @@ export default function RepairPage() {
             .select('*')
             .eq('id', reqId)
             .maybeSingle()
-          setRequest(req)
+          setRequest(req ? normalizeRepairRecord(req) : null)
         }
       } catch (e) {
         console.error('Error loading repair data:', e)
@@ -1323,8 +1330,8 @@ export default function RepairPage() {
     load()
   }, [serial, reqId])
 
-    const handleDone = (updated) => {
-    setRequest(updated)
+  const handleDone = (updated) => {
+    setRequest(updated ? normalizeRepairRecord(updated) : null)
     setDone(true)
   }
 
