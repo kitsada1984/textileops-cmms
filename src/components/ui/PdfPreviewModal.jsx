@@ -4,6 +4,7 @@ import { Printer, Download, X, FileText, CheckCircle2, AlertCircle, QrCode as Qr
 import { QRCodeSVG } from 'qrcode.react'
 import { format } from 'date-fns'
 import gemmaLogo from '../../assets/logo-gemma.png'
+import { getDirectImageUrl } from '../../utils/imageUrlUtils'
 
 export default function PdfPreviewModal({
   open,
@@ -17,6 +18,7 @@ export default function PdfPreviewModal({
   record = {},
   sections = [], // array of { title, fields: [{ label, value, full, mono }] }
   tableData = null, // { headers: [], rows: [] }
+  images = [], // array of image urls or objects
   remarks = '',
   signatories = [
     { title: 'ผู้จัดทำ / ผู้ขอ', name: '', date: '' },
@@ -260,6 +262,33 @@ export default function PdfPreviewModal({
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {/* ── ATTACHED PHOTOS (รูปถ่ายสภาพเข็ม / ชิ้นส่วน) ── */}
+              {images && images.length > 0 && (
+                <div className="space-y-1.5 mt-4">
+                  <div className="text-[11px] font-black uppercase text-slate-700 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
+                    <span className="w-1.5 h-3 bg-teal-600 rounded-sm"></span>
+                    <span>รูปถ่ายสภาพเข็มและชิ้นส่วน (Attached Inspection Photos)</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                    {images.map((img, i) => {
+                      const rawUrl = typeof img === 'object' && img !== null ? (img.url || img.localUrl || img.src) : img
+                      const directSrc = getDirectImageUrl(rawUrl, 'w800')
+                      return (
+                        <div key={i} className="rounded-lg overflow-hidden border border-slate-300 bg-white aspect-video flex items-center justify-center shadow-xs">
+                          <img
+                            src={directSrc}
+                            alt={`Inspection Photo ${i + 1}`}
+                            className="w-full h-full object-cover"
+                            crossOrigin="anonymous"
+                            loading="eager"
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}

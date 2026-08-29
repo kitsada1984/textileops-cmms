@@ -270,6 +270,7 @@ export function generateCenterCheckPdfProps(chk) {
       headers: ['ลำดับ', 'รายการตรวจเช็ค', 'ค่ามาตรฐาน', 'ก่อนปรับ', 'หลังปรับ', 'ผลลัพธ์', 'หมายเหตุ'],
       rows: tableRows,
     },
+    images: Array.isArray(chk.needle_images) ? chk.needle_images : [],
     signatories: [
       { title: 'ช่างผู้ตรวจเช็ค', name: chk.mechanic || chk.sign_name || '', date: chk.sign_date || chk.doc_date || '' },
       { title: 'หัวหน้าแผนกตรวจสอบ', name: chk.sup_name || '', date: chk.sup_date || chk.doc_date || '' },
@@ -464,6 +465,7 @@ export function generateNeedleConditionPdfProps(needle, historyList = []) {
       headers: ['ลำดับ', 'วันที่ตรวจ', 'เครื่อง (MC)', 'ตำแหน่ง', 'Counter (รอบ)', 'สภาพเข็ม', 'ผู้ตรวจ'],
       rows: tableRows,
     } : null,
+    images: Array.isArray(needle.images) ? needle.images : [],
     signatories: [
       { title: 'ช่างผู้ตรวจเช็คสภาพเข็ม', name: needle.inspector || '', date: needle.doc_date ? format(new Date(needle.doc_date), 'dd/MM/yyyy') : format(new Date(), 'dd/MM/yyyy') },
       { title: 'หัวหน้างานแผน PM', name: '', date: '' },
