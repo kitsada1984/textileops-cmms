@@ -696,7 +696,45 @@ function StepApprove({ request, onUpdated }) {
 
       <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         
-        {/* 🌟 1. ข้อมูลงานผลิต (จากใบแจ้งซ่อม) 🌟 */}
+        {/* 🏭 ส่วนที่ 1: ข้อมูลเครื่องจักรและกระบอกสูบเป้าหมาย 🏭 */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            borderRadius: 18,
+            padding: '14px 16px',
+            color: '#ffffff',
+            boxShadow: '0 4px 12px rgba(15,23,42,0.15)',
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+            🎯 ข้อมูลเครื่องจักรเป้าหมาย (Target Asset)
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 900, color: '#ffffff' }}>
+              <Cpu size={16} style={{ color: '#60a5fa' }} />
+              <span>M/C: <span style={{ color: '#93c5fd' }}>{request.machine_mc || '—'}</span></span>
+            </div>
+            <span style={{ color: '#475569' }}>|</span>
+            <div style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>
+              ซีเรียล: <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{request.cylinder_serial || '—'}</span>
+            </div>
+            {request.cylinder_location && (
+              <>
+                <span style={{ color: '#475569' }}>|</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#cbd5e1', fontWeight: 700 }}>
+                  <MapPin size={13} style={{ color: '#f87171' }} /> {request.cylinder_location}
+                </div>
+              </>
+            )}
+            {request.cylinder_standard && (
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.12)', color: '#e2e8f0', fontWeight: 700 }}>
+                {request.cylinder_standard}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 🌟 ส่วนที่ 2: ข้อมูลงานผลิต (จากใบแจ้งซ่อม) 🌟 */}
         <div
           style={{
             background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
@@ -707,15 +745,15 @@ function StepApprove({ request, onUpdated }) {
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 900, color: '#1d4ed8', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>📋 ข้อมูลงานผลิต (จากใบแจ้งซ่อม)</span>
+            <span>📋 ข้อมูลงานผลิต (Production Info)</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: 12, border: '1px solid #dbeafe' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>🎨 Design (ลายผ้า)</span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>{request.Design || '—'}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>🎨 Design</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', wordBreak: 'break-word' }}>{request.Design || '—'}</span>
             </div>
             <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: 12, border: '1px solid #dbeafe' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>🧾 KI (ตัวเลข)</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>🧾 KI</span>
               <span style={{ fontSize: 14, fontWeight: 800, color: '#2563eb', fontFamily: 'monospace' }}>{request.KI !== undefined && request.KI !== null && request.KI !== '' ? request.KI : '—'}</span>
             </div>
             <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: 12, border: '1px solid #dbeafe' }}>
@@ -725,16 +763,16 @@ function StepApprove({ request, onUpdated }) {
           </div>
         </div>
 
-        {/* 2. รายละเอียดใบแจ้งซ่อม */}
+        {/* ⚠️ ส่วนที่ 3: ข้อมูลการแจ้งซ่อมและปัญหา */}
         <div style={{ background: '#f8fafc', borderRadius: 16, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
           <FieldRow label="เลขที่ใบแจ้ง" value={request.request_no} mono highlight />
-          <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
-          <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight mono />
+          <FieldRow label="ระดับความเร่งด่วน" value={request.priority} />
           <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} full />
-          <FieldRow label="ผู้แจ้ง" value={request.reported_by} />
+          <FieldRow label="ผู้แจ้งซ่อม" value={request.reported_by} />
+          <FieldRow label="วันที่แจ้ง" value={request.created_at ? new Date(request.created_at).toLocaleString('th-TH') : null} />
         </div>
 
-        {/* 3. มอบหมายช่าง */}
+        {/* 👨‍💼 ส่วนที่ 4: มอบหมายช่างและคำสั่งการ */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
             👨‍🔧 มอบหมายช่างผู้รับผิดชอบ *
@@ -762,7 +800,7 @@ function StepApprove({ request, onUpdated }) {
           )}
         </div>
 
-        {/* 4. คำสั่งการเพิ่มเติม */}
+        {/* คำสั่งการเพิ่มเติม */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
             📝 หมายเหตุ / คำสั่งการเพิ่มเติม (ถึงช่าง)
@@ -881,7 +919,45 @@ function StepComplete({ request, onUpdated }) {
 
       <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         
-        {/* 🌟 1. ข้อมูลงานผลิต (จากใบแจ้งซ่อม) 🌟 */}
+        {/* 🏭 ส่วนที่ 1: ข้อมูลเครื่องจักรและกระบอกสูบเป้าหมาย 🏭 */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            borderRadius: 18,
+            padding: '14px 16px',
+            color: '#ffffff',
+            boxShadow: '0 4px 12px rgba(15,23,42,0.15)',
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+            🎯 ข้อมูลเครื่องจักรเป้าหมาย (Target Asset)
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 900, color: '#ffffff' }}>
+              <Cpu size={16} style={{ color: '#60a5fa' }} />
+              <span>M/C: <span style={{ color: '#93c5fd' }}>{request.machine_mc || '—'}</span></span>
+            </div>
+            <span style={{ color: '#475569' }}>|</span>
+            <div style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>
+              ซีเรียล: <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{request.cylinder_serial || '—'}</span>
+            </div>
+            {request.cylinder_location && (
+              <>
+                <span style={{ color: '#475569' }}>|</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#cbd5e1', fontWeight: 700 }}>
+                  <MapPin size={13} style={{ color: '#f87171' }} /> {request.cylinder_location}
+                </div>
+              </>
+            )}
+            {request.cylinder_standard && (
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.12)', color: '#e2e8f0', fontWeight: 700 }}>
+                {request.cylinder_standard}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 🌟 ส่วนที่ 2: ข้อมูลงานผลิต (จากใบแจ้งซ่อม) 🌟 */}
         <div
           style={{
             background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
@@ -892,15 +968,15 @@ function StepComplete({ request, onUpdated }) {
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 900, color: '#1d4ed8', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>📋 ข้อมูลงานผลิต (จากใบแจ้งซ่อม)</span>
+            <span>📋 ข้อมูลงานผลิต (Production Info)</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: 12, border: '1px solid #dbeafe' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>🎨 Design (ลายผ้า)</span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#1e293b' }}>{request.Design || '—'}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>🎨 Design</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', wordBreak: 'break-word' }}>{request.Design || '—'}</span>
             </div>
             <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: 12, border: '1px solid #dbeafe' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>🧾 KI (ตัวเลข)</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 2 }}>🧾 KI</span>
               <span style={{ fontSize: 14, fontWeight: 800, color: '#2563eb', fontFamily: 'monospace' }}>{request.KI !== undefined && request.KI !== null && request.KI !== '' ? request.KI : '—'}</span>
             </div>
             <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: 12, border: '1px solid #dbeafe' }}>
@@ -910,18 +986,16 @@ function StepComplete({ request, onUpdated }) {
           </div>
         </div>
 
-        {/* 2. รายละเอียดและคำสั่งหัวหน้า */}
+        {/* ⚠️ ส่วนที่ 3: ปัญหาและคำสั่งหัวหน้า */}
         <div style={{ background: '#f8fafc', borderRadius: 16, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
           <FieldRow label="เลขที่ใบแจ้ง" value={request.request_no} mono highlight />
-          <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
-          <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight mono />
           <FieldRow label="ปัญหาที่แจ้ง" value={request.problem_description} full />
           {request.approval_notes && (
             <FieldRow label="คำสั่งหัวหน้า" value={request.approval_notes} highlight full />
           )}
         </div>
 
-        {/* 3. Tech name */}
+        {/* 🔧 ส่วนที่ 4: ชื่อช่างและผลการซ่อม */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
             👨‍🔧 ชื่อช่างผู้ดำเนินการซ่อม *
@@ -929,12 +1003,12 @@ function StepComplete({ request, onUpdated }) {
           <input
             value={tech}
             onChange={(e) => setTech(e.target.value)}
-            placeholder="ชื่อช่าง"
+            placeholder="ชื่อช่างผู้ปฏิบัติงาน"
             style={inputStyle}
           />
         </div>
 
-        {/* 4. Repair details & quick chips */}
+        {/* รายละเอียดการซ่อม & quick chips */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
             🛠️ รายละเอียดการซ่อม / วิธีแก้ไข *
@@ -969,7 +1043,7 @@ function StepComplete({ request, onUpdated }) {
           />
         </div>
 
-        {/* 5. Parts used */}
+        {/* อะไหล่ที่เบิกใช้ */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
             📦 อะไหล่ที่เบิกใช้ (ถ้ามี)
@@ -1048,7 +1122,45 @@ function StatusView({ request, onOpenPdf }) {
         </span>
       </div>
 
-      {/* Production Info Highlight Box */}
+      {/* 🏭 ส่วนที่ 1: ข้อมูลเครื่องจักรและกระบอกสูบเป้าหมาย 🏭 */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          borderRadius: 18,
+          padding: '14px 16px',
+          color: '#ffffff',
+          boxShadow: '0 4px 12px rgba(15,23,42,0.15)',
+        }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          🎯 ข้อมูลเครื่องจักรเป้าหมาย (Target Asset)
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 900, color: '#ffffff' }}>
+            <Cpu size={16} style={{ color: '#60a5fa' }} />
+            <span>M/C: <span style={{ color: '#93c5fd' }}>{request.machine_mc || '—'}</span></span>
+          </div>
+          <span style={{ color: '#475569' }}>|</span>
+          <div style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>
+            ซีเรียล: <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{request.cylinder_serial || '—'}</span>
+          </div>
+          {request.cylinder_location && (
+            <>
+              <span style={{ color: '#475569' }}>|</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#cbd5e1', fontWeight: 700 }}>
+                <MapPin size={13} style={{ color: '#f87171' }} /> {request.cylinder_location}
+              </div>
+            </>
+          )}
+          {request.cylinder_standard && (
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.12)', color: '#e2e8f0', fontWeight: 700 }}>
+              {request.cylinder_standard}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* 🌟 ส่วนที่ 2: ข้อมูลงานผลิต 🌟 */}
       <div
         style={{
           background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
@@ -1063,7 +1175,7 @@ function StatusView({ request, onOpenPdf }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: 10, border: '1px solid #dbeafe' }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', display: 'block' }}>🎨 Design</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#1e293b' }}>{request.Design || '—'}</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#1e293b', wordBreak: 'break-word' }}>{request.Design || '—'}</span>
           </div>
           <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: 10, border: '1px solid #dbeafe' }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', display: 'block' }}>🧾 KI</span>
@@ -1078,9 +1190,6 @@ function StatusView({ request, onOpenPdf }) {
 
       {/* Complete Data Breakdown */}
       <div style={{ background: '#f8fafc', borderRadius: 18, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
-        <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} highlight />
-        <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight mono />
-        <FieldRow label="ตำแหน่งติดตั้ง" value={request.cylinder_location} />
         <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} full />
         <FieldRow label="ระดับความเร่งด่วน" value={request.priority} />
         <FieldRow label="ผู้แจ้งซ่อม" value={request.reported_by} />
