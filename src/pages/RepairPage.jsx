@@ -463,6 +463,9 @@ function StepReport({ serial, cylinder, onSubmitted }) {
 function StepApprove({ request, onUpdated }) {
   const [techList, setTechList] = useState([])
   const [tech, setTech] = useState(request.technician_name || '')
+  const [design, setDesign] = useState(request.Design || '')
+  const [ki, setKi] = useState(request.KI !== undefined && request.KI !== null ? String(request.KI) : '')
+  const [rollNo, setRollNo] = useState(request.roll_no || request.RollNo || '')
   const [notes, setNotes] = useState(request.approval_notes || '')
   const [saving, setSaving] = useState('')
   const [error, setError] = useState('')
@@ -505,19 +508,40 @@ function StepApprove({ request, onUpdated }) {
     setError('')
     try {
       const status = action === 'approve' ? 'APPROVED' : 'REJECTED'
-      const { data, error: err } = await supabase
+      let updatePayload = {
+        status,
+        technician_name: tech.trim(),
+        approval_notes: notes.trim(),
+        approved_at: new Date().toISOString(),
+        approved_by: tech.trim() || 'Supervisor',
+        Design: design.trim() || null,
+        KI: ki.trim() ? Number(ki) : null,
+        roll_no: rollNo.trim() ? Number(rollNo) : null,
+      }
+      let updateRes = await supabase
         .from('repair_requests')
-        .update({
-          status,
-          technician_name: tech.trim(),
-          approval_notes: notes.trim(),
-          approved_at: new Date().toISOString(),
-          approved_by: tech.trim() || 'Supervisor',
-        })
+        .update(updatePayload)
         .eq('id', request.id)
         .select()
         .single()
-      if (err) throw err
+      if (updateRes.error) {
+        delete updatePayload.roll_no
+        delete updatePayload.KI
+        delete updatePayload.Design
+        updateRes = await supabase
+          .from('repair_requests')
+          .update(updatePayload)
+          .eq('id', request.id)
+          .select()
+          .single()
+      }
+      if (updateRes.error) throw updateRes.error
+      const data = {
+        ...(updateRes.data || {}),
+        Design: design.trim() || updateRes.data?.Design,
+        KI: ki.trim() || updateRes.data?.KI,
+        roll_no: rollNo.trim() || updateRes.data?.roll_no,
+      }
       if (action === 'approve') {
         try {
           await notifyTechnician(data)
@@ -557,15 +581,77 @@ function StepApprove({ request, onUpdated }) {
         subtitle="เลือกช่างเพื่อยิงใบสั่งงานตรงเข้า LINE & Telegram ของช่างทันที"
       />
       <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Detail Box */}
+        {/* 🌟 1. ข้อมูลงานผลิต (Design / KI / เลขม้วน) 🌟 */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
+            borderRadius: 16,
+            padding: '16px',
+            border: '2px solid #3b82f6',
+            boxShadow: '0 4px 14px rgba(59,130,246,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>📋 ส่วนที่ 1: ข้อมูลงานผลิต (Design / KI / เลขม้วน)</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Design */}
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                🎨 Design (ลายผ้า)
+              </label>
+              <input
+                type="text"
+                value={design}
+                onChange={(e) => setDesign(e.target.value)}
+                placeholder="ระบุลายผ้า / Design..."
+                style={{ ...inputStyle, background: '#ffffff' }}
+              />
+            </div>
+
+            {/* KI & Roll No */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                  🧾 KI (ตัวเลข)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={ki}
+                  onChange={(e) => setKi(e.target.value)}
+                  placeholder="ระบุเลข KI..."
+                  style={{ ...inputStyle, background: '#ffffff', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                  📦 เลขม้วน (ตัวเลข)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={rollNo}
+                  onChange={(e) => setRollNo(e.target.value)}
+                  placeholder="ระบุเลขม้วน..."
+                  style={{ ...inputStyle, background: '#ffffff', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. รายละเอียดใบแจ้งซ่อม */}
         <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
           <FieldRow label="เลขที่ใบแจ้ง" value={request.request_no} />
           <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
           <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight />
-          <FieldRow label="Design (ลายผ้า)" value={request.Design} />
-          <FieldRow label="KI" value={request.KI} />
-          <FieldRow label="เลขม้วน" value={request.roll_no || request.RollNo || request.roll_number} />
-          <FieldRow label="อาการเสีย" value={request.problem_description} />
+          <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} />
           <FieldRow label="ผู้แจ้ง" value={request.reported_by} />
         </div>
 
@@ -656,6 +742,9 @@ function StepComplete({ request, onUpdated }) {
   const [details, setDetails] = useState(request.repair_details || '')
   const [parts, setParts] = useState(request.parts_used || '')
   const [tech, setTech] = useState(request.technician_name || '')
+  const [design, setDesign] = useState(request.Design || '')
+  const [ki, setKi] = useState(request.KI !== undefined && request.KI !== null ? String(request.KI) : '')
+  const [rollNo, setRollNo] = useState(request.roll_no || request.RollNo || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -676,19 +765,40 @@ function StepComplete({ request, onUpdated }) {
     setSaving(true)
     setError('')
     try {
-      const { data, error: err } = await supabase
+      let updatePayload = {
+        status: 'COMPLETED',
+        repair_details: details.trim(),
+        parts_used: parts.trim(),
+        completed_at: new Date().toISOString(),
+        completed_by: tech.trim(),
+        Design: design.trim() || null,
+        KI: ki.trim() ? Number(ki) : null,
+        roll_no: rollNo.trim() ? Number(rollNo) : null,
+      }
+      let updateRes = await supabase
         .from('repair_requests')
-        .update({
-          status: 'COMPLETED',
-          repair_details: details.trim(),
-          parts_used: parts.trim(),
-          completed_at: new Date().toISOString(),
-          completed_by: tech.trim(),
-        })
+        .update(updatePayload)
         .eq('id', request.id)
         .select()
         .single()
-      if (err) throw err
+      if (updateRes.error) {
+        delete updatePayload.roll_no
+        delete updatePayload.KI
+        delete updatePayload.Design
+        updateRes = await supabase
+          .from('repair_requests')
+          .update(updatePayload)
+          .eq('id', request.id)
+          .select()
+          .single()
+      }
+      if (updateRes.error) throw updateRes.error
+      const data = {
+        ...(updateRes.data || {}),
+        Design: design.trim() || updateRes.data?.Design,
+        KI: ki.trim() || updateRes.data?.KI,
+        roll_no: rollNo.trim() || updateRes.data?.roll_no,
+      }
       try {
         await notifyCompleted(data)
       } catch (tgErr) {
@@ -706,6 +816,18 @@ function StepComplete({ request, onUpdated }) {
     setSaving(false)
   }
 
+  const inputStyle = {
+    width: '100%',
+    minHeight: 46,
+    padding: '10px 14px',
+    borderRadius: 12,
+    border: '1px solid #cbd5e1',
+    fontSize: 16,
+    outline: 'none',
+    boxSizing: 'border-box',
+    background: '#f8fafc',
+  }
+
   return (
     <div>
       <StepHeader
@@ -714,7 +836,72 @@ function StepComplete({ request, onUpdated }) {
         subtitle="บันทึกรายละเอียดงานที่ทำ และอะไหล่ที่เปลี่ยนเพื่อปิดงาน"
       />
       <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Info Box */}
+        {/* 🌟 1. ข้อมูลงานผลิต (Design / KI / เลขม้วน) 🌟 */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
+            borderRadius: 16,
+            padding: '16px',
+            border: '2px solid #3b82f6',
+            boxShadow: '0 4px 14px rgba(59,130,246,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>📋 ข้อมูลงานผลิต (Design / KI / เลขม้วน)</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Design */}
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                🎨 Design (ลายผ้า)
+              </label>
+              <input
+                type="text"
+                value={design}
+                onChange={(e) => setDesign(e.target.value)}
+                placeholder="ระบุลายผ้า / Design..."
+                style={{ ...inputStyle, background: '#ffffff' }}
+              />
+            </div>
+
+            {/* KI & Roll No */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                  🧾 KI (ตัวเลข)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={ki}
+                  onChange={(e) => setKi(e.target.value)}
+                  placeholder="ระบุเลข KI..."
+                  style={{ ...inputStyle, background: '#ffffff', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                  📦 เลขม้วน (ตัวเลข)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={rollNo}
+                  onChange={(e) => setRollNo(e.target.value)}
+                  placeholder="ระบุเลขม้วน..."
+                  style={{ ...inputStyle, background: '#ffffff', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. รายละเอียดและคำสั่งหัวหน้า */}
         <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
           <FieldRow label="เลขที่ใบแจ้ง" value={request.request_no} />
           <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
@@ -734,17 +921,7 @@ function StepComplete({ request, onUpdated }) {
             value={tech}
             onChange={(e) => setTech(e.target.value)}
             placeholder="ชื่อช่าง"
-            style={{
-              width: '100%',
-              minHeight: 46,
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid #cbd5e1',
-              fontSize: 16,
-              outline: 'none',
-              boxSizing: 'border-box',
-              background: '#f8fafc',
-            }}
+            style={inputStyle}
           />
         </div>
 
@@ -782,17 +959,7 @@ function StepComplete({ request, onUpdated }) {
             value={parts}
             onChange={(e) => setParts(e.target.value)}
             placeholder="เช่น เข็ม 2 เล่ม, ซีลยาง 1 วง..."
-            style={{
-              width: '100%',
-              minHeight: 46,
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid #cbd5e1',
-              fontSize: 16,
-              outline: 'none',
-              boxSizing: 'border-box',
-              background: '#f8fafc',
-            }}
+            style={inputStyle}
           />
         </div>
 
