@@ -474,11 +474,9 @@ export const DEFAULT_SINGLE_CHECKLIST_ITEMS = [
   { no: 5, item: 'กลม singer', std: '0.03' },
   { no: 6, item: 'สูงต่ำ singer', std: '0.03' },
   { no: 7, item: 'ระยะห่าง singer', std: '0.15><0.20' },
-  { no: 8, item: 'กลมสามขา', std: '0.03' },
-  { no: 9, item: 'สูงต่ำสามขา', std: '0.03' },
-  { no: 10, item: 'กลม วงแปรง', std: '0.05' },
-  { no: 11, item: 'สูงต่ำ วงแปรง', std: '0.20' },
-  { no: 12, item: 'กลม take down', std: '1.00' },
+  { no: 8, item: 'กลม วงแปรง', std: '0.05' },
+  { no: 9, item: 'สูง-ต่ำ วงแปรง', std: '0.20' },
+  { no: 10, item: 'กลม take down', std: '1.00' },
 ]
 
 export const DEFAULT_DOUBLE_CHECKLIST_ITEMS = [
