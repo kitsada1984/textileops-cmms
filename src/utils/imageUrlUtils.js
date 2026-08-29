@@ -31,14 +31,15 @@ export function isGoogleDriveUrl(url = '') {
 
 /**
  * Returns a direct image URL suitable for <img> tags.
- * For Google Drive, generates thumbnail URLs that bypass viewer HTML pages.
+ * For Google Drive, uses lh3.googleusercontent.com CDN which supports direct image rendering without auth blocks.
  */
 export function getDirectImageUrl(url = '', size = 'w1200') {
   if (!url || typeof url !== 'string') return ''
   const trimmed = url.trim()
   const fileId = getGoogleDriveFileId(trimmed)
   if (fileId) {
-    return 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=' + size
+    const sParam = size.startsWith('w') ? 's' + size.slice(1) : (size.startsWith('s') ? size : 's800')
+    return `https://lh3.googleusercontent.com/d/${fileId}=${sParam}`
   }
   return trimmed
 }
@@ -53,10 +54,10 @@ export function getImageFallbackUrls(url = '') {
   if (!fileId) return [trimmed]
 
   return [
-    'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1200',
-    'https://lh3.googleusercontent.com/d/' + fileId + '=s1200',
-    'https://lh3.googleusercontent.com/d/' + fileId,
-    'https://drive.google.com/uc?export=view&id=' + fileId,
+    `https://lh3.googleusercontent.com/d/${fileId}=s1200`,
+    `https://lh3.googleusercontent.com/d/${fileId}`,
+    `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`,
+    `https://drive.google.com/uc?export=view&id=${fileId}`,
   ]
 }
 

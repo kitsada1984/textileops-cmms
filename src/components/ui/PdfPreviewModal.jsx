@@ -1,10 +1,75 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Printer, Download, X, FileText, CheckCircle2, AlertCircle, QrCode as QrIcon } from 'lucide-react'
+import { Printer, Download, X, FileText, CheckCircle2, AlertCircle, QrCode as QrIcon, Image as ImageIcon } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { format } from 'date-fns'
+import { useState } from 'react'
 import gemmaLogo from '../../assets/logo-gemma.png'
-import { getDirectImageUrl } from '../../utils/imageUrlUtils'
+import { getDirectImageUrl, getImageFallbackUrls } from '../../utils/imageUrlUtils'
+import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
+
+function PdfAttachedPhoto({ src, index }) {
+  const [resolvedSrc, setResolvedSrc] = useState('')
+  const [error, setError] = useState(false)
+  const [fallbackIdx, setFallbackIdx] = useState(0)
+
+  const rawUrl = typeof src === 'object' && src !== null ? (src.url || src.localUrl || src.src) : src
+  const fallbacks = getImageFallbackUrls(rawUrl)
+
+  useEffect(() => {
+    let active = true
+    setError(false)
+    setFallbackIdx(0)
+    const baseSrc = getDirectImageUrl(rawUrl, 'w1000')
+    if (!baseSrc) {
+      setResolvedSrc('')
+      return
+    }
+    if (baseSrc.startsWith('data:image/heic') || baseSrc.startsWith('data:image/heif')) {
+      convertHeicDataUrlIfNeeded(baseSrc).then((converted) => {
+        if (active) setResolvedSrc(converted)
+      })
+    } else {
+      setResolvedSrc(baseSrc)
+    }
+    return () => {
+      active = false
+    }
+  }, [rawUrl])
+
+  const handleImgError = () => {
+    if (fallbackIdx < fallbacks.length - 1) {
+      const next = fallbackIdx + 1
+      setFallbackIdx(next)
+      setResolvedSrc(fallbacks[next])
+    } else {
+      setError(true)
+    }
+  }
+
+  return (
+    <div className="rounded-lg overflow-hidden border border-slate-300 bg-white aspect-video flex items-center justify-center shadow-xs">
+      {!error && resolvedSrc ? (
+        <img
+          src={resolvedSrc}
+          alt={`Inspection Photo ${index + 1}`}
+          className="w-full h-full object-cover"
+          crossOrigin="anonymous"
+          loading="eager"
+          onError={handleImgError}
+        />
+      ) : (
+        <div className="flex flex-col items-center justify-center p-2 text-slate-400 text-center gap-1 w-full h-full bg-slate-50">
+          <ImageIcon size={22} className="text-blue-500" />
+          <span className="text-[10px] font-bold text-slate-700">รูปถ่ายชิ้นส่วน #{index + 1}</span>
+          {rawUrl && typeof rawUrl === 'string' && rawUrl.includes('drive.google.com') && (
+            <span className="text-[8.5px] text-slate-400 font-mono">Google Drive File</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function PdfPreviewModal({
   open,
@@ -274,21 +339,9 @@ export default function PdfPreviewModal({
                     <span>รูปถ่ายสภาพเข็มและชิ้นส่วน (Attached Inspection Photos)</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                    {images.map((img, i) => {
-                      const rawUrl = typeof img === 'object' && img !== null ? (img.url || img.localUrl || img.src) : img
-                      const directSrc = getDirectImageUrl(rawUrl, 'w800')
-                      return (
-                        <div key={i} className="rounded-lg overflow-hidden border border-slate-300 bg-white aspect-video flex items-center justify-center shadow-xs">
-                          <img
-                            src={directSrc}
-                            alt={`Inspection Photo ${i + 1}`}
-                            className="w-full h-full object-cover"
-                            crossOrigin="anonymous"
-                            loading="eager"
-                          />
-                        </div>
-                      )
-                    })}
+                    {images.map((img, i) => (
+                      <PdfAttachedPhoto key={i} src={img} index={i} />
+                    ))}
                   </div>
                 </div>
               )}

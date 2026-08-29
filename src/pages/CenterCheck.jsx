@@ -45,7 +45,7 @@ import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateCenterCheckPdfProps } from '../utils/pdfDocGenerators'
 import initialCenterChecks from '../data/initialCenterChecks.json'
-import { getDirectImageUrl } from '../utils/imageUrlUtils'
+import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
 import { normalizeImageFile, convertHeicDataUrlIfNeeded } from '../utils/imageFileProcessor'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 
@@ -63,11 +63,16 @@ const STANDARD_NEEDLE_CONDS = ['สึกเล็กน้อย', 'สึก�
 function CenterCheckPhotoCard({ url, index, onRemove, onPreview }) {
   const [resolvedSrc, setResolvedSrc] = useState('')
   const [error, setError] = useState(false)
+  const [fallbackIdx, setFallbackIdx] = useState(0)
+
+  const rawUrl = typeof url === 'object' && url !== null ? (url.url || url.localUrl || url.src) : url
+  const fallbacks = useMemo(() => getImageFallbackUrls(rawUrl), [rawUrl])
 
   useEffect(() => {
     let active = true
-    const rawUrl = typeof url === 'object' && url !== null ? (url.url || url.localUrl || url.src) : url
-    const baseSrc = getDirectImageUrl(rawUrl, 'w600')
+    setError(false)
+    setFallbackIdx(0)
+    const baseSrc = getDirectImageUrl(rawUrl, 'w800')
     if (!baseSrc) {
       setResolvedSrc('')
       return
@@ -82,9 +87,17 @@ function CenterCheckPhotoCard({ url, index, onRemove, onPreview }) {
     return () => {
       active = false
     }
-  }, [url])
+  }, [rawUrl])
 
-  const rawUrl = typeof url === 'object' && url !== null ? (url.url || url.localUrl || url.src) : url
+  const handleImgError = () => {
+    if (fallbackIdx < fallbacks.length - 1) {
+      const next = fallbackIdx + 1
+      setFallbackIdx(next)
+      setResolvedSrc(fallbacks[next])
+    } else {
+      setError(true)
+    }
+  }
 
   return (
     <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-xs">
@@ -94,7 +107,7 @@ function CenterCheckPhotoCard({ url, index, onRemove, onPreview }) {
           alt={`Needle condition ${index + 1}`}
           className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
           onClick={onPreview}
-          onError={() => setError(true)}
+          onError={handleImgError}
           loading="lazy"
         />
       ) : (
