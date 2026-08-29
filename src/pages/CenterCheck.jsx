@@ -22,6 +22,7 @@ import {
   X,
   FileText,
   Sliders,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { format, differenceInCalendarDays } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -44,6 +45,9 @@ import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateCenterCheckPdfProps } from '../utils/pdfDocGenerators'
 import initialCenterChecks from '../data/initialCenterChecks.json'
+import { getDirectImageUrl } from '../utils/imageUrlUtils'
+import { normalizeImageFile, convertHeicDataUrlIfNeeded } from '../utils/imageFileProcessor'
+import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 
 const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 
@@ -55,6 +59,74 @@ const NEEDLE_COND_OPTIONS = [
   'ระบุเอง',
 ]
 const STANDARD_NEEDLE_CONDS = ['สึกเล็กน้อย', 'สึกปานกลาง', 'สึกมาก', 'สึกมาก(ควรเปลี่ยน)']
+
+function CenterCheckPhotoCard({ url, index, onRemove, onPreview }) {
+  const [resolvedSrc, setResolvedSrc] = useState('')
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    const rawUrl = typeof url === 'object' && url !== null ? (url.url || url.localUrl || url.src) : url
+    const baseSrc = getDirectImageUrl(rawUrl, 'w600')
+    if (!baseSrc) {
+      setResolvedSrc('')
+      return
+    }
+    if (baseSrc.startsWith('data:image/heic') || baseSrc.startsWith('data:image/heif')) {
+      convertHeicDataUrlIfNeeded(baseSrc).then((converted) => {
+        if (active) setResolvedSrc(converted)
+      })
+    } else {
+      setResolvedSrc(baseSrc)
+    }
+    return () => {
+      active = false
+    }
+  }, [url])
+
+  const rawUrl = typeof url === 'object' && url !== null ? (url.url || url.localUrl || url.src) : url
+
+  return (
+    <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-xs">
+      {!error && resolvedSrc ? (
+        <img
+          src={resolvedSrc}
+          alt={`Needle condition ${index + 1}`}
+          className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+          onClick={onPreview}
+          onError={() => setError(true)}
+          loading="lazy"
+        />
+      ) : (
+        <div
+          onClick={onPreview}
+          className="flex flex-col items-center justify-center gap-1 cursor-pointer text-slate-400 hover:text-blue-500 transition-colors p-2 text-center w-full h-full bg-slate-50 dark:bg-slate-800/80"
+        >
+          <ImageIcon size={22} className="text-blue-500" />
+          <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">คลิกดูรูปภาพ</span>
+          {rawUrl && typeof rawUrl === 'string' && rawUrl.includes('drive.google.com') && (
+            <span className="text-[9px] text-slate-400">Google Drive</span>
+          )}
+        </div>
+      )}
+
+      {/* Delete button */}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove()
+          }}
+          className="absolute top-1.5 right-1.5 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-10"
+          title="ลบรูปนี้"
+        >
+          <X size={12} />
+        </button>
+      )}
+    </div>
+  )
+}
 
 export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan }) {
   const { t } = useT()
@@ -121,6 +193,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
   // Modals
   const [viewRecord, setViewRecord] = useState(null)
   const [printRecord, setPrintRecord] = useState(null)
+  const [previewImage, setPreviewImage] = useState(null)
   const [sqlModalOpen, setSqlModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -506,35 +579,60 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     })
   }
 
-  // Handle Image Upload (Google Drive with Base64 fallback)
+  // Handle Image Upload (Auto HEIC normalize & Google Drive with Base64 fallback)
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
 
     setUploadingImage(true)
-    for (const file of files) {
-      try {
-        const { imageUrl } = await uploadImageToGoogleDrive(file, { folderName: CENTER_CHECK_IMAGE_FOLDER })
-        setFormData((prev) => ({
-          ...prev,
-          needle_images: [...(prev.needle_images || []), imageUrl],
-        }))
-        toast.success('อัปโหลดรูปลง Google Drive สำเร็จ', `โฟลเดอร์ ${CENTER_CHECK_IMAGE_FOLDER}`)
-      } catch (err) {
-        // Fallback to local Base64
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          const base64Url = event.target.result
-          setFormData((prev) => ({
-            ...prev,
-            needle_images: [...(prev.needle_images || []), base64Url],
-          }))
+    try {
+      const newUrls = []
+      for (const rawFile of files) {
+        // Auto convert HEIC to JPEG & optimize image size
+        const normalized = await normalizeImageFile(rawFile, 1920, 0.85)
+        const fileToUpload = normalized?.file || rawFile
+        const dataUrl = normalized?.dataUrl || ''
+
+        try {
+          const res = await uploadImageToGoogleDrive(fileToUpload, { folderName: CENTER_CHECK_IMAGE_FOLDER })
+          const imgUrl = res?.imageUrl || res?.url
+          if (imgUrl) {
+            newUrls.push(imgUrl)
+          } else if (dataUrl) {
+            newUrls.push(dataUrl)
+          } else {
+            const fallback = await readFileAsDataUrl(fileToUpload)
+            newUrls.push(fallback)
+          }
+        } catch {
+          if (dataUrl) {
+            newUrls.push(dataUrl)
+          } else {
+            const fallback = await readFileAsDataUrl(fileToUpload)
+            newUrls.push(fallback)
+          }
         }
-        reader.readAsDataURL(file)
       }
+
+      setFormData((prev) => ({
+        ...prev,
+        needle_images: [...(prev.needle_images || []), ...newUrls],
+      }))
+      toast.success('อัปโหลดรูปสำเร็จ', `เพิ่ม ${newUrls.length} รูป (แปลงเป็น JPEG คมชัดเรียบร้อย)`)
+    } catch (err) {
+      toast.error('อัปโหลดรูปไม่สำเร็จ', err.message)
+    } finally {
+      setUploadingImage(false)
     }
-    setUploadingImage(false)
   }
+
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (ev) => resolve(ev.target.result)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
 
   const removeImage = (imgIdx) => {
     setFormData((prev) => ({
@@ -1417,16 +1515,13 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                     </div>
                   ) : (
                     formData.needle_images.map((img, imgIdx) => (
-                      <div key={imgIdx} className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100">
-                        <img src={img} alt="Needle preview" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(imgIdx)}
-                          className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={10} />
-                        </button>
-                      </div>
+                      <CenterCheckPhotoCard
+                        key={imgIdx}
+                        url={img}
+                        index={imgIdx}
+                        onRemove={() => removeImage(imgIdx)}
+                        onPreview={() => setPreviewImage(img)}
+                      />
                     ))
                   )}
                 </div>
@@ -1668,7 +1763,12 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                 <span className="font-bold text-slate-700 dark:text-slate-300">รูปถ่ายสภาพเข็ม:</span>
                 <div className="grid grid-cols-3 gap-2">
                   {viewRecord.needle_images.map((img, i) => (
-                    <img key={i} src={img} alt="Needle" className="rounded-xl border border-slate-200 aspect-video object-cover" />
+                    <CenterCheckPhotoCard
+                      key={i}
+                      url={img}
+                      index={i}
+                      onPreview={() => setPreviewImage(img)}
+                    />
                   ))}
                 </div>
               </div>
@@ -1830,6 +1930,16 @@ CREATE POLICY "Allow all operations for center_checks" ON public.center_checks F
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* ── MODAL: 4. IMAGE PREVIEW MODAL ───────────────────────── */}
+      {previewImage && (
+        <ImagePreviewModal
+          url={typeof previewImage === 'object' ? previewImage.url || previewImage.localUrl : previewImage}
+          title="รูปถ่ายสภาพเข็ม / ชิ้นส่วน"
+          open={!!previewImage}
+          onClose={() => setPreviewImage(null)}
+        />
       )}
     </div>
   )
