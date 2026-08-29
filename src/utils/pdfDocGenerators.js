@@ -247,8 +247,21 @@ export function generateCenterCheckPdfProps(chk) {
           { label: 'มิเตอร์ก่อนหน้า (Prev Counter)', value: chk.counter_prev ? Number(chk.counter_prev).toLocaleString() : '—' },
           { label: 'ยอดรอบที่เดิน (Total Cycles)', value: chk.counter_total ? Number(chk.counter_total).toLocaleString() : '—' },
           { label: 'จำนวนวันนับจากครั้งก่อน', value: chk.days_since_last ? `${chk.days_since_last} วัน` : '—' },
-          { label: 'สภาพเข็ม (Needle Condition)', value: chk.needle_cond || 'ปกติ' },
+          { label: 'สภาพเข็ม (Needle Condition)', value: chk.needle_cond || 'สึกเล็กน้อย' },
           { label: 'การจัดเรียงเข็ม (Needle Arrangement)', value: chk.needle_arr || 'ตามแบบมาตรฐาน' },
+        ],
+      },
+      {
+        title: 'รายการตรวจเช็คบำรุงรักษาเพิ่มเติม (Maintenance Checklist)',
+        fields: [
+          { label: 'อัดจารบี (Greasing)', value: chk.greasing ? '✅ ดำเนินการแล้ว' : '—' },
+          { label: 'ถ่ายน้ำมันเกียร์ (Gear Oil Change)', value: chk.oil_change ? '✅ ดำเนินการแล้ว' : '—' },
+          {
+            label: 'สายพานส่งด้าย (Quality Feed Belts)',
+            value: [1, 2, 3, 4, 5]
+              .map((n) => `เทป ${n}: ${chk[`belt_tape${n}`] ? '☑ ผ่าน' : '☐'}`)
+              .join('   |   '),
+          },
         ],
       },
     ],

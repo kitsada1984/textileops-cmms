@@ -100,6 +100,13 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     prev_doc_date: '',
     days_since_last: 0,
     items: [],
+    greasing: false,
+    oil_change: false,
+    belt_tape1: false,
+    belt_tape2: false,
+    belt_tape3: false,
+    belt_tape4: false,
+    belt_tape5: false,
     remark: '',
     sign_name: '',
     sign_date: format(new Date(), 'yyyy-MM-dd'),
@@ -129,6 +136,16 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       counter_total: Number(r.counter_total || 0),
       items: Array.isArray(r.items) ? r.items : [],
       needle_images: Array.isArray(r.needle_images) ? r.needle_images : [],
+      greasing: !!r.greasing,
+      oil_change: !!r.oil_change,
+      belt_tape1: !!r.belt_tape1,
+      belt_tape2: !!r.belt_tape2,
+      belt_tape3: !!r.belt_tape3,
+      belt_tape4: !!r.belt_tape4,
+      belt_tape5: !!r.belt_tape5,
+      greasing_text: r.greasing ? 'ดำเนินการแล้ว' : '—',
+      oil_change_text: r.oil_change ? 'ดำเนินการแล้ว' : '—',
+      yarn_belts_text: [1, 2, 3, 4, 5].filter((n) => r[`belt_tape${n}`]).map((n) => `เทป ${n}`).join(', ') || '—',
     }))
   }, [rawRecords])
 
@@ -213,6 +230,13 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         prev_doc_date: initialPreset.prev_doc_date || '',
         days_since_last: daysSince,
         items: defaultItems,
+        greasing: !!initialPreset.greasing,
+        oil_change: !!initialPreset.oil_change,
+        belt_tape1: !!initialPreset.belt_tape1,
+        belt_tape2: !!initialPreset.belt_tape2,
+        belt_tape3: !!initialPreset.belt_tape3,
+        belt_tape4: !!initialPreset.belt_tape4,
+        belt_tape5: !!initialPreset.belt_tape5,
         remark: initialPreset.remark || '',
         sign_name: initialPreset.mechanic || '',
         sign_date: todayStr,
@@ -261,6 +285,13 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       prev_doc_date: '',
       days_since_last: 0,
       items: defaultItems,
+      greasing: false,
+      oil_change: false,
+      belt_tape1: false,
+      belt_tape2: false,
+      belt_tape3: false,
+      belt_tape4: false,
+      belt_tape5: false,
       remark: '',
       sign_name: 'ช.หนึ่ง',
       sign_date: todayStr,
@@ -307,6 +338,13 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       prev_doc_date: record.prev_doc_date || '',
       days_since_last: record.days_since_last || 0,
       items: currentItems,
+      greasing: !!record.greasing,
+      oil_change: !!record.oil_change,
+      belt_tape1: !!record.belt_tape1,
+      belt_tape2: !!record.belt_tape2,
+      belt_tape3: !!record.belt_tape3,
+      belt_tape4: !!record.belt_tape4,
+      belt_tape5: !!record.belt_tape5,
       remark: record.remark || '',
       sign_name: record.sign_name || record.mechanic || '',
       sign_date: record.sign_date || record.doc_date || format(new Date(), 'yyyy-MM-dd'),
@@ -486,6 +524,9 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     { key: 'counter_total', label: 'ผลต่างรอบ' },
     { key: 'days_since_last', label: 'ระยะห่าง(วัน)' },
     { key: 'status', label: 'ผลการตรวจ' },
+    { key: 'greasing_text', label: 'อัดจารบี' },
+    { key: 'oil_change_text', label: 'ถ่ายน้ำมันเกียร์' },
+    { key: 'yarn_belts_text', label: 'สายพานส่งด้าย' },
     { key: 'needle_cond', label: 'สภาพเข็ม' },
     { key: 'needle_arr', label: 'การเรียงเข็ม' },
     { key: 'remark', label: 'หมายเหตุ' },
@@ -1066,6 +1107,102 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
               </div>
             </div>
 
+            {/* Section 2.5: Maintenance Checklist (อัดจารบี, ถ่ายน้ำมันเกียร์, สายพานส่งด้าย) */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+              <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs">
+                <CheckCircle2 size={15} className="text-teal-500" />
+                <span>รายการตรวจเช็คบำรุงรักษาเพิ่มเติม (Maintenance Checklist)</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 1. งานหล่อลื่นและเกียร์ */}
+                <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block">
+                    งานหล่อลื่น & ระบบขับเคลื่อน
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
+                      formData.greasing
+                        ? 'bg-amber-500/15 border-amber-500/50 text-amber-900 dark:text-amber-300 font-bold shadow-xs'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                    }`}>
+                      <input
+                        type="checkbox"
+                        checked={!!formData.greasing}
+                        onChange={(e) => setFormData({ ...formData, greasing: e.target.checked })}
+                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <span className="text-xs">อัดจารบี</span>
+                    </label>
+
+                    <label className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
+                      formData.oil_change
+                        ? 'bg-blue-500/15 border-blue-500/50 text-blue-900 dark:text-blue-300 font-bold shadow-xs'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                    }`}>
+                      <input
+                        type="checkbox"
+                        checked={!!formData.oil_change}
+                        onChange={(e) => setFormData({ ...formData, oil_change: e.target.checked })}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-xs">ถ่ายน้ำมันเกียร์</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 2. สายพานส่งด้าย เทป 1-5 */}
+                <div className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                      สายพานส่งด้าย (Quality Feed Belts)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allChecked = [1, 2, 3, 4, 5].every((n) => formData[`belt_tape${n}`])
+                        setFormData((prev) => ({
+                          ...prev,
+                          belt_tape1: !allChecked,
+                          belt_tape2: !allChecked,
+                          belt_tape3: !allChecked,
+                          belt_tape4: !allChecked,
+                          belt_tape5: !allChecked,
+                        }))
+                      }}
+                      className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {[1, 2, 3, 4, 5].every((n) => formData[`belt_tape${n}`]) ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด (1-5)'}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[1, 2, 3, 4, 5].map((tapeNum) => {
+                      const key = `belt_tape${tapeNum}`
+                      const isChecked = !!formData[key]
+                      return (
+                        <label
+                          key={tapeNum}
+                          className={`flex flex-col items-center justify-center p-2 rounded-xl border cursor-pointer select-none transition-all ${
+                            isChecked
+                              ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
+                            className="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer mb-1"
+                          />
+                          <span className="text-[11px]">เทป {tapeNum}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Section 3: Needle Condition & Photos */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
               <div className="space-y-3">
@@ -1352,6 +1489,45 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
               </table>
             </div>
 
+            {/* Additional Checklist Display (อัดจารบี, ถ่ายน้ำมันเกียร์, สายพานส่งด้าย) */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                รายการตรวจเช็คบำรุงรักษาเพิ่มเติม (Maintenance Checklist)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500">อัดจารบี:</span>
+                  <span className={`badge ${viewRecord.greasing ? 'badge-green' : 'badge-gray'}`}>
+                    {viewRecord.greasing ? '✅ ดำเนินการแล้ว' : '—'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500">ถ่ายน้ำมันเกียร์:</span>
+                  <span className={`badge ${viewRecord.oil_change ? 'badge-green' : 'badge-gray'}`}>
+                    {viewRecord.oil_change ? '✅ ดำเนินการแล้ว' : '—'}
+                  </span>
+                </div>
+                <div className="sm:col-span-2 flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-500 mr-1">สายพานส่งด้าย (เทป 1-5):</span>
+                  {[1, 2, 3, 4, 5].map((n) => {
+                    const isChecked = !!viewRecord[`belt_tape${n}`]
+                    return (
+                      <span
+                        key={n}
+                        className={`badge text-[10px] ${
+                          isChecked
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                            : 'bg-slate-100 text-slate-400 dark:bg-slate-800 border-transparent opacity-60'
+                        }`}
+                      >
+                        เทป {n}: {isChecked ? '✓ ผ่าน' : '✗'}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
             {/* Needle Condition & Notes */}
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-3">
               <div>
@@ -1456,6 +1632,13 @@ CREATE TABLE IF NOT EXISTS public.center_checks (
   prev_doc_date text,
   days_since_last integer DEFAULT 0,
   items jsonb DEFAULT '[]'::jsonb,
+  greasing boolean DEFAULT false,
+  oil_change boolean DEFAULT false,
+  belt_tape1 boolean DEFAULT false,
+  belt_tape2 boolean DEFAULT false,
+  belt_tape3 boolean DEFAULT false,
+  belt_tape4 boolean DEFAULT false,
+  belt_tape5 boolean DEFAULT false,
   remark text,
   sign_name text,
   sign_date text,
