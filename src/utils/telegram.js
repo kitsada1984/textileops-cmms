@@ -141,7 +141,7 @@ export function normalizeRepairRecord(row) {
   let ki = row.KI !== undefined && row.KI !== null && row.KI !== '' ? row.KI : (row.ki !== undefined && row.ki !== null && row.ki !== '' ? row.ki : '')
   let roll = row.roll_no || row.RollNo || row.roll_number || ''
   let priority = row.priority || row.urgency || 'ปกติ'
-  let rawProb = row.problem_description || ''
+  let rawProb = String(row.problem_description || '')
   let cleanProb = rawProb
 
   // 1. Try extracting from JSON metadata comment: <!--PROD:{"Design":"...","KI":"...","roll_no":"..."}-->
@@ -185,7 +185,7 @@ export function normalizeRepairRecord(row) {
  * Supabase lacks Design/KI/roll_no columns, the data is permanently preserved.
  */
 export function encodeRepairProblemDescription(problemText, { Design, KI, roll_no, priority }) {
-  const cleanText = (problemText || '')
+  const cleanText = String(problemText || '')
     .replace(/<!--PROD:\{.*?\}-->\n?/, '')
     .replace(/\[ข้อมูลผลิต\s*\|\s*Design:[^\]]*?\]\n?/, '')
     .trim()

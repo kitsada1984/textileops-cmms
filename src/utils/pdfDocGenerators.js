@@ -1,5 +1,16 @@
 import { format } from 'date-fns'
 
+/** Safe date formatter — returns '—' for null/undefined/invalid dates instead of crashing */
+function safeFormatDate(val, fmt = 'dd/MM/yy HH:mm') {
+  if (!val) return '—'
+  try {
+    const d = new Date(val)
+    return isNaN(d.getTime()) ? '—' : format(d, fmt)
+  } catch {
+    return '—'
+  }
+}
+
 export function generateMachinePdfProps(mc) {
   if (!mc) return null
   return {
@@ -100,7 +111,7 @@ export function generateCylinderPdfProps(cyl) {
           { label: 'จำนวนเข็ม (Needle Count)', value: cyl.Needle_Count },
           { label: 'ประเภทเข็ม (Needle Type)', value: cyl.Needle_Type },
           { label: 'ผู้ผลิตกระบอก (Manufacturer)', value: cyl.Manufacturer },
-          { label: 'วันที่ตรวจเช็คล่าสุด', value: cyl.Last_Check_Date ? format(new Date(cyl.Last_Check_Date), 'dd/MM/yyyy') : '—' },
+          { label: 'วันที่ตรวจเช็คล่าสุด', value: safeFormatDate(cyl.Last_Check_Date, 'dd/MM/yyyy') },
         ],
       },
     ],
@@ -128,7 +139,7 @@ export function generateWorkOrderPdfProps(wo) {
         title: 'ข้อมูลใบสั่งงาน (Work Order Details)',
         fields: [
           { label: 'เลขที่ใบสั่งงาน (WO No.)', value: wo.WONumber || wo.OrderNo, mono: true },
-          { label: 'วันที่สั่งงาน (Date)', value: wo.OrderDate ? format(new Date(wo.OrderDate), 'dd/MM/yyyy') : '—' },
+          { label: 'วันที่สั่งงาน (Date)', value: safeFormatDate(wo.OrderDate, 'dd/MM/yyyy') },
           { label: 'เครื่องจักรเป้าหมาย (Machine)', value: wo.MachineID || wo.MachineCode || wo.MachineName || wo.MC, mono: true },
           { label: 'รหัสงาน (KI)', value: wo.KI || '—', mono: true },
           { label: 'แบบงาน (Design)', value: wo.Design || '—' },
@@ -184,8 +195,8 @@ export function generatePMPlanPdfProps(pm) {
           { label: 'ประเภทเครื่อง (Type)', value: pm.Type || '—' },
           { label: 'ตำแหน่ง (Location)', value: pm.Location || '—' },
           { label: 'รอบการบำรุงรักษา (Interval)', value: pm.IntervalDays ? `${pm.IntervalDays} วัน` : (pm.IntervalRuntime ? `${pm.IntervalRuntime} ชม.` : '—') },
-          { label: 'วันที่ทำ PM ล่าสุด (Last PM)', value: pm.LastPMDate ? format(new Date(pm.LastPMDate), 'dd/MM/yyyy') : '—' },
-          { label: 'วันที่กำหนดทำ PM ถัดไป (Next Due)', value: pm.NextPMDate ? format(new Date(pm.NextPMDate), 'dd/MM/yyyy') : (pm.TargetDate ? format(new Date(pm.TargetDate), 'dd/MM/yyyy') : '—') },
+          { label: 'วันที่ทำ PM ล่าสุด (Last PM)', value: safeFormatDate(pm.LastPMDate, 'dd/MM/yyyy') },
+          { label: 'วันที่กำหนดทำ PM ถัดไป (Next Due)', value: safeFormatDate(pm.NextPMDate || pm.TargetDate, 'dd/MM/yyyy') },
           { label: 'ช่างผู้รับผิดชอบ (Mechanic)', value: pm.ResponsiblePerson || pm.Mechanic || '—' },
           { label: 'สถานะแผนงาน (Status)', value: pm.Status },
         ],
@@ -233,7 +244,7 @@ export function generateCenterCheckPdfProps(chk) {
         title: 'ข้อมูลการตรวจเช็คศูนย์เข็ม (Center Check Details)',
         fields: [
           { label: 'เลขที่เอกสาร (Doc No.)', value: chk.doc_no, mono: true },
-          { label: 'วันที่ตรวจเช็ค (Date)', value: chk.doc_date ? format(new Date(chk.doc_date), 'dd/MM/yyyy') : '—' },
+          { label: 'วันที่ตรวจเช็ค (Date)', value: safeFormatDate(chk.doc_date, 'dd/MM/yyyy') },
           { label: 'รหัสเครื่องจักร (M/C No.)', value: chk.mc, mono: true },
           { label: 'ซีเรียลกระบอก (Serial)', value: chk.serial, mono: true },
           { label: 'ตำแหน่ง (Location)', value: (chk.location && chk.location !== '—') ? chk.location : (chk.Location || 'โรงทอ') },
@@ -343,7 +354,7 @@ export function generatePurchasingPdfProps(pr) {
         title: 'ข้อมูลการขอสั่งซื้อ (Purchase Request Information)',
         fields: [
           { label: 'เลขที่เอกสาร (PR No.)', value: pr.PRNumber || pr.OrderNo, mono: true },
-          { label: 'วันที่ขอสั่งซื้อ (Date)', value: pr.RequestDate ? format(new Date(pr.RequestDate), 'dd/MM/yyyy') : '—' },
+          { label: 'วันที่ขอสั่งซื้อ (Date)', value: safeFormatDate(pr.RequestDate, 'dd/MM/yyyy') },
           { label: 'ผู้ขอสั่งซื้อ (Requester)', value: pr.Requester || pr.CreatedBy || '—' },
           { label: 'แผนก (Department)', value: pr.Department || 'ฝ่ายซ่อมบำรุง (Maintenance)' },
           { label: 'ความเร่งด่วน (Urgency)', value: pr.Priority || 'ปกติ' },
@@ -385,7 +396,7 @@ export function generateRepairRequestPdfProps(req) {
         title: 'ข้อมูลการแจ้งซ่อม (Repair Request Details)',
         fields: [
           { label: 'เลขที่ใบแจ้งซ่อม (Req No.)', value: req.request_no || req.RequestNo || req.code, mono: true },
-          { label: 'วันที่แจ้งซ่อม (Date)', value: req.created_at ? format(new Date(req.created_at), 'dd/MM/yyyy HH:mm') : '—' },
+          { label: 'วันที่แจ้งซ่อม (Date)', value: safeFormatDate(req.created_at, 'dd/MM/yyyy HH:mm') },
           { label: 'ผู้แจ้งซ่อม (Reporter)', value: req.reported_by || req.reporter_name || req.CreatedBy || '—' },
           { label: 'เครื่องจักรที่แจ้งซ่อม (Machine)', value: req.machine_mc || req.machine_id || req.mc || '—', mono: true },
           { label: 'ซีเรียลกระบอก (Cylinder Serial)', value: req.cylinder_serial || req.serial || '—', mono: true },
@@ -407,10 +418,10 @@ export function generateRepairRequestPdfProps(req) {
       },
     ],
     signatories: [
-      { title: 'ผู้แจ้งซ่อม (Operator)', name: req.reported_by || req.reporter_name || '', date: req.created_at ? format(new Date(req.created_at), 'dd/MM/yyyy') : '' },
+      { title: 'ผู้แจ้งซ่อม (Operator)', name: req.reported_by || req.reporter_name || '', date: safeFormatDate(req.created_at, 'dd/MM/yyyy') },
       { title: 'ช่างผู้รับเรื่องซ่อม', name: req.technician_name || '', date: '' },
-      { title: 'หัวหน้างานตรวจสอบ / ผู้อนุมัติ', name: req.approved_by || '', date: req.approved_at ? format(new Date(req.approved_at), 'dd/MM/yyyy') : '' },
-      { title: 'ผู้บันทึกปิดงานซ่อม', name: req.completed_by || req.technician_name || '', date: req.completed_at ? format(new Date(req.completed_at), 'dd/MM/yyyy') : '' },
+      { title: 'หัวหน้างานตรวจสอบ / ผู้อนุมัติ', name: req.approved_by || '', date: safeFormatDate(req.approved_at, 'dd/MM/yyyy') },
+      { title: 'ผู้บันทึกปิดงานซ่อม', name: req.completed_by || req.technician_name || '', date: safeFormatDate(req.completed_at, 'dd/MM/yyyy') },
     ],
   }
 }
@@ -431,7 +442,7 @@ export function generateNeedleConditionPdfProps(needle, historyList = []) {
 
   const tableRows = historyList.map((h, idx) => [
     idx + 1,
-    h.doc_date ? format(new Date(h.doc_date), 'dd/MM/yyyy') : '—',
+    safeFormatDate(h.doc_date, 'dd/MM/yyyy'),
     h.machine_mc || '—',
     h.location || '—',
     h.counter ? Number(h.counter).toLocaleString() : '—',
@@ -442,7 +453,7 @@ export function generateNeedleConditionPdfProps(needle, historyList = []) {
   return {
     docType: 'needle',
     title: 'ใบรายงานผลการตรวจสภาพเข็ม / NEEDLE INSPECTION REPORT',
-    docNo: `NDL-${needle.doc_date ? format(new Date(needle.doc_date), 'yyyyMMdd') : format(new Date(), 'yyyyMMdd')}-${needle.serial || needle.machine_mc || 'REC'}`,
+    docNo: `NDL-${safeFormatDate(needle.doc_date, 'yyyyMMdd') !== '—' ? safeFormatDate(needle.doc_date, 'yyyyMMdd') : format(new Date(), 'yyyyMMdd')}-${needle.serial || needle.machine_mc || 'REC'}`,
     docDate: needle.doc_date || new Date(),
     status: statusLabels[needle.status] || needle.status || 'ปกติ',
     priority: needle.machine_mc ? `เครื่อง ${needle.machine_mc}` : '',
@@ -457,7 +468,7 @@ export function generateNeedleConditionPdfProps(needle, historyList = []) {
           { label: 'รหัสเครื่องจักร (Machine M/C)', value: needle.machine_mc, mono: true },
           { label: 'สถานที่ติดตั้ง (Location)', value: needle.location || 'In-use' },
           { label: 'ประเภทเครื่อง (Type)', value: needle.type || 'Single Jersey' },
-          { label: 'วันที่ตรวจล่าสุด (Inspection Date)', value: needle.doc_date ? format(new Date(needle.doc_date), 'dd/MM/yyyy') : '—' },
+          { label: 'วันที่ตรวจล่าสุด (Inspection Date)', value: safeFormatDate(needle.doc_date, 'dd/MM/yyyy') },
           { label: 'ช่างผู้ตรวจเช็ค (Inspector)', value: needle.inspector || '—' },
           { label: 'สถานะสภาพเข็ม (Condition Status)', value: statusLabels[needle.status] || needle.status || 'ปกติ' },
           { label: 'จำนวนรอบ Counter ล่าสุด', value: needle.counter ? `${Number(needle.counter).toLocaleString()} รอบ` : '—', mono: true },
@@ -478,7 +489,7 @@ export function generateNeedleConditionPdfProps(needle, historyList = []) {
     } : null,
     images: Array.isArray(needle.images) ? needle.images : [],
     signatories: [
-      { title: 'ช่างผู้ตรวจเช็คสภาพเข็ม', name: needle.inspector || '', date: needle.doc_date ? format(new Date(needle.doc_date), 'dd/MM/yyyy') : format(new Date(), 'dd/MM/yyyy') },
+      { title: 'ช่างผู้ตรวจเช็คสภาพเข็ม', name: needle.inspector || '', date: safeFormatDate(needle.doc_date, 'dd/MM/yyyy') || format(new Date(), 'dd/MM/yyyy') },
       { title: 'หัวหน้างานแผน PM', name: '', date: '' },
       { title: 'หัวหน้าส่วนผลิตผ้า', name: '', date: '' },
       { title: 'ผู้จัดการฝ่ายโรงงาน', name: '', date: '' },

@@ -142,6 +142,8 @@ function RepairStatusBadge({ status }) {
     IN_PROGRESS: { label: 'กำลังซ่อม', bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
     WAIT_PARTS: { label: 'รออะไหล่', bg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
     COMPLETED: { label: 'ซ่อมเสร็จ', bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+    REJECTED: { label: 'ไม่อนุมัติ', bg: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
+    APPROVED: { label: 'อนุมัติแล้ว', bg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20' },
   }[status] || { label: status || '—', bg: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20' }
 
   return (
@@ -182,6 +184,7 @@ export default function Dashboard() {
       const machines       = m.status === 'fulfilled' ? (m.value?.data || m.value || []) : []
       const workorders     = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
       const pm             = p.status === 'fulfilled' ? (p.value?.data || p.value || []) : []
+      const parts          = s.status === 'fulfilled' ? (s.value?.data || s.value || []) : []
       const rawRepairRequests = r.status === 'fulfilled' ? (r.value?.data || r.value || []) : []
       const repairRequests = rawRepairRequests.map(normalizeRepairRecord)
 

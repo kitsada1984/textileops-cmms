@@ -297,6 +297,7 @@ function StepReport({ serial, cylinder, onSubmitted }) {
   }, [cylinder])
 
   const submit = async () => {
+    if (saving) return
     if (!problem.trim()) return setError('กรุณาระบุรายละเอียดอาการเสียที่พบ')
     if (!reporter.trim()) return setError('กรุณาระบุชื่อผู้แจ้งซ่อม')
     setSaving(true)
@@ -327,15 +328,9 @@ function StepReport({ serial, cylinder, onSubmitted }) {
         const errMsg = String(insertRes.error.message || '')
         const missingCol = errMsg.match(/Could not find the '([^']+)' column of 'repair_requests'/i)?.[1]
         if (missingCol) {
+          console.warn(`[RepairPage] Column '${missingCol}' not found in DB schema — removing from payload and retrying`)
           delete insertPayload[missingCol]
           insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
-          if (insertRes.error) {
-            delete insertPayload.roll_no
-            delete insertPayload.KI
-            delete insertPayload.Design
-            delete insertPayload.priority
-            insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
-          }
         }
       }
       if (insertRes.error) throw insertRes.error
@@ -679,6 +674,18 @@ function StepApprove({ request, onUpdated }) {
     })
   }, [])
 
+  if (request.status === 'REJECTED') {
+    return (
+      <div style={{ padding: '36px 20px', textAlign: 'center' }}>
+        <XCircle size={52} style={{ color: '#ef4444', margin: '0 auto 12px' }} />
+        <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>ไม่อนุมัติ — งานถูกปฏิเสธแล้ว</div>
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+          หากต้องการแจ้งซ่อมใหม่ กรุณาสแกน QR Code อีกครั้ง
+        </div>
+      </div>
+    )
+  }
+
   if (['APPROVED', 'IN_PROGRESS', 'COMPLETED'].includes(request.status)) {
     return (
       <div style={{ padding: '36px 20px', textAlign: 'center' }}>
@@ -949,6 +956,26 @@ function StepComplete({ request, onUpdated }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  if (request.status === 'PENDING') {
+    return (
+      <div style={{ padding: '36px 20px', textAlign: 'center' }}>
+        <AlertTriangle size={52} style={{ color: '#f59e0b', margin: '0 auto 12px' }} />
+        <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>ไม่สามารถปิดงานได้</div>
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>งานซ่อมนี้ยังไม่ได้รับการอนุมัติจากหัวหน้า กรุณารอการอนุมัติก่อน</div>
+      </div>
+    )
+  }
+
+  if (request.status === 'REJECTED') {
+    return (
+      <div style={{ padding: '36px 20px', textAlign: 'center' }}>
+        <XCircle size={52} style={{ color: '#ef4444', margin: '0 auto 12px' }} />
+        <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>งานถูกปฏิเสธแล้ว</div>
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>ไม่สามารถบันทึกผลซ่อมสำหรับงานที่ไม่อนุมัติได้</div>
+      </div>
+    )
+  }
+
   if (request.status === 'COMPLETED') {
     return (
       <div style={{ padding: '36px 20px', textAlign: 'center' }}>
@@ -960,6 +987,7 @@ function StepComplete({ request, onUpdated }) {
   }
 
   const submit = async () => {
+    if (saving) return
     if (!details.trim()) return setError('กรุณาระบุรายละเอียดการซ่อม / วิธีแก้ไข')
     if (!tech.trim()) return setError('กรุณาระบุชื่อช่างผู้ปฏิบัติงาน')
     setSaving(true)
@@ -1504,6 +1532,23 @@ export default function RepairPage() {
     if (step === 'approve' && request) return <StepApprove request={request} onUpdated={handleDone} />
     if (step === 'complete' && request) return <StepComplete request={request} onUpdated={handleDone} />
     if ((step === 'view' || reqId) && request) return <StatusView request={request} onOpenPdf={() => setPdfItem(request)} />
+
+    {/* M6 Fix: If reqId was given but request is null, show error instead of blank form */}
+    if (reqId && !request && !loading) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <XCircle size={52} style={{ color: '#ef4444', margin: '0 auto 12px' }} />
+          <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>❌ ไม่พบข้อมูลใบแจ้งซ่อม</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 6, fontWeight: 600 }}>
+            ใบแจ้งซ่อมนี้อาจถูกลบไปแล้ว หรือลิงก์หมดอายุ
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <Btn onClick={() => navigate('/')} variant="primary">🏠 กลับหน้าหลัก</Btn>
+          </div>
+        </div>
+      )
+    }
+
     return <StepReport serial={serial} cylinder={cylinder} onSubmitted={handleDone} />
   }
 
