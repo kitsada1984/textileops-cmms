@@ -28,6 +28,7 @@ import useEntity from '../hooks/useEntity'
 import {
   CenterCheckAPI,
   MachineAPI,
+  CylinderAPI,
   TechnicianAPI,
   DEFAULT_SINGLE_CHECKLIST_ITEMS,
   DEFAULT_DOUBLE_CHECKLIST_ITEMS,
@@ -71,6 +72,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
 
   // Auxiliary entities for quick pickers
   const { data: rawMachines } = useEntity(MachineAPI)
+  const { data: rawCylinders } = useEntity(CylinderAPI)
   const { data: rawTechs } = useEntity(TechnicianAPI)
 
   // Sub-tabs: 'history' | 'single_form' | 'double_form'
@@ -90,6 +92,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     mechanic: '',
     mc: '',
     serial: '',
+    location: '',
     needle_cond: 'สึกเล็กน้อย',
     needle_arr: '',
     needle_images: [],
@@ -355,7 +358,65 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     setActiveSubTab(record.type === 'Double' ? 'double_form' : 'single_form')
   }
 
-  // Handle M/C change and lookup previous Counter & Date
+  const normalizeCode = (val = '') =>
+    String(val || '').toUpperCase().replace(/\s+/g, '').replace(/-/g, '').trim()
+
+  const getLatestLocation = (mcVal, serialVal, fallback = '') => {
+    const cleanMc = normalizeCode(mcVal)
+    const cleanSerial = String(serialVal || '').toUpperCase().replace(/\s+/g, '').trim()
+
+    // 1. Check CylinderAPI (Cylinders have Location, NewMC, Serial_NOW, Serial_OLD)
+    if (rawCylinders && rawCylinders.length > 0) {
+      if (cleanSerial) {
+        const found = rawCylinders.find((c) => {
+          const sNow = String(c.Serial_NOW || c.serial || '').toUpperCase().trim()
+          const sOld = String(c.Serial_OLD || '').toUpperCase().trim()
+          return (sNow && sNow === cleanSerial) || (sOld && sOld === cleanSerial)
+        })
+        if (found && (found.Location || found.location)) {
+          return found.Location || found.location
+        }
+      }
+      if (cleanMc) {
+        const found = rawCylinders.find((c) => {
+          const cMc = normalizeCode(c.NewMC || c.Standard || c.Machine_Ref || c.mc)
+          return cMc && cMc === cleanMc
+        })
+        if (found && (found.Location || found.location)) {
+          return found.Location || found.location
+        }
+      }
+    }
+
+    // 2. Check MachineAPI (Machines have Location, Machine_MC, MC, name)
+    if (rawMachines && rawMachines.length > 0 && cleanMc) {
+      const found = rawMachines.find((m) => {
+        const mCode = normalizeCode(m.Machine_MC || m.MC || m.name)
+        return mCode && mCode === cleanMc
+      })
+      if (found && (found.Location || found.location)) {
+        return found.Location || found.location
+      }
+    }
+
+    // 3. Check past CenterCheck records
+    if (records && records.length > 0) {
+      if (cleanMc) {
+        const past = records.find((r) => normalizeCode(r.mc) === cleanMc && r.location && r.location !== '—')
+        if (past) return past.location
+      }
+      if (cleanSerial) {
+        const past = records.find(
+          (r) => String(r.serial || '').toUpperCase().trim() === cleanSerial && r.location && r.location !== '—'
+        )
+        if (past) return past.location
+      }
+    }
+
+    return fallback || ''
+  }
+
+  // Handle M/C change and lookup previous Counter & Date & Location
   const handleMcChange = (mcVal) => {
     const cleanMc = String(mcVal || '').trim().toUpperCase()
     let prevVal = 0
@@ -383,13 +444,36 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     const currentLatest = parseFloat(formData.counter_latest) || 0
     const diff = currentLatest > 0 && prevVal > 0 ? Math.max(0, currentLatest - prevVal) : 0
 
+    // Auto lookup latest Location and Serial for this Machine
+    const autoLoc = getLatestLocation(mcVal, formData.serial, formData.location)
+    let autoSerial = formData.serial
+    if (!autoSerial && cleanMc && rawCylinders) {
+      const normMc = normalizeCode(mcVal)
+      const matchCyl = rawCylinders.find((c) => normalizeCode(c.NewMC || c.Standard) === normMc)
+      if (matchCyl && matchCyl.Serial_NOW) {
+        autoSerial = matchCyl.Serial_NOW
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
       mc: mcVal,
+      serial: autoSerial,
+      location: autoLoc || prev.location || '',
       counter_prev: prevVal > 0 ? String(prevVal) : '',
       prev_doc_date: prevDate,
       days_since_last: daysDiff,
       counter_total: diff,
+    }))
+  }
+
+  // Handle Serial change and lookup latest Location
+  const handleSerialChange = (serialVal) => {
+    const autoLoc = getLatestLocation(formData.mc, serialVal, formData.location)
+    setFormData((prev) => ({
+      ...prev,
+      serial: serialVal,
+      location: autoLoc || prev.location || '',
     }))
   }
 
@@ -914,7 +998,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
             </div>
 
             {/* Section 1: Basic info & Counter */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 text-xs">
               <div>
                 <label className="label font-bold">วันที่ตรวจ *</label>
                 <input
@@ -950,9 +1034,31 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                   type="text"
                   placeholder="เช่น SN-2024-889"
                   value={formData.serial}
-                  onChange={(e) => setFormData({ ...formData, serial: e.target.value })}
+                  onChange={(e) => handleSerialChange(e.target.value)}
                   className="input font-mono"
                 />
+              </div>
+
+              <div>
+                <label className="label font-bold flex items-center justify-between">
+                  <span>ตำแหน่ง (Location)</span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">ดึงอัตโนมัติ</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="เช่น โรงทอ 1, โรงทอ 2"
+                  value={formData.location || ''}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className="input font-semibold bg-blue-50/20 dark:bg-blue-950/20"
+                  list="loc-datalist"
+                />
+                <datalist id="loc-datalist">
+                  <option value="โรงทอ 1" />
+                  <option value="โรงทอ 2" />
+                  <option value="โรงทอ 3" />
+                  <option value="โรงทอ" />
+                  <option value="แผนกซ่อมบำรุง" />
+                </datalist>
               </div>
 
               <div>
@@ -974,7 +1080,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
               </div>
 
               {/* Counter Analytics Box */}
-              <div className="col-span-1 md:col-span-3 lg:col-span-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="col-span-1 md:col-span-2 lg:col-span-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div>
                   <label className="label font-bold text-slate-500">Counter ล่าสุด (รอบ)</label>
                   <input
@@ -1414,7 +1520,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         >
           <div className="space-y-4 text-xs">
             {/* Header info */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div>
                 <span className="text-slate-400 font-semibold">เลขที่เอกสาร:</span>
                 <div className="font-mono font-bold text-blue-600">{viewRecord.doc_no}</div>
@@ -1424,9 +1530,19 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                 <div className="font-semibold">{viewRecord.doc_date}</div>
               </div>
               <div>
-                <span className="text-slate-400 font-semibold">ประเภทเครื่อง:</span>
-                <div>
-                  <span className="badge badge-blue font-bold">{viewRecord.type} Jersey</span>
+                <span className="text-slate-400 font-semibold">เครื่อง (M/C):</span>
+                <div className="font-bold text-slate-800 dark:text-slate-200">{viewRecord.mc}</div>
+              </div>
+              <div>
+                <span className="text-slate-400 font-semibold">Serial No.:</span>
+                <div className="font-mono text-slate-700 dark:text-slate-300">{viewRecord.serial || '—'}</div>
+              </div>
+              <div>
+                <span className="text-slate-400 font-semibold">ตำแหน่ง (Location):</span>
+                <div className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  {viewRecord.location && viewRecord.location !== '—'
+                    ? viewRecord.location
+                    : getLatestLocation(viewRecord.mc, viewRecord.serial, 'โรงทอ')}
                 </div>
               </div>
               <div>
@@ -1590,7 +1706,13 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         <PdfPreviewModal
           open={!!printRecord}
           onClose={() => setPrintRecord(null)}
-          {...generateCenterCheckPdfProps(printRecord)}
+          {...generateCenterCheckPdfProps({
+            ...printRecord,
+            location:
+              printRecord.location && printRecord.location !== '—'
+                ? printRecord.location
+                : getLatestLocation(printRecord.mc, printRecord.serial, 'โรงทอ'),
+          })}
         />
       )}
 

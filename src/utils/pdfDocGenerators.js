@@ -234,7 +234,7 @@ export function generateCenterCheckPdfProps(chk) {
           { label: 'วันที่ตรวจเช็ค (Date)', value: chk.doc_date ? format(new Date(chk.doc_date), 'dd/MM/yyyy') : '—' },
           { label: 'รหัสเครื่องจักร (M/C No.)', value: chk.mc, mono: true },
           { label: 'ซีเรียลกระบอก (Serial)', value: chk.serial, mono: true },
-          { label: 'ตำแหน่ง (Location)', value: chk.location || '—' },
+          { label: 'ตำแหน่ง (Location)', value: (chk.location && chk.location !== '—') ? chk.location : (chk.Location || 'โรงทอ') },
           { label: 'ช่างผู้ตรวจเช็ค (Mechanic)', value: chk.mechanic || chk.sign_name || '—' },
           { label: 'หัวหน้างานตรวจรับ (Supervisor)', value: chk.sup_name || '—' },
           { label: 'ผลการประเมินรวม (Overall Status)', value: chk.status || 'ผ่าน' },
