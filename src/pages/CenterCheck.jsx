@@ -46,6 +46,15 @@ import initialCenterChecks from '../data/initialCenterChecks.json'
 
 const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 
+const NEEDLE_COND_OPTIONS = [
+  'สึกเล็กน้อย',
+  'สึกปานกลาง',
+  'สึกมาก',
+  'สึกมาก(ควรเปลี่ยน)',
+  'ระบุเอง',
+]
+const STANDARD_NEEDLE_CONDS = ['สึกเล็กน้อย', 'สึกปานกลาง', 'สึกมาก', 'สึกมาก(ควรเปลี่ยน)']
+
 export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan }) {
   const { t } = useT()
   const toast = useToast()
@@ -81,7 +90,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     mechanic: '',
     mc: '',
     serial: '',
-    needle_cond: '',
+    needle_cond: 'สึกเล็กน้อย',
     needle_arr: '',
     needle_images: [],
     comment: '',
@@ -194,7 +203,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         mc: initialPreset.mc || '',
         serial: initialPreset.serial || '',
         location: initialPreset.location || '',
-        needle_cond: 'ปกติ',
+        needle_cond: 'สึกเล็กน้อย',
         needle_arr: 'ตามแบบมาตรฐาน',
         needle_images: [],
         comment: '',
@@ -242,7 +251,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       mc: '',
       serial: '',
       location: '',
-      needle_cond: 'ปกติ',
+      needle_cond: 'สึกเล็กน้อย',
       needle_arr: 'ตามแบบมาตรฐาน',
       needle_images: [],
       comment: '',
@@ -288,7 +297,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       mc: record.mc || '',
       serial: record.serial || '',
       location: record.location || '',
-      needle_cond: record.needle_cond || 'ปกติ',
+      needle_cond: record.needle_cond === 'ปกติ' ? 'สึกเล็กน้อย' : (record.needle_cond || 'สึกเล็กน้อย'),
       needle_arr: record.needle_arr || 'ตามแบบมาตรฐาน',
       needle_images: Array.isArray(record.needle_images) ? record.needle_images : [],
       comment: record.comment || '',
@@ -1062,13 +1071,46 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
               <div className="space-y-3">
                 <div>
                   <label className="label font-bold">สภาพเข็ม (Needle Condition)</label>
-                  <input
-                    type="text"
-                    placeholder="เช่น ปกติ, เข็มหัก 2 เล่ม, ลิ้นเข็มคลอน"
-                    value={formData.needle_cond}
-                    onChange={(e) => setFormData({ ...formData, needle_cond: e.target.value })}
-                    className="input"
-                  />
+                  <select
+                    value={
+                      STANDARD_NEEDLE_CONDS.includes(formData.needle_cond)
+                        ? formData.needle_cond
+                        : (formData.needle_cond === 'ปกติ' || !formData.needle_cond ? 'สึกเล็กน้อย' : 'ระบุเอง')
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === 'ระบุเอง') {
+                        setFormData({
+                          ...formData,
+                          needle_cond: STANDARD_NEEDLE_CONDS.includes(formData.needle_cond) || formData.needle_cond === 'ปกติ' ? '' : formData.needle_cond,
+                        })
+                      } else {
+                        setFormData({ ...formData, needle_cond: val })
+                      }
+                    }}
+                    className="select font-bold"
+                  >
+                    {NEEDLE_COND_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Custom input box if "ระบุเอง" is selected */}
+                  {(!STANDARD_NEEDLE_CONDS.includes(formData.needle_cond) && formData.needle_cond !== 'ปกติ') && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="พิมพ์ระบุสภาพเข็มเอง..."
+                        value={formData.needle_cond || ''}
+                        onChange={(e) => setFormData({ ...formData, needle_cond: e.target.value })}
+                        className="input font-bold border-blue-400 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1308,6 +1350,24 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Needle Condition & Notes */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-slate-400 font-semibold text-[10px]">สภาพเข็ม (Needle Condition):</span>
+                <div className="font-bold text-slate-800 dark:text-slate-200">{viewRecord.needle_cond || '—'}</div>
+              </div>
+              <div>
+                <span className="text-slate-400 font-semibold text-[10px]">การเรียงเข็ม (Needle Arrangement):</span>
+                <div className="font-semibold text-slate-800 dark:text-slate-200">{viewRecord.needle_arr || '—'}</div>
+              </div>
+              {viewRecord.remark && (
+                <div className="col-span-2">
+                  <span className="text-slate-400 font-semibold text-[10px]">หมายเหตุ:</span>
+                  <div className="text-slate-700 dark:text-slate-300">{viewRecord.remark}</div>
+                </div>
+              )}
             </div>
 
             {/* Needle & Photos */}
