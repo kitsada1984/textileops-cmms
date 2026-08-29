@@ -20,6 +20,9 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
   const reqNo = request.request_no || (request.id ? `REQ-${String(request.id).slice(0, 8)}` : 'REQ-NEW')
   const machine = request.machine_mc || cylinder?.NewMC || '—'
   const location = request.cylinder_location || cylinder?.Location || '—'
+  const design = request.Design || cylinder?.Design || ''
+  const ki = (request.KI !== undefined && request.KI !== null && request.KI !== '') ? String(request.KI) : (cylinder?.KI ? String(cylinder.KI) : '')
+  const rollNo = request.roll_no || request.RollNo || request.roll_number || ''
   const problem = request.problem_description || 'ไม่มีรายละเอียดอาการเสีย'
   const reporter = request.reported_by || 'เจ้าหน้าที่'
   
@@ -121,6 +124,33 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
                   { type: 'text', text: serial, wrap: true, color: '#2563eb', size: 'xs', weight: 'bold', flex: 7 },
                 ],
               },
+              design ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'Design (ลายผ้า):', color: '#64748b', size: 'xs', flex: 3 },
+                  { type: 'text', text: String(design), wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 7 },
+                ],
+              } : null,
+              ki ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'KI:', color: '#64748b', size: 'xs', flex: 3 },
+                  { type: 'text', text: String(ki), wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 7 },
+                ],
+              } : null,
+              rollNo ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เลขม้วน (Roll):', color: '#64748b', size: 'xs', flex: 3 },
+                  { type: 'text', text: String(rollNo), wrap: true, color: '#2563eb', size: 'xs', weight: 'bold', flex: 7 },
+                ],
+              } : null,
               {
                 type: 'box',
                 layout: 'baseline',
@@ -156,7 +186,7 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
                   { type: 'text', text: `${reporter} · ${timeStr}`, wrap: true, color: '#64748b', size: 'xs', flex: 7 },
                 ],
               },
-            ],
+            ].filter(Boolean),
           },
         ],
       },
@@ -202,6 +232,9 @@ export function buildTechnicianAssignedFlexMessage(request = {}, appBaseUrl) {
   const reqNo = request.request_no || (request.id ? `REQ-${String(request.id).slice(0, 8)}` : 'REQ-WORK')
   const machine = request.machine_mc || '—'
   const location = request.cylinder_location || '—'
+  const design = request.Design || ''
+  const ki = (request.KI !== undefined && request.KI !== null && request.KI !== '') ? String(request.KI) : ''
+  const rollNo = request.roll_no || request.RollNo || request.roll_number || ''
   const problem = request.problem_description || 'ไม่มีรายละเอียด'
   const tech = request.technician_name || 'ช่างเทคนิค'
   const notes = request.approval_notes || ''
@@ -289,6 +322,33 @@ export function buildTechnicianAssignedFlexMessage(request = {}, appBaseUrl) {
                   { type: 'text', text: serial, wrap: true, color: '#2563eb', size: 'xs', weight: 'bold', flex: 6 },
                 ],
               },
+              design ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'Design (ลายผ้า):', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: String(design), wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
+              ki ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'KI:', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: String(ki), wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
+              rollNo ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เลขม้วน (Roll):', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: String(rollNo), wrap: true, color: '#2563eb', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
               {
                 type: 'box',
                 layout: 'baseline',
@@ -372,6 +432,9 @@ export function buildRepairCompletedFlexMessage(request = {}, appBaseUrl) {
   const serial = request.cylinder_serial || '—'
   const reqNo = request.request_no || (request.id ? `REQ-${String(request.id).slice(0, 8)}` : 'REQ-DONE')
   const machine = request.machine_mc || '—'
+  const design = request.Design || ''
+  const ki = (request.KI !== undefined && request.KI !== null && request.KI !== '') ? String(request.KI) : ''
+  const rollNo = request.roll_no || request.RollNo || request.roll_number || ''
   const details = request.repair_details || 'ดำเนินการซ่อมบำรุงเรียบร้อย'
   const parts = request.parts_used || ''
   const tech = request.completed_by || request.technician_name || 'ช่างเทคนิค'
@@ -459,6 +522,33 @@ export function buildRepairCompletedFlexMessage(request = {}, appBaseUrl) {
                   { type: 'text', text: serial, wrap: true, color: '#059669', size: 'xs', weight: 'bold', flex: 6 },
                 ],
               },
+              design ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'Design (ลายผ้า):', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: String(design), wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
+              ki ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'KI:', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: String(ki), wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
+              rollNo ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เลขม้วน (Roll):', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: String(rollNo), wrap: true, color: '#059669', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
               // Action / Repair Details box
               {
                 type: 'box',

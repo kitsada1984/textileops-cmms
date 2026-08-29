@@ -218,12 +218,19 @@ export async function notifyLineNewRepair(request, cylinder) {
 
       const serial = request.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || '—'
       const machine = request.machine_mc || cylinder?.NewMC || '—'
+      const design = request.Design || cylinder?.Design
+      const ki = (request.KI !== undefined && request.KI !== null && request.KI !== '') ? request.KI : cylinder?.KI
+      const rollNo = request.roll_no || request.RollNo || request.roll_number
       const problem = request.problem_description || 'ไม่มีรายละเอียด'
       const reporter = request.reported_by || 'เจ้าหน้าที่'
       const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
       const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?req=${encodeURIComponent(request.id || '')}&step=approve&openExternalBrowser=1`
 
-      const textMessage = `\n🚨 [แจ้งซ่อมใหม่]\nเครื่อง: ${machine}\nกระบอก: ${serial}\nอาการ: ${problem}\nผู้แจ้ง: ${reporter}\n👉 แตะเปิดรับงาน PWA: ${directUrl}`
+      const designLine = design ? `\nDesign: ${design}` : ''
+      const kiLine = (ki !== undefined && ki !== null && ki !== '') ? `\nKI: ${ki}` : ''
+      const rollLine = rollNo ? `\nเลขม้วน: ${rollNo}` : ''
+
+      const textMessage = `\n🚨 [แจ้งซ่อมใหม่]\nเครื่อง: ${machine}\nกระบอก: ${serial}${designLine}${kiLine}${rollLine}\nอาการ: ${problem}\nผู้แจ้ง: ${reporter}\n👉 แตะเปิดรับงาน PWA: ${directUrl}`
 
       return await sendLineNotification({
         type: 'notify',

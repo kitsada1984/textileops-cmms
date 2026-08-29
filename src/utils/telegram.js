@@ -133,14 +133,16 @@ async function sendMessage(token, chatId, text) {
 const fv = (v) => (v === null || v === undefined || v === '' ? '—' : escapeHtml(String(v)))
 
 function buildRepairDetailLines(request, cylinder) {
+  const rollNo = request.roll_no || request.RollNo || request.roll_number
   return [
     `📋 เลขที่: <b>${fv(request.request_no)}</b>`,
     `🔩 Serial: <b>${fv(request.cylinder_serial)}</b>`,
     `🏭 Current Machine: <b>${fv(request.machine_mc || cylinder?.NewMC)}</b>`,
     `📍 ตำแหน่ง: ${fv(request.cylinder_location || cylinder?.Location)}`,
+    request.Design ? `🎨 Design: <b>${escapeHtml(request.Design)}</b>` : null,
+    (request.KI !== undefined && request.KI !== null && request.KI !== '') ? `🧾 KI: <b>${escapeHtml(request.KI)}</b>` : null,
+    rollNo ? `📦 เลขม้วน: <b>${escapeHtml(rollNo)}</b>` : null,
     `📐 Standard: ${fv(request.cylinder_standard || cylinder?.Standard)}`,
-    request.KI ? `🧾 KI: ${escapeHtml(request.KI)}` : null,
-    request.Design ? `🎨 Design: ${escapeHtml(request.Design)}` : null,
     `⚠️ ปัญหา: ${fv(request.problem_description)}`,
     `👤 ผู้แจ้ง: ${fv(request.reported_by)}`,
     `⏰ เวลาแจ้ง: ${new Date(request.created_at || Date.now()).toLocaleString('th-TH')}`,

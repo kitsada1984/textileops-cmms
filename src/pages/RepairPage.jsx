@@ -200,10 +200,18 @@ function StepHeader({ activeStep, title, subtitle }) {
 
 /* ── Step 1: Report ──────────────────────────────────────────────────────── */
 function StepReport({ serial, cylinder, onSubmitted }) {
+  const [design, setDesign] = useState(cylinder?.Design || '')
+  const [ki, setKi] = useState(cylinder?.KI !== undefined && cylinder?.KI !== null ? String(cylinder.KI) : '')
+  const [rollNo, setRollNo] = useState('')
   const [problem, setProblem] = useState('')
   const [reporter, setReporter] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (cylinder?.Design && !design) setDesign(cylinder.Design)
+    if (cylinder?.KI && !ki) setKi(String(cylinder.KI))
+  }, [cylinder])
 
   const submit = async () => {
     if (!problem.trim()) return setError('กรุณาระบุรายละเอียดอาการเสีย')
@@ -211,20 +219,40 @@ function StepReport({ serial, cylinder, onSubmitted }) {
     setSaving(true)
     setError('')
     try {
-      const { data, error: err } = await supabase
-        .from('repair_requests')
-        .insert({
-          cylinder_serial: serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || null,
-          cylinder_location: cylinder?.Location || null,
-          cylinder_standard: cylinder?.Standard || null,
-          machine_mc: cylinder?.NewMC || null,
-          problem_description: problem.trim(),
-          reported_by: reporter.trim(),
-          status: 'PENDING',
-        })
-        .select()
-        .single()
-      if (err) throw err
+      let insertPayload = {
+        cylinder_serial: serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || null,
+        cylinder_location: cylinder?.Location || null,
+        cylinder_standard: cylinder?.Standard || null,
+        machine_mc: cylinder?.NewMC || null,
+        Design: design.trim() || null,
+        KI: ki.trim() ? Number(ki) : null,
+        roll_no: rollNo.trim() ? Number(rollNo) : null,
+        problem_description: problem.trim(),
+        reported_by: reporter.trim(),
+        status: 'PENDING',
+      }
+      let insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
+      if (insertRes.error) {
+        const errMsg = String(insertRes.error.message || '')
+        const missingCol = errMsg.match(/Could not find the '([^']+)' column of 'repair_requests'/i)?.[1]
+        if (missingCol) {
+          delete insertPayload[missingCol]
+          insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
+          if (insertRes.error) {
+            delete insertPayload.roll_no
+            delete insertPayload.KI
+            delete insertPayload.Design
+            insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
+          }
+        }
+      }
+      if (insertRes.error) throw insertRes.error
+      const data = {
+        ...(insertRes.data || {}),
+        Design: design.trim() || insertRes.data?.Design,
+        KI: ki.trim() || insertRes.data?.KI,
+        roll_no: rollNo.trim() || insertRes.data?.roll_no,
+      }
       try {
         await notifySupervisor(data, cylinder)
       } catch (tgErr) {
@@ -240,6 +268,19 @@ function StepReport({ serial, cylinder, onSubmitted }) {
       setError(e.message)
     }
     setSaving(false)
+  }
+
+  const inputStyle = {
+    width: '100%',
+    minHeight: 46,
+    padding: '10px 14px',
+    borderRadius: 12,
+    border: '1px solid #cbd5e1',
+    fontSize: 16,
+    outline: 'none',
+    boxSizing: 'border-box',
+    background: '#f8fafc',
+    fontFamily: 'inherit',
   }
 
   return (
@@ -279,6 +320,53 @@ function StepReport({ serial, cylinder, onSubmitted }) {
           </div>
         </div>
 
+        {/* Design, KI, Roll No 3-column / 2-column grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
+          {/* Design */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+              🎨 Design (ลายผ้า)
+            </label>
+            <input
+              type="text"
+              value={design}
+              onChange={(e) => setDesign(e.target.value)}
+              placeholder="ระบุลายผ้า / Design..."
+              style={inputStyle}
+            />
+          </div>
+
+          {/* KI */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+              🧾 KI (ตัวเลข)
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={ki}
+              onChange={(e) => setKi(e.target.value)}
+              placeholder="ระบุตัวเลข KI..."
+              style={{ ...inputStyle, fontFamily: 'monospace' }}
+            />
+          </div>
+
+          {/* Roll No */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
+              📦 เลขม้วน (ตัวเลข)
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={rollNo}
+              onChange={(e) => setRollNo(e.target.value)}
+              placeholder="ระบุเลขม้วน..."
+              style={{ ...inputStyle, fontFamily: 'monospace' }}
+            />
+          </div>
+        </div>
+
         {/* Problem textarea */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
@@ -290,16 +378,9 @@ function StepReport({ serial, cylinder, onSubmitted }) {
             rows={4}
             placeholder="อธิบายปัญหาที่พบ เช่น เข็มหัก, กระบอกติด, มีเสียงดังผิดปกติ..."
             style={{
-              width: '100%',
-              padding: '12px 14px',
-              borderRadius: 12,
-              border: '1px solid #cbd5e1',
-              fontSize: 16,
+              ...inputStyle,
+              minHeight: 90,
               resize: 'vertical',
-              outline: 'none',
-              fontFamily: 'inherit',
-              boxSizing: 'border-box',
-              background: '#f8fafc',
             }}
           />
         </div>
@@ -313,17 +394,7 @@ function StepReport({ serial, cylinder, onSubmitted }) {
             value={reporter}
             onChange={(e) => setReporter(e.target.value)}
             placeholder="ชื่อ-นามสกุล หรือชื่อเล่นผู้แจ้ง"
-            style={{
-              width: '100%',
-              minHeight: 46,
-              padding: '10px 14px',
-              borderRadius: 12,
-              border: '1px solid #cbd5e1',
-              fontSize: 16,
-              outline: 'none',
-              boxSizing: 'border-box',
-              background: '#f8fafc',
-            }}
+            style={inputStyle}
           />
         </div>
 
@@ -454,6 +525,9 @@ function StepApprove({ request, onUpdated }) {
           <FieldRow label="เลขที่ใบแจ้ง" value={request.request_no} />
           <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
           <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight />
+          <FieldRow label="Design (ลายผ้า)" value={request.Design} />
+          <FieldRow label="KI" value={request.KI} />
+          <FieldRow label="เลขม้วน" value={request.roll_no || request.RollNo || request.roll_number} />
           <FieldRow label="อาการเสีย" value={request.problem_description} />
           <FieldRow label="ผู้แจ้ง" value={request.reported_by} />
         </div>
@@ -736,6 +810,9 @@ function StatusView({ request }) {
         <FieldRow label="ซีเรียลกระบอก" value={request.cylinder_serial} highlight />
         <FieldRow label="เครื่องจักร (M/C)" value={request.machine_mc} />
         <FieldRow label="ตำแหน่งติดตั้ง" value={request.cylinder_location} />
+        <FieldRow label="Design (ลายผ้า)" value={request.Design} />
+        <FieldRow label="KI" value={request.KI} />
+        <FieldRow label="เลขม้วน" value={request.roll_no || request.RollNo || request.roll_number} />
         <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} />
         <FieldRow label="ผู้แจ้ง" value={request.reported_by} />
         <FieldRow

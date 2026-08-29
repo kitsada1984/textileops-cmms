@@ -24,13 +24,13 @@ import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
 const EMPTY = {
   request_no: '', status: 'PENDING',
   cylinder_serial: '', cylinder_location: '', cylinder_standard: '', machine_mc: '',
-  KI: '', Design: '',
+  KI: '', Design: '', roll_no: '',
   problem_description: '', reported_by: '',
   technician_name: '', approved_by: '', approved_at: '', approval_notes: '',
   repair_details: '', parts_used: '', completed_by: '', completed_at: '',
 }
 
-const OPTIONAL_DB_FIELDS = ['KI', 'Design']
+const OPTIONAL_DB_FIELDS = ['KI', 'Design', 'roll_no', 'RollNo', 'roll_number']
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'repair_requests'/i
 
 const STATUS_CFG = {
@@ -173,8 +173,9 @@ export default function RepairRequests() {
     { field:'request_no',          label: t('rr_field_no'),          type:'text'     },
     { field:'cylinder_serial',     label: 'ซีเรียล',                  type:'text'     },
     { field:'machine_mc',          label: 'เครื่องปัจจุบัน',          type:'text'     },
-    { field:'KI',                  label: 'KI',                       type:'text'     },
     { field:'Design',              label: 'Design',                   type:'text'     },
+    { field:'KI',                  label: 'KI',                       type:'number'   },
+    { field:'roll_no',             label: 'เลขม้วน',                  type:'number'   },
     { field:'cylinder_location',   label: t('cyl_th_loc'),            type:'text'     },
     { field:'problem_description', label: t('rr_field_problem'),      type:'textarea' },
     { field:'status',              label: t('status'),                 type:'select'   },
@@ -185,7 +186,7 @@ export default function RepairRequests() {
   ]
 
   const searched = data.filter(r =>
-    [r.request_no, r.cylinder_serial, r.cylinder_location, r.KI, r.Design, r.reported_by, r.technician_name, r.problem_description]
+    [r.request_no, r.cylinder_serial, r.cylinder_location, r.Design, r.KI, r.roll_no, r.RollNo, r.reported_by, r.technician_name, r.problem_description]
       .some(v => String(v || '').toLowerCase().includes(search.toLowerCase()))
   )
   const byStatus = REPAIR_STATUS.reduce((acc, s) => { acc[s.value] = data.filter(r => r.status === s.value).length; return acc }, {})
@@ -195,12 +196,15 @@ export default function RepairRequests() {
   const cols = (() => {
     const list = [...sourceCols]
     const machineIdx = list.findIndex(c => c.field === 'machine_mc')
-    const hasKI = list.some(c => c.field === 'KI')
     const hasDesign = list.some(c => c.field === 'Design')
+    const hasKI = list.some(c => c.field === 'KI')
+    const hasRollNo = list.some(c => c.field === 'roll_no' || c.field === 'RollNo')
     const insertAt = machineIdx >= 0 ? machineIdx + 1 : 0
-    if (!hasKI) list.splice(insertAt, 0, { field: 'KI', label: 'KI', type: 'text' })
-    const designInsertAt = list.findIndex(c => c.field === 'KI') + 1
-    if (!hasDesign) list.splice(designInsertAt, 0, { field: 'Design', label: 'Design', type: 'text' })
+    if (!hasDesign) list.splice(insertAt, 0, { field: 'Design', label: 'Design', type: 'text' })
+    const kiInsertAt = list.findIndex(c => c.field === 'Design') + 1
+    if (!hasKI) list.splice(kiInsertAt, 0, { field: 'KI', label: 'KI', type: 'number' })
+    const rollInsertAt = list.findIndex(c => c.field === 'KI') + 1
+    if (!hasRollNo) list.splice(rollInsertAt, 0, { field: 'roll_no', label: 'เลขม้วน', type: 'number' })
     return list
   })()
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
@@ -248,8 +252,9 @@ export default function RepairRequests() {
       fields: [
         { label: 'ซีเรียล',           value: detailRec.cylinder_serial },
         { label: 'เครื่องปัจจุบัน',   value: detailRec.machine_mc },
-        { label: 'KI',                value: detailRec.KI },
         { label: 'Design',            value: detailRec.Design },
+        { label: 'KI',                value: detailRec.KI },
+        { label: 'เลขม้วน',           value: detailRec.roll_no || detailRec.RollNo },
         { label: t('cyl_th_loc'),     value: detailRec.cylinder_location },
         { label: t('cyl_th_standard'),value: detailRec.cylinder_standard },
       ].filter(f => f.value),
@@ -371,11 +376,29 @@ export default function RepairRequests() {
                 </span>
               </div>
 
-              {/* Machine & Serial Info */}
+              {/* Machine & Serial & Design/KI/Roll Info */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-700 dark:text-slate-300 font-semibold mb-2">
                 <span>🏭 M/C: <strong className="text-slate-900 dark:text-white">{r.machine_mc || '—'}</strong></span>
                 <span>•</span>
                 <span>ซีเรียล: <strong className="text-blue-600 dark:text-blue-400">{r.cylinder_serial || '—'}</strong></span>
+                {r.Design && (
+                  <>
+                    <span>•</span>
+                    <span>🎨 Design: <strong className="text-indigo-600 dark:text-indigo-400">{r.Design}</strong></span>
+                  </>
+                )}
+                {(r.KI !== undefined && r.KI !== null && r.KI !== '') && (
+                  <>
+                    <span>•</span>
+                    <span>🧾 KI: <strong className="text-slate-900 dark:text-white font-mono">{r.KI}</strong></span>
+                  </>
+                )}
+                {(r.roll_no || r.RollNo) && (
+                  <>
+                    <span>•</span>
+                    <span>📦 เลขม้วน: <strong className="text-amber-600 dark:text-amber-400 font-mono">{r.roll_no || r.RollNo}</strong></span>
+                  </>
+                )}
                 {r.cylinder_location && (
                   <>
                     <span>•</span>
@@ -602,9 +625,9 @@ export default function RepairRequests() {
           </div>
           <F form={form} setForm={setForm} label="สถานะ" id="status" opts={REPAIR_STATUS} useBuilder={false} />
           <F form={form} setForm={setForm} label="เลขที่ใบแจ้งซ่อม" id="request_no" placeholder="เว้นว่างเพื่อสร้างอัตโนมัติ" />
-          <F form={form} setForm={setForm} label="เครื่องปัจจุบัน (อัตโนมัติ)" id="machine_mc" />
-          <F form={form} setForm={setForm} label="KI" id="KI" />
-          <F form={form} setForm={setForm} label="Design" id="Design" />
+          <F form={form} setForm={setForm} label="Design (ลายผ้า)" id="Design" placeholder="ระบุลายผ้า / Design..." />
+          <F form={form} setForm={setForm} label="KI" id="KI" type="number" placeholder="ระบุตัวเลข KI..." />
+          <F form={form} setForm={setForm} label="เลขม้วน" id="roll_no" type="number" placeholder="ระบุเลขม้วน..." />
           <F form={form} setForm={setForm} label={t('cyl_th_loc')} id="cylinder_location" />
           <F form={form} setForm={setForm} label={t('rr_field_reported_by')} id="reported_by" />
           <div className="col-span-2">
