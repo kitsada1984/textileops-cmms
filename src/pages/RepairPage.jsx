@@ -287,11 +287,126 @@ function StepReport({ serial, cylinder, onSubmitted }) {
     <div>
       <StepHeader
         activeStep={1}
-        title="🔧 แจ้งซ่อมเครื่องจักร / กระบอก"
+        title="🔧 แบบฟอร์มแจ้งซ่อมเครื่องจักร / กระบอก"
         subtitle="กรอกข้อมูลเพื่อส่งแจ้งเตือนเข้า LINE & Telegram หัวหน้าช่างทันที"
       />
       <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Machine info banner */}
+        {/* 🌟 1. ข้อมูลงานผลิต (Design / KI / เลขม้วน) - อยู่ส่วนแรกสุดของฟอร์ม 🌟 */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
+            borderRadius: 16,
+            padding: '16px',
+            border: '2px solid #3b82f6',
+            boxShadow: '0 4px 14px rgba(59,130,246,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>📋 ส่วนที่ 1: ข้อมูลงานผลิต (Design / KI / เลขม้วน)</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Design */}
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                🎨 Design (ลายผ้า)
+              </label>
+              <input
+                type="text"
+                value={design}
+                onChange={(e) => setDesign(e.target.value)}
+                placeholder="ระบุลายผ้า / Design (เช่น ลายริ้ว, Cotton Single)..."
+                style={{ ...inputStyle, background: '#ffffff' }}
+              />
+            </div>
+
+            {/* KI & Roll No Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {/* KI */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                  🧾 KI (ตัวเลข)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={ki}
+                  onChange={(e) => setKi(e.target.value)}
+                  placeholder="ระบุเลข KI..."
+                  style={{ ...inputStyle, background: '#ffffff', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              {/* Roll No */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 5 }}>
+                  📦 เลขม้วน (ตัวเลข)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={rollNo}
+                  onChange={(e) => setRollNo(e.target.value)}
+                  placeholder="ระบุเลขม้วน..."
+                  style={{ ...inputStyle, background: '#ffffff', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ⚠️ 2. รายละเอียดปัญหาและผู้แจ้ง ⚠️ */}
+        <div
+          style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            padding: '16px',
+            border: '1px solid #e2e8f0',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>⚠️ ส่วนที่ 2: อาการเสียและผู้แจ้ง</span>
+          </div>
+
+          {/* Problem textarea */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 5 }}>
+              ปัญหา / อาการเสียที่พบ *
+            </label>
+            <textarea
+              value={problem}
+              onChange={(e) => setProblem(e.target.value)}
+              rows={3}
+              placeholder="อธิบายปัญหาที่พบ เช่น เข็มหัก, ผ้าเป็นเส้น, กระบอกติด, มีเสียงดัง..."
+              style={{
+                ...inputStyle,
+                minHeight: 80,
+                resize: 'vertical',
+              }}
+            />
+          </div>
+
+          {/* Reporter name */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 5 }}>
+              👤 ชื่อผู้แจ้ง *
+            </label>
+            <input
+              value={reporter}
+              onChange={(e) => setReporter(e.target.value)}
+              placeholder="ชื่อ-นามสกุล หรือชื่อเล่นผู้แจ้ง"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        {/* 🎯 3. ข้อมูลเครื่องจักรเป้าหมาย 🎯 */}
         <div
           style={{
             background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
@@ -318,84 +433,6 @@ function StepReport({ serial, cylinder, onSubmitted }) {
               </>
             )}
           </div>
-        </div>
-
-        {/* Design, KI, Roll No 3-column / 2-column grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
-          {/* Design */}
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
-              🎨 Design (ลายผ้า)
-            </label>
-            <input
-              type="text"
-              value={design}
-              onChange={(e) => setDesign(e.target.value)}
-              placeholder="ระบุลายผ้า / Design..."
-              style={inputStyle}
-            />
-          </div>
-
-          {/* KI */}
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
-              🧾 KI (ตัวเลข)
-            </label>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={ki}
-              onChange={(e) => setKi(e.target.value)}
-              placeholder="ระบุตัวเลข KI..."
-              style={{ ...inputStyle, fontFamily: 'monospace' }}
-            />
-          </div>
-
-          {/* Roll No */}
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
-              📦 เลขม้วน (ตัวเลข)
-            </label>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={rollNo}
-              onChange={(e) => setRollNo(e.target.value)}
-              placeholder="ระบุเลขม้วน..."
-              style={{ ...inputStyle, fontFamily: 'monospace' }}
-            />
-          </div>
-        </div>
-
-        {/* Problem textarea */}
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
-            ⚠️ ปัญหา / อาการเสียที่พบ *
-          </label>
-          <textarea
-            value={problem}
-            onChange={(e) => setProblem(e.target.value)}
-            rows={4}
-            placeholder="อธิบายปัญหาที่พบ เช่น เข็มหัก, กระบอกติด, มีเสียงดังผิดปกติ..."
-            style={{
-              ...inputStyle,
-              minHeight: 90,
-              resize: 'vertical',
-            }}
-          />
-        </div>
-
-        {/* Reporter name */}
-        <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 6 }}>
-            👤 ชื่อผู้แจ้ง *
-          </label>
-          <input
-            value={reporter}
-            onChange={(e) => setReporter(e.target.value)}
-            placeholder="ชื่อ-นามสกุล หรือชื่อเล่นผู้แจ้ง"
-            style={inputStyle}
-          />
         </div>
 
         {error && (

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'textileops-v1.3.28'
+const CACHE_NAME = 'textileops-v1.3.29'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -47,7 +47,8 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('script.google.com') ||
     url.hostname.includes('telegram.org') ||
-    url.pathname.startsWith('/api/')
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/repair')
   ) {
     return
   }
