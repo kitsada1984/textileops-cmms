@@ -1731,23 +1731,27 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                     {viewRecord.oil_change ? '✅ ดำเนินการแล้ว' : '—'}
                   </span>
                 </div>
-                <div className="sm:col-span-2 flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-slate-500 mr-1">สายพานส่งด้าย (เทป 1-5):</span>
-                  {[1, 2, 3, 4, 5].map((n) => {
-                    const isChecked = !!viewRecord[`belt_tape${n}`]
-                    return (
-                      <span
-                        key={n}
-                        className={`badge text-[10px] ${
-                          isChecked
-                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                            : 'bg-slate-100 text-slate-400 dark:bg-slate-800 border-transparent opacity-60'
-                        }`}
-                      >
-                        เทป {n}: {isChecked ? '✓ ผ่าน' : '✗'}
-                      </span>
-                    )
-                  })}
+                <div className="sm:col-span-2 space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-500 font-semibold text-[11px] block">
+                    สายพานส่งด้าย (Quality Feed Belts):
+                  </span>
+                  <div className="grid grid-cols-5 gap-1.5 text-center">
+                    {[1, 2, 3, 4, 5].map((n) => {
+                      const isChecked = !!viewRecord[`belt_tape${n}`]
+                      return (
+                        <div
+                          key={n}
+                          className={`py-1.5 px-1 rounded-lg border text-center font-bold text-[11px] transition-all ${
+                            isChecked
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 shadow-xs'
+                              : 'bg-slate-100 text-slate-400 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          เทป {n}: {isChecked ? '✓ ผ่าน' : '—'}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>

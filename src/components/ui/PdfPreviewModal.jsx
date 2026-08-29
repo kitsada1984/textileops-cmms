@@ -280,14 +280,32 @@ export default function PdfPreviewModal({
                     {sec.fields.map((f, fIdx) => (
                       <div
                         key={fIdx}
-                        className={`${f.full ? 'col-span-2 sm:col-span-4' : 'col-span-1 sm:col-span-2'} p-1.5 bg-white rounded border border-slate-100`}
+                        className={`${f.full ? 'col-span-2 sm:col-span-4' : 'col-span-1 sm:col-span-2'} p-2 bg-white rounded border border-slate-100`}
                       >
-                        <div className="text-[9.5px] font-bold text-slate-500 uppercase tracking-tight">
+                        <div className="text-[9.5px] font-bold text-slate-500 uppercase tracking-tight mb-0.5">
                           {f.label}
                         </div>
-                        <div className={`text-xs font-semibold text-slate-900 ${f.mono ? 'font-mono' : ''} break-words mt-0.5`}>
-                          {f.value !== null && f.value !== undefined && f.value !== '' ? String(f.value) : '—'}
-                        </div>
+                        {f.belts && Array.isArray(f.belts) ? (
+                          <div className="grid grid-cols-5 gap-1.5 mt-1">
+                            {f.belts.map((b) => (
+                              <div
+                                key={b.tape}
+                                className={`flex items-center justify-center gap-1 py-1 px-1 rounded border text-center font-bold text-[10.5px] ${
+                                  b.checked
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                                }`}
+                              >
+                                <span>เทป {b.tape}:</span>
+                                <span>{b.checked ? '☑ ผ่าน' : '☐'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className={`text-xs font-semibold text-slate-900 ${f.mono ? 'font-mono' : ''} break-words mt-0.5`}>
+                            {f.value !== null && f.value !== undefined && f.value !== '' ? String(f.value) : '—'}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

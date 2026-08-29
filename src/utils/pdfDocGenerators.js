@@ -258,6 +258,11 @@ export function generateCenterCheckPdfProps(chk) {
           { label: 'ถ่ายน้ำมันเกียร์ (Gear Oil Change)', value: chk.oil_change ? '✅ ดำเนินการแล้ว' : '—' },
           {
             label: 'สายพานส่งด้าย (Quality Feed Belts)',
+            full: true,
+            belts: [1, 2, 3, 4, 5].map((n) => ({
+              tape: n,
+              checked: !!chk[`belt_tape${n}`],
+            })),
             value: [1, 2, 3, 4, 5]
               .map((n) => `เทป ${n}: ${chk[`belt_tape${n}`] ? '☑ ผ่าน' : '☐'}`)
               .join('   |   '),
