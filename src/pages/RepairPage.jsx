@@ -149,6 +149,33 @@ function Btn({ onClick, disabled, loading, children, variant = 'primary', style 
   )
 }
 
+function PriorityBadge({ priority }) {
+  if (!priority) return null
+  const pMap = {
+    'ด่วนที่สุด': { label: '🔴 ด่วนที่สุด (หยุดผลิต)', bg: '#fef2f2', color: '#ef4444', border: '#fca5a5' },
+    'ด่วน':       { label: '🟡 ด่วน', bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+    'ปกติ':       { label: '🟢 ปกติ', bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' },
+  }
+  const cfg = pMap[priority] || { label: priority, bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '3px 8px',
+        borderRadius: 8,
+        fontSize: 12,
+        fontWeight: 800,
+        background: cfg.bg,
+        color: cfg.color,
+        border: `1px solid ${cfg.border}`,
+      }}
+    >
+      {cfg.label}
+    </span>
+  )
+}
+
 function FieldRow({ label, value, highlight, mono, full }) {
   if (value === null || value === undefined || value === '') return null
   return (
@@ -156,7 +183,7 @@ function FieldRow({ label, value, highlight, mono, full }) {
       style={{
         display: full ? 'block' : 'flex',
         justifyContent: 'space-between',
-        alignItems: full ? 'flex-start' : 'baseline',
+        alignItems: full ? 'flex-start' : 'center',
         gap: 8,
         padding: '9px 0',
         borderBottom: '1px solid #f1f5f9',
@@ -181,6 +208,7 @@ function FieldRow({ label, value, highlight, mono, full }) {
     </div>
   )
 }
+
 
 /* ── Mobile Steps Progress Header ────────────────────────────────────────── */
 function StepHeader({ activeStep, title, subtitle }) {
@@ -766,7 +794,7 @@ function StepApprove({ request, onUpdated }) {
         {/* ⚠️ ส่วนที่ 3: ข้อมูลการแจ้งซ่อมและปัญหา */}
         <div style={{ background: '#f8fafc', borderRadius: 16, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
           <FieldRow label="เลขที่ใบแจ้ง" value={request.request_no} mono highlight />
-          <FieldRow label="ระดับความเร่งด่วน" value={request.priority} />
+          <FieldRow label="ระดับความเร่งด่วน" value={<PriorityBadge priority={request.priority} />} />
           <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} full />
           <FieldRow label="ผู้แจ้งซ่อม" value={request.reported_by} />
           <FieldRow label="วันที่แจ้ง" value={request.created_at ? new Date(request.created_at).toLocaleString('th-TH') : null} />
@@ -1190,8 +1218,8 @@ function StatusView({ request, onOpenPdf }) {
 
       {/* Complete Data Breakdown */}
       <div style={{ background: '#f8fafc', borderRadius: 18, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
+        <FieldRow label="ระดับความเร่งด่วน" value={<PriorityBadge priority={request.priority} />} />
         <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} full />
-        <FieldRow label="ระดับความเร่งด่วน" value={request.priority} />
         <FieldRow label="ผู้แจ้งซ่อม" value={request.reported_by} />
         <FieldRow label="วันที่แจ้ง" value={request.created_at ? new Date(request.created_at).toLocaleString('th-TH') : null} />
         <FieldRow label="ช่างผู้รับผิดชอบ" value={request.technician_name} highlight />
