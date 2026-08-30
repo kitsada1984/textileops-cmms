@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB, normalizeRepairRecord, encodeRepairProblemDescription } from '../utils/telegram'
 import { notifyLineNewRepair, notifyLineTechnician, notifyLineCompleted } from '../utils/line'
-import { TechnicianAPI } from '../api/entities'
+import { TechnicianAPI, SparePartAPI, StockTxnAPI, WorkOrderAPI } from '../api/entities'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
 import {
@@ -951,10 +951,37 @@ function StepApprove({ request, onUpdated }) {
 /* ── Step 3: Complete (บันทึกผลงานช่าง & ปิดงาน) ──────────────────────────── */
 function StepComplete({ request, onUpdated }) {
   const [details, setDetails] = useState(request.repair_details || '')
-  const [parts, setParts] = useState(request.parts_used || '')
   const [tech, setTech] = useState(request.technician_name || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  // 📦 Hybrid Spare Part Selector State
+  const [catalogParts, setCatalogParts] = useState([])
+  const [selectedPartId, setSelectedPartId] = useState('')
+  const [partQty, setPartQty] = useState(1)
+  const [selectedPartsList, setSelectedPartsList] = useState([])
+  const [customPartsText, setCustomPartsText] = useState(request.parts_used || '')
+  const [loadingParts, setLoadingParts] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    const loadParts = async () => {
+      setLoadingParts(true)
+      try {
+        const list = await SparePartAPI.list()
+        if (active && Array.isArray(list)) {
+          setCatalogParts(list)
+        }
+      } catch (e) {
+        console.warn('Failed to load spare parts for repair closure:', e)
+      }
+      if (active) setLoadingParts(false)
+    }
+    loadParts()
+    return () => {
+      active = false
+    }
+  }, [])
 
   if (request.status === 'PENDING') {
     return (
@@ -986,26 +1013,137 @@ function StepComplete({ request, onUpdated }) {
     )
   }
 
+  const handleAddCatalogPart = () => {
+    if (!selectedPartId) return
+    const p = catalogParts.find((item) => item.id === selectedPartId || item._id === selectedPartId)
+    if (!p) return
+    const qty = Math.max(1, Number(partQty) || 1)
+
+    setSelectedPartsList((prev) => {
+      const existsIdx = prev.findIndex((item) => item.id === p.id)
+      if (existsIdx >= 0) {
+        const next = [...prev]
+        next[existsIdx] = { ...next[existsIdx], qty: next[existsIdx].qty + qty }
+        return next
+      }
+      return [
+        ...prev,
+        {
+          id: p.id || p._id,
+          PartNumber: p.PartNumber || p.Code || '',
+          PartName: p.PartName || p.Name || p.Part_Name_EN || 'อะไหล่',
+          Unit: p.Unit || 'ชิ้น',
+          UnitPrice: Number(p.UnitPrice || 0),
+          QuantityOnHand: Number(p.QuantityOnHand || p.Stock || 0),
+          qty,
+        },
+      ]
+    })
+    setSelectedPartId('')
+    setPartQty(1)
+  }
+
+  const handleRemovePart = (idx) => {
+    setSelectedPartsList((prev) => prev.filter((_, i) => i !== idx))
+  }
+
   const submit = async () => {
     if (saving) return
     if (!details.trim()) return setError('กรุณาระบุรายละเอียดการซ่อม / วิธีแก้ไข')
     if (!tech.trim()) return setError('กรุณาระบุชื่อช่างผู้ปฏิบัติงาน')
     setSaving(true)
     setError('')
+
+    // 1. Build summary of parts used
+    const catalogSummary = selectedPartsList
+      .map((p) => `${p.PartName}${p.PartNumber ? ` [${p.PartNumber}]` : ''} (${p.qty} ${p.Unit})`)
+      .join(', ')
+    const partsSummary = [catalogSummary, customPartsText.trim()].filter(Boolean).join(', ')
+
+    // 2. Calculate duration in hours
+    const startTimeStr = request.approved_at || request.created_at || new Date().toISOString()
+    const now = new Date()
+    const diffMs = Math.max(0, now - new Date(startTimeStr))
+    const durationHours = Math.max(0.25, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100)
+
     try {
+      // 3. Update repair_requests in Supabase
       const { data, error: err } = await supabase
         .from('repair_requests')
         .update({
           status: 'COMPLETED',
           repair_details: details.trim(),
-          parts_used: parts.trim(),
-          completed_at: new Date().toISOString(),
+          parts_used: partsSummary,
+          completed_at: now.toISOString(),
           completed_by: tech.trim(),
         })
         .eq('id', request.id)
         .select()
         .single()
       if (err) throw err
+
+      // 4. Auto-Sync Q1: Create or Upsert into workorders table
+      try {
+        await WorkOrderAPI.create({
+          Job_ID: `WO-${request.request_no}`,
+          WONumber: `WO-${request.request_no}`,
+          OrderDate: request.created_at || now.toISOString(),
+          StartDate: startTimeStr,
+          EndDate: now.toISOString(),
+          Duration: durationHours,
+          WorkingDurationText: `${durationHours} ชม.`,
+          MC: request.machine_mc || '',
+          MachineID: request.machine_mc || '',
+          KI: request.KI ? String(request.KI) : '',
+          Design: request.Design || '',
+          RollNo: request.roll_no || request.RollNo || '',
+          JobType: 'REPAIR',
+          Technicians: tech.trim(),
+          AssignedTo: tech.trim(),
+          Status: 'COMPLETED',
+          Problem: request.problem_description || '',
+          Solution: details.trim(),
+          Title: request.Design ? `ซ่อมเครื่อง ${request.machine_mc || ''} (ลาย ${request.Design})` : `งานแจ้งซ่อม ${request.request_no} (เครื่อง ${request.machine_mc || ''})`,
+          CreatedBy: request.reported_by || 'Operator',
+          RequestNo: request.request_no,
+          req_id: request.id,
+          Comment: JSON.stringify({
+            synced_from_repair: true,
+            request_no: request.request_no,
+            parts_used: partsSummary,
+          }),
+        })
+      } catch (woErr) {
+        console.warn('Work order auto-sync warning (will continue):', woErr)
+      }
+
+      // 5. Auto-Deduct Q2: Deduct stock from spareparts & insert stocktransactions
+      for (const p of selectedPartsList) {
+        try {
+          const currentStock = Number(p.QuantityOnHand || 0)
+          const nextStock = Math.max(0, currentStock - p.qty)
+          await SparePartAPI.update(p.id, {
+            QuantityOnHand: nextStock,
+            updated_at: now.toISOString(),
+          })
+          await StockTxnAPI.create({
+            TXN_ID: `TXN-USE-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            TXN_Type: 'USE',
+            Part_ID: p.id,
+            Part_Code: p.PartNumber,
+            Part_Name_EN: p.PartName,
+            Quantity: -Math.abs(p.qty),
+            Reference_ID: request.request_no,
+            Remarks: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no} (เครื่อง ${request.machine_mc || ''})`,
+            Created_By: tech.trim(),
+            Date: now.toISOString(),
+          })
+        } catch (stockErr) {
+          console.warn(`Stock deduction warning for ${p.PartName}:`, stockErr)
+        }
+      }
+
+      // 6. Send Telegram and LINE completion notifications
       try {
         await notifyCompleted(data)
       } catch (tgErr) {
@@ -1016,6 +1154,7 @@ function StepComplete({ request, onUpdated }) {
       } catch (lineErr) {
         console.warn('LINE completed notify warning:', lineErr)
       }
+
       onUpdated(data)
     } catch (e) {
       setError(e.message)
@@ -1165,16 +1304,108 @@ function StepComplete({ request, onUpdated }) {
               />
             </div>
 
-            {/* 📦 อะไหล่ที่เบิกใช้ */}
-            <div>
+            {/* 📦 ส่วนที่ 3: ระบบเบิกใช้อะไหล่ (Hybrid Spare Part Selector) */}
+            <div style={{ background: '#f8fafc', padding: 14, borderRadius: 14, border: '1.5px solid #cbd5e1' }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
-                📦 อะไหล่ที่เบิกใช้ (ถ้ามี)
+                📦 อะไหล่ที่เบิกใช้ (ตัดสต็อกอัตโนมัติ)
               </label>
+
+              {/* 1. Catalog Part Picker */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <select
+                  value={selectedPartId}
+                  onChange={(e) => setSelectedPartId(e.target.value)}
+                  style={{ ...inputStyle, flex: 1, minHeight: 40, fontSize: 13, padding: '6px 10px' }}
+                >
+                  <option value="">-- เลือกอะไหล่จากคลัง --</option>
+                  {catalogParts.map((p) => {
+                    const id = p.id || p._id
+                    const stock = Number(p.QuantityOnHand || p.Stock || 0)
+                    return (
+                      <option key={id} value={id}>
+                        {p.PartName || p.Name} {p.PartNumber ? `[${p.PartNumber}]` : ''} (คงเหลือ: {stock} {p.Unit || 'ชิ้น'})
+                      </option>
+                    )
+                  })}
+                </select>
+
+                <input
+                  type="number"
+                  min={1}
+                  value={partQty}
+                  onChange={(e) => setPartQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  style={{ ...inputStyle, width: 70, minHeight: 40, textAlign: 'center', fontSize: 13, padding: '6px 4px' }}
+                  title="จำนวนที่เบิกใช้"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleAddCatalogPart}
+                  disabled={!selectedPartId}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 10,
+                    background: selectedPartId ? '#2563eb' : '#94a3b8',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: 12,
+                    border: 'none',
+                    cursor: selectedPartId ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  + เพิ่ม
+                </button>
+              </div>
+
+              {/* List of Added Catalog Parts */}
+              {selectedPartsList.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                  {selectedPartsList.map((item, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: '#dbeafe',
+                        color: '#1e40af',
+                        padding: '4px 10px',
+                        borderRadius: 20,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        border: '1px solid #bfdbfe',
+                      }}
+                    >
+                      <span>📦 {item.PartName} × {item.qty} {item.Unit}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePart(idx)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ef4444',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                          padding: '0 2px',
+                        }}
+                        title="ลบรายการ"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* 2. Free-text for custom / external parts */}
               <input
-                value={parts}
-                onChange={(e) => setParts(e.target.value)}
-                placeholder="เช่น เข็ม 2 เล่ม, ซีลยาง 1 วง..."
-                style={inputStyle}
+                value={customPartsText}
+                onChange={(e) => setCustomPartsText(e.target.value)}
+                placeholder="ระบุอะไหล่อื่นๆ / วัสดุภายนอกเพิ่มเติม (ถ้ามี)..."
+                style={{ ...inputStyle, minHeight: 38, fontSize: 13 }}
               />
             </div>
           </div>

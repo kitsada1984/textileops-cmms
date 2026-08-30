@@ -567,6 +567,29 @@ export default function NeedleCondition() {
         toast.success('บันทึกข้อมูลสภาพเข็มสำเร็จ', `อัปเดตสถานะล่าสุดของ ${payload.serial || payload.machine_mc} เรียบร้อย`)
       }
 
+      // Auto-Sync Q3: Update matching cylinder's Last_Check_Date and status
+      const targetSerial = payload.serial
+      if (targetSerial && Array.isArray(cylinders)) {
+        try {
+          const matchingCyl = cylinders.find(
+            (c) => c.Serial_NOW === targetSerial || c.Serial_OLD === targetSerial || c.Serial === targetSerial
+          )
+          if (matchingCyl) {
+            const cylId = matchingCyl.id || matchingCyl._id
+            const isNeedleWorn = payload.status === 'สึกมาก(ควรเปลี่ยน)' || payload.status === 'BROKEN' || payload.status === 'สึกมาก'
+            const updateFields = {
+              Last_Check_Date: payload.doc_date || new Date().toISOString().slice(0, 10),
+            }
+            if (isNeedleWorn) {
+              updateFields.Status_Now = 'WAIT_SERVICE'
+            }
+            await CylinderAPI.update(cylId, updateFields)
+          }
+        } catch (cylSyncErr) {
+          console.warn('Cylinder auto-update from NeedleCondition warning:', cylSyncErr)
+        }
+      }
+
       // Log in AuditLog
       try {
         await AuditLogAPI.create({

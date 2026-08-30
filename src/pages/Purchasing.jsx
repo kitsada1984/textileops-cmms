@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { useSearchParams, useLocation } from 'react-router-dom'
 import {
   Plus,
   Pencil,
@@ -313,6 +314,42 @@ export default function Purchasing() {
   }), [cols])
 
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+
+  // 1-Click Purchase Request from SpareParts
+  useEffect(() => {
+    const autoOpen = searchParams.get('autoOpen') === 'true' || location.state?.autoOpen
+    const partCode = searchParams.get('partCode') || location.state?.partCode
+    const partName = searchParams.get('partName') || location.state?.partName
+    const qty = searchParams.get('qty') || location.state?.qty
+    const price = searchParams.get('price') || location.state?.price
+    const supplier = searchParams.get('supplier') || location.state?.supplier
+    const category = searchParams.get('category') || location.state?.category
+
+    if (autoOpen && (partCode || partName)) {
+      const qtyNum = parseFloat(qty) || 1
+      const priceNum = parseFloat(price) || 0
+      setForm({
+        ...EMPTY,
+        PO_Number: `PO-${Date.now().toString().slice(-6)}`,
+        Order_Date: format(new Date(), 'yyyy-MM-dd'),
+        Part_Code: partCode || '',
+        Part_Name_EN: partName || '',
+        Detail: partName || partCode || '',
+        Qty: qtyNum,
+        UnitPrice: priceNum || '',
+        Total_Amount: qtyNum * priceNum,
+        Supplier: supplier || '',
+        Category: category || 'อะไหล่',
+      })
+      setModal(true)
+      if (searchParams.get('autoOpen')) {
+        setSearchParams({}, { replace: true })
+      }
+    }
+  }, [searchParams, location.state])
 
   useEffect(() => {
     const qty = parseFloat(form.Qty) || 0

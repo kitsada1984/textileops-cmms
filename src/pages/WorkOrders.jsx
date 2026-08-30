@@ -368,8 +368,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         if (sla.isOnTime) onTimeCount += 1
         else overdueCount += 1
 
-        if (j.WorkingHoursDecimal) {
-          totalHours += Number(j.WorkingHoursDecimal)
+        const durationVal = parseFloat(j.WorkingHoursDecimal || j.Duration) || 0
+        if (durationVal > 0) {
+          totalHours += durationVal
           countWithDuration += 1
         }
       })

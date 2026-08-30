@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Plus,
   Pencil,
@@ -16,6 +17,7 @@ import {
   Layers,
   Sparkles,
   FileText,
+  ShoppingCart,
 } from 'lucide-react'
 import useEntity from '../hooks/useEntity'
 import { SparePartAPI, PART_STATUS } from '../api/entities'
@@ -176,6 +178,7 @@ function getMissingSparePartColumn(error) {
 
 export default function SpareParts() {
   const { t } = useT()
+  const navigate = useNavigate()
   const { canAdd, canEdit, canDelete } = usePagePerms('spareparts')
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(SparePartAPI)
@@ -188,6 +191,25 @@ export default function SpareParts() {
   const [detailRec, setDetailRec] = useState(null)
   const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
+
+  // 1-Click Purchase Request from Low Stock
+  const handle1ClickPR = (part) => {
+    if (!part) return
+    const currentStock = Number(part.Stock_Qty || 0)
+    const minStock = Number(part.Min_Qty || 0)
+    const deficit = Math.max(1, (minStock * 2) - currentStock)
+    navigate('/purchasing', {
+      state: {
+        autoOpen: true,
+        partCode: part.Part_Code || '',
+        partName: getSparePartName(part),
+        qty: deficit,
+        price: Number(part.Unit_Price || 0),
+        supplier: part.Supplier || '',
+        category: part.Category || 'อะไหล่',
+      },
+    })
+  }
 
   // Summary statistics
   const stats = useMemo(() => {
@@ -585,6 +607,18 @@ export default function SpareParts() {
                     <div className="flex items-center justify-center gap-1">
                       <button
                         type="button"
+                        onClick={() => handle1ClickPR(p)}
+                        className={`p-1.5 rounded-lg transition-all border ${
+                          getSparePartStatus(p) !== 'IN_STOCK'
+                            ? 'text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border-amber-300 dark:border-amber-700 font-bold'
+                            : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-slate-200 dark:border-slate-700'
+                        }`}
+                        title="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
+                      >
+                        <ShoppingCart size={13} />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setPdfItem(p)}
                         className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
                         title="ดูเอกสาร PDF และพิมพ์"
@@ -646,6 +680,34 @@ export default function SpareParts() {
           del(detailRec._id || detailRec.id)
           setDetailRec(null)
         }}
+        extraActions={
+          detailRec ? (
+            <button
+              type="button"
+              onClick={() => {
+                const rec = detailRec
+                setDetailRec(null)
+                handle1ClickPR(rec)
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '9px 14px',
+                borderRadius: 11,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(37,99,235,0.25)',
+              }}
+            >
+              <ShoppingCart size={14} /> 🛒 เปิดใบขอซื้อ (1-Click PR)
+            </button>
+          ) : null
+        }
         groups={detailRec ? [
           {
             label: t('dr_general_info'),

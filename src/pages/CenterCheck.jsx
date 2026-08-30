@@ -682,6 +682,30 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         await CenterCheckAPI.create(payload)
         toast.success('บันทึกการเช็คศูนย์เรียบร้อยแล้ว', `${payload.doc_no} (M/C: ${payload.mc})`)
       }
+
+      // Auto-Sync Q3: Update matching cylinder's Last_Check_Date and status
+      const targetSerial = payload.serial || formData.serial
+      if (targetSerial && Array.isArray(rawCylinders)) {
+        try {
+          const matchingCyl = rawCylinders.find(
+            (c) => c.Serial_NOW === targetSerial || c.Serial_OLD === targetSerial || c.Serial === targetSerial
+          )
+          if (matchingCyl) {
+            const cylId = matchingCyl.id || matchingCyl._id
+            const isNeedleWorn = payload.needle_cond === 'สึกมาก(ควรเปลี่ยน)' || payload.status === 'FAILED'
+            const updateFields = {
+              Last_Check_Date: payload.doc_date || new Date().toISOString().slice(0, 10),
+            }
+            if (isNeedleWorn) {
+              updateFields.Status_Now = 'WAIT_SERVICE'
+            }
+            await CylinderAPI.update(cylId, updateFields)
+          }
+        } catch (cylSyncErr) {
+          console.warn('Cylinder auto-update from CenterCheck warning:', cylSyncErr)
+        }
+      }
+
       await loadRecords()
       setActiveSubTab('history')
     } catch (err) {

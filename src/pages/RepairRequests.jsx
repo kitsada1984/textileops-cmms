@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
-import { RepairRequestAPI, CylinderAPI, REPAIR_STATUS } from '../api/entities'
+import { RepairRequestAPI, CylinderAPI, WorkOrderAPI, REPAIR_STATUS } from '../api/entities'
 import useWebBuilderMenu from '../hooks/useWebBuilderMenu'
 import SearchInput from '../components/ui/SearchInput'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
@@ -164,6 +164,51 @@ export default function RepairRequests() {
           console.warn('LINE notification warning:', lineErr)
         }
       }
+
+      // Auto-Sync Q1: If status is COMPLETED, sync to Work Orders & Tech KPI
+      if (savedRecord && savedRecord.status === 'COMPLETED') {
+        try {
+          const reqNo = savedRecord.request_no || form.request_no || `REQ-${String(savedRecord.id || Date.now()).slice(0, 6)}`
+          const techName = savedRecord.technician_name || savedRecord.completed_by || form.technician_name || form.completed_by || 'ช่างซ่อมบำรุง'
+          const startTimeStr = savedRecord.approved_at || savedRecord.created_at || new Date().toISOString()
+          const endTimeStr = savedRecord.completed_at || new Date().toISOString()
+          const diffMs = Math.max(0, new Date(endTimeStr) - new Date(startTimeStr))
+          const durationHours = Math.max(0.25, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100)
+
+          await WorkOrderAPI.create({
+            Job_ID: `WO-${reqNo}`,
+            WONumber: `WO-${reqNo}`,
+            OrderDate: savedRecord.created_at || startTimeStr,
+            StartDate: startTimeStr,
+            EndDate: endTimeStr,
+            Duration: durationHours,
+            WorkingDurationText: `${durationHours} ชม.`,
+            MC: savedRecord.machine_mc || form.machine_mc || '',
+            MachineID: savedRecord.machine_mc || form.machine_mc || '',
+            KI: (savedRecord.KI !== undefined && savedRecord.KI !== null) ? String(savedRecord.KI) : (form.KI ? String(form.KI) : ''),
+            Design: savedRecord.Design || form.Design || '',
+            RollNo: savedRecord.roll_no || form.roll_no || '',
+            JobType: 'REPAIR',
+            Technicians: techName,
+            AssignedTo: techName,
+            Status: 'COMPLETED',
+            Problem: savedRecord.problem_description || form.problem_description || '',
+            Solution: savedRecord.repair_details || form.repair_details || 'ซ่อมแซมและแก้ไขตามมาตรฐาน',
+            Title: (savedRecord.Design || form.Design) ? `ซ่อมเครื่อง ${savedRecord.machine_mc || form.machine_mc || ''} (ลาย ${savedRecord.Design || form.Design})` : `งานแจ้งซ่อม ${reqNo}`,
+            CreatedBy: savedRecord.reported_by || form.reported_by || 'Operator',
+            RequestNo: reqNo,
+            req_id: savedRecord.id || form.id,
+            Comment: JSON.stringify({
+              synced_from_repair: true,
+              request_no: reqNo,
+              parts_used: savedRecord.parts_used || form.parts_used || '',
+            }),
+          })
+        } catch (woSyncErr) {
+          console.warn('Work order auto-sync from RepairRequests warning:', woSyncErr)
+        }
+      }
+
       toast.success(isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', `${form.request_no || serialForSave}`)
       setModal(false)
     } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
