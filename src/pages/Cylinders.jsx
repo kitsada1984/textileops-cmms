@@ -25,7 +25,7 @@ import {
 import useWebBuilderMenu, { useWebBuilderColumn } from '../hooks/useWebBuilderMenu'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
-import { AuditLogAPI, CylinderAPI, CYL_STATUS } from '../api/entities'
+import { AuditLogAPI, CylinderAPI, MachineAPI, CYL_STATUS } from '../api/entities'
 import Modal from '../components/ui/Modal'
 import StatusBadge from '../components/ui/StatusBadge'
 import SearchInput from '../components/ui/SearchInput'
@@ -265,6 +265,7 @@ export default function Cylinders() {
   const { canAdd, canEdit, canDelete } = usePagePerms('cylinders')
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(CylinderAPI)
+  const { data: machines } = useEntity(MachineAPI)
   const [search, setSearch] = useState('')
   const [filterSort, setFilterSort] = useState(INIT_FS)
   const [modal, setModal] = useState(false)
@@ -1166,7 +1167,7 @@ export default function Cylinders() {
         <PdfPreviewModal
           open={!!pdfItem}
           onClose={() => setPdfItem(null)}
-          {...generateCylinderPdfProps(pdfItem)}
+          {...generateCylinderPdfProps(pdfItem, { machines })}
         />
       )}
     </div>

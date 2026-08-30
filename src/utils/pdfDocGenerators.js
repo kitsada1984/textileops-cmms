@@ -58,11 +58,93 @@ function normalizeImagesList(rawImages, defaultCaption = 'รูปถ่าย�
     .filter(Boolean)
 }
 
+/**
+ * Standard Circular Knitting Machine Needle Count Lookup / Auto-Calculation
+ */
+export function computeKnittingNeedles(diameterVal, gaugeVal, typeVal = '') {
+  const dia = parseFloat(String(diameterVal || '').replace(/[^\d.]/g, ''))
+  const gauge = parseFloat(String(gaugeVal || '').replace(/[^\d.]/g, ''))
+  if (!dia || !gauge) return null
+
+  // Standard Industry OEM Matrix for Circular Knitting Cylinders (Diameter x Gauge)
+  const lookup = {
+    '30_28': 2640,
+    '34_28': 2988,
+    '30_24': 2256,
+    '34_24': 2568,
+    '30_20': 1884,
+    '34_20': 2136,
+    '30_18': 1696,
+    '34_18': 1920,
+    '30_32': 3016,
+    '34_32': 3420,
+    '30_36': 3384,
+    '34_36': 3840,
+    '26_28': 2280,
+    '26_24': 1956,
+    '32_28': 2808,
+    '32_24': 2412,
+    '36_28': 3168,
+    '38_28': 3344,
+  }
+
+  const key = `${Math.round(dia)}_${Math.round(gauge)}`
+  if (lookup[key]) return lookup[key]
+
+  // Standard mathematical formula aligned to 12/24 feeder systems:
+  // Needles = round(PI * Dia * Gauge / 12) * 12
+  const calc = Math.round((Math.PI * dia * gauge) / 12) * 12
+  return calc > 0 ? calc : null
+}
+
+/**
+ * Standard Needle Specification / Model Lookup based on Machine, Maker and Gauge
+ */
+export function computeKnittingNeedleType(manufacturer = '', type = '', gaugeVal = '', standard = '') {
+  const mfr = String(manufacturer || '').toLowerCase()
+  const t = String(type || '').toLowerCase()
+  const g = String(gaugeVal || '').replace(/[^\d]/g, '') || '28'
+
+  if (mfr.includes('mayer')) {
+    if (t.includes('jac') || t.includes('j')) {
+      return `Groz-Beckert Vo-LC 77.48 G01 (Mayer Jacquard ${g}G)`
+    }
+    if (t.includes('double') || t.includes('d') || t.includes('rib') || t.includes('inter')) {
+      return `Groz-Beckert Wo 77.48 / Vo 89.52 G02 (${g}G)`
+    }
+    return `Groz-Beckert Vo 77.48 G01 (Mayer Relanit ${g}G)`
+  }
+
+  if (mfr.includes('terrot')) {
+    return `Groz-Beckert Vo-Spec Terrot (${g}G High-Speed)`
+  }
+
+  if (mfr.includes('pailung')) {
+    return `Groz-Beckert Vota-Spec Pailung (${g}G Standard)`
+  }
+
+  if (mfr.includes('fukuhara')) {
+    return `Groz-Beckert Vo-Fukuhara Spec (${g}G)`
+  }
+
+  if (t.includes('jac')) {
+    return `Groz-Beckert Jacquard Needle (${g}G OEM Spec)`
+  }
+
+  return `Groz-Beckert Standard (${g}G Knitting Needle)`
+}
+
 /* ── 1. MACHINE DATA SHEET ────────────────────────────────────────────────── */
-export function generateMachinePdfProps(mc) {
+export function generateMachinePdfProps(mc, context = {}) {
   if (!mc) return null
   const mcImage = mc.ImageUrl || extractImageUrl(mc.Remark)
   const images = normalizeImagesList(mcImage, `รูปถ่ายเครื่องจักร ${mc.Mc || ''}`.trim())
+
+  const rawNeedleCount = mc.Needle || mc.Needle_Count || mc.NeedleCount || mc.needle_count || mc.Needles
+  const computedNeedles = computeKnittingNeedles(mc.Diameter, mc.Gauge, mc.Type)
+  const displayNeedleCount = rawNeedleCount
+    ? `${Number(rawNeedleCount).toLocaleString()} เล่ม`
+    : (computedNeedles ? `${Number(computedNeedles).toLocaleString()} เล่ม` : '—')
 
   return {
     docType: 'machine',
@@ -91,7 +173,7 @@ export function generateMachinePdfProps(mc) {
         fields: [
           { label: 'ขนาดเส้นผ่านศูนย์กลาง (Diameter)', value: mc.Diameter ? `${mc.Diameter}"` : '—' },
           { label: 'เกจ (Gauge)', value: mc.Gauge ? `${mc.Gauge}G` : '—' },
-          { label: 'จำนวนเข็ม (Needle Count)', value: mc.Needle ? `${mc.Needle} เล่ม` : '—' },
+          { label: 'จำนวนเข็ม (Needle Count)', value: displayNeedleCount, mono: true },
           { label: 'จำนวนฟีดเดอร์ (Feeder)', value: mc.Feeder ? `${mc.Feeder} ฟีด` : '—' },
           { label: 'น้ำมันเครื่อง (Oil Type)', value: mc.Oil || '—' },
           { label: 'ชนิด Sinker', value: mc.Sinker || '—' },
@@ -132,10 +214,65 @@ export function generateMachinePdfProps(mc) {
 }
 
 /* ── 2. CYLINDER DATA SHEET ──────────────────────────────────────────────── */
-export function generateCylinderPdfProps(cyl) {
+export function generateCylinderPdfProps(cyl, context = {}) {
   if (!cyl) return null
   const cylImage = cyl.ImageUrl || extractCylinderImageUrl(cyl.Comment)
   const images = normalizeImagesList(cylImage, `รูปถ่ายกระบอกเข็ม ${cyl.Serial_NOW || ''}`.trim())
+
+  // Machine matching from context or localStorage
+  let matchedMc = context?.machines?.find?.((m) => m.Mc === cyl.NewMC || m.Mc === cyl.OLDMC || m.Serial_NEW === cyl.Serial_NOW || m.Serial_NOW === cyl.Serial_NOW)
+  if (!matchedMc && typeof localStorage !== 'undefined') {
+    try {
+      const storedMcs = JSON.parse(localStorage.getItem('txops_tbl_machines') || '[]')
+      if (Array.isArray(storedMcs)) {
+        matchedMc = storedMcs.find((m) => m.Mc === cyl.NewMC || m.Mc === cyl.OLDMC || m.Serial_NEW === cyl.Serial_NOW || m.Serial_NOW === cyl.Serial_NOW)
+      }
+    } catch {}
+  }
+
+  // Inspection matching from context or localStorage
+  let matchedCheck = context?.centerChecks?.find?.((c) => c.serial === cyl.Serial_NOW || c.mc === cyl.NewMC)
+  if (!matchedCheck && typeof localStorage !== 'undefined') {
+    try {
+      const storedCcs = JSON.parse(localStorage.getItem('txops_tbl_center_checks') || '[]')
+      if (Array.isArray(storedCcs)) {
+        matchedCheck = storedCcs.find((c) => c.serial === cyl.Serial_NOW || c.mc === cyl.NewMC)
+      }
+    } catch {}
+  }
+
+  let matchedNeedleCond = context?.needleConditions?.find?.((n) => n.serial === cyl.Serial_NOW || n.machine_mc === cyl.NewMC)
+  if (!matchedNeedleCond && typeof localStorage !== 'undefined') {
+    try {
+      const storedNcs = JSON.parse(localStorage.getItem('txops_tbl_needle_conditions') || '[]')
+      if (Array.isArray(storedNcs)) {
+        matchedNeedleCond = storedNcs.find((n) => n.serial === cyl.Serial_NOW || n.machine_mc === cyl.NewMC)
+      }
+    } catch {}
+  }
+
+  // 1. Needle Count (จำนวนเข็ม - ดึงจากข้อมูลกระบอก / เครื่องจักร / คำนวณอัตโนมัติ)
+  const rawNeedleCount = cyl.Needle || cyl.Needle_Count || cyl.NeedleCount || cyl.needle_count || cyl.Needles || matchedMc?.Needle
+  const computedNeedles = computeKnittingNeedles(cyl.Diameter || matchedMc?.Diameter, cyl.Gauge || matchedMc?.Gauge, cyl.Type || matchedMc?.Type)
+  const displayNeedleCount = rawNeedleCount
+    ? `${Number(rawNeedleCount).toLocaleString()} เล่ม`
+    : (computedNeedles ? `${Number(computedNeedles).toLocaleString()} เล่ม` : '—')
+
+  // 2. Needle Type (ประเภทเข็ม - ดึงจากสเปก หรือระบุตามรุ่นเครื่องจักร Mayer / Terrot / Pailung อัตโนมัติ)
+  const rawNeedleType = cyl.Needle_Type || cyl.NeedleType || cyl.needle_type || cyl.Needle_Model || cyl.NeedleModel || matchedMc?.Needle_Type
+  const displayNeedleType = rawNeedleType || computeKnittingNeedleType(
+    cyl.Manufacturer || matchedMc?.Manufacturer || 'Mayer',
+    cyl.Type || matchedMc?.Type || 'Single',
+    cyl.Gauge || matchedMc?.Gauge || '28',
+    cyl.Standard
+  )
+
+  // 3. Manufacturer (ผู้ผลิตกระบอก)
+  const displayManufacturer = cyl.Manufacturer || matchedMc?.Manufacturer || 'Mayer'
+
+  // 4. Last Check Date (วันที่ตรวจเช็คล่าสุด)
+  const rawLastCheckDate = cyl.Last_Check_Date || cyl.LastCheckDate || cyl.last_check_date || cyl.LastPMDate || matchedCheck?.doc_date || matchedNeedleCond?.doc_date || cyl.updated_at || cyl.created_at
+  const displayLastCheckDate = safeFormatDate(rawLastCheckDate, 'dd/MM/yyyy')
 
   return {
     docType: 'cylinder',
@@ -164,10 +301,10 @@ export function generateCylinderPdfProps(cyl) {
       {
         title: 'ข้อมูลจำเพาะและอะไหล่ (Specifications & Needles)',
         fields: [
-          { label: 'จำนวนเข็ม (Needle Count)', value: cyl.Needle_Count ? `${cyl.Needle_Count} เล่ม` : '—' },
-          { label: 'ประเภทเข็ม (Needle Type)', value: cyl.Needle_Type || '—' },
-          { label: 'ผู้ผลิตกระบอก (Manufacturer)', value: cyl.Manufacturer || '—' },
-          { label: 'วันที่ตรวจเช็คล่าสุด', value: safeFormatDate(cyl.Last_Check_Date, 'dd/MM/yyyy') },
+          { label: 'จำนวนเข็ม (Needle Count)', value: displayNeedleCount, mono: true },
+          { label: 'ประเภทเข็ม (Needle Type)', value: displayNeedleType },
+          { label: 'ผู้ผลิตกระบอก (Manufacturer)', value: displayManufacturer },
+          { label: 'วันที่ตรวจเช็คล่าสุด', value: displayLastCheckDate },
         ],
       },
     ],
