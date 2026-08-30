@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 
 /** Safe date formatter — returns '—' for null/undefined/invalid dates instead of crashing */
-function safeFormatDate(val, fmt = 'dd/MM/yy HH:mm') {
+function safeFormatDate(val, fmt = 'dd/MM/yyyy HH:mm') {
   if (!val) return '—'
   try {
     const d = new Date(val)
@@ -56,6 +56,19 @@ function normalizeImagesList(rawImages, defaultCaption = 'รูปถ่าย�
       return null
     })
     .filter(Boolean)
+}
+
+/** Safe helper to access stored table caches in localStorage */
+function getCachedTable(tableName) {
+  if (typeof localStorage === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(`txops_tbl_${tableName}`) || localStorage.getItem(tableName)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
 }
 
 /**
@@ -140,11 +153,30 @@ export function generateMachinePdfProps(mc, context = {}) {
   const mcImage = mc.ImageUrl || extractImageUrl(mc.Remark)
   const images = normalizeImagesList(mcImage, `รูปถ่ายเครื่องจักร ${mc.Mc || ''}`.trim())
 
-  const rawNeedleCount = mc.Needle || mc.Needle_Count || mc.NeedleCount || mc.needle_count || mc.Needles
-  const computedNeedles = computeKnittingNeedles(mc.Diameter, mc.Gauge, mc.Type)
+  // Cross-reference cylinders table for linked cylinder info
+  const cylinders = context?.cylinders?.length ? context.cylinders : getCachedTable('cylinders')
+  const matchedCyl = cylinders.find((c) =>
+    (mc.Serial_NEW && (c.Serial_NOW === mc.Serial_NEW || c.Serial_OLD === mc.Serial_NEW)) ||
+    (mc.Serial_NOW && (c.Serial_NOW === mc.Serial_NOW || c.Serial_OLD === mc.Serial_NOW)) ||
+    (mc.Mc && (c.NewMC === mc.Mc || c.OLDMC === mc.Mc))
+  )
+
+  // Cross-reference center checks / needle conditions for last inspection date
+  const centerChecks = context?.centerChecks?.length ? context.centerChecks : getCachedTable('center_checks')
+  const needleConditions = context?.needleConditions?.length ? context.needleConditions : getCachedTable('needle_conditions')
+  const matchedCheck = centerChecks.find((c) => c.mc === mc.Mc || (matchedCyl && c.serial === matchedCyl.Serial_NOW))
+  const matchedNeedleCond = needleConditions.find((n) => n.machine_mc === mc.Mc || (matchedCyl && n.serial === matchedCyl.Serial_NOW))
+
+  const rawNeedleCount = mc.Needle || mc.Needle_Count || mc.NeedleCount || mc.needle_count || mc.Needles || matchedCyl?.Needle
+  const computedNeedles = computeKnittingNeedles(mc.Diameter || matchedCyl?.Diameter, mc.Gauge || matchedCyl?.Gauge, mc.Type || matchedCyl?.Type)
   const displayNeedleCount = rawNeedleCount
     ? `${Number(rawNeedleCount).toLocaleString()} เล่ม`
     : (computedNeedles ? `${Number(computedNeedles).toLocaleString()} เล่ม` : '—')
+
+  const lastInspectionDate = safeFormatDate(
+    matchedCheck?.doc_date || matchedNeedleCond?.doc_date || mc.updated_at,
+    'dd/MM/yyyy'
+  )
 
   return {
     docType: 'machine',
@@ -159,9 +191,9 @@ export function generateMachinePdfProps(mc, context = {}) {
         title: 'ข้อมูลทั่วไปของเครื่องจักร (General Machine Information)',
         fields: [
           { label: 'รหัสเครื่อง (Machine No.)', value: mc.Mc, mono: true },
-          { label: 'สถานที่ติดตั้ง (Location)', value: mc.Location || 'โรงทอ' },
-          { label: 'ประเภทเครื่อง (Type)', value: mc.Type || 'Single Jersey' },
-          { label: 'ผู้ผลิต (Manufacturer)', value: mc.Manufacturer || '—' },
+          { label: 'สถานที่ติดตั้ง (Location)', value: mc.Location || matchedCyl?.Location || 'โรงทอ' },
+          { label: 'ประเภทเครื่อง (Type)', value: mc.Type || matchedCyl?.Type || 'Single Jersey' },
+          { label: 'ผู้ผลิต (Manufacturer)', value: mc.Manufacturer || matchedCyl?.Manufacturer || '—' },
           { label: 'รุ่นเครื่อง (Model)', value: mc.Model || '—' },
           { label: 'สถานะการทำงาน (Status)', value: mc.Status || 'ปกติ' },
           { label: 'การเช็คน้ำ (Water Check)', value: mc.WaterCheck || '—' },
@@ -171,19 +203,21 @@ export function generateMachinePdfProps(mc, context = {}) {
       {
         title: 'ข้อมูลทางเทคนิคและการตั้งค่า (Technical Specifications)',
         fields: [
-          { label: 'ขนาดเส้นผ่านศูนย์กลาง (Diameter)', value: mc.Diameter ? `${mc.Diameter}"` : '—' },
-          { label: 'เกจ (Gauge)', value: mc.Gauge ? `${mc.Gauge}G` : '—' },
+          { label: 'ขนาดเส้นผ่านศูนย์กลาง (Diameter)', value: mc.Diameter ? `${mc.Diameter}"` : (matchedCyl?.Diameter ? `${matchedCyl.Diameter}"` : '—') },
+          { label: 'เกจ (Gauge)', value: mc.Gauge ? `${mc.Gauge}G` : (matchedCyl?.Gauge ? `${matchedCyl.Gauge}G` : '—') },
           { label: 'จำนวนเข็ม (Needle Count)', value: displayNeedleCount, mono: true },
-          { label: 'จำนวนฟีดเดอร์ (Feeder)', value: mc.Feeder ? `${mc.Feeder} ฟีด` : '—' },
+          { label: 'จำนวนฟีดเดอร์ (Feeder)', value: mc.Feeder ? `${mc.Feeder} ฟีด` : (matchedCyl?.Feeder ? `${matchedCyl.Feeder} ฟีด` : '—') },
           { label: 'น้ำมันเครื่อง (Oil Type)', value: mc.Oil || '—' },
           { label: 'ชนิด Sinker', value: mc.Sinker || '—' },
-        ],
+          { label: 'ตรวจเช็คล่าสุด', value: lastInspectionDate },
+          matchedCyl ? { label: 'กระบอกเข็มที่ติดตั้ง', value: `Serial: ${matchedCyl.Serial_NOW || '—'} (${matchedCyl.Standard || 'Standard'})` } : null,
+        ].filter(Boolean),
       },
       {
         title: 'ประวัติหมายเลขซีเรียล (Serial History)',
         fields: [
-          { label: 'ซีเรียลปัจจุบัน (Serial NEW/NOW)', value: mc.Serial_NEW || mc.Serial_NOW || '—', mono: true },
-          { label: 'ซีเรียลเดิม (Serial OLD)', value: mc.Serial_OLD || '—', mono: true },
+          { label: 'ซีเรียลปัจจุบัน (Serial NEW/NOW)', value: mc.Serial_NEW || mc.Serial_NOW || matchedCyl?.Serial_NOW || '—', mono: true },
+          { label: 'ซีเรียลเดิม (Serial OLD)', value: mc.Serial_OLD || matchedCyl?.Serial_OLD || '—', mono: true },
         ],
       },
       {
@@ -220,36 +254,19 @@ export function generateCylinderPdfProps(cyl, context = {}) {
   const images = normalizeImagesList(cylImage, `รูปถ่ายกระบอกเข็ม ${cyl.Serial_NOW || ''}`.trim())
 
   // Machine matching from context or localStorage
-  let matchedMc = context?.machines?.find?.((m) => m.Mc === cyl.NewMC || m.Mc === cyl.OLDMC || m.Serial_NEW === cyl.Serial_NOW || m.Serial_NOW === cyl.Serial_NOW)
-  if (!matchedMc && typeof localStorage !== 'undefined') {
-    try {
-      const storedMcs = JSON.parse(localStorage.getItem('txops_tbl_machines') || '[]')
-      if (Array.isArray(storedMcs)) {
-        matchedMc = storedMcs.find((m) => m.Mc === cyl.NewMC || m.Mc === cyl.OLDMC || m.Serial_NEW === cyl.Serial_NOW || m.Serial_NOW === cyl.Serial_NOW)
-      }
-    } catch {}
-  }
+  const machines = context?.machines?.length ? context.machines : getCachedTable('machines')
+  const matchedMc = machines.find((m) =>
+    m.Mc === cyl.NewMC ||
+    m.Mc === cyl.OLDMC ||
+    m.Serial_NEW === cyl.Serial_NOW ||
+    m.Serial_NOW === cyl.Serial_NOW
+  )
 
   // Inspection matching from context or localStorage
-  let matchedCheck = context?.centerChecks?.find?.((c) => c.serial === cyl.Serial_NOW || c.mc === cyl.NewMC)
-  if (!matchedCheck && typeof localStorage !== 'undefined') {
-    try {
-      const storedCcs = JSON.parse(localStorage.getItem('txops_tbl_center_checks') || '[]')
-      if (Array.isArray(storedCcs)) {
-        matchedCheck = storedCcs.find((c) => c.serial === cyl.Serial_NOW || c.mc === cyl.NewMC)
-      }
-    } catch {}
-  }
-
-  let matchedNeedleCond = context?.needleConditions?.find?.((n) => n.serial === cyl.Serial_NOW || n.machine_mc === cyl.NewMC)
-  if (!matchedNeedleCond && typeof localStorage !== 'undefined') {
-    try {
-      const storedNcs = JSON.parse(localStorage.getItem('txops_tbl_needle_conditions') || '[]')
-      if (Array.isArray(storedNcs)) {
-        matchedNeedleCond = storedNcs.find((n) => n.serial === cyl.Serial_NOW || n.machine_mc === cyl.NewMC)
-      }
-    } catch {}
-  }
+  const centerChecks = context?.centerChecks?.length ? context.centerChecks : getCachedTable('center_checks')
+  const needleConditions = context?.needleConditions?.length ? context.needleConditions : getCachedTable('needle_conditions')
+  const matchedCheck = centerChecks.find((c) => c.serial === cyl.Serial_NOW || c.mc === cyl.NewMC)
+  const matchedNeedleCond = needleConditions.find((n) => n.serial === cyl.Serial_NOW || n.machine_mc === cyl.NewMC)
 
   // 1. Needle Count (จำนวนเข็ม - ดึงจากข้อมูลกระบอก / เครื่องจักร / คำนวณอัตโนมัติ)
   const rawNeedleCount = cyl.Needle || cyl.Needle_Count || cyl.NeedleCount || cyl.needle_count || cyl.Needles || matchedMc?.Needle
@@ -305,7 +322,11 @@ export function generateCylinderPdfProps(cyl, context = {}) {
           { label: 'ประเภทเข็ม (Needle Type)', value: displayNeedleType },
           { label: 'ผู้ผลิตกระบอก (Manufacturer)', value: displayManufacturer },
           { label: 'วันที่ตรวจเช็คล่าสุด', value: displayLastCheckDate },
-        ],
+          cyl.Feeder || matchedMc?.Feeder ? { label: 'จำนวนฟีดเดอร์ (Feeders)', value: `${cyl.Feeder || matchedMc?.Feeder} ฟีด` } : null,
+          cyl.Machine_Ref ? { label: 'สถานะการใช้งาน (Machine Ref)', value: cyl.Machine_Ref } : null,
+          matchedMc?.Sinker ? { label: 'ชนิด Sinker', value: matchedMc.Sinker } : null,
+          matchedMc?.Oil ? { label: 'น้ำมันเครื่องที่ใช้', value: matchedMc.Oil } : null,
+        ].filter(Boolean),
       },
     ],
     images,
@@ -319,10 +340,26 @@ export function generateCylinderPdfProps(cyl, context = {}) {
 }
 
 /* ── 3. WORK ORDER ────────────────────────────────────────────────────────── */
-export function generateWorkOrderPdfProps(wo) {
+export function generateWorkOrderPdfProps(wo, context = {}) {
   if (!wo) return null
   const woImages = wo.images || wo.Images || wo.ImageUrl || wo.image_url
   const images = normalizeImagesList(woImages, `รูปถ่ายประกอบงาน ${wo.WONumber || wo.Job_ID || ''}`.trim())
+
+  // Cross-reference machine and repair requests if missing Design / KI / RollNo
+  const machines = context?.machines?.length ? context.machines : getCachedTable('machines')
+  const matchedMc = machines.find((m) => m.Mc === (wo.MachineID || wo.MachineCode || wo.MC))
+
+  const repairRequests = context?.repairRequests?.length ? context.repairRequests : getCachedTable('repair_requests')
+  const matchedReq = repairRequests.find((r) =>
+    (wo.RequestNo && (r.request_no === wo.RequestNo || r.code === wo.RequestNo)) ||
+    (wo.req_id && r.id === wo.req_id) ||
+    (wo.MC && r.machine_mc === wo.MC && r.status !== 'REJECTED')
+  )
+
+  const designVal = wo.Design || matchedReq?.Design || '—'
+  const kiVal = wo.KI || matchedReq?.KI || '—'
+  const rollNoVal = (wo.RollNo || wo.roll_no || matchedReq?.roll_no || matchedReq?.RollNo) ? String(wo.RollNo || wo.roll_no || matchedReq?.roll_no || matchedReq?.RollNo) : '—'
+  const locationVal = wo.Location || matchedMc?.Location || matchedReq?.cylinder_location || 'โรงทอ'
 
   return {
     docType: 'workorder',
@@ -339,12 +376,12 @@ export function generateWorkOrderPdfProps(wo) {
           { label: 'เลขที่ใบสั่งงาน (WO No.)', value: wo.WONumber || wo.Job_ID || wo.OrderNo, mono: true },
           { label: 'วันที่สั่งงาน (Date)', value: safeFormatDate(wo.OrderDate || wo.StartDate, 'dd/MM/yyyy') },
           { label: 'เครื่องจักรเป้าหมาย (Machine)', value: wo.MachineID || wo.MachineCode || wo.MachineName || wo.MC, mono: true },
-          { label: 'รหัสงาน (KI)', value: wo.KI || '—', mono: true },
-          { label: 'แบบงาน (Design)', value: wo.Design || '—' },
-          { label: 'เลขม้วน (Roll No.)', value: (wo.RollNo || wo.roll_no) ? String(wo.RollNo || wo.roll_no) : '—', mono: true },
+          { label: 'รหัสงาน (KI)', value: kiVal, mono: true },
+          { label: 'แบบงาน (Design)', value: designVal },
+          { label: 'เลขม้วน (Roll No.)', value: rollNoVal, mono: true },
           { label: 'ประเภทงาน (WO Type)', value: wo.JobType || wo.WOType || wo.Type || 'REPAIR' },
           { label: 'ช่างผู้รับผิดชอบ (Assignee)', value: wo.Technicians || wo.AssignedTo || wo.TechnicianName || '—' },
-          { label: 'สถานที่ติดตั้ง (Location)', value: wo.Location || 'โรงทอ' },
+          { label: 'สถานที่ติดตั้ง (Location)', value: locationVal },
           { label: 'สถานะงาน (Status)', value: wo.Status || '—' },
         ],
       },
@@ -377,10 +414,34 @@ export function generateWorkOrderPdfProps(wo) {
 }
 
 /* ── 4. REPAIR REQUEST ────────────────────────────────────────────────────── */
-export function generateRepairRequestPdfProps(req) {
+export function generateRepairRequestPdfProps(req, context = {}) {
   if (!req) return null
   const reqImages = req.images || req.Images || req.image_url || req.ImageUrl || (req.problem_description ? extractImageUrl(req.problem_description) : '')
   const images = normalizeImagesList(reqImages, `รูปถ่ายจุดชำรุด / อาการเสีย ${req.request_no || ''}`.trim())
+
+  // Cross-reference cylinders and machines for missing specs
+  const cylinders = context?.cylinders?.length ? context.cylinders : getCachedTable('cylinders')
+  const machines = context?.machines?.length ? context.machines : getCachedTable('machines')
+
+  const matchedCyl = cylinders.find((c) =>
+    (req.cylinder_serial && (c.Serial_NOW === req.cylinder_serial || c.Serial_OLD === req.cylinder_serial)) ||
+    (req.machine_mc && (c.NewMC === req.machine_mc || c.OLDMC === req.machine_mc))
+  )
+  const matchedMc = machines.find((m) => m.Mc === req.machine_mc)
+
+  const locationVal = req.cylinder_location || matchedCyl?.Location || matchedMc?.Location || 'โรงทอ'
+  const serialVal = req.cylinder_serial || req.serial || matchedCyl?.Serial_NOW || matchedMc?.Serial_NEW || '—'
+  const stdVal = req.cylinder_standard || matchedCyl?.Standard || 'Standard'
+
+  // Clean problem description of hidden tags for clean PDF rendering
+  const cleanProblem = req.problem_description
+    ? req.problem_description
+        .replace(/ImageUrl:[^\n]+/g, '')
+        .replace(/Design:[^\n]+/g, '')
+        .replace(/KI:[^\n]+/g, '')
+        .replace(/Roll:[^\n]+/g, '')
+        .trim()
+    : (req.description || req.symptom || '—')
 
   return {
     docType: 'repair_request',
@@ -389,7 +450,7 @@ export function generateRepairRequestPdfProps(req) {
     docDate: req.created_at || new Date(),
     status: req.status || 'รอดำเนินการ',
     priority: req.urgency || req.priority || 'ปกติ',
-    remarks: req.problem_description || req.description || req.symptom || '',
+    remarks: cleanProblem,
     sections: [
       {
         title: 'ข้อมูลการแจ้งซ่อม (Repair Request Details)',
@@ -398,18 +459,18 @@ export function generateRepairRequestPdfProps(req) {
           { label: 'วันที่แจ้งซ่อม (Date)', value: safeFormatDate(req.created_at, 'dd/MM/yyyy HH:mm') },
           { label: 'ผู้แจ้งซ่อม (Reporter)', value: req.reported_by || req.reporter_name || req.CreatedBy || '—' },
           { label: 'เครื่องจักรที่แจ้งซ่อม (Machine)', value: req.machine_mc || req.machine_id || req.mc || '—', mono: true },
-          { label: 'ซีเรียลกระบอก (Cylinder Serial)', value: req.cylinder_serial || req.serial || '—', mono: true },
+          { label: 'ซีเรียลกระบอก (Cylinder Serial)', value: serialVal, mono: true },
           { label: '🎨 Design (ลายผ้า)', value: req.Design || req.design || '—' },
           { label: '🧾 KI', value: req.KI ? String(req.KI) : '—', mono: true },
           { label: '📦 เลขม้วน (Roll No.)', value: (req.roll_no || req.RollNo || req.roll_number) ? String(req.roll_no || req.RollNo || req.roll_number) : '—', mono: true },
-          { label: 'สถานที่ติดตั้ง (Location)', value: req.cylinder_location || req.location || 'โรงทอ' },
-          { label: 'สถานะปัจจุบัน (Status)', value: req.status || 'รอดำเนินการ' },
+          { label: 'สถานที่ติดตั้ง (Location)', value: locationVal },
+          { label: 'มาตรฐานการผลิต (Standard)', value: stdVal },
         ],
       },
       {
         title: 'อาการขัดข้องและปัญหาที่พบ (Issue Description & Actions)',
         fields: [
-          { label: '⚠️ รายละเอียดปัญหา / อาการเสียที่พบ (Problem Description)', value: req.problem_description || req.description || req.symptom || '—', full: true },
+          { label: '⚠️ รายละเอียดปัญหา / อาการเสียที่พบ (Problem Description)', value: cleanProblem, full: true },
           req.approval_notes ? { label: '📝 คำสั่งการ / หมายเหตุหัวหน้าช่าง (Supervisor Notes)', value: req.approval_notes, full: true } : null,
           req.repair_details ? { label: '🛠️ รายละเอียดการซ่อม / วิธีแก้ไข (Repair Details)', value: req.repair_details, full: true } : null,
           req.parts_used ? { label: '📦 อะไหล่ที่เบิกใช้ (Parts Used)', value: req.parts_used, full: true } : null,
@@ -427,10 +488,14 @@ export function generateRepairRequestPdfProps(req) {
 }
 
 /* ── 5. PREVENTIVE MAINTENANCE PLAN ──────────────────────────────────────── */
-export function generatePMPlanPdfProps(pm) {
+export function generatePMPlanPdfProps(pm, context = {}) {
   if (!pm) return null
   const pmImages = pm.images || pm.Images || pm.ImageUrl || pm.image_url
   const images = normalizeImagesList(pmImages, `รูปถ่ายประกอบแผน PM ${pm.PM_No || ''}`.trim())
+
+  // Cross-reference machine
+  const machines = context?.machines?.length ? context.machines : getCachedTable('machines')
+  const matchedMc = machines.find((m) => m.Mc === (pm.Machine_KI || pm.NewMC || pm.MachineCode))
 
   return {
     docType: 'pmplan',
@@ -445,8 +510,8 @@ export function generatePMPlanPdfProps(pm) {
         title: 'ข้อมูลแผน PM (PM Plan Information)',
         fields: [
           { label: 'รหัสเครื่องจักร (Machine ID)', value: pm.Machine_KI || pm.NewMC || pm.MachineCode, mono: true },
-          { label: 'ประเภทเครื่อง (Type)', value: pm.Type || 'Single Jersey' },
-          { label: 'ตำแหน่ง (Location)', value: pm.Location || 'โรงทอ' },
+          { label: 'ประเภทเครื่อง (Type)', value: pm.Type || matchedMc?.Type || 'Single Jersey' },
+          { label: 'ตำแหน่ง (Location)', value: pm.Location || matchedMc?.Location || 'โรงทอ' },
           { label: 'รอบการบำรุงรักษา (Interval)', value: pm.IntervalDays ? `${pm.IntervalDays} วัน` : (pm.IntervalRuntime ? `${pm.IntervalRuntime} ชม.` : '—') },
           { label: 'วันที่ทำ PM ล่าสุด (Last PM)', value: safeFormatDate(pm.LastPMDate, 'dd/MM/yyyy') },
           { label: 'วันที่กำหนดทำ PM ถัดไป (Next Due)', value: safeFormatDate(pm.NextPMDate || pm.TargetDate, 'dd/MM/yyyy') },
@@ -473,7 +538,7 @@ export function generatePMPlanPdfProps(pm) {
 }
 
 /* ── 6. CENTER CHECK REPORT ──────────────────────────────────────────────── */
-export function generateCenterCheckPdfProps(chk) {
+export function generateCenterCheckPdfProps(chk, context = {}) {
   if (!chk) return null
   const items = Array.isArray(chk.items) ? chk.items : []
   const tableRows = items.map((it, idx) => [
@@ -485,6 +550,14 @@ export function generateCenterCheckPdfProps(chk) {
     it?.result || 'ผ่าน',
     it?.remark || '',
   ])
+
+  // Cross-reference machine/cylinder for location fallback
+  const machines = context?.machines?.length ? context.machines : getCachedTable('machines')
+  const cylinders = context?.cylinders?.length ? context.cylinders : getCachedTable('cylinders')
+  const matchedMc = machines.find((m) => m.Mc === chk.mc)
+  const matchedCyl = cylinders.find((c) => c.Serial_NOW === chk.serial || c.NewMC === chk.mc)
+
+  const locationVal = (chk.location && chk.location !== '—') ? chk.location : (matchedCyl?.Location || matchedMc?.Location || 'โรงทอ')
 
   const images = normalizeImagesList(chk.needle_images || chk.images, `รูปถ่ายการตรวจศูนย์เข็ม ${chk.mc || ''}`.trim())
 
@@ -504,7 +577,7 @@ export function generateCenterCheckPdfProps(chk) {
           { label: 'วันที่ตรวจเช็ค (Date)', value: safeFormatDate(chk.doc_date, 'dd/MM/yyyy') },
           { label: 'รหัสเครื่องจักร (M/C No.)', value: chk.mc, mono: true },
           { label: 'ซีเรียลกระบอก (Serial)', value: chk.serial, mono: true },
-          { label: 'ตำแหน่ง (Location)', value: (chk.location && chk.location !== '—') ? chk.location : (chk.Location || 'โรงทอ') },
+          { label: 'ตำแหน่ง (Location)', value: locationVal },
           { label: 'ช่างผู้ตรวจเช็ค (Mechanic)', value: chk.mechanic || chk.sign_name || '—' },
           { label: 'หัวหน้างานตรวจรับ (Supervisor)', value: chk.sup_name || '—' },
           { label: 'ผลการประเมินรวม (Overall Status)', value: chk.status || 'ผ่าน' },
@@ -556,7 +629,7 @@ export function generateCenterCheckPdfProps(chk) {
 }
 
 /* ── 7. NEEDLE INSPECTION REPORT ─────────────────────────────────────────── */
-export function generateNeedleConditionPdfProps(needle, historyList = []) {
+export function generateNeedleConditionPdfProps(needle, historyList = [], context = {}) {
   if (!needle) return null
   const statusLabels = {
     'สึกเล็กน้อย': 'สึกเล็กน้อย (Minor Wear)',
@@ -580,6 +653,11 @@ export function generateNeedleConditionPdfProps(needle, historyList = []) {
     h.inspector || '—',
   ])
 
+  // Cross-reference cylinder for location
+  const cylinders = context?.cylinders?.length ? context.cylinders : getCachedTable('cylinders')
+  const matchedCyl = cylinders.find((c) => c.Serial_NOW === needle.serial || c.NewMC === needle.machine_mc)
+  const locationVal = needle.location || matchedCyl?.Location || 'In-use'
+
   const images = normalizeImagesList(needle.images || needle.needle_images, `รูปถ่ายสภาพเข็ม ${needle.serial || needle.machine_mc || ''}`.trim())
 
   return {
@@ -598,8 +676,8 @@ export function generateNeedleConditionPdfProps(needle, historyList = []) {
         fields: [
           { label: 'ซีเรียลกระบอก (Serial)', value: needle.serial, mono: true },
           { label: 'รหัสเครื่องจักร (Machine M/C)', value: needle.machine_mc, mono: true },
-          { label: 'สถานที่ติดตั้ง (Location)', value: needle.location || 'In-use' },
-          { label: 'ประเภทเครื่อง (Type)', value: needle.type || 'Single Jersey' },
+          { label: 'สถานที่ติดตั้ง (Location)', value: locationVal },
+          { label: 'ประเภทเครื่อง (Type)', value: needle.type || matchedCyl?.Type || 'Single Jersey' },
           { label: 'วันที่ตรวจล่าสุด (Inspection Date)', value: safeFormatDate(needle.doc_date, 'dd/MM/yyyy') },
           { label: 'ช่างผู้ตรวจเช็ค (Inspector)', value: needle.inspector || '—' },
           { label: 'สถานะสภาพเข็ม (Condition Status)', value: statusLabels[needle.status] || needle.status || 'ปกติ' },
@@ -630,38 +708,55 @@ export function generateNeedleConditionPdfProps(needle, historyList = []) {
 }
 
 /* ── 8. SPARE PART DATA SHEET ────────────────────────────────────────────── */
-export function generateSparePartPdfProps(sp) {
+export function generateSparePartPdfProps(sp, context = {}) {
   if (!sp) return null
   const spImage = sp.ImageUrl || extractHiddenValue(sp.Remark, 'ImageUrl:')
   const images = normalizeImagesList(spImage, `รูปถ่ายอะไหล่ ${sp.PartNumber || sp.PartName || ''}`.trim())
+
+  const qty = Number(sp.QuantityOnHand || sp.Stock || 0)
+  const minStock = Number(sp.MinStock || 0)
+  const maxStock = Number(sp.MaxStock || 0)
+  const unitPrice = Number(sp.UnitPrice || 0)
+  const totalValuation = qty * unitPrice
+
+  const isLowStock = qty <= minStock
+  const isOutOfStock = qty <= 0
+
+  const statusText = isOutOfStock
+    ? 'สินค้าหมดสต็อก (Out of Stock)'
+    : isLowStock
+      ? 'สต็อกต่ำกว่าเกณฑ์ (Low Stock)'
+      : 'ระดับสต็อกปกติ (Normal)'
 
   return {
     docType: 'sparepart',
     title: 'ทะเบียนอะไหล่และอุปกรณ์ / SPARE PART DATA SHEET',
     docNo: sp.PartNumber || sp.Code || `SP-${sp.id || sp._id}`,
     docDate: sp.updated_at || sp.created_at || new Date(),
-    status: (sp.QuantityOnHand || 0) <= (sp.MinStock || 0) ? 'สต็อกต่ำกว่าเกณฑ์' : 'สต็อกปกติ',
+    status: statusText,
     priority: sp.Category || 'อะไหล่ทั่วไป',
     remarks: sp.Description || sp.Notes || (sp.Remark ? sp.Remark.replace(/ImageUrl:[^\n]+/g, '').trim() : ''),
     sections: [
       {
-        title: 'ข้อมูลอะไหล่ (Spare Part Details)',
+        title: 'ข้อมูลอะไหล่และอุปกรณ์ (Spare Part Specifications)',
         fields: [
           { label: 'รหัสอะไหล่ (Part No.)', value: sp.PartNumber || sp.Code, mono: true },
           { label: 'ชื่ออะไหล่ (Part Name)', value: sp.PartName || sp.Name, full: true },
-          { label: 'หมวดหมู่ (Category)', value: sp.Category || '—' },
+          { label: 'หมวดหมู่อะไหล่ (Category)', value: sp.Category || '—' },
           { label: 'หน่วยนับ (Unit)', value: sp.Unit || 'ชิ้น' },
           { label: 'ตำแหน่งจัดเก็บ (Location)', value: sp.Location || sp.Shelf || 'คลังอะไหล่' },
-          { label: 'ราคาต่อหน่วย (Unit Price)', value: sp.UnitPrice ? `${Number(sp.UnitPrice).toLocaleString()} บาท` : '—' },
+          { label: 'ราคาต่อหน่วย (Unit Price)', value: unitPrice ? `${unitPrice.toLocaleString()} บาท` : '—' },
+          { label: 'มูลค่าสต็อกรวม (Total Value)', value: totalValuation ? `${totalValuation.toLocaleString()} บาท` : '—' },
+          { label: 'ผู้จัดจำหน่าย (Supplier)', value: sp.Supplier || sp.Vendor || '—' },
         ],
       },
       {
-        title: 'สถานะสต็อกและระดับความปลอดภัย (Stock Levels)',
+        title: 'ระดับสต็อกและความต้องการสั่งซื้อ (Inventory & Reorder Levels)',
         fields: [
-          { label: 'จำนวนคงเหลือ (On Hand)', value: `${sp.QuantityOnHand || sp.Stock || 0} ${sp.Unit || 'ชิ้น'}` },
-          { label: 'สต็อกขั้นต่ำ (Min Stock)', value: `${sp.MinStock || 0} ${sp.Unit || 'ชิ้น'}` },
-          { label: 'สต็อกสูงสุด (Max Stock)', value: `${sp.MaxStock || '—'} ${sp.Unit || 'ชิ้น'}` },
-          { label: 'ซัพพลายเออร์หลัก (Supplier)', value: sp.Supplier || sp.Vendor || '—' },
+          { label: 'จำนวนคงเหลือปัจจุบัน (On Hand)', value: `${qty} ${sp.Unit || 'ชิ้น'}` },
+          { label: 'ระดับสต็อกขั้นต่ำ (Min Stock)', value: `${minStock} ${sp.Unit || 'ชิ้น'}` },
+          { label: 'ระดับสต็อกสูงสุด (Max Stock)', value: maxStock ? `${maxStock} ${sp.Unit || 'ชิ้น'}` : '—' },
+          { label: 'จำนวนที่ควรสั่งเพิ่ม (Reorder Qty)', value: isLowStock && maxStock ? `${Math.max(0, maxStock - qty)} ${sp.Unit || 'ชิ้น'}` : '—' },
         ],
       },
     ],
@@ -676,10 +771,14 @@ export function generateSparePartPdfProps(sp) {
 }
 
 /* ── 9. PURCHASE REQUEST ──────────────────────────────────────────────────── */
-export function generatePurchasingPdfProps(pr) {
+export function generatePurchasingPdfProps(pr, context = {}) {
   if (!pr) return null
   const prImages = pr.images || pr.Images || pr.ImageUrl || pr.image_url
   const images = normalizeImagesList(prImages, `รูปถ่ายสินค้า / อะไหล่ ${pr.PRNumber || ''}`.trim())
+
+  const qty = Number(pr.Quantity || 1)
+  const unitPrice = Number(pr.EstimatedUnitPrice || pr.UnitPrice || 0)
+  const totalAmount = pr.TotalAmount ? Number(pr.TotalAmount) : (qty * unitPrice || null)
 
   return {
     docType: 'purchasing',
@@ -705,9 +804,9 @@ export function generatePurchasingPdfProps(pr) {
         title: 'รายการสินค้าที่ต้องการสั่งซื้อ (Requested Items & Costs)',
         fields: [
           { label: 'รายการอะไหล่ / สินค้า', value: pr.ItemName || pr.PartName || '—', full: true },
-          { label: 'จำนวนที่ขอสั่งซื้อ', value: `${pr.Quantity || 1} ${pr.Unit || 'หน่วย'}` },
-          { label: 'ราคาประเมินต่อหน่วย', value: pr.EstimatedUnitPrice ? `${Number(pr.EstimatedUnitPrice).toLocaleString()} บาท` : '—' },
-          { label: 'ยอดรวมประเมิน (Total Amount)', value: pr.TotalAmount ? `${Number(pr.TotalAmount).toLocaleString()} บาท` : '—' },
+          { label: 'จำนวนที่ขอสั่งซื้อ', value: `${qty} ${pr.Unit || 'หน่วย'}` },
+          { label: 'ราคาประเมินต่อหน่วย', value: unitPrice ? `${unitPrice.toLocaleString()} บาท` : '—' },
+          { label: 'ยอดรวมประเมิน (Total Amount)', value: totalAmount ? `${totalAmount.toLocaleString()} บาท` : '—' },
           { label: 'เหตุผลความจำเป็น', value: pr.Reason || 'ใช้สำหรับงานซ่อมบำรุงเครื่องจักร', full: true },
         ],
       },
@@ -721,3 +820,4 @@ export function generatePurchasingPdfProps(pr) {
     ],
   }
 }
+
