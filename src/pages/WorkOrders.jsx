@@ -709,6 +709,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         WorkingDurationText: durationResult.netDurationText,
         GrossDurationHours: durationResult.grossHoursDecimal,
         GrossDurationText: durationResult.grossDurationText,
+        SundayDurationHours: durationResult.sundayHoursDecimal,
+        SundayDurationText: durationResult.sundayDurationText,
         LostDurationHours: durationResult.lostHoursDecimal,
         LostDurationText: durationResult.lostDurationText,
         Status: 'COMPLETED',
@@ -716,7 +718,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       }
 
       await saveJob(payload)
-      toast.success('บันทึกจบงานสำเร็จ', `${compJob.Job_ID || compJob['Job ID']} (${durationResult.durationText})`)
+      toast.success('บันทึกจบงานสำเร็จ', `${compJob.Job_ID || compJob['Job ID']} (${durationResult.netDurationText})`)
       setCompleteModalOpen(false)
       setCompJob(null)
     } catch (err) {
@@ -1636,6 +1638,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                         <div className="font-bold text-xs">
                           {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังจับเวลา...')}
                         </div>
+                        {sla.sundayHoursDecimal > 0 && (
+                          <div className="text-[10px] text-sky-600 dark:text-sky-400 flex items-center gap-0.5 mt-0.5 font-semibold">
+                            <span>🏖️ หักวันอาทิตย์ {sla.sundayDurationText}</span>
+                          </div>
+                        )}
                         {sla.lostHoursDecimal > 0 && (
                           <div className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
                             <Clock size={10} />
@@ -2068,12 +2075,22 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
             </div>
 
-            {/* Duration Breakdown with Interruption Deduction */}
+            {/* Duration Breakdown with Sunday & Interruption Deduction */}
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-500">เวลารวมทั้งหมด (Gross):</span>
                 <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{compCalcDuration.grossDurationText || '—'}</span>
               </div>
+              {compCalcDuration.sundayMinutes > 0 && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-sky-600 dark:text-sky-400 flex items-center gap-1 font-semibold">
+                    <span>🏖️ หักวันอาทิตย์ (วันหยุดโรงงาน):</span>
+                  </span>
+                  <span className="font-mono font-bold text-sky-600 dark:text-sky-400">
+                    - {compCalcDuration.sundayDurationText}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-xs">
                 <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold">
                   <Clock size={12} />
@@ -2557,6 +2574,16 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   </div>
                 </div>
               </div>
+
+              {/* 🏖️ Sunday Deduction Notice */}
+              {durationRes.sundayMinutes > 0 && (
+                <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 text-xs flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <span>🏖️ ช่วงเวลานี้ตรงกับวันอาทิตย์ (วันหยุดโรงงาน):</span>
+                  </span>
+                  <span className="font-mono font-bold">หักออก {durationRes.sundayDurationText} อัตโนมัติ</span>
+                </div>
+              )}
 
               {/* ⚠️ Active Running Interruption Banner */}
               {activeInt ? (

@@ -1127,6 +1127,7 @@ function StepComplete({ request, onUpdated }) {
           completed_by: tech.trim(),
           interruption_logs: interruptionLogs,
           gross_duration_hours: grossHours,
+          sunday_duration_hours: durationRes.sundayHoursDecimal,
           lost_duration_hours: lostHours,
           net_working_hours: netHours,
         })
@@ -1148,6 +1149,8 @@ function StepComplete({ request, onUpdated }) {
           WorkingHoursDecimal: netHours,
           GrossDurationHours: grossHours,
           GrossDurationText: durationRes.grossDurationText,
+          SundayDurationHours: durationRes.sundayHoursDecimal,
+          SundayDurationText: durationRes.sundayDurationText,
           LostDurationHours: lostHours,
           LostDurationText: durationRes.lostDurationText,
           Interruption_Logs: interruptionLogs,
@@ -1555,11 +1558,17 @@ function StepComplete({ request, onUpdated }) {
           </div>
 
           {/* Duration Breakdown Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: durationRes.sundayMinutes > 0 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: 8 }}>
             <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: 10, border: '1px solid #e2e8f0', textAlign: 'center' }}>
               <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>เวลารวม (Gross)</div>
               <div style={{ fontSize: 13, fontWeight: 800, color: '#334155', fontFamily: 'monospace' }}>{durationRes.grossDurationText}</div>
             </div>
+            {durationRes.sundayMinutes > 0 && (
+              <div style={{ background: '#f0f9ff', padding: '8px 10px', borderRadius: 10, border: '1px solid #bae6fd', textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: '#0284c7', fontWeight: 700 }}>🏖️ หักวันอาทิตย์</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#0369a1', fontFamily: 'monospace' }}>- {durationRes.sundayDurationText}</div>
+              </div>
+            )}
             <div style={{ background: '#fffbeb', padding: '8px 10px', borderRadius: 10, border: '1px solid #fde68a', textAlign: 'center' }}>
               <div style={{ fontSize: 10, color: '#d97706', fontWeight: 700 }}>เวลาที่สูญเสียไป</div>
               <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309', fontFamily: 'monospace' }}>- {durationRes.lostDurationText}</div>

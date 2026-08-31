@@ -454,20 +454,83 @@ export function calculateInterruptionTotal(interruptionLogs = []) {
 }
 
 /**
- * Calculates duration in decimal hours and human-readable Thai text,
- * deducting lost/interrupted time from total working time.
+ * Calculates the total minutes falling on Sundays (Day 0) between two timestamps.
+ * Factory shift operates Monday-Saturday (12h/day). Sundays are non-working days.
  */
-export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs = []) {
+export function calculateSundayMinutes(startTimestamp, endTimestamp) {
+  if (!startTimestamp || !endTimestamp) return 0
+  const start = new Date(startTimestamp)
+  const end = new Date(endTimestamp)
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return 0
+
+  let sundayMinutes = 0
+  const currentDayStart = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  let dayCursor = new Date(currentDayStart)
+
+  while (dayCursor <= end) {
+    if (dayCursor.getDay() === 0) { // 0 = Sunday
+      const sundayStart = new Date(dayCursor.getFullYear(), dayCursor.getMonth(), dayCursor.getDate(), 0, 0, 0, 0)
+      const sundayEnd = new Date(dayCursor.getFullYear(), dayCursor.getMonth(), dayCursor.getDate(), 23, 59, 59, 999)
+
+      const overlapStart = Math.max(start.getTime(), sundayStart.getTime())
+      const overlapEnd = Math.min(end.getTime(), sundayEnd.getTime() + 1)
+
+      if (overlapEnd > overlapStart) {
+        sundayMinutes += Math.floor((overlapEnd - overlapStart) / (1000 * 60))
+      }
+    }
+    dayCursor.setDate(dayCursor.getDate() + 1)
+  }
+
+  return sundayMinutes
+}
+
+/**
+ * Counts working days between two dates, automatically excluding Sundays.
+ */
+export function countWorkingDaysExcludingSundays(startDate, targetDate) {
+  if (!startDate || !targetDate) return 0
+  const start = new Date(startDate)
+  const end = new Date(targetDate)
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+
+  if (start.getTime() === end.getTime()) return 0
+
+  const isFuture = end > start
+  let current = isFuture ? new Date(start) : new Date(end)
+  const stop = isFuture ? new Date(end) : new Date(start)
+
+  let workingDays = 0
+  while (current < stop) {
+    current.setDate(current.getDate() + 1)
+    if (current.getDay() !== 0) { // 0 = Sunday
+      workingDays++
+    }
+  }
+
+  return isFuture ? workingDays : -workingDays
+}
+
+/**
+ * Calculates duration in decimal hours and human-readable Thai text,
+ * automatically deducting Sundays (non-working factory day) and lost/interrupted time.
+ */
+export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs = [], excludeSunday = true) {
   if (!startTimestamp || !endTimestamp) {
     return {
       hoursDecimal: 0,
       durationText: '—',
       grossHoursDecimal: 0,
       grossDurationText: '—',
+      sundayMinutes: 0,
+      sundayHoursDecimal: 0,
+      sundayDurationText: '0 นาที',
       lostHoursDecimal: 0,
       lostDurationText: '0 นาที',
       netHoursDecimal: 0,
       netDurationText: '—',
+      activeInterruption: null,
     }
   }
   const start = new Date(startTimestamp)
@@ -479,10 +542,14 @@ export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs
       durationText: '0 นาที',
       grossHoursDecimal: 0,
       grossDurationText: '0 นาที',
+      sundayMinutes: 0,
+      sundayHoursDecimal: 0,
+      sundayDurationText: '0 นาที',
       lostHoursDecimal: 0,
       lostDurationText: '0 นาที',
       netHoursDecimal: 0,
       netDurationText: '0 นาที',
+      activeInterruption: null,
     }
   }
 
@@ -490,9 +557,16 @@ export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs
   const grossHoursDecimal = Math.round((grossTotalMinutes / 60) * 100) / 100
   const grossDurationText = formatMinutesToThai(grossTotalMinutes)
 
+  // 1. Sunday (Non-working factory day-off) deduction
+  const sundayMinutes = excludeSunday ? calculateSundayMinutes(start, end) : 0
+  const sundayHoursDecimal = Math.round((sundayMinutes / 60) * 100) / 100
+  const sundayDurationText = formatMinutesToThai(sundayMinutes)
+
+  // 2. Interruption / Lost Time deduction
   const { totalMinutes: lostMinutes, lostHoursDecimal, lostDurationText, activeLog } = calculateInterruptionTotal(interruptionLogs)
 
-  const netMinutes = Math.max(0, grossTotalMinutes - lostMinutes)
+  // 3. Net working time = Gross - Sunday - Interruption
+  const netMinutes = Math.max(0, grossTotalMinutes - sundayMinutes - lostMinutes)
   const netHoursDecimal = Math.round((netMinutes / 60) * 100) / 100
   const netDurationText = formatMinutesToThai(netMinutes)
 
@@ -501,6 +575,9 @@ export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs
     durationText: netDurationText,
     grossHoursDecimal,
     grossDurationText,
+    sundayMinutes,
+    sundayHoursDecimal,
+    sundayDurationText,
     lostHoursDecimal,
     lostDurationText,
     netHoursDecimal,
@@ -510,9 +587,9 @@ export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs
 }
 
 /**
- * Evaluates SLA Performance based on Job Type and KPI Target Days (12-hour shift base).
+ * Evaluates SLA Performance based on Job Type and KPI Target Days (12-hour shift base, excluding Sundays).
  */
-export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESIGN: 3.0, PM: 2.0 }, hoursPerDay = 12) {
+export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESIGN: 3.0, PM: 2.0 }, hoursPerDay = 12, excludeSunday = true) {
   const type = String(job.JobType || job['Job Type'] || 'REPAIR').toUpperCase()
   const targetDays = targetDaysMap[type] || 1.0
   const targetHours = targetDays * hoursPerDay
@@ -529,12 +606,14 @@ export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESI
       netHoursDecimal: 0,
       grossHoursDecimal: 0,
       lostHoursDecimal: 0,
+      sundayHoursDecimal: 0,
+      sundayMinutes: 0,
     }
   }
 
   const endTimestamp = job.EndTimestamp || job['End Timestamp'] || (job.Status === 'COMPLETED' ? job.updated_at : new Date().toISOString())
   const interruptions = job.Interruption_Logs || job.interruption_logs || job.Lost_Time_Logs || []
-  const durationResult = calculateDuration(startTimestamp, endTimestamp, interruptions)
+  const durationResult = calculateDuration(startTimestamp, endTimestamp, interruptions, excludeSunday)
   const netHours = durationResult.netHoursDecimal
 
   const isOnTime = netHours <= targetHours
@@ -559,8 +638,8 @@ export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESI
     ...durationResult,
     hoursDecimal: netHours,
     isOnTime,
-    label: isOnTime ? 'อยู่ในเกณฑ์ (In SLA)' : 'เกินกำหนด (Overdue)',
-    badgeClass: isOnTime ? 'badge-blue' : 'badge-orange',
+    label: isOnTime ? `อยู่ในเกณฑ์ (${netHours}/${targetHours}ชม.)` : `เกินเวลา SLA (${netHours}/${targetHours}ชม.)`,
+    badgeClass: isOnTime ? 'badge-blue' : 'badge-red',
   }
 }
 

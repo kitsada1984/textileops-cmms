@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { format, addDays, differenceInCalendarDays, startOfDay } from 'date-fns'
 import useEntity from '../hooks/useEntity'
-import { AuditLogAPI, CylinderAPI, PMPlanAPI, CenterCheckAPI, PM_TYPE, PM_STATUS, WO_PRIORITY } from '../api/entities'
+import { AuditLogAPI, CylinderAPI, PMPlanAPI, CenterCheckAPI, PM_TYPE, PM_STATUS, WO_PRIORITY, countWorkingDaysExcludingSundays } from '../api/entities'
 import useWebBuilderMenu from '../hooks/useWebBuilderMenu'
 import Modal from '../components/ui/Modal'
 import StatusBadge from '../components/ui/StatusBadge'
@@ -228,11 +228,16 @@ const pmColumnLabel = (col, t) => {
 
 function getPMCountdown(date) {
   if (!date) return { days: null, label: '—', color: 'gray' }
-  const days = differenceInCalendarDays(startOfDay(new Date(date)), startOfDay(new Date()))
-  if (!Number.isFinite(days)) return { days: null, label: '—', color: 'gray' }
-  if (days > 0) return { days, label: `เหลือ ${days} วัน`, color: 'green' }
-  if (days === 0) return { days, label: 'ครบกำหนดวันนี้', color: 'yellow' }
-  return { days, label: `เกิน ${Math.abs(days)} วัน`, color: 'red' }
+  const target = startOfDay(new Date(date))
+  const today = startOfDay(new Date())
+  if (isNaN(target.getTime())) return { days: null, label: '—', color: 'gray' }
+
+  // Exclude Sundays automatically from working days countdown
+  const workingDays = countWorkingDaysExcludingSundays(today, target)
+
+  if (workingDays > 0) return { days: workingDays, label: `เหลือ ${workingDays} วัน`, color: 'green' }
+  if (workingDays === 0) return { days: 0, label: 'ครบกำหนดวันนี้', color: 'yellow' }
+  return { days: workingDays, label: `เกิน ${Math.abs(workingDays)} วัน`, color: 'red' }
 }
 
 function PMCountdownBadge({ date }) {
