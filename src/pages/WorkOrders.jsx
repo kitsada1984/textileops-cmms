@@ -22,6 +22,10 @@ import {
   Check,
   AlertCircle,
   FileSpreadsheet,
+  Pause,
+  Play,
+  Hourglass,
+  Sparkles,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -36,6 +40,8 @@ import {
   generateJobId,
   calculateDuration,
   calculateSlaPerformance,
+  calculateInterruptionTotal,
+  formatMinutesToThai,
 } from '../api/entities'
 import Modal from '../components/ui/Modal'
 import SearchInput from '../components/ui/SearchInput'
@@ -68,6 +74,14 @@ const UI_SPECIALIZATIONS = [
   { value: 'ปรับเครื่อง', label: 'ปรับเครื่อง', icon: '⚄' },
   { value: 'แก้ปัญหาเครื่อง', label: 'แก้ปัญหาเครื่อง', icon: '🔧' },
   { value: 'ตั้งศูนย์เครื่อง', label: 'ตั้งศูนย์เครื่อง', icon: '📐' },
+]
+
+export const QUICK_INTERRUPTION_PRESETS = [
+  { label: '🧵 ไปขึ้นด้าย', template: 'ไปขึ้นด้าย เครื่อง ' },
+  { label: '🔧 ไปช่วยงานด่วนเครื่องอื่น', template: 'ไปช่วยงานด่วน เครื่อง ' },
+  { label: '📦 รอเบิกอะไหล่ / รอเปิดสโตร์', template: 'รอเบิกอะไหล่ / รอเปิดห้องสโตร์' },
+  { label: '⚡ ไฟดับ / ลมตก / สาธารณูปโภค', template: 'ระบบสาธารณูปโภคขัดข้อง (ไฟดับ/ลมตก)' },
+  { label: '🧹 ทำความสะอาด / สลับกะ', template: 'ทำความสะอาด / สลับกะงาน' },
 ]
 
 export function getTechSkillInfo(skillLevel = 'Senior') {
@@ -231,6 +245,161 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [printModalOpen, setPrintModalOpen] = useState(false)
   const [printJob, setPrintJob] = useState(null)
 
+  // Interruption / Lost Time Modal State
+  const [interruptionModalOpen, setInterruptionModalOpen] = useState(false)
+  const [interruptionJob, setInterruptionJob] = useState(null)
+  const [interruptionTaskName, setInterruptionTaskName] = useState('')
+  const [interruptionManualMins, setInterruptionManualMins] = useState('')
+  const [interruptionManualNotes, setInterruptionManualNotes] = useState('')
+  const [showManualAdd, setShowManualAdd] = useState(false)
+  const [activeTimerSeconds, setActiveTimerSeconds] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveTimerSeconds((s) => s + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Helper to parse/stringify Interruption Logs safely
+  const getJobInterruptions = (job) => {
+    let logs = job?.Interruption_Logs || job?.interruption_logs || []
+    if (typeof logs === 'string') {
+      try { logs = JSON.parse(logs) } catch { logs = [] }
+    }
+    return Array.isArray(logs) ? logs : []
+  }
+
+  // Open Interruption Modal
+  const openInterruptionModal = (job) => {
+    setInterruptionJob(job)
+    setInterruptionTaskName('')
+    setInterruptionManualMins('')
+    setInterruptionManualNotes('')
+    setShowManualAdd(false)
+    setInterruptionModalOpen(true)
+  }
+
+  // Start live interruption timer
+  const handleStartInterruption = async (taskName) => {
+    if (!interruptionJob) return
+    const name = (taskName || interruptionTaskName).trim()
+    if (!name) return toast.warning('กรุณาระบุชื่องานแทรก', 'เช่น ไปขึ้นด้าย เครื่อง 12334')
+
+    const currentLogs = getJobInterruptions(interruptionJob)
+    const newEntry = {
+      id: `INT-${Date.now()}`,
+      task_name: name,
+      start_time: new Date().toISOString(),
+      end_time: null,
+      is_active: true,
+      created_by: user?.full_name || user?.username || 'ช่างประจำกะ',
+    }
+
+    const updatedLogs = [...currentLogs, newEntry]
+    const updatedJob = { ...interruptionJob, Interruption_Logs: updatedLogs }
+
+    try {
+      await saveJob(updatedJob)
+      setInterruptionJob(updatedJob)
+      setInterruptionTaskName('')
+      toast.info('เริ่มจับเวลางานแทรก', `${name}`)
+    } catch (err) {
+      toast.error('บันทึกงานแทรกไม่สำเร็จ', err.message)
+    }
+  }
+
+  // Stop live interruption timer
+  const handleStopInterruption = async (logId) => {
+    if (!interruptionJob) return
+    const currentLogs = getJobInterruptions(interruptionJob)
+    const now = new Date()
+    const nowIso = now.toISOString()
+
+    const updatedLogs = currentLogs.map((log) => {
+      if (log.id === logId || (log.is_active && !log.end_time)) {
+        const start = new Date(log.start_time || log.created_at)
+        const diffMs = Math.max(0, now.getTime() - start.getTime())
+        const duration_minutes = Math.floor(diffMs / (1000 * 60))
+        const duration_hours = Math.round((duration_minutes / 60) * 100) / 100
+        return {
+          ...log,
+          end_time: nowIso,
+          duration_minutes,
+          duration_hours,
+          is_active: false,
+        }
+      }
+      return log
+    })
+
+    const updatedJob = { ...interruptionJob, Interruption_Logs: updatedLogs }
+    try {
+      await saveJob(updatedJob)
+      setInterruptionJob(updatedJob)
+      toast.success('จบงานแทรกเรียบร้อย', 'กลับสู่เวลาทำงานหลัก')
+    } catch (err) {
+      toast.error('บันทึกจบงานแทรกไม่สำเร็จ', err.message)
+    }
+  }
+
+  // Add manual past interruption
+  const handleAddManualInterruption = async () => {
+    if (!interruptionJob) return
+    const name = interruptionTaskName.trim()
+    const mins = parseInt(interruptionManualMins, 10)
+    if (!name) return toast.warning('กรุณาระบุชื่องานแทรก', 'เช่น ไปขึ้นด้าย เครื่อง 12334')
+    if (!mins || mins <= 0) return toast.warning('กรุณาระบุจำนวนนาทีที่สูญเสียไป', 'เช่น 30 นาที')
+
+    const currentLogs = getJobInterruptions(interruptionJob)
+    const duration_hours = Math.round((mins / 60) * 100) / 100
+    const now = new Date()
+    const start = new Date(now.getTime() - mins * 60000)
+
+    const newEntry = {
+      id: `INT-${Date.now()}`,
+      task_name: name,
+      start_time: start.toISOString(),
+      end_time: now.toISOString(),
+      duration_minutes: mins,
+      duration_hours,
+      notes: interruptionManualNotes.trim(),
+      is_active: false,
+      created_by: user?.full_name || user?.username || 'ช่างประจำกะ',
+    }
+
+    const updatedLogs = [...currentLogs, newEntry]
+    const updatedJob = { ...interruptionJob, Interruption_Logs: updatedLogs }
+
+    try {
+      await saveJob(updatedJob)
+      setInterruptionJob(updatedJob)
+      setInterruptionTaskName('')
+      setInterruptionManualMins('')
+      setInterruptionManualNotes('')
+      setShowManualAdd(false)
+      toast.success('เพิ่มบันทึกงานแทรกย้อนหลังสำเร็จ', `${name} (${mins} นาที)`)
+    } catch (err) {
+      toast.error('บันทึกงานแทรกไม่สำเร็จ', err.message)
+    }
+  }
+
+  // Delete an interruption record
+  const handleDeleteInterruption = async (logId) => {
+    if (!interruptionJob) return
+    const currentLogs = getJobInterruptions(interruptionJob)
+    const updatedLogs = currentLogs.filter((log) => log.id !== logId)
+    const updatedJob = { ...interruptionJob, Interruption_Logs: updatedLogs }
+
+    try {
+      await saveJob(updatedJob)
+      setInterruptionJob(updatedJob)
+      toast.success('ลบรายการงานแทรกแล้ว')
+    } catch (err) {
+      toast.error('ลบไม่สำเร็จ', err.message)
+    }
+  }
+
   // Load Technicians & KPI Settings from Supabase / Storage
   const loadTechsAndSettings = async () => {
     setTechLoading(true)
@@ -364,11 +533,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       let countWithDuration = 0
 
       jobsOfType.forEach((j) => {
-        const sla = calculateSlaPerformance(j, kpiTargets)
+        const sla = calculateSlaPerformance(j, kpiTargets, 12)
         if (sla.isOnTime) onTimeCount += 1
         else overdueCount += 1
 
-        const durationVal = parseFloat(j.WorkingHoursDecimal || j.Duration) || 0
+        const durationVal = parseFloat(j.WorkingHoursDecimal || j.Duration || sla.netHoursDecimal) || 0
         if (durationVal > 0) {
           totalHours += durationVal
           countWithDuration += 1
@@ -386,6 +555,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         rate,
         avgDurationText,
         targetDays,
+        targetHours: targetDays * 12,
       }
     }
 
@@ -499,12 +669,24 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     setCompleteModalOpen(true)
   }
 
-  // Calculated duration for Complete Modal
+  // Calculated duration for Complete Modal with Interruption deduction
   const compCalcDuration = useMemo(() => {
-    if (!compJob || !compEndDate || !compEndTime) return { hoursDecimal: 0, durationText: '—' }
+    if (!compJob || !compEndDate || !compEndTime) {
+      return {
+        hoursDecimal: 0,
+        durationText: '—',
+        grossHoursDecimal: 0,
+        grossDurationText: '—',
+        lostHoursDecimal: 0,
+        lostDurationText: '0 นาที',
+        netHoursDecimal: 0,
+        netDurationText: '—',
+      }
+    }
     const start = compJob.StartTimestamp || compJob.DateStart || (compJob.StartDate && compJob.StartTime ? (compJob.StartTime.includes('T') ? compJob.StartTime : `${compJob.StartDate}T${compJob.StartTime}`) : null) || compJob.created_at
     const end = `${compEndDate}T${compEndTime}:00`
-    return calculateDuration(start, end)
+    const interruptions = getJobInterruptions(compJob)
+    return calculateDuration(start, end, interruptions)
   }, [compJob, compEndDate, compEndTime])
 
   // Submit Complete Job
@@ -522,9 +704,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         EndTime: endTimestamp,
         EndTimestamp: endTimestamp,
         DateEnd: endTimestamp,
-        Duration: durationResult.hoursDecimal,
-        WorkingHoursDecimal: durationResult.hoursDecimal,
-        WorkingDurationText: durationResult.durationText,
+        Duration: durationResult.netHoursDecimal,
+        WorkingHoursDecimal: durationResult.netHoursDecimal,
+        WorkingDurationText: durationResult.netDurationText,
+        GrossDurationHours: durationResult.grossHoursDecimal,
+        GrossDurationText: durationResult.grossDurationText,
+        LostDurationHours: durationResult.lostHoursDecimal,
+        LostDurationText: durationResult.lostDurationText,
         Status: 'COMPLETED',
         CompletedBy: user?.username || user?.full_name || 'ช่างประจำกะ',
       }
@@ -1446,8 +1632,21 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       </td>
 
                       {/* Duration */}
-                      <td className="font-mono font-bold" style={{ color: isCompleted ? 'var(--text-900)' : 'var(--text-400)' }}>
-                        {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังจับเวลา...')}
+                      <td className="font-mono" style={{ color: isCompleted ? 'var(--text-900)' : 'var(--text-400)' }}>
+                        <div className="font-bold text-xs">
+                          {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังจับเวลา...')}
+                        </div>
+                        {sla.lostHoursDecimal > 0 && (
+                          <div className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
+                            <Clock size={10} />
+                            <span>หักงานแทรก {sla.lostDurationText}</span>
+                          </div>
+                        )}
+                        {sla.activeInterruption && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 animate-pulse mt-0.5">
+                            ⏸️ กำลังพักงาน
+                          </span>
+                        )}
                       </td>
 
                       {/* SLA Performance */}
@@ -1465,6 +1664,34 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       {/* Actions */}
                       <td className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Interruption / Lost Time Button */}
+                          {!job.IsDeleted && (
+                            <button
+                              type="button"
+                              onClick={() => openInterruptionModal(job)}
+                              className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                                sla.activeInterruption
+                                  ? 'bg-amber-500 text-white animate-pulse shadow-md shadow-amber-500/30'
+                                  : sla.lostHoursDecimal > 0
+                                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                                  : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-amber-600'
+                              }`}
+                              title={sla.activeInterruption ? `กำลังทำงานแทรก: ${sla.activeInterruption.task_name} (คลิกเพื่อจบงานแทรก)` : 'บันทึกงานแทรก / เวลาที่สูญเสียไป'}
+                            >
+                              {sla.activeInterruption ? (
+                                <>
+                                  <Pause size={13} />
+                                  <span className="hidden sm:inline">พักงานอยู่</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock size={13} />
+                                  {sla.lostHoursDecimal > 0 && <span className="text-[10px]">({sla.lostHoursDecimal}ช.)</span>}
+                                </>
+                              )}
+                            </button>
+                          )}
+
                           {/* Complete Job Button (if in progress) */}
                           {!isCompleted && !job.IsDeleted && canEdit && (
                             <button
@@ -1841,13 +2068,42 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
-              <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                ระยะเวลาปฏิบัติงานจริง:
-              </span>
-              <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
-                {compCalcDuration.durationText}
-              </span>
+            {/* Duration Breakdown with Interruption Deduction */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">เวลารวมทั้งหมด (Gross):</span>
+                <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{compCalcDuration.grossDurationText || '—'}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold">
+                  <Clock size={12} />
+                  <span>เวลาที่สูญเสียไป (งานแทรก):</span>
+                </span>
+                <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                  - {compCalcDuration.lostDurationText || '0 นาที'}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <span className="font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                  <CheckCircle2 size={13} />
+                  <span>👉 เวลาทำงานสุทธิ (ใช้คิด KPI):</span>
+                </span>
+                <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                  {compCalcDuration.netDurationText || compCalcDuration.durationText}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Button to manage interruptions right inside complete modal */}
+            <div className="flex justify-between items-center pt-1">
+              <button
+                type="button"
+                onClick={() => openInterruptionModal(compJob)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
+              >
+                <Clock size={13} />
+                <span>+ จัดการงานแทรก / เวลาที่เสียไป</span>
+              </button>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
@@ -2263,6 +2519,234 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           </div>
         </Modal>
       )}
+
+      {/* 6. Interruption & Lost Time Modal */}
+      {interruptionModalOpen && interruptionJob && (() => {
+        const interruptions = getJobInterruptions(interruptionJob)
+        const activeInt = interruptions.find((i) => i.is_active && !i.end_time)
+        const { lostDurationText } = calculateInterruptionTotal(interruptions)
+        const start = interruptionJob.StartTimestamp || interruptionJob.DateStart || interruptionJob.created_at
+        const now = new Date().toISOString()
+        const durationRes = calculateDuration(start, now, interruptions)
+
+        return (
+          <Modal
+            open={interruptionModalOpen}
+            onClose={() => setInterruptionModalOpen(false)}
+            title="⏸️ บันทึกงานแทรก & เวลาที่สูญเสียไป (Interruption Tracking)"
+          >
+            <div className="space-y-4 text-xs">
+              {/* Job Info Summary */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-2">
+                <div>
+                  <span className="text-[11px] text-slate-500">ใบสั่งงาน:</span>
+                  <div className="font-mono font-black text-sm text-blue-600 dark:text-blue-400">
+                    {interruptionJob.Job_ID || interruptionJob['Job ID']}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500">เครื่องจักร:</span>
+                  <div className="font-bold text-slate-800 dark:text-slate-200">
+                    {interruptionJob.MC} (KI: {interruptionJob.KI || '-'})
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500">เวลาทำงานจริงสุทธิ:</span>
+                  <div className="font-mono font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
+                    {durationRes.netDurationText}
+                  </div>
+                </div>
+              </div>
+
+              {/* ⚠️ Active Running Interruption Banner */}
+              {activeInt ? (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold text-sm">
+                      <Pause size={18} className="text-amber-600 animate-bounce" />
+                      <span>กำลังทำงานแทรก: &ldquo;{activeInt.task_name}&rdquo;</span>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500 text-white animate-pulse">
+                      จับเวลาอยู่
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-amber-800 dark:text-amber-200">
+                    <span>เริ่มตั้งแต่: <b>{format(new Date(activeInt.start_time), 'HH:mm:ss (dd/MM/yyyy)')}</b></span>
+                    <span className="font-mono font-extrabold text-base text-amber-700 dark:text-amber-300">
+                      {formatMinutesToThai(Math.floor((Date.now() - new Date(activeInt.start_time).getTime()) / 60000))}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStopInterruption(activeInt.id)}
+                    className="w-full py-2.5 rounded-xl font-extrabold text-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all shadow-md shadow-emerald-500/30 flex items-center justify-center gap-2"
+                  >
+                    <Play size={16} />
+                    <span>▶️ จบงานแทรกนี้ / กลับมาทำงานหลักต่อ</span>
+                  </button>
+                </div>
+              ) : (
+                /* Start New Interruption Section */
+                <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-slate-900/80 border border-blue-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Clock size={14} className="text-blue-500" />
+                      <span>เริ่มงานแทรกใหม่ (Start Interruption)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowManualAdd(!showManualAdd)}
+                      className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                    >
+                      {showManualAdd ? '⚡ สลับเป็นโหมดกดเริ่มสด' : '+ กรอกเวลาย้อนหลัง'}
+                    </button>
+                  </div>
+
+                  {/* Preset Quick Buttons */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {QUICK_INTERRUPTION_PRESETS.map((preset, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setInterruptionTaskName(preset.template)}
+                        className="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 text-slate-700 dark:text-slate-300 transition-all shadow-xs"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Task Name Input */}
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="ระบุชื่องานแทรก เช่น ไปขึ้นด้าย เครื่อง 12334..."
+                      value={interruptionTaskName}
+                      onChange={(e) => setInterruptionTaskName(e.target.value)}
+                      className="input text-xs font-semibold"
+                    />
+                  </div>
+
+                  {/* Manual Add Inputs */}
+                  {showManualAdd ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <label className="label text-[11px]">จำนวนนาทีที่สูญเสียไป *</label>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="เช่น 30 (นาที)"
+                          value={interruptionManualMins}
+                          onChange={(e) => setInterruptionManualMins(e.target.value)}
+                          className="input font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="label text-[11px]">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
+                        <input
+                          type="text"
+                          placeholder="รายละเอียดสั้นๆ..."
+                          value={interruptionManualNotes}
+                          onChange={(e) => setInterruptionManualNotes(e.target.value)}
+                          className="input text-xs"
+                        />
+                      </div>
+                      <div className="sm:col-span-2 pt-1 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleAddManualInterruption}
+                          className="btn-primary text-xs px-4 py-2"
+                        >
+                          <Check size={14} />
+                          <span>บันทึกงานแทรกย้อนหลัง</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleStartInterruption()}
+                      disabled={!interruptionTaskName.trim()}
+                      className="w-full py-2.5 rounded-xl font-bold text-xs text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 active:scale-95 transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5"
+                    >
+                      <Pause size={14} />
+                      <span>⏸️ เริ่มจับเวลางานแทรกทันที (Auto Timestamp)</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Recorded Interruptions Table */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <History size={14} className="text-slate-500" />
+                    <span>รายการงานแทรกทั้งหมด ({interruptions.length} รายการ)</span>
+                  </h4>
+                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                    รวมเสียเวลา: {lostDurationText}
+                  </span>
+                </div>
+
+                {interruptions.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                    ยังไม่มีรายการงานแทรกในใบสั่งงานนี้
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden max-h-56 overflow-y-auto">
+                    {interruptions.map((item, idx) => (
+                      <div key={item.id || idx} className="p-3 bg-white dark:bg-slate-900 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="font-bold text-slate-900 dark:text-slate-100 truncate flex items-center gap-1.5">
+                            <span>{item.task_name}</span>
+                            {item.is_active && !item.end_time && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-500 text-white animate-pulse">
+                                กำลังทำ
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono flex items-center gap-2">
+                            <span>เริ่ม: {item.start_time ? format(new Date(item.start_time), 'HH:mm dd/MM') : '—'}</span>
+                            <span>•</span>
+                            <span>จบ: {item.end_time ? format(new Date(item.end_time), 'HH:mm dd/MM') : (item.is_active ? 'กำลังจับเวลา' : '—')}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-900">
+                            {formatMinutesToThai(item.duration_minutes || (item.start_time && item.end_time ? Math.floor((new Date(item.end_time) - new Date(item.start_time)) / 60000) : 0))}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteInterruption(item.id)}
+                            className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                            title="ลบรายการนี้"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setInterruptionModalOpen(false)}
+                  className="btn-outline px-5"
+                >
+                  ปิดหน้าต่าง
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
 
       {/* 5. Print A4 PDF Report Modal */}
       {printModalOpen && printJob && (

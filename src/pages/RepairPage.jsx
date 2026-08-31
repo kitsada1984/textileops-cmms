@@ -3,7 +3,16 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB, normalizeRepairRecord, encodeRepairProblemDescription } from '../utils/telegram'
 import { notifyLineNewRepair, notifyLineTechnician, notifyLineCompleted } from '../utils/line'
-import { TechnicianAPI, SparePartAPI, StockTxnAPI, WorkOrderAPI } from '../api/entities'
+import {
+  TechnicianAPI,
+  SparePartAPI,
+  StockTxnAPI,
+  WorkOrderAPI,
+  calculateDuration,
+  formatMinutesToThai,
+  calculateInterruptionTotal,
+} from '../api/entities'
+import { QUICK_INTERRUPTION_PRESETS } from './WorkOrders'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
 import {
@@ -18,6 +27,9 @@ import {
   MapPin,
   Cpu,
   Send,
+  Pause,
+  Play,
+  History,
   Share2,
   Printer,
   Copy,
@@ -963,6 +975,21 @@ function StepComplete({ request, onUpdated }) {
   const [customPartsText, setCustomPartsText] = useState(request.parts_used || '')
   const [loadingParts, setLoadingParts] = useState(false)
 
+  // ⏸️ Interruption / Lost Time State for Repair Completion
+  const [interruptionLogs, setInterruptionLogs] = useState(() => {
+    let raw = request.interruption_logs || request.Interruption_Logs || []
+    if (typeof raw === 'string') {
+      try { raw = JSON.parse(raw) } catch { raw = [] }
+    }
+    return Array.isArray(raw) ? raw : []
+  })
+  const [intTaskName, setIntTaskName] = useState('')
+  const [intMins, setIntMins] = useState('')
+  const [showIntSection, setShowIntSection] = useState(false)
+
+  const startTimeStr = request.approved_at || request.created_at || new Date().toISOString()
+  const durationRes = calculateDuration(startTimeStr, new Date().toISOString(), interruptionLogs)
+
   useEffect(() => {
     let active = true
     const loadParts = async () => {
@@ -1047,6 +1074,28 @@ function StepComplete({ request, onUpdated }) {
     setSelectedPartsList((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  const handleAddInterruption = () => {
+    const name = intTaskName.trim()
+    const mins = parseInt(intMins, 10)
+    if (!name) return alert('กรุณาระบุชื่องานแทรก เช่น ไปขึ้นด้าย เครื่อง 12334')
+    if (!mins || mins <= 0) return alert('กรุณาระบุจำนวนนาทีที่สูญเสียไป')
+
+    const newLog = {
+      id: `INT-${Date.now()}`,
+      task_name: name,
+      duration_minutes: mins,
+      duration_hours: Math.round((mins / 60) * 100) / 100,
+      created_at: new Date().toISOString(),
+    }
+    setInterruptionLogs((prev) => [...prev, newLog])
+    setIntTaskName('')
+    setIntMins('')
+  }
+
+  const handleRemoveInterruption = (id) => {
+    setInterruptionLogs((prev) => prev.filter((item) => item.id !== id))
+  }
+
   const submit = async () => {
     if (saving) return
     if (!details.trim()) return setError('กรุณาระบุรายละเอียดการซ่อม / วิธีแก้ไข')
@@ -1060,11 +1109,11 @@ function StepComplete({ request, onUpdated }) {
       .join(', ')
     const partsSummary = [catalogSummary, customPartsText.trim()].filter(Boolean).join(', ')
 
-    // 2. Calculate duration in hours
-    const startTimeStr = request.approved_at || request.created_at || new Date().toISOString()
+    // 2. Duration with Interruption subtraction
     const now = new Date()
-    const diffMs = Math.max(0, now - new Date(startTimeStr))
-    const durationHours = Math.max(0.25, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100)
+    const netHours = durationRes.netHoursDecimal
+    const grossHours = durationRes.grossHoursDecimal
+    const lostHours = durationRes.lostHoursDecimal
 
     try {
       // 3. Update repair_requests in Supabase
@@ -1076,6 +1125,10 @@ function StepComplete({ request, onUpdated }) {
           parts_used: partsSummary,
           completed_at: now.toISOString(),
           completed_by: tech.trim(),
+          interruption_logs: interruptionLogs,
+          gross_duration_hours: grossHours,
+          lost_duration_hours: lostHours,
+          net_working_hours: netHours,
         })
         .eq('id', request.id)
         .select()
@@ -1090,8 +1143,14 @@ function StepComplete({ request, onUpdated }) {
           OrderDate: request.created_at || now.toISOString(),
           StartDate: startTimeStr,
           EndDate: now.toISOString(),
-          Duration: durationHours,
-          WorkingDurationText: `${durationHours} ชม.`,
+          Duration: netHours,
+          WorkingDurationText: durationRes.netDurationText,
+          WorkingHoursDecimal: netHours,
+          GrossDurationHours: grossHours,
+          GrossDurationText: durationRes.grossDurationText,
+          LostDurationHours: lostHours,
+          LostDurationText: durationRes.lostDurationText,
+          Interruption_Logs: interruptionLogs,
           MC: request.machine_mc || '',
           MachineID: request.machine_mc || '',
           KI: request.KI ? String(request.KI) : '',
@@ -1477,6 +1536,106 @@ function StepComplete({ request, onUpdated }) {
             )}
           </div>
 
+        </div>
+
+        {/* ⏱️ ส่วนสรุประยะเวลา & บันทึกงานแทรก/เวลาที่สูญเสียไป */}
+        <div style={{ background: '#f8fafc', borderRadius: 16, padding: '14px 16px', border: '1.5px solid #cbd5e1', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock size={16} style={{ color: '#f59e0b' }} />
+              <span>สรุปเวลาปฏิบัติงาน & หักลบงานแทรก</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowIntSection(!showIntSection)}
+              style={{ fontSize: 12, fontWeight: 800, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              {showIntSection ? 'ซ่อนการบันทึกงานแทรก' : '+ เพิ่มงานแทรก / เวลาที่เสียไป'}
+            </button>
+          </div>
+
+          {/* Duration Breakdown Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: 10, border: '1px solid #e2e8f0', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>เวลารวม (Gross)</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#334155', fontFamily: 'monospace' }}>{durationRes.grossDurationText}</div>
+            </div>
+            <div style={{ background: '#fffbeb', padding: '8px 10px', borderRadius: 10, border: '1px solid #fde68a', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#d97706', fontWeight: 700 }}>เวลาที่สูญเสียไป</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309', fontFamily: 'monospace' }}>- {durationRes.lostDurationText}</div>
+            </div>
+            <div style={{ background: '#ecfdf5', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #a7f3d0', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: '#059669', fontWeight: 800 }}>👉 เวลาทำงานจริง</div>
+              <div style={{ fontSize: 14, fontWeight: 900, color: '#047857', fontFamily: 'monospace' }}>{durationRes.netDurationText}</div>
+            </div>
+          </div>
+
+          {/* Quick Interruption Add Form */}
+          {showIntSection && (
+            <div style={{ background: '#ffffff', padding: 12, borderRadius: 12, border: '1px solid #dbeafe', display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#1d4ed8' }}>
+                ระบุงานแทรก (เช่น ไปขึ้นด้าย เครื่อง 12334)
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {QUICK_INTERRUPTION_PRESETS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setIntTaskName(preset.template)}
+                    style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 8, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', cursor: 'pointer' }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="text"
+                  placeholder="ชื่องานแทรก / รายละเอียด..."
+                  value={intTaskName}
+                  onChange={(e) => setIntTaskName(e.target.value)}
+                  style={{ ...inputStyle, flex: 2, minHeight: 36, fontSize: 12 }}
+                />
+                <input
+                  type="number"
+                  placeholder="นาที (เช่น 30)"
+                  value={intMins}
+                  onChange={(e) => setIntMins(e.target.value)}
+                  style={{ ...inputStyle, flex: 1, minHeight: 36, fontSize: 12, fontFamily: 'monospace' }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddInterruption}
+                  style={{ padding: '6px 12px', borderRadius: 10, background: '#f59e0b', color: '#ffffff', fontWeight: 800, fontSize: 12, border: 'none', cursor: 'pointer' }}
+                >
+                  + เพิ่ม
+                </button>
+              </div>
+
+              {/* List of Interruptions */}
+              {interruptionLogs.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                  {interruptionLogs.map((item) => (
+                    <div
+                      key={item.id}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fffbeb', padding: '5px 8px', borderRadius: 8, border: '1px solid #fed7aa', fontSize: 11 }}
+                    >
+                      <span style={{ fontWeight: 700, color: '#92400e' }}>
+                        🧵 {item.task_name} ({formatMinutesToThai(item.duration_minutes)})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveInterruption(item.id)}
+                        style={{ color: '#dc2626', background: 'none', border: 'none', fontWeight: 900, cursor: 'pointer' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {error && (

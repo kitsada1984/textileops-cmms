@@ -394,13 +394,26 @@ export function generateWorkOrderPdfProps(wo, context = {}) {
         ],
       },
       {
-        title: 'เวลาและทรัพยากรที่ใช้ (Time & Working Hours)',
+        title: 'เวลาและประสิทธิภาพการทำงาน (Time & Net Working Hours)',
         fields: [
           { label: 'เวลาเริ่มงาน (Start Time)', value: safeFormatDate(wo.StartTimestamp || wo.StartDate, 'dd/MM/yyyy HH:mm') },
           { label: 'เวลาเสร็จสิ้น (End Time)', value: safeFormatDate(wo.EndTimestamp || wo.EndDate, 'dd/MM/yyyy HH:mm') },
-          { label: 'ระยะเวลาปฏิบัติงาน (Duration)', value: wo.WorkingDurationText || (wo.Duration ? `${wo.Duration} ชม.` : '—') },
+          wo.GrossDurationText ? { label: 'เวลารวมทั้งหมด (Gross Duration)', value: wo.GrossDurationText } : null,
+          (wo.LostDurationText || wo.LostDurationHours) ? { label: 'เวลาที่สูญเสียไป/งานแทรก (Lost Time)', value: `- ${wo.LostDurationText || `${wo.LostDurationHours} ชม.`}` } : null,
+          { label: '👉 เวลาทำงานสุทธิ (Net Working Time)', value: wo.WorkingDurationText || (wo.Duration ? `${wo.Duration} ชม.` : '—'), mono: true },
           { label: 'ผู้สร้างใบสั่งงาน (Created By)', value: wo.CreatedBy || '—' },
-        ],
+          (() => {
+            let logs = wo.Interruption_Logs || wo.interruption_logs
+            if (typeof logs === 'string') {
+              try { logs = JSON.parse(logs) } catch { logs = [] }
+            }
+            if (Array.isArray(logs) && logs.length > 0) {
+              const summary = logs.map((l) => `${l.task_name || 'งานแทรก'} (${l.duration_minutes ? `${l.duration_minutes} นาที` : (l.duration_hours ? `${l.duration_hours} ชม.` : '')})`).join(', ')
+              return { label: '📋 รายการงานแทรก / สาเหตุสูญเสียเวลา', value: summary, full: true }
+            }
+            return null
+          })(),
+        ].filter(Boolean),
       },
     ],
     images,

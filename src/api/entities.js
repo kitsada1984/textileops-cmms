@@ -397,55 +397,155 @@ export function generateJobId(existingJobs = []) {
 }
 
 /**
- * Calculates duration in decimal hours and human-readable Thai text.
+ * Formats minutes into human-readable Thai duration string.
  */
-export function calculateDuration(startTimestamp, endTimestamp) {
+export function formatMinutesToThai(totalMinutes = 0) {
+  const mins = Math.max(0, Math.floor(totalMinutes || 0))
+  const hours = Math.floor(mins / 60)
+  const minutes = mins % 60
+  const parts = []
+  if (hours > 0) parts.push(`${hours} ชม.`)
+  if (minutes > 0 || hours === 0) parts.push(`${minutes} นาที`)
+  return parts.join(' ')
+}
+
+/**
+ * Calculates total lost/interrupted duration from an array of interruption logs.
+ */
+export function calculateInterruptionTotal(interruptionLogs = []) {
+  let logs = interruptionLogs
+  if (typeof logs === 'string') {
+    try { logs = JSON.parse(logs) } catch { logs = [] }
+  }
+  if (!Array.isArray(logs) || logs.length === 0) {
+    return { totalMinutes: 0, lostHoursDecimal: 0, lostDurationText: '0 นาที', activeLog: null }
+  }
+
+  let totalMinutes = 0
+  let activeLog = null
+
+  logs.forEach((log) => {
+    if (!log) return
+    const start = log.start_time || log.StartTime || log.created_at
+    const end = log.end_time || log.EndTime || (log.is_active ? new Date().toISOString() : null)
+    if (start && end) {
+      const diffMs = new Date(end).getTime() - new Date(start).getTime()
+      if (diffMs > 0) {
+        totalMinutes += Math.floor(diffMs / (1000 * 60))
+      }
+    } else if (start && !end) {
+      activeLog = log
+      const diffMs = Date.now() - new Date(start).getTime()
+      if (diffMs > 0) {
+        totalMinutes += Math.floor(diffMs / (1000 * 60))
+      }
+    } else if (log.duration_minutes || log.duration_hours) {
+      totalMinutes += Number(log.duration_minutes) || (Number(log.duration_hours) * 60) || 0
+    }
+  })
+
+  const lostHoursDecimal = Math.round((totalMinutes / 60) * 100) / 100
+  return {
+    totalMinutes,
+    lostHoursDecimal,
+    lostDurationText: formatMinutesToThai(totalMinutes),
+    activeLog,
+  }
+}
+
+/**
+ * Calculates duration in decimal hours and human-readable Thai text,
+ * deducting lost/interrupted time from total working time.
+ */
+export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs = []) {
   if (!startTimestamp || !endTimestamp) {
-    return { hoursDecimal: 0, durationText: '—' }
+    return {
+      hoursDecimal: 0,
+      durationText: '—',
+      grossHoursDecimal: 0,
+      grossDurationText: '—',
+      lostHoursDecimal: 0,
+      lostDurationText: '0 นาที',
+      netHoursDecimal: 0,
+      netDurationText: '—',
+    }
   }
   const start = new Date(startTimestamp)
   const end = new Date(endTimestamp)
   const diffMs = end.getTime() - start.getTime()
   if (isNaN(diffMs) || diffMs < 0) {
-    return { hoursDecimal: 0, durationText: '0 นาที' }
+    return {
+      hoursDecimal: 0,
+      durationText: '0 นาที',
+      grossHoursDecimal: 0,
+      grossDurationText: '0 นาที',
+      lostHoursDecimal: 0,
+      lostDurationText: '0 นาที',
+      netHoursDecimal: 0,
+      netDurationText: '0 นาที',
+    }
   }
 
-  const totalMinutes = Math.floor(diffMs / (1000 * 60))
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-  const hoursDecimal = Math.round((totalMinutes / 60) * 100) / 100
+  const grossTotalMinutes = Math.floor(diffMs / (1000 * 60))
+  const grossHoursDecimal = Math.round((grossTotalMinutes / 60) * 100) / 100
+  const grossDurationText = formatMinutesToThai(grossTotalMinutes)
 
-  const parts = []
-  if (hours > 0) parts.push(`${hours} ชม.`)
-  if (minutes > 0 || hours === 0) parts.push(`${minutes} นาที`)
+  const { totalMinutes: lostMinutes, lostHoursDecimal, lostDurationText, activeLog } = calculateInterruptionTotal(interruptionLogs)
+
+  const netMinutes = Math.max(0, grossTotalMinutes - lostMinutes)
+  const netHoursDecimal = Math.round((netMinutes / 60) * 100) / 100
+  const netDurationText = formatMinutesToThai(netMinutes)
 
   return {
-    hoursDecimal,
-    durationText: parts.join(' '),
+    hoursDecimal: netHoursDecimal,
+    durationText: netDurationText,
+    grossHoursDecimal,
+    grossDurationText,
+    lostHoursDecimal,
+    lostDurationText,
+    netHoursDecimal,
+    netDurationText,
+    activeInterruption: activeLog,
   }
 }
 
 /**
- * Evaluates SLA Performance based on Job Type and KPI Target Days.
+ * Evaluates SLA Performance based on Job Type and KPI Target Days (12-hour shift base).
  */
-export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESIGN: 3.0, PM: 2.0 }) {
+export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESIGN: 3.0, PM: 2.0 }, hoursPerDay = 12) {
   const type = String(job.JobType || job['Job Type'] || 'REPAIR').toUpperCase()
   const targetDays = targetDaysMap[type] || 1.0
-  const targetHours = targetDays * 24
+  const targetHours = targetDays * hoursPerDay
 
   const startTimestamp = job.StartTimestamp || job['Start Timestamp'] || job.created_at || (job.StartDate && `${job.StartDate}T08:00:00Z`)
-  if (!startTimestamp) return { targetDays, isOnTime: true, label: '—', badgeClass: 'badge-gray' }
+  if (!startTimestamp) {
+    return {
+      targetDays,
+      targetHours,
+      isOnTime: true,
+      label: '—',
+      badgeClass: 'badge-gray',
+      hoursDecimal: 0,
+      netHoursDecimal: 0,
+      grossHoursDecimal: 0,
+      lostHoursDecimal: 0,
+    }
+  }
 
   const endTimestamp = job.EndTimestamp || job['End Timestamp'] || (job.Status === 'COMPLETED' ? job.updated_at : new Date().toISOString())
-  const { hoursDecimal } = calculateDuration(startTimestamp, endTimestamp)
+  const interruptions = job.Interruption_Logs || job.interruption_logs || job.Lost_Time_Logs || []
+  const durationResult = calculateDuration(startTimestamp, endTimestamp, interruptions)
+  const netHours = durationResult.netHoursDecimal
 
-  const isOnTime = hoursDecimal <= targetHours
+  const isOnTime = netHours <= targetHours
   const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
 
   if (isCompleted) {
     return {
       targetDays,
-      hoursDecimal,
+      targetHours,
+      ...durationResult,
+      hoursDecimal: netHours,
       isOnTime,
       label: isOnTime ? 'ทันเป้าหมาย (On-Time)' : 'เกินเป้าหมาย (Overdue)',
       badgeClass: isOnTime ? 'badge-green' : 'badge-red',
@@ -455,7 +555,9 @@ export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESI
   // If in progress:
   return {
     targetDays,
-    hoursDecimal,
+    targetHours,
+    ...durationResult,
+    hoursDecimal: netHours,
     isOnTime,
     label: isOnTime ? 'อยู่ในเกณฑ์ (In SLA)' : 'เกินกำหนด (Overdue)',
     badgeClass: isOnTime ? 'badge-blue' : 'badge-orange',
