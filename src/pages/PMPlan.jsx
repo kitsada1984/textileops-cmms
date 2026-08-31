@@ -1131,7 +1131,11 @@ export default function PMPlan({ defaultTab = 'plan' }) {
         <CenterCheck
           initialPreset={centerCheckPreset}
           onClearPreset={() => setCenterCheckPreset(null)}
-          onBackToPMPlan={() => setActiveTab('plan')}
+          onBackToPMPlan={() => {
+            load()
+            setActiveTab('plan')
+          }}
+          onRecordSaved={() => load()}
         />
       ) : activeTab === 'needle' ? (
         <NeedleCondition />

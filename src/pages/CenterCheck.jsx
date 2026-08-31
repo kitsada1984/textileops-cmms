@@ -24,10 +24,12 @@ import {
   Sliders,
   Image as ImageIcon,
 } from 'lucide-react'
-import { format, differenceInCalendarDays } from 'date-fns'
+import { format, differenceInCalendarDays, addDays } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import {
   CenterCheckAPI,
+  PMPlanAPI,
+  AuditLogAPI,
   MachineAPI,
   CylinderAPI,
   TechnicianAPI,
@@ -38,6 +40,7 @@ import {
 import Modal from '../components/ui/Modal'
 import SearchInput from '../components/ui/SearchInput'
 import { useT } from '../contexts/LanguageContext'
+import { useAuth } from '../contexts/AuthContext'
 import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
@@ -141,8 +144,9 @@ function CenterCheckPhotoCard({ url, index, onRemove, onPreview }) {
   )
 }
 
-export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan }) {
+export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan, onRecordSaved }) {
   const { t } = useT()
+  const { user } = useAuth()
   const toast = useToast()
   const { canAdd, canEdit, canDelete } = usePagePerms('pm')
 
@@ -704,6 +708,96 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         } catch (cylSyncErr) {
           console.warn('Cylinder auto-update from CenterCheck warning:', cylSyncErr)
         }
+      }
+
+      // Auto-Sync to PM Plan (pmplans) so user never has to re-enter!
+      try {
+        const pmPlansList = await PMPlanAPI.list()
+        const targetMc = (payload.mc || formData.mc || '').trim()
+        const targetSerialClean = (payload.serial || formData.serial || '').trim()
+
+        const normalizeCode = (val) => String(val || '').toUpperCase().replace(/\s+/g, '').replace(/-/g, '').trim()
+        const normalizeS = (val) => String(val || '').toUpperCase().replace(/\s+/g, '').trim()
+
+        const matchingPlan = (Array.isArray(pmPlansList) ? pmPlansList : []).find((p) => {
+          const mcMatch = targetMc && normalizeCode(p.Machine_MC) === normalizeCode(targetMc)
+          const serialMatch = targetSerialClean && normalizeS(p.Machine_KI) === normalizeS(targetSerialClean)
+          return mcMatch || serialMatch
+        })
+
+        const lastPmDate = payload.doc_date || format(new Date(), 'yyyy-MM-dd')
+        const cycleDays = matchingPlan ? (Number(matchingPlan.Frequency_Value) || Number(matchingPlan.PM_Type) || 30) : 30
+        const nextPmDate = format(addDays(new Date(lastPmDate), cycleDays), 'yyyy-MM-dd')
+        const techName = payload.mechanic || (matchingPlan ? matchingPlan.Assigned_Tech : '') || ''
+
+        if (matchingPlan) {
+          const planId = matchingPlan.id || matchingPlan._id
+          const cleanRemark = String(matchingPlan.Remark || '')
+            .split('\n')
+            .filter((line) => !line.trim().startsWith('เช็คศูนย์ล่าสุด:'))
+            .join('\n')
+            .trim()
+          const updatedRemark = [
+            cleanRemark,
+            `เช็คศูนย์ล่าสุด: ${payload.doc_no} (${payload.status || 'PASS'}) เมื่อ ${lastPmDate}`,
+          ].filter(Boolean).join('\n')
+
+          await PMPlanAPI.update(planId, {
+            Last_PM_Date: lastPmDate,
+            Next_PM_Date: nextPmDate,
+            Assigned_Tech: techName,
+            Status: 'COMPLETED',
+            Remark: updatedRemark,
+            Location: payload.location || matchingPlan.Location || '',
+            updated_at: new Date().toISOString(),
+          })
+        } else if (targetMc || targetSerialClean) {
+          await PMPlanAPI.create({
+            PM_ID: `PM-${targetMc || targetSerialClean || Date.now()}`,
+            Machine_MC: targetMc,
+            Machine_KI: targetSerialClean,
+            Location: payload.location || '',
+            Type: payload.type || formType || 'Single',
+            PM_Type: '30',
+            Frequency_Type: 'CALENDAR',
+            Frequency_Value: 30,
+            Last_PM_Date: lastPmDate,
+            Next_PM_Date: nextPmDate,
+            Estimated_Hours: 1,
+            Assigned_Tech: techName,
+            Priority: 'MEDIUM',
+            Status: 'COMPLETED',
+            Remark: `สร้างอัตโนมัติจากการเช็คศูนย์ ${payload.doc_no} (${payload.status || 'PASS'})`,
+          })
+        }
+
+        // Log to AuditLog for PM Log table
+        try {
+          await AuditLogAPI.create({
+            Module: 'PM',
+            ActionType: 'CHECK_PLAN',
+            RecordID: targetSerialClean || targetMc,
+            FieldName: 'CenterCheck',
+            NewValue: JSON.stringify({
+              Machine_MC: targetMc,
+              Machine_KI: targetSerialClean,
+              Location: payload.location || matchingPlan?.Location || '',
+              Last_PM_Date: lastPmDate,
+              Next_PM_Date: nextPmDate,
+              DocNo: payload.doc_no,
+            }),
+            User: user?.full_name || user?.username || techName || 'system',
+            Comment: `บันทึกเช็คศูนย์: ${payload.doc_no} (M/C: ${targetMc || '-'}, ผล: ${payload.status || 'PASS'})`,
+          })
+        } catch {}
+      } catch (pmSyncErr) {
+        console.warn('PM Plan auto-sync from CenterCheck warning:', pmSyncErr)
+      }
+
+      if (typeof onRecordSaved === 'function') {
+        try {
+          onRecordSaved(payload)
+        } catch {}
       }
 
       await loadRecords()
