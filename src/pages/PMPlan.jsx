@@ -19,10 +19,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileText,
+  Zap,
 } from 'lucide-react'
 import { format, addDays, differenceInCalendarDays, startOfDay } from 'date-fns'
 import useEntity from '../hooks/useEntity'
-import { AuditLogAPI, CylinderAPI, PMPlanAPI, PM_TYPE, PM_STATUS, WO_PRIORITY } from '../api/entities'
+import { AuditLogAPI, CylinderAPI, PMPlanAPI, CenterCheckAPI, PM_TYPE, PM_STATUS, WO_PRIORITY } from '../api/entities'
 import useWebBuilderMenu from '../hooks/useWebBuilderMenu'
 import Modal from '../components/ui/Modal'
 import StatusBadge from '../components/ui/StatusBadge'
@@ -656,6 +657,123 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       throw e
     } finally {
       syncingRef.current = false
+      setSyncingPM(false)
+    }
+  }
+
+  // ⚡ Auto-Sync & Backfill latest inspection dates from Center Check records
+  const syncLatestFromCenterCheck = async () => {
+    if (syncingPM) return
+    setSyncingPM(true)
+    try {
+      // 1. Load all Center Check records
+      const ccList = await CenterCheckAPI.list()
+      if (!Array.isArray(ccList) || ccList.length === 0) {
+        toast.warning('ไม่พบข้อมูล', 'ไม่พบประวัติการเช็คศูนย์สำหรับซิงค์ข้อมูล')
+        setSyncingPM(false)
+        return
+      }
+
+      // 2. Find latest check per machine / serial
+      const latestByMachine = new Map()
+      const latestBySerial = new Map()
+
+      ccList.forEach((cc) => {
+        const mcKey = normalizeMachineCode(cc.mc || cc.MC)
+        const serialKey = normalizeSerial(cc.serial || cc.Serial)
+        const docDate = cc.doc_date || cc.timestamp?.slice(0, 10)
+        if (!docDate) return
+
+        const item = {
+          doc_no: cc.doc_no || 'CC-CHECK',
+          doc_date: docDate,
+          mechanic: cc.mechanic || cc.inspector || 'ช.หนึ่ง',
+          status: cc.status || 'PASS',
+          mc: cc.mc || '',
+          serial: cc.serial || '',
+          location: cc.location || '',
+          type: cc.type || 'Single',
+        }
+
+        if (mcKey) {
+          const prev = latestByMachine.get(mcKey)
+          if (!prev || new Date(docDate) > new Date(prev.doc_date)) {
+            latestByMachine.set(mcKey, item)
+          }
+        }
+        if (serialKey) {
+          const prev = latestBySerial.get(serialKey)
+          if (!prev || new Date(docDate) > new Date(prev.doc_date)) {
+            latestBySerial.set(serialKey, item)
+          }
+        }
+      })
+
+      // 3. Update existing PM Plans
+      const pmList = Array.isArray(data) ? [...data] : []
+      let updatedCount = 0
+
+      for (const plan of pmList) {
+        const mcKey = normalizeMachineCode(plan.Machine_MC)
+        const serialKey = normalizeSerial(plan.Machine_KI)
+        const latestCC = (mcKey && latestByMachine.get(mcKey)) || (serialKey && latestBySerial.get(serialKey))
+
+        if (latestCC) {
+          const currentLastDate = plan.Last_PM_Date || ''
+          const cycleDays = Number(plan.Frequency_Value) || Number(plan.PM_Type) || 30
+          const computedNextDate = format(addDays(new Date(latestCC.doc_date), cycleDays), 'yyyy-MM-dd')
+
+          if (currentLastDate !== latestCC.doc_date || plan.Next_PM_Date !== computedNextDate) {
+            const planId = plan.id || plan._id
+            const cleanRemark = stripImageUrlMeta(plan.Remark || '')
+              .split('\n')
+              .filter((line) => !line.trim().startsWith('เช็คศูนย์ล่าสุด:'))
+              .join('\n')
+              .trim()
+
+            const updatedRemark = [
+              cleanRemark,
+              `เช็คศูนย์ล่าสุด: ${latestCC.doc_no} (${latestCC.status}) เมื่อ ${latestCC.doc_date}`,
+            ].filter(Boolean).join('\n')
+
+            await PMPlanAPI.update(planId, {
+              Last_PM_Date: latestCC.doc_date,
+              Next_PM_Date: computedNextDate,
+              Assigned_Tech: latestCC.mechanic || plan.Assigned_Tech || 'ช.หนึ่ง',
+              Remark: appendPMImageMeta(updatedRemark, getPMImageUrl(plan)),
+              Status: 'COMPLETED',
+              Location: latestCC.location || plan.Location || '',
+              updated_at: new Date().toISOString(),
+            })
+
+            // Log to AuditLog
+            try {
+              await AuditLogAPI.create({
+                Module: 'PM',
+                ActionType: 'BACKFILL_PM_LAST_DATE',
+                RecordID: plan.Machine_KI || plan.Machine_MC,
+                FieldName: 'Last_PM_Date',
+                OldValue: JSON.stringify({ Last_PM_Date: currentLastDate, Next_PM_Date: plan.Next_PM_Date }),
+                NewValue: JSON.stringify({ Last_PM_Date: latestCC.doc_date, Next_PM_Date: computedNextDate }),
+                User: user?.full_name || user?.username || 'system',
+                Comment: `ซิงค์วัน PM ล่าสุดจากประวัติเช็คศูนย์ ${latestCC.doc_no} (${latestCC.doc_date})`,
+              })
+            } catch {}
+
+            updatedCount++
+          }
+        }
+      }
+
+      await load()
+      toast.success(
+        'ซิงค์ข้อมูลจากประวัติเช็คศูนย์สำเร็จ!',
+        `อัปเดตวันที่ PM ล่าสุดแล้ว ${updatedCount} เครื่อง (จากประวัติเช็คศูนย์ทั้งหมด ${ccList.length} รายการ)`
+      )
+    } catch (err) {
+      console.error(err)
+      toast.error('ซิงค์ข้อมูลไม่สำเร็จ', err.message)
+    } finally {
       setSyncingPM(false)
     }
   }
@@ -1300,6 +1418,17 @@ export default function PMPlan({ defaultTab = 'plan' }) {
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-outline text-xs px-3.5 py-2 flex items-center gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shadow-sm font-bold"
+                onClick={syncLatestFromCenterCheck}
+                disabled={syncingPM}
+                title="ดึงวันที่เช็คศูนย์ล่าสุดของแต่ละเครื่องมาอัปเดตแผน PM อัตโนมัติ"
+              >
+                <Zap size={14} className={syncingPM ? 'animate-bounce text-amber-500' : 'text-amber-500'} />
+                <span>{syncingPM ? 'กำลังซิงค์...' : '⚡ ซิงค์วันที่จากประวัติเช็คศูนย์'}</span>
+              </button>
+
               <button
                 type="button"
                 className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
