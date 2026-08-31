@@ -291,6 +291,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   }, [defaultTab])
 
   const { data, loading, load, save, remove } = useEntity(PMPlanAPI)
+  const { data: centerChecksList } = useEntity(CenterCheckAPI)
   const [search, setSearch] = useState('')
   const [filterSort, setFilterSort] = useState(INIT_FS)
   const [modal, setModal] = useState(false)
@@ -400,6 +401,44 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     )
   ), [cylCurrentMachineField, cylinderPMSource, syncForm.Location, syncForm.Machine_KI, syncForm.Machine_MC])
 
+  const latestCenterCheckMap = useMemo(() => {
+    const bySerial = new Map()
+    const byMachine = new Map()
+    if (Array.isArray(centerChecksList)) {
+      centerChecksList.forEach((cc) => {
+        const mcKey = normalizeMachineCode(cc.mc || cc.MC)
+        const serialKey = normalizeSerial(cc.serial || cc.Serial)
+        const docDate = cc.doc_date || cc.timestamp?.slice(0, 10)
+        if (!docDate) return
+
+        const item = {
+          doc_no: cc.doc_no || 'CC-CHECK',
+          doc_date: docDate,
+          mechanic: cc.mechanic || cc.inspector || 'ช.หนึ่ง',
+          status: cc.status || 'PASS',
+          mc: cc.mc || '',
+          serial: cc.serial || '',
+          location: cc.location || '',
+          type: cc.type || 'Single',
+        }
+
+        if (mcKey) {
+          const prev = byMachine.get(mcKey)
+          if (!prev || new Date(docDate) > new Date(prev.doc_date)) {
+            byMachine.set(mcKey, item)
+          }
+        }
+        if (serialKey) {
+          const prev = bySerial.get(serialKey)
+          if (!prev || new Date(docDate) > new Date(prev.doc_date)) {
+            bySerial.set(serialKey, item)
+          }
+        }
+      })
+    }
+    return { bySerial, byMachine }
+  }, [centerChecksList])
+
   const cylinderDrivenPMRows = useMemo(() => {
     return cylinderPMSource.map((cyl) => {
       const serialOld = String(cyl?.Serial_OLD || '').trim()
@@ -407,21 +446,51 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       const location = String(cyl?.Location || '').trim()
       const type = String(cyl?.Type || '').trim()
       const existing = pmBySerial.get(normalizeSerial(serialOld))?.keeper
+
+      // Auto-resolve latest Center Check inspection date
+      const latestCC = (serialOld && latestCenterCheckMap.bySerial.get(normalizeSerial(serialOld))) ||
+                       (machine && latestCenterCheckMap.byMachine.get(normalizeMachineCode(machine))) ||
+                       null
+
+      const rawFrequency = Number(existing?.Frequency_Value) || Number(existing?.PM_Type) || 90
+      const frequencyValue = rawFrequency > 0 ? rawFrequency : 90
+      const pmType = existing?.PM_Type || 'RUNTIME'
+
+      // Always prioritize the latest Center Check inspection date!
+      const resolvedLastDate = latestCC?.doc_date || existing?.Last_PM_Date || ''
+      const resolvedNextDate = resolvedLastDate
+        ? format(addDays(new Date(resolvedLastDate), frequencyValue), 'yyyy-MM-dd')
+        : (existing?.Next_PM_Date || '')
+
+      const resolvedTech = latestCC?.mechanic || existing?.Assigned_Tech || 'ช.หนึ่ง'
+      const cleanRemark = stripImageUrlMeta(existing?.Remark || '')
+      const resolvedRemark = latestCC
+        ? [
+            cleanRemark.split('\n').filter((l) => !l.trim().startsWith('เช็คศูนย์ล่าสุด:')).join('\n').trim(),
+            `เช็คศูนย์ล่าสุด: ${latestCC.doc_no} (${latestCC.status || 'PASS'}) เมื่อ ${latestCC.doc_date}`,
+          ].filter(Boolean).join('\n')
+        : cleanRemark
+
       return {
         ...(existing || {}),
         Machine_KI: serialOld,
         Machine_MC: machine,
         Location: location,
         Type: type,
-        PM_Type: 'RUNTIME',
-        Frequency_Type: 'CALENDAR',
-        Frequency_Value: 90,
+        PM_Type: pmType,
+        Frequency_Type: existing?.Frequency_Type || 'CALENDAR',
+        Frequency_Value: frequencyValue,
+        Last_PM_Date: resolvedLastDate,
+        Next_PM_Date: resolvedNextDate,
+        Assigned_Tech: resolvedTech,
+        Remark: resolvedRemark,
         Priority: existing?.Priority || 'MEDIUM',
-        Status: existing?.Status || 'SCHEDULED',
+        Status: existing?.Status || (resolvedLastDate ? 'COMPLETED' : 'SCHEDULED'),
         __hasPMPlan: Boolean(existing),
+        __latestCenterCheck: latestCC,
       }
     })
-  }, [cylCurrentMachineField, cylinderPMSource, pmBySerial])
+  }, [cylCurrentMachineField, cylinderPMSource, pmBySerial, latestCenterCheckMap])
 
   const pmSyncPreviewRows = useMemo(() => {
     const localPMBySerial = buildPMBySerial(data)
