@@ -9,12 +9,28 @@ function getMissingSchemaColumn(error) {
   return message.match(MISSING_SCHEMA_COLUMN_RE)?.[1] || null
 }
 
+const KNOWN_NUMERIC_FIELDS = new Set([
+  'ITEM',
+  'Duration',
+  'WorkingHoursDecimal',
+  'GrossDurationHours',
+  'LostDurationHours',
+  'SundayDurationHours',
+  'Frequency_Value',
+  'Quantity',
+  'UnitPrice',
+  'TotalPrice',
+  'qty',
+  'price',
+  'amount',
+])
+
 function getBadFieldFromError(error, payload) {
   const msg = String(error?.message || '')
   
   // Timestamp / date syntax error
   if (msg.toLowerCase().includes('invalid input syntax for type timestamp') || msg.toLowerCase().includes('invalid input syntax for type date')) {
-    const quotedMatch = msg.match(/"([^"]+)"/)
+    const quotedMatch = msg.match(/"([^"]*)"/)
     const badVal = quotedMatch ? quotedMatch[1].trim() : ''
     if (badVal) {
       for (const [k, v] of Object.entries(payload)) {
@@ -31,14 +47,19 @@ function getBadFieldFromError(error, payload) {
 
   // Numeric / float / integer syntax error
   if (msg.toLowerCase().includes('invalid input syntax for type numeric') || msg.toLowerCase().includes('invalid input syntax for type double precision') || msg.toLowerCase().includes('invalid input syntax for type integer') || msg.toLowerCase().includes('invalid input syntax for type bigint')) {
-    const quotedMatch = msg.match(/"([^"]+)"/)
+    const quotedMatch = msg.match(/"([^"]*)"/)
     const badVal = quotedMatch ? quotedMatch[1].trim() : ''
     if (badVal) {
       for (const [k, v] of Object.entries(payload)) {
         if (String(v).trim() === badVal) return k
       }
     }
-    for (const k of ['Duration', 'WorkingHoursDecimal']) {
+    // Check if any known numeric field has empty string or non-numeric string
+    for (const [k, v] of Object.entries(payload)) {
+      if (v === '' && KNOWN_NUMERIC_FIELDS.has(k)) return k
+      if (typeof v === 'string' && v !== '' && KNOWN_NUMERIC_FIELDS.has(k) && isNaN(Number(v))) return k
+    }
+    for (const k of ['ITEM', 'Duration', 'WorkingHoursDecimal', 'GrossDurationHours', 'LostDurationHours', 'SundayDurationHours']) {
       if (Object.hasOwn(payload, k)) return k
     }
   }
@@ -50,6 +71,7 @@ export function sanitizeForSupabase(item) {
   const today = new Date().toISOString().slice(0, 10)
   return Object.fromEntries(
     Object.entries(item).map(([key, value]) => {
+      // 1. Temporal empty string -> null, or format time strings
       if (typeof value === 'string' && value.trim() === '' && TEMPORAL_FIELD_RE.test(key)) {
         return [key, null]
       }
@@ -64,10 +86,19 @@ export function sanitizeForSupabase(item) {
           // ignore
         }
       }
-      if (key === 'Duration' && typeof value === 'string') {
-        const parsed = parseFloat(value)
-        return [key, isNaN(parsed) ? 0 : parsed]
+
+      // 2. Numeric fields -> convert empty strings to null or parse to number
+      if (KNOWN_NUMERIC_FIELDS.has(key)) {
+        if (value === '' || value === null || value === undefined) {
+          return [key, null]
+        }
+        if (typeof value === 'string') {
+          const parsed = parseFloat(value)
+          return [key, isNaN(parsed) ? null : parsed]
+        }
+        return [key, Number.isFinite(value) ? value : null]
       }
+
       return [key, value]
     })
   )

@@ -43,8 +43,6 @@ import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
 
 const MACHINE_IMAGE_FOLDER = 'แท็กเครื่องจักร'
-const IMAGE_NOTE_PREFIX = 'ImageUrl:'
-const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'machines'|column machines\.([^ ]+) does not exist/i
 
 const EMPTY = {
   ITEM: '',
@@ -79,15 +77,27 @@ const EMPTY = {
   ImageUrl: '',
 }
 
+const IMAGE_NOTE_PREFIX = 'ImageUrl:'
+const TAPE5_NOTE_PREFIX = 'Tape5:'
+const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'machines'|column machines\.([^ ]+) does not exist/i
+
 function extractImageUrl(note = '') {
   const line = String(note || '').split('\n').find((item) => item.trim().startsWith(IMAGE_NOTE_PREFIX))
   return line?.trim().slice(IMAGE_NOTE_PREFIX.length).trim() || ''
 }
 
-function stripImageUrlMeta(note = '') {
+function extractTape5(note = '') {
+  const line = String(note || '').split('\n').find((item) => item.trim().startsWith(TAPE5_NOTE_PREFIX))
+  return line?.trim().slice(TAPE5_NOTE_PREFIX.length).trim() || ''
+}
+
+function stripMachineMeta(note = '') {
   return String(note || '')
     .split('\n')
-    .filter((line) => !line.trim().startsWith(IMAGE_NOTE_PREFIX))
+    .filter((line) => {
+      const t = line.trim()
+      return !t.startsWith(IMAGE_NOTE_PREFIX) && !t.startsWith(TAPE5_NOTE_PREFIX)
+    })
     .join('\n')
     .trim()
 }
@@ -96,9 +106,16 @@ function getMachineImageUrl(row = {}) {
   return row.ImageUrl || extractImageUrl(row.Remark) || ''
 }
 
-function appendMachineImageMeta(remark = '', imageUrl = '') {
-  const cleanRemark = stripImageUrlMeta(remark)
-  return [cleanRemark, imageUrl ? `${IMAGE_NOTE_PREFIX} ${imageUrl}` : ''].filter(Boolean).join('\n')
+function getMachineTape5(row = {}) {
+  return row.Tape5_No || row.tape5_no || extractTape5(row.Remark) || ''
+}
+
+function appendMachineMeta(remark = '', { imageUrl = '', tape5 = '' } = {}) {
+  const cleanRemark = stripMachineMeta(remark)
+  const metaLines = []
+  if (imageUrl) metaLines.push(`${IMAGE_NOTE_PREFIX} ${imageUrl}`)
+  if (tape5) metaLines.push(`${TAPE5_NOTE_PREFIX} ${tape5}`)
+  return [cleanRemark, ...metaLines].filter(Boolean).join('\n')
 }
 
 function omitKeys(item, keys = []) {
@@ -282,7 +299,7 @@ export default function Machines() {
     { key: 'Tape2_No', label: t('mc_th_tape2'), render: (m) => <span className="font-mono">{m.Tape2_No || '—'}</span> },
     { key: 'Tape3_No', label: t('mc_th_tape3'), render: (m) => <span className="font-mono">{m.Tape3_No || '—'}</span> },
     { key: 'Tape4_No', label: t('mc_th_tape4'), render: (m) => <span className="font-mono">{m.Tape4_No || '—'}</span> },
-    { key: 'Tape5_No', label: t('mc_th_tape5'), render: (m) => <span className="font-mono">{m.Tape5_No || '—'}</span> },
+    { key: 'Tape5_No', label: t('mc_th_tape5'), render: (m) => <span className="font-mono">{getMachineTape5(m) || '—'}</span> },
     { key: 'Dial_Front', label: t('mc_th_dial_front'), render: (m) => <span className="font-mono">{m.Dial_Front || '—'}</span> },
     { key: 'Dial_Rear', label: t('mc_th_dial_rear'), render: (m) => <span className="font-mono">{m.Dial_Rear || '—'}</span> },
     { key: 'Leg1', label: t('mc_th_leg1'), render: (m) => <span className="font-mono">{m.Leg1 || '—'}</span> },
@@ -291,7 +308,7 @@ export default function Machines() {
     { key: 'Leg4', label: t('mc_th_leg4'), render: (m) => <span className="font-mono">{m.Leg4 || '—'}</span> },
     { key: 'ImageUrl', label: 'URL', render: renderMachineImageUrl },
     { key: 'ImagePreview', label: 'รูป', render: renderMachineImagePreview },
-    { key: 'Remark', label: t('mc_th_remark'), render: (m) => <span className="max-w-[130px] truncate block text-slate-500">{stripImageUrlMeta(m.Remark) || '—'}</span> },
+    { key: 'Remark', label: t('mc_th_remark'), render: (m) => <span className="max-w-[130px] truncate block text-slate-500">{stripMachineMeta(m.Remark) || '—'}</span> },
     { key: 'updated_at', label: t('mc_th_updated'), render: (m) => {
       const d = m.updated_at || m.LastUpdated
       if (!d) return <span className="text-slate-400">—</span>
@@ -321,6 +338,8 @@ export default function Machines() {
         const label = MC_FIELD_KEYS[wbc.field] ? t(MC_FIELD_KEYS[wbc.field]) : wbc.label
         if (wbc.field === 'ImageUrl') return { key: wbc.field, label, render: renderMachineImageUrl }
         if (wbc.field === 'ImagePreview') return { key: wbc.field, label, render: renderMachineImagePreview }
+        if (wbc.field === 'Tape5_No') return { key: wbc.field, label, render: (m) => <span className="font-mono">{getMachineTape5(m) || '—'}</span> }
+        if (wbc.field === 'Remark') return { key: wbc.field, label, render: (m) => <span className="max-w-[130px] truncate block text-slate-500">{stripMachineMeta(m.Remark) || '—'}</span> }
         if (wbc.type === 'select') {
           return {
             key: wbc.field,
@@ -341,7 +360,7 @@ export default function Machines() {
 
   const searched = useMemo(() => {
     return data.filter((m) =>
-      [m.Mc, m.Location, m.Type, m.Manufacturer, m.Model, m.Serial_NEW, m.Serial_OLD, getMachineImageUrl(m), stripImageUrlMeta(m.Remark)].some((v) =>
+      [m.Mc, m.Location, m.Type, m.Manufacturer, m.Model, m.Serial_NEW, m.Serial_OLD, getMachineTape5(m), getMachineImageUrl(m), stripMachineMeta(m.Remark)].some((v) =>
         String(v || '').toLowerCase().includes(search.toLowerCase())
       )
     )
@@ -409,12 +428,24 @@ export default function Machines() {
   const summary = useMemo(() => buildMachineSummary(data), [data])
 
   const openNew = () => {
-    setForm(EMPTY)
+    const maxItem = data.reduce((max, m) => {
+      const n = Number(m.ITEM)
+      return Number.isFinite(n) && n > max ? n : max
+    }, 0)
+    setForm({
+      ...EMPTY,
+      ITEM: maxItem > 0 ? maxItem + 1 : '',
+    })
     setModal(true)
   }
 
   const openEdit = (m) => {
-    setForm({ ...m, ImageUrl: getMachineImageUrl(m), Remark: stripImageUrlMeta(m.Remark) })
+    setForm({
+      ...m,
+      Tape5_No: getMachineTape5(m),
+      ImageUrl: getMachineImageUrl(m),
+      Remark: stripMachineMeta(m.Remark),
+    })
     setModal(true)
     setDetailRec(null)
   }
@@ -427,7 +458,6 @@ export default function Machines() {
       setForm((prev) => ({
         ...prev,
         ImageUrl: imageUrl,
-        Remark: appendMachineImageMeta(prev.Remark, imageUrl),
       }))
       toast.success('อัปโหลดรูปสำเร็จ', `บันทึกไว้ในโฟลเดอร์ ${MACHINE_IMAGE_FOLDER}`)
     } catch (e) {
@@ -436,40 +466,32 @@ export default function Machines() {
     setUploadingImage(false)
   }
 
-  const saveWithImageFallback = async (payload) => {
-    try {
-      await save(payload)
-    } catch (error) {
-      if (getMissingMachineColumn(error) === 'ImageUrl') {
-        await save({
-          ...omitKeys(payload, ['ImageUrl']),
-          Remark: appendMachineImageMeta(payload.Remark, payload.ImageUrl),
-        })
-        if (payload.ImageUrl) toast.success('บันทึกลิงก์รูปในหมายเหตุแล้ว', 'ฐานข้อมูลยังไม่มีคอลัมน์ ImageUrl ของเครื่องจักร')
-        return
-      }
-      throw error
-    }
-  }
-
   const submit = async () => {
-    if (!form.Mc || !form.Location) {
+    const mc = String(form.Mc || '').trim()
+    const loc = String(form.Location || '').trim()
+    if (!mc || !loc) {
       toast.warning('กรุณากรอกข้อมูล', 'Mc และ Location จำเป็นต้องกรอก')
       return
     }
     setSaving(true)
     const isEdit = !!(form._id || form.id)
     try {
-      await saveWithImageFallback({
+      const itemNum = form.ITEM !== '' && form.ITEM !== null && form.ITEM !== undefined ? Number(form.ITEM) : null
+      const payload = {
         ...form,
-        Remark: appendMachineImageMeta(form.Remark, form.ImageUrl),
-      })
-      toast.success(isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', `เครื่อง ${form.Mc}`)
+        Mc: mc,
+        Location: loc,
+        ITEM: Number.isFinite(itemNum) ? itemNum : null,
+        Remark: appendMachineMeta(form.Remark, { imageUrl: form.ImageUrl, tape5: form.Tape5_No }),
+      }
+      await save(payload)
+      toast.success(isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', `เครื่อง ${mc}`)
       setModal(false)
     } catch (e) {
       toast.error('เกิดข้อผิดพลาด', e.message)
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   const del = async (id) => {
@@ -552,7 +574,8 @@ export default function Machines() {
             valueGetters={{
               ImageUrl: getMachineImageUrl,
               ImagePreview: getMachineImageUrl,
-              Remark: (row) => stripImageUrlMeta(row.Remark),
+              Tape5_No: getMachineTape5,
+              Remark: (row) => stripMachineMeta(row.Remark),
             }}
           />
         </div>
@@ -775,7 +798,7 @@ export default function Machines() {
               { label: t('mc_th_tape2'), value: detailRec.Tape2_No },
               { label: t('mc_th_tape3'), value: detailRec.Tape3_No },
               { label: t('mc_th_tape4'), value: detailRec.Tape4_No },
-              { label: t('mc_th_tape5'), value: detailRec.Tape5_No },
+              { label: t('mc_th_tape5'), value: getMachineTape5(detailRec) },
               { label: t('mc_th_dial_front'), value: detailRec.Dial_Front },
               { label: t('mc_th_dial_rear'), value: detailRec.Dial_Rear },
               { label: t('mc_th_leg1'), value: detailRec.Leg1 },
@@ -788,7 +811,7 @@ export default function Machines() {
             label: t('remark'),
             single: true,
             fields: [
-              { label: t('remark'), value: stripImageUrlMeta(detailRec.Remark), full: true },
+              { label: t('remark'), value: stripMachineMeta(detailRec.Remark), full: true },
             ].filter((f) => f.value),
           },
           {
@@ -956,7 +979,6 @@ export default function Machines() {
                   label={t('mc_th_remark')}
                   id="Remark"
                   placeholder="ข้อคิดเห็น หรือประวัติพิเศษของเครื่อง"
-                  onChange={(value) => setForm((p) => ({ ...p, Remark: appendMachineImageMeta(value, p.ImageUrl) }))}
                 />
               </div>
             </div>

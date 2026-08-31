@@ -49,7 +49,7 @@ describe('imageUrlUtils', () => {
     it('converts Google Drive viewer URL to direct thumbnail image URL', () => {
       const driveUrl = `https://drive.google.com/file/d/${FILE_ID}/view`
       const direct = getDirectImageUrl(driveUrl, 'w1000')
-      expect(direct).toBe(`https://drive.google.com/thumbnail?id=${FILE_ID}&sz=w1000`)
+      expect(direct).toBe(`https://lh3.googleusercontent.com/d/${FILE_ID}=s1000`)
     })
 
     it('returns non-Drive URLs as-is', () => {
@@ -70,8 +70,8 @@ describe('imageUrlUtils', () => {
       const driveUrl = `https://drive.google.com/file/d/${FILE_ID}/view`
       const fallbacks = getImageFallbackUrls(driveUrl)
       expect(fallbacks.length).toBeGreaterThan(1)
-      expect(fallbacks[0]).toContain('thumbnail')
-      expect(fallbacks[1]).toContain('googleusercontent')
+      expect(fallbacks[0]).toContain('googleusercontent')
+      expect(fallbacks[2]).toContain('thumbnail')
     })
   })
 })

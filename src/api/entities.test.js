@@ -6,9 +6,9 @@ import {
 } from './entities'
 
 describe('CenterCheck Entities & Helpers', () => {
-  it('has 10 default checklist items for Single and Double Jersey', () => {
+  it('has default checklist items for Single (10) and Double (12) Jersey', () => {
     expect(DEFAULT_SINGLE_CHECKLIST_ITEMS.length).toBe(10)
-    expect(DEFAULT_DOUBLE_CHECKLIST_ITEMS.length).toBe(10)
+    expect(DEFAULT_DOUBLE_CHECKLIST_ITEMS.length).toBe(12)
     expect(DEFAULT_SINGLE_CHECKLIST_ITEMS[0].item).toBe('กลม cylinder')
     expect(DEFAULT_DOUBLE_CHECKLIST_ITEMS[0].item).toBe('กลม Cylinder')
   })

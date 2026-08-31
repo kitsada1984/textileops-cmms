@@ -33,6 +33,12 @@ function extractHiddenValue(note = '', prefix = '') {
   return line?.trim().slice(prefix.length).trim() || ''
 }
 
+function extractTape5(note = '') {
+  if (!note || typeof note !== 'string') return ''
+  const line = note.split('\n').find((item) => item.trim().startsWith('Tape5:'))
+  return line?.trim().slice('Tape5:'.length).trim() || ''
+}
+
 /**
  * Normalizes any image or list of images into standard [{ url, caption }] array
  */
@@ -227,7 +233,7 @@ export function generateMachinePdfProps(mc, context = {}) {
           { label: 'สายพาน 2 (Tape 2 No.)', value: mc.Tape2_No || '—' },
           { label: 'สายพาน 3 (Tape 3 No.)', value: mc.Tape3_No || '—' },
           { label: 'สายพาน 4 (Tape 4 No.)', value: mc.Tape4_No || '—' },
-          { label: 'สายพาน 5 (Tape 5 No.)', value: mc.Tape5_No || '—' },
+          { label: 'สายพาน 5 (Tape 5 No.)', value: mc.Tape5_No || extractTape5(mc.Remark) || '—' },
           { label: 'Dial ขาหน้า', value: mc.Dial_Front || '—' },
           { label: 'Dial ขาหลัง', value: mc.Dial_Rear || '—' },
           { label: 'ขา 1 (Leg 1)', value: mc.Leg1 || '—' },
