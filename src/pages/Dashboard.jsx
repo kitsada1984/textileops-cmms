@@ -29,6 +29,7 @@ import {
   StockTxnAPI,
   RepairRequestAPI,
   DesignBomAPI,
+  isSystemWorkOrder,
 } from '../api/entities'
 import { useT } from '../contexts/LanguageContext'
 import { useToast } from '../components/ui/Toast'
@@ -182,7 +183,8 @@ export default function Dashboard() {
       RepairRequestAPI.list(),
     ]).then(([m, w, p, s, r]) => {
       const machines       = m.status === 'fulfilled' ? (m.value?.data || m.value || []) : []
-      const workorders     = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
+      const rawWO          = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
+      const workorders     = rawWO.filter((x) => !isSystemWorkOrder(x))
       const pm             = p.status === 'fulfilled' ? (p.value?.data || p.value || []) : []
       const parts          = s.status === 'fulfilled' ? (s.value?.data || s.value || []) : []
       const rawRepairRequests = r.status === 'fulfilled' ? (r.value?.data || r.value || []) : []

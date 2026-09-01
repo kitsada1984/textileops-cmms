@@ -6,7 +6,38 @@ export const DEFAULT_TECHS = []
 
 export const MachineAPI         = createEntityClient('machines')
 export const CylinderAPI        = createEntityClient('cylinders')
-export const WorkOrderAPI       = createEntityClient('workorders')
+
+/**
+ * Helper to identify internal system storage records in workorders table.
+ * System records (Technicians, Center Checks, Needle Conditions, etc.) operate in the background and must NEVER be visible in user-facing UI.
+ */
+export function isSystemWorkOrder(item = {}) {
+  if (!item) return false
+  const mc = String(item.MC || item.Mc || item.machine_mc || '').trim()
+  const woId = String(item.Job_ID || item['Job ID'] || item.WO_ID || item.WONumber || item.doc_no || item.id || '').trim()
+  const problem = String(item.Problem || item.problem || '').trim()
+  return (
+    mc === '__SYSTEM__' ||
+    woId.startsWith('SYS_') ||
+    woId === 'SYS_TECHNICIANS' ||
+    woId === 'SYS_CENTER_CHECKS' ||
+    woId === 'SYS_NEEDLE_CONDITIONS' ||
+    problem === '__SYS_CONFIG__'
+  )
+}
+
+const rawWorkOrderClient = createEntityClient('workorders')
+export const WorkOrderAPI = {
+  ...rawWorkOrderClient,
+  list: async (filters = {}) => {
+    const res = await rawWorkOrderClient.list(filters)
+    const items = Array.isArray(res) ? res : (res?.data || [])
+    return items.filter((item) => !isSystemWorkOrder(item))
+  },
+  rawList: async (filters = {}) => {
+    return rawWorkOrderClient.list(filters)
+  },
+}
 
 export const TechnicianAPI = {
   list: async () => {
@@ -33,7 +64,14 @@ export const TechnicianAPI = {
     return DEFAULT_TECHS
   },
   saveAll: async (techsList) => {
-    try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(techsList)) } catch {}
+    try {
+      if (!techsList || techsList.length === 0) {
+        try { localStorage.removeItem('txops_tbl_technicians') } catch {}
+        await supabase.from('workorders').delete().eq('WO_ID', 'SYS_TECHNICIANS')
+        return
+      }
+      localStorage.setItem('txops_tbl_technicians', JSON.stringify(techsList))
+    } catch {}
     try {
       const { data: existing } = await supabase
         .from('workorders')
@@ -109,7 +147,14 @@ export const CenterCheckAPI = {
     return initialCenterChecks
   },
   saveAll: async (checksList) => {
-    try { localStorage.setItem('txops_tbl_center_checks', JSON.stringify(checksList)) } catch {}
+    try {
+      if (!checksList || checksList.length === 0) {
+        try { localStorage.removeItem('txops_tbl_center_checks') } catch {}
+        await supabase.from('workorders').delete().eq('WO_ID', 'SYS_CENTER_CHECKS')
+        return
+      }
+      localStorage.setItem('txops_tbl_center_checks', JSON.stringify(checksList))
+    } catch {}
     try {
       const { data: existing } = await supabase
         .from('workorders')
@@ -203,7 +248,14 @@ export const NeedleConditionAPI = {
     return []
   },
   saveAll: async (recordsList) => {
-    try { localStorage.setItem('txops_tbl_needle_conditions', JSON.stringify(recordsList)) } catch {}
+    try {
+      if (!recordsList || recordsList.length === 0) {
+        try { localStorage.removeItem('txops_tbl_needle_conditions') } catch {}
+        await supabase.from('workorders').delete().eq('WO_ID', 'SYS_NEEDLE_CONDITIONS')
+        return
+      }
+      localStorage.setItem('txops_tbl_needle_conditions', JSON.stringify(recordsList))
+    } catch {}
     try {
       const { data: existing } = await supabase
         .from('workorders')

@@ -42,6 +42,7 @@ import {
   calculateSlaPerformance,
   calculateInterruptionTotal,
   formatMinutesToThai,
+  isSystemWorkOrder,
 } from '../api/entities'
 import Modal from '../components/ui/Modal'
 import SearchInput from '../components/ui/SearchInput'
@@ -458,7 +459,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const allJobs = useMemo(() => {
     if (!Array.isArray(rawJobs)) return []
     return rawJobs
-      .filter((r) => r && r.MC !== '__SYSTEM__' && !String(r.WO_ID || '').startsWith('SYS_') && r.Problem !== '__SYS_CONFIG__')
+      .filter((r) => r && !isSystemWorkOrder(r))
       .map((r) => {
       const jobId = r.Job_ID || r['Job ID'] || r.WO_ID || (r.id ? `JOB-${String(r.id).slice(0, 8)}` : 'JOB-00000000-0000')
       const technicians = r.Technicians || r['Technicians'] || r.Tech || ''

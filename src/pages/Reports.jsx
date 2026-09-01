@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MachineAPI, WorkOrderAPI, PMPlanAPI, SparePartAPI } from '../api/entities'
+import { MachineAPI, WorkOrderAPI, PMPlanAPI, SparePartAPI, isSystemWorkOrder } from '../api/entities'
 import { useT } from '../contexts/LanguageContext'
 
 const STATUS_LABELS = {
@@ -66,7 +66,8 @@ export default function Reports() {
     Promise.allSettled([MachineAPI.list(), WorkOrderAPI.list(), PMPlanAPI.list(), SparePartAPI.list()])
       .then(([m, w, p, s]) => {
         const machines   = m.status === 'fulfilled' ? (m.value?.data || m.value || []) : []
-        const workorders = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
+        const rawWO      = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
+        const workorders = rawWO.filter((x) => !isSystemWorkOrder(x))
         const pm         = p.status === 'fulfilled' ? (p.value?.data || p.value || []) : []
         const parts      = s.status === 'fulfilled' ? (s.value?.data || s.value || []) : []
 
