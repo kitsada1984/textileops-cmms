@@ -1,26 +1,37 @@
 /**
- * TextileOps Google Drive upload and Google Sheets sync webhook.
- *
- * Flow:
- * Drive flow:
- * 1. TextileOps sends { filename, mimeType, base64, folderName } to this Web App.
- * 2. Apps Script creates the image file in Google Drive and returns the link.
- *
- * Sheets flow:
- * 1. TextileOps sends { sheetName, values } to this Web App.
- * 2. Apps Script replaces the matching sheet's contents with the received rows.
- *
- * Deploy:
- * - Execute as: Me
- * - Who has access: Anyone
- *
- * Optional Script Properties:
- * - DRIVE_FOLDER_ID: parent Drive folder id for uploads.
- * - DEFAULT_FOLDER_NAME: parent folder name when DRIVE_FOLDER_ID is empty.
- * - SHEETS_SPREADSHEET_ID: target Google Spreadsheet id for Sheet All sync.
+ * TextileOps Google Drive & Sheets Integration Webhook (v2.0)
+ * 
+ * โครงสร้างโฟลเดอร์บน Google Drive:
+ * 📁 TextileOps_System_Data/
+ *   ├── 📁 รูปภาพ/
+ *   │   ├── 📁 แท็กเครื่องจักร/      (รูปแท็กเครื่องจักร)
+ *   │   ├── 📁 รูปกระบอก/           (รูปถ่ายกระบอกเข็ม)
+ *   │   ├── 📁 ประวัติเช็คศูนย์/      (รูปประวัติเช็คศูนย์ และ PM)
+ *   │   ├── 📁 สภาพเข็ม/            (รูปการตรวจสภาพเข็ม)
+ *   │   ├── 📁 รูปอะไหล่/           (รูปภาพอะไหล่)
+ *   │   ├── 📁 จัดซื้อ/             (รูปเอกสารใบสั่งซื้อ PO)
+ *   │   └── 📁 Design-BOM/         (รูปโครงสร้างลายผ้า)
+ *   └── 📁 ฐานข้อมูลสำรอง_GoogleSheets/
+ *       └── 📊 TextileOps_Backup_Data (Google Spreadsheet สำหรับซิงค์ข้อมูล)
  */
-const DEFAULT_UPLOAD_FOLDER_NAME = 'TextileOps Uploads';
 
+const DEFAULT_ROOT_FOLDER_NAME = 'TextileOps_System_Data';
+const IMAGES_ROOT_FOLDER_NAME = 'รูปภาพ';
+const SHEETS_ROOT_FOLDER_NAME = 'ฐานข้อมูลสำรอง_GoogleSheets';
+
+const IMAGE_SUB_FOLDERS = [
+  'แท็กเครื่องจักร',
+  'รูปกระบอก',
+  'ประวัติเช็คศูนย์',
+  'สภาพเข็ม',
+  'รูปอะไหล่',
+  'จัดซื้อ',
+  'Design-BOM',
+];
+
+/**
+ * ── 1. WEBHOOK POST HANDLER (UPLOAD & SYNC) ───────────────────────────────────
+ */
 function doPost(e) {
   try {
     const body = parseRequestBody(e);
@@ -37,10 +48,10 @@ function doPost(e) {
     const mimeType = body.mimeType || 'application/octet-stream';
     const folderName = sanitizeFolderName(body.folderName || '');
 
-    const uploadFolder = resolveUploadFolder(folderName);
+    const targetFolder = resolveUploadFolder(folderName);
     const bytes = Utilities.base64Decode(base64);
     const blob = Utilities.newBlob(bytes, mimeType, filename);
-    const file = uploadFolder.createFile(blob);
+    const file = targetFolder.createFile(blob);
 
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
@@ -51,7 +62,7 @@ function doPost(e) {
       ok: true,
       fileId: file.getId(),
       id: file.getId(),
-      folderId: uploadFolder.getId(),
+      folderId: targetFolder.getId(),
       name: file.getName(),
       url: webViewLink,
       webViewLink,
@@ -67,22 +78,54 @@ function doPost(e) {
   }
 }
 
-function doGet() {
+/**
+ * ── 2. WEBHOOK GET HANDLER (HEALTH CHECK & INFO) ──────────────────────────────
+ */
+function doGet(e) {
   const props = PropertiesService.getScriptProperties();
+  const action = e?.parameter?.action || '';
+
+  if (action === 'organize') {
+    const report = organizeTextileOpsDrive();
+    return jsonResponse({ ok: true, action: 'organize', report });
+  }
+
   return jsonResponse({
     ok: true,
-    service: 'textileops-google-webhook',
+    service: 'textileops-google-webhook-v2',
+    rootFolderName: props.getProperty('ROOT_FOLDER_NAME') || DEFAULT_ROOT_FOLDER_NAME,
     hasDriveFolderId: Boolean(props.getProperty('DRIVE_FOLDER_ID')),
     hasSheetsSpreadsheetId: Boolean(props.getProperty('SHEETS_SPREADSHEET_ID')),
-    defaultFolderName: props.getProperty('DEFAULT_FOLDER_NAME') || DEFAULT_UPLOAD_FOLDER_NAME,
   });
 }
 
+/**
+ * ── 3. GOOGLE SHEETS SYNC HANDLER ─────────────────────────────────────────────
+ */
 function syncGoogleSheet(body) {
   const props = PropertiesService.getScriptProperties();
-  const spreadsheetId = String(props.getProperty('SHEETS_SPREADSHEET_ID') || '').trim();
-  if (!spreadsheetId) {
-    throw new Error('ยังไม่ได้ตั้งค่า SHEETS_SPREADSHEET_ID ใน Script properties');
+  let spreadsheetId = String(props.getProperty('SHEETS_SPREADSHEET_ID') || '').trim();
+
+  let spreadsheet;
+  if (spreadsheetId) {
+    try {
+      spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    } catch (e) {
+      console.warn('Cannot open spreadsheet by ID, will find or create in backup folder:', e);
+    }
+  }
+
+  if (!spreadsheet) {
+    const sheetsFolder = resolveSheetsBackupFolder();
+    const files = sheetsFolder.getFilesByType(MimeType.GOOGLE_SHEETS);
+    if (files.hasNext()) {
+      spreadsheet = SpreadsheetApp.open(files.next());
+    } else {
+      spreadsheet = SpreadsheetApp.create('TextileOps_Backup_Data');
+      const file = DriveApp.getFileById(spreadsheet.getId());
+      file.moveTo(sheetsFolder);
+    }
+    props.setProperty('SHEETS_SPREADSHEET_ID', spreadsheet.getId());
   }
 
   const sheetName = sanitizeSheetName(body.sheetName || 'Data');
@@ -91,7 +134,6 @@ function syncGoogleSheet(body) {
     throw new Error('ไม่มีข้อมูลสำหรับอัปเดต Google Sheet');
   }
 
-  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
   let sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) sheet = spreadsheet.insertSheet(sheetName);
 
@@ -107,7 +149,7 @@ function syncGoogleSheet(body) {
   return jsonResponse({
     ok: true,
     provider: 'apps-script',
-    spreadsheetId,
+    spreadsheetId: spreadsheet.getId(),
     sheetName,
     rowCount: Math.max(rowCount - 1, 0),
     columnCount,
@@ -115,39 +157,138 @@ function syncGoogleSheet(body) {
   });
 }
 
-function parseRequestBody(e) {
-  if (!e || !e.postData || !e.postData.contents) {
-    throw new Error('No postData');
+/**
+ * ── 4. AUTOMATIC FOLDER RESOLUTION ────────────────────────────────────────────
+ */
+function getRootFolder() {
+  const props = PropertiesService.getScriptProperties();
+  const parentFolderId = String(props.getProperty('DRIVE_FOLDER_ID') || '').trim();
+  if (parentFolderId) {
+    try {
+      return DriveApp.getFolderById(parentFolderId);
+    } catch (e) {
+      console.warn('Cannot find parent folder by ID, creating default:', e);
+    }
   }
-  return JSON.parse(e.postData.contents || '{}');
+  const root = getOrCreateRootFolder(DEFAULT_ROOT_FOLDER_NAME);
+  props.setProperty('DRIVE_FOLDER_ID', root.getId());
+  props.setProperty('ROOT_FOLDER_NAME', DEFAULT_ROOT_FOLDER_NAME);
+  return root;
+}
+
+function getImagesRootFolder() {
+  const root = getRootFolder();
+  return getOrCreateChildFolder(root, IMAGES_ROOT_FOLDER_NAME);
 }
 
 function resolveUploadFolder(childFolderName) {
-  const props = PropertiesService.getScriptProperties();
-  const parentFolderId = String(props.getProperty('DRIVE_FOLDER_ID') || '').trim();
-  const defaultFolderName = sanitizeFolderName(
-    props.getProperty('DEFAULT_FOLDER_NAME') || DEFAULT_UPLOAD_FOLDER_NAME
-  );
+  const imagesRoot = getImagesRootFolder();
+  if (!childFolderName) return imagesRoot;
+  return getOrCreateChildFolder(imagesRoot, childFolderName);
+}
 
-  const parentFolder = parentFolderId
-    ? DriveApp.getFolderById(parentFolderId)
-    : getOrCreateRootFolder(defaultFolderName);
-
-  return getOrCreateChildFolder(parentFolder, childFolderName);
+function resolveSheetsBackupFolder() {
+  const root = getRootFolder();
+  return getOrCreateChildFolder(root, SHEETS_ROOT_FOLDER_NAME);
 }
 
 function getOrCreateRootFolder(folderName) {
   const folders = DriveApp.getFoldersByName(folderName);
-  if (folders.hasNext()) return folders.next();
+  while (folders.hasNext()) {
+    const f = folders.next();
+    if (!f.isTrashed()) return f;
+  }
   return DriveApp.createFolder(folderName);
 }
 
 function getOrCreateChildFolder(parentFolder, folderName) {
   if (!folderName) return parentFolder;
-
   const folders = parentFolder.getFoldersByName(folderName);
-  if (folders.hasNext()) return folders.next();
+  while (folders.hasNext()) {
+    const f = folders.next();
+    if (!f.isTrashed()) return f;
+  }
   return parentFolder.createFolder(folderName);
+}
+
+/**
+ * ── 5. ONE-CLICK ORGANIZE & MIGRATION UTILITY ──────────────────────────────────
+ */
+function organizeTextileOpsDrive() {
+  const root = getRootFolder();
+  const imagesRoot = getOrCreateChildFolder(root, IMAGES_ROOT_FOLDER_NAME);
+  const sheetsFolder = getOrCreateChildFolder(root, SHEETS_ROOT_FOLDER_NAME);
+
+  const subFolderMap = {};
+  IMAGE_SUB_FOLDERS.forEach((subName) => {
+    subFolderMap[subName] = getOrCreateChildFolder(imagesRoot, subName);
+  });
+
+  const logs = [];
+  logs.push(`✅ ตรวจสอบโฟลเดอร์หลัก: ${root.getName()} (ID: ${root.getId()})`);
+  logs.push(`✅ โฟลเดอร์รูปภาพ: ${imagesRoot.getName()}`);
+  logs.push(`✅ โฟลเดอร์สำรอง Google Sheets: ${sheetsFolder.getName()}`);
+
+  const legacyFolders = DriveApp.getFoldersByName('TextileOps Uploads');
+  while (legacyFolders.hasNext()) {
+    const oldFolder = legacyFolders.next();
+    if (oldFolder.getId() !== root.getId() && !oldFolder.isTrashed()) {
+      const oldSubFolders = oldFolder.getFolders();
+      while (oldSubFolders.hasNext()) {
+        const sub = oldSubFolders.next();
+        const subName = sub.getName();
+        if (subFolderMap[subName]) {
+          const files = sub.getFiles();
+          let count = 0;
+          while (files.hasNext()) {
+            const f = files.next();
+            f.moveTo(subFolderMap[subName]);
+            count++;
+          }
+          logs.push(`📦 ย้ายไฟล์ ${count} รายการจากโฟลเดอร์ '${subName}' ไปยัง '${IMAGES_ROOT_FOLDER_NAME}/${subName}'`);
+        }
+      }
+      const looseFiles = oldFolder.getFiles();
+      let looseCount = 0;
+      while (looseFiles.hasNext()) {
+        const f = looseFiles.next();
+        f.moveTo(imagesRoot);
+        looseCount++;
+      }
+      if (looseCount > 0) {
+        logs.push(`📦 ย้ายไฟล์รูปทั่วไป ${looseCount} รายการเข้ามาใน '${IMAGES_ROOT_FOLDER_NAME}'`);
+      }
+    }
+  }
+
+  const props = PropertiesService.getScriptProperties();
+  const sheetId = props.getProperty('SHEETS_SPREADSHEET_ID');
+  if (sheetId) {
+    try {
+      const sheetFile = DriveApp.getFileById(sheetId);
+      sheetFile.moveTo(sheetsFolder);
+      logs.push(`📊 ย้ายไฟล์ Google Spreadsheet (${sheetFile.getName()}) เข้าไปยัง '${SHEETS_ROOT_FOLDER_NAME}' เรียบร้อย`);
+    } catch (e) {
+      logs.push(`⚠️ ข้ามการย้าย Spreadsheet: ${e.message}`);
+    }
+  }
+
+  props.setProperty('DRIVE_FOLDER_ID', root.getId());
+  props.setProperty('ROOT_FOLDER_NAME', root.getName());
+
+  logs.push('🎉 จัดระเบียบ Google Drive เสร็จสมบูรณ์ (File ID เดิมยังคงทำงานได้ 100%)');
+  console.log(logs.join('\n'));
+  return logs;
+}
+
+/**
+ * ── 6. UTILITY FUNCTIONS ──────────────────────────────────────────────────────
+ */
+function parseRequestBody(e) {
+  if (!e || !e.postData || !e.postData.contents) {
+    throw new Error('No postData');
+  }
+  return JSON.parse(e.postData.contents || '{}');
 }
 
 function sanitizeFolderName(name) {

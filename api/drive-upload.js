@@ -141,7 +141,8 @@ async function uploadViaServiceAccount(payload) {
     scopes: ['https://www.googleapis.com/auth/drive'],
   })
   const drive = google.drive({ version: 'v3', auth })
-  const uploadFolderId = await getOrCreateChildFolder(drive, folderId, payload.folderName)
+  const imagesFolderId = await getOrCreateChildFolder(drive, folderId, 'รูปภาพ')
+  const uploadFolderId = await getOrCreateChildFolder(drive, imagesFolderId, payload.folderName)
 
   const fileName = payload.filename || `upload_${Date.now()}.bin`
   const mt = payload.mimeType || 'application/octet-stream'
