@@ -10,8 +10,16 @@ function buildServiceAccount() {
   }
 }
 
+const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwRwXwdCgnFZ6CU7L1IxK7aLD7K4VX_L-w4UD1LkyO5bICzhhRAHZpxN7OlJWxdmWdG/exec'
+
 function getWebhook() {
-  return (process.env.GOOGLE_SHEETS_SYNC_WEBHOOK || process.env.VITE_SHEETS_SYNC_WEBHOOK || '').trim()
+  return (
+    process.env.GOOGLE_SHEETS_SYNC_WEBHOOK ||
+    process.env.VITE_SHEETS_SYNC_WEBHOOK ||
+    process.env.GOOGLE_DRIVE_UPLOAD_WEBHOOK ||
+    process.env.VITE_DRIVE_UPLOAD_WEBHOOK ||
+    DEFAULT_WEBHOOK_URL
+  ).trim()
 }
 
 function getSpreadsheetId() {
