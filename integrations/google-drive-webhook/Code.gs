@@ -322,3 +322,63 @@ function jsonResponse(obj) {
   out.setMimeType(ContentService.MimeType.JSON);
   return out;
 }
+
+/**
+ * ── 7. ลบโฟลเดอร์เก่าที่ว่างเปล่าลงถังขยะ (SAFE CLEANUP) ──────────────────────
+ * ฟังก์ชันตรวจสอบและลบเฉพาะโฟลเดอร์เก่าที่ว่างเปล่าด้านนอก ที่ย้ายไฟล์ออกหมดแล้ว
+ */
+function deleteEmptyLegacyFolders() {
+  const root = getRootFolder();
+  const rootId = root.getId();
+  const logs = [];
+
+  // 1. ลบโฟลเดอร์ 'TextileOps Uploads' เดิมที่ว่างเปล่า
+  const legacyFolders = DriveApp.getFoldersByName('TextileOps Uploads');
+  while (legacyFolders.hasNext()) {
+    const oldFolder = legacyFolders.next();
+    if (oldFolder.getId() !== rootId && !oldFolder.isTrashed()) {
+      const subFolders = oldFolder.getFolders();
+      while (subFolders.hasNext()) {
+        const sub = subFolders.next();
+        if (!sub.getFiles().hasNext() && !sub.getFolders().hasNext()) {
+          sub.setTrashed(true);
+          logs.push(`🗑️ ลบโฟลเดอร์ย่อยเก่าที่ว่างเปล่า: '${sub.getName()}'`);
+        }
+      }
+      if (!oldFolder.getFiles().hasNext() && !oldFolder.getFolders().hasNext()) {
+        oldFolder.setTrashed(true);
+        logs.push(`🗑️ ลบโฟลเดอร์หลักเดิม: 'TextileOps Uploads' เรียบร้อย`);
+      }
+    }
+  }
+
+  // 2. ลบโฟลเดอร์หมวดหมู่เดิมที่อยู่นอก TextileOps_System_Data ที่ว่างเปล่า
+  IMAGE_SUB_FOLDERS.forEach((name) => {
+    const outsideFolders = DriveApp.getFoldersByName(name);
+    while (outsideFolders.hasNext()) {
+      const folder = outsideFolders.next();
+      const parents = folder.getParents();
+      let isInsideNewRoot = false;
+      while (parents.hasNext()) {
+        const p = parents.next();
+        if (p.getId() === rootId || p.getName() === IMAGES_ROOT_FOLDER_NAME) {
+          isInsideNewRoot = true;
+          break;
+        }
+      }
+      if (!isInsideNewRoot && !folder.isTrashed()) {
+        if (!folder.getFiles().hasNext() && !folder.getFolders().hasNext()) {
+          folder.setTrashed(true);
+          logs.push(`🗑️ ลบโฟลเดอร์เก่าด้านนอก: '${folder.getName()}'`);
+        }
+      }
+    }
+  });
+
+  if (logs.length === 0) {
+    logs.push('✨ ไม่พบโฟลเดอร์เก่าที่ค้างอยู่ โฟลเดอร์ทั้งหมดสะอาดเรียบร้อยแล้ว');
+  }
+
+  console.log(logs.join('\n'));
+  return logs;
+}
