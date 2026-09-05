@@ -396,16 +396,19 @@ export default function RepairRequests() {
   return (
     <div className="space-y-4">
 
-      {/* Stats row */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      {/* Stats row (Horizontally scrollable on mobile) */}
+      <div
+        className="flex gap-2.5 overflow-x-auto no-scrollbar scrollbar-none pb-1 flex-nowrap sm:flex-wrap"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {REPAIR_STATUS.map(s => {
           const cfg = STATUS_CFG[s.value] || {}
           return (
-            <div key={s.value} style={{
+            <div key={s.value} className="flex-shrink-0" style={{
               padding: '10px 16px', borderRadius: 12,
               background: cfg.bg || 'var(--bg-card)',
               border: `1px solid ${cfg.border || 'var(--border)'}`,
-              minWidth: 100, textAlign: 'center',
+              minWidth: 96, textAlign: 'center',
             }}>
               <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: cfg.color || 'var(--text-900)' }}>{byStatus[s.value]}</div>
               <div style={{ fontSize: 10, fontWeight: 700, marginTop: 4, color: cfg.color || 'var(--text-400)' }}>
@@ -416,21 +419,41 @@ export default function RepairRequests() {
         })}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder={t('rr_search')} />
-        <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-        <GoogleSheetSyncButton sheetName="แจ้งซ่อม" columns={cols} rows={displayRows} />
-        <div className="flex items-center gap-2 ml-auto">
-          {canAdd && (
-            <button className="btn-primary text-xs flex items-center gap-1.5 shadow-sm" onClick={openAdd}>
-              <Plus size={14} />
-              <span>แจ้งซ่อมใหม่</span>
+      {/* Toolbar (Responsive search and horizontally scrollable action buttons) */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="w-full sm:w-auto flex-1 max-w-full sm:max-w-xs">
+          <SearchInput value={search} onChange={setSearch} placeholder={t('rr_search')} className="w-full sm:w-60" />
+        </div>
+        <div
+          className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-0.5 flex-nowrap justify-between sm:justify-end"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+          <GoogleSheetSyncButton
+            sheetName="แจ้งซ่อม"
+            columns={cols}
+            rows={displayRows}
+            className="btn-outline text-xs flex items-center gap-1.5 active:scale-95 transition-all duration-150 py-2 px-3 rounded-xl whitespace-nowrap min-h-[36px]"
+          />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {canAdd && (
+              <button
+                className="btn-primary text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all duration-150 py-2 px-3.5 rounded-xl whitespace-nowrap min-h-[36px]"
+                onClick={openAdd}
+              >
+                <Plus size={14} />
+                <span>แจ้งซ่อมใหม่</span>
+              </button>
+            )}
+            <button
+              className="btn-ghost text-xs flex items-center gap-1.5 active:scale-95 transition-all duration-150 py-2 px-3 rounded-xl whitespace-nowrap min-h-[36px]"
+              onClick={load}
+              disabled={loading}
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <span className="hidden xs:inline">{t('refresh')}</span>
             </button>
-          )}
-          <button className="btn-ghost" onClick={load} disabled={loading}>
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> {t('refresh')}
-          </button>
+          </div>
         </div>
       </div>
 

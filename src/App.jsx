@@ -414,64 +414,75 @@ function AppInner() {
             </div>
           </div>
 
-          {/* Right controls */}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Right controls - Scrollable on narrow mobile screens without breaking header */}
+          <div
+            className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1 flex-nowrap min-w-0 flex-shrink"
+            style={{
+              marginLeft: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
             {/* View mode toggle (Web / Mobile) */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: dark ? '#1e293b' : '#f1f5f9',
-              borderRadius: 12,
-              padding: 2,
-              border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: dark ? '#1e293b' : '#f1f5f9',
+                borderRadius: 12,
+                padding: 2,
+                border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
+                flexShrink: 0,
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setViewMode('web')}
                 title="แสดงผลแบบเว็บ (Web/Desktop Mode)"
-                className="px-1.5 sm:px-2.5"
+                className="px-2 sm:px-2.5 active:scale-95 transition-all"
                 style={{
-                  height: 28,
-                  borderRadius: 9,
+                  height: 30,
+                  borderRadius: 10,
                   background: viewMode === 'web' ? (dark ? '#3b82f6' : '#2563eb') : 'transparent',
                   color: viewMode === 'web' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
-                  fontWeight: viewMode === 'web' ? 700 : 500,
+                  fontWeight: viewMode === 'web' ? 800 : 600,
                   fontSize: 11.5,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  transition: 'all 200ms',
                   boxShadow: viewMode === 'web' ? '0 2px 8px rgba(37,99,235,0.3)' : 'none',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
               >
                 <Monitor size={13} />
-                <span className="hidden sm:inline">เว็บ</span>
+                <span>เว็บ</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('mobile')}
                 title="แสดงผลแบบมือถือ (Mobile Mode)"
-                className="px-1.5 sm:px-2.5"
+                className="px-2 sm:px-2.5 active:scale-95 transition-all"
                 style={{
-                  height: 28,
-                  borderRadius: 9,
-                  background: viewMode === 'mobile' ? (dark ? '#3b82f6' : '#2563eb') : 'transparent',
+                  height: 30,
+                  borderRadius: 10,
+                  background: viewMode === 'mobile' ? (dark ? '#10b981' : '#059669') : 'transparent',
                   color: viewMode === 'mobile' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
-                  fontWeight: viewMode === 'mobile' ? 700 : 500,
+                  fontWeight: viewMode === 'mobile' ? 800 : 600,
                   fontSize: 11.5,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 4,
                   border: 'none',
                   cursor: 'pointer',
-                  transition: 'all 200ms',
-                  boxShadow: viewMode === 'mobile' ? '0 2px 8px rgba(37,99,235,0.3)' : 'none',
+                  boxShadow: viewMode === 'mobile' ? '0 2px 8px rgba(16,185,129,0.3)' : 'none',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
               >
                 <Smartphone size={13} />
-                <span className="hidden sm:inline">มือถือ</span>
+                <span>มือถือ</span>
               </button>
             </div>
 
@@ -480,7 +491,7 @@ function AppInner() {
               type="button"
               onClick={() => setPwaModalOpen(true)}
               title="ติดตั้งแอป TextileOps บนมือถือ (PWA)"
-              className="px-2 sm:px-3"
+              className="px-2 sm:px-3 active:scale-95 transition-all flex-shrink-0"
               style={{
                 height: 30,
                 borderRadius: 10,
@@ -494,11 +505,11 @@ function AppInner() {
                 border: 'none',
                 cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(37,99,235,0.35)',
-                transition: 'all 150ms',
+                whiteSpace: 'nowrap',
               }}
             >
               <Download size={13} />
-              <span className="hidden md:inline">ติดตั้งแอป</span>
+              <span className="hidden sm:inline">ติดตั้งแอป</span>
             </button>
 
             <div style={{
@@ -506,11 +517,11 @@ function AppInner() {
               color: 'var(--text-500)',
               display: 'none',
               letterSpacing: '0.01em',
-            }} className="md:block">
+            }} className="md:block flex-shrink-0">
               {user?.full_name || user?.username}
             </div>
 
-            <div className="md:block hidden" style={{
+            <div className="md:block hidden flex-shrink-0" style={{
               width: 1,
               height: 18,
               background: 'var(--border)',
@@ -523,52 +534,52 @@ function AppInner() {
               type="button"
               onClick={handleForceUpdate}
               title="อัปเดตระบบเป็นเวอร์ชันล่าสุด / ล้างแคช"
+              className="active:scale-95 transition-all"
               style={{
                 width: 30, height: 30, borderRadius: 10,
                 background: dark ? '#1e293b' : '#f8fafc',
                 color: dark ? '#94a3b8' : '#64748b',
                 border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
-                cursor: 'pointer', transition: 'all 200ms',
+                cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: dark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 1px 3px rgba(15,23,42,0.04)',
                 flexShrink: 0,
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#3b82f6' }}
-              onMouseLeave={e => { e.currentTarget.style.color = dark ? '#94a3b8' : '#64748b' }}
             >
               <RefreshCw size={13} />
             </button>
 
             {/* Theme toggle */}
-            <button onClick={() => setDark(d => !d)}
+            <button
+              type="button"
+              onClick={() => setDark(d => !d)}
               title={dark ? 'โหมดสว่าง' : 'โหมดมืด'}
+              className="active:scale-95 transition-all"
               style={{
                 width: 30, height: 30, borderRadius: 10,
                 background: dark ? '#1e293b' : '#f8fafc',
                 color: dark ? '#60a5fa' : '#2563eb',
                 border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
-                cursor: 'pointer', transition: 'all 200ms',
+                cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: dark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 1px 3px rgba(15,23,42,0.04)',
                 flexShrink: 0,
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'rotate(18deg) scale(1.08)' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
             >
               {dark ? <Sun size={13}/> : <Moon size={13}/>}
             </button>
 
             {/* Logout */}
             <button
+              type="button"
               onClick={logout}
-              className="p-1.5 sm:px-2.5 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-1 text-xs font-semibold"
+              className="p-1.5 sm:px-2.5 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-95 flex items-center gap-1 text-xs font-semibold flex-shrink-0"
               title={t('logout')}
               style={{
                 height: 30,
                 background: 'transparent',
                 border: '1px solid transparent',
                 cursor: 'pointer',
-                flexShrink: 0,
               }}
             >
               <LogOut size={13}/>
@@ -579,20 +590,20 @@ function AppInner() {
 
         {/* Page content */}
         {viewMode === 'mobile' ? (
-          <div className="flex-1 overflow-y-auto p-0 sm:p-2 lg:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70">
+          <div className="flex-1 overflow-y-auto p-0 sm:p-2 lg:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70 w-full overflow-x-hidden">
             <div
-              className="w-full max-w-full lg:max-w-[440px] min-h-full lg:min-h-[calc(100vh-100px)] lg:rounded-3xl overflow-y-auto shadow-none lg:shadow-2xl border-0 lg:border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 is-mobile-view pb-20 lg:pb-4"
+              className="w-full max-w-full lg:max-w-[460px] min-h-full lg:min-h-[calc(100vh-100px)] lg:rounded-3xl overflow-y-auto shadow-none lg:shadow-2xl border-0 lg:border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 is-mobile-view pb-24 lg:pb-6"
               style={{
                 background: 'var(--bg-page)',
               }}
             >
-              <div className="flex-1 p-3 sm:p-4 space-y-4 mobile-content-area">
+              <div className="flex-1 p-3 sm:p-4 space-y-4 mobile-content-area overflow-x-hidden">
                 <PageRoutes />
               </div>
             </div>
           </div>
         ) : (
-          <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 pb-20 lg:pb-6">
+          <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 pb-24 lg:pb-6 overflow-x-hidden">
             <PageRoutes />
           </main>
         )}

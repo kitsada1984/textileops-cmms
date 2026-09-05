@@ -961,18 +961,21 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         </div>
       </div>
 
-      {/* ── 5-Tabs Navigation Bar ─────────────────────────────── */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap pb-2 sm:pb-1.5">
+      {/* ── 5-Tabs Navigation Bar (Smooth Horizontal Scroll on Mobile) ── */}
+      <div
+        className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar scrollbar-none flex-nowrap pb-2 sm:pb-1.5 scroll-smooth"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         <button
           type="button"
           onClick={() => setCurrentTab('records')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'records'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <ClipboardList size={15} />
+          <ClipboardList size={16} />
           <span>รายการใบสั่งงาน & เปิดงาน</span>
           <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
             currentTab === 'records' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -984,39 +987,39 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('repair_requests')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'repair_requests'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <Wrench size={15} />
+          <Wrench size={16} />
           <span>แจ้งซ่อม (Repair Requests)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setCurrentTab('dashboard')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'dashboard'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <Target size={15} />
+          <Target size={16} />
           <span>แดชบอร์ด & สรุป KPI</span>
         </button>
 
         <button
           type="button"
           onClick={() => setCurrentTab('technicians')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'technicians'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <UserCheck size={15} />
+          <UserCheck size={16} />
           <span>ทะเบียนช่าง</span>
           <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
             currentTab === 'technicians' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -1028,13 +1031,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('settings')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'settings'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
-          <SettingsIcon size={15} />
+          <SettingsIcon size={16} />
           <span>ตั้งค่าเป้าหมาย KPI</span>
         </button>
       </div>
