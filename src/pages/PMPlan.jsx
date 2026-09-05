@@ -192,7 +192,9 @@ function orderPMColumns(cols = []) {
 
 const EMPTY = {
   PM_ID: '',
-  PM_Type: '30',
+  PM_Type: 'RUNTIME',
+  PM_Cycle_Select: '30',
+  Custom_PM_Days: '',
   Machine_MC: '',
   Location: '',
   Machine_KI: '',
@@ -1057,7 +1059,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       ...row,
       Frequency_Type: 'CALENDAR',
       Frequency_Value: newDays,
-      PM_Type: String(newDays),
+      PM_Type: 'RUNTIME',
       Next_PM_Date: newNextDate,
       Remark: appendPMImageMeta(row.Remark, getPMImageUrl(row)),
     }
@@ -1099,16 +1101,20 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   }
 
   const saveWithImageFallback = async (payload) => {
+    let toSave = payload
     try {
-      await save(payload)
+      await save(toSave)
     } catch (error) {
+      if (getMissingPMColumn(error) === 'Location') {
+        toSave = omitKeys(toSave, ['Location'])
+        return await saveWithImageFallback(toSave)
+      }
       if (getMissingPMColumn(error) === 'ImageUrl') {
-        await save({
-          ...omitKeys(payload, ['ImageUrl']),
-          Remark: appendPMImageMeta(payload.Remark, payload.ImageUrl),
-        })
-        if (payload.ImageUrl) toast.success('บันทึกลิงก์รูปในหมายเหตุแล้ว', 'ฐานข้อมูลยังไม่มีคอลัมน์ ImageUrl ของแผน PM')
-        return
+        toSave = {
+          ...omitKeys(toSave, ['ImageUrl']),
+          Remark: appendPMImageMeta(toSave.Remark, toSave.ImageUrl),
+        }
+        return await saveWithImageFallback(toSave)
       }
       throw error
     }
@@ -1139,7 +1145,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       Machine_MC: sourceMachine,
       Machine_KI: form.Machine_KI,
       Location: sourceLocation,
-      PM_Type: String(cycleDays),
+      PM_Type: 'RUNTIME',
       Frequency_Type: 'CALENDAR',
       Frequency_Value: cycleDays,
       Remark: appendPMImageMeta(cleanForm.Remark, cleanForm.ImageUrl),
