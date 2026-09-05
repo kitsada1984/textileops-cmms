@@ -987,15 +987,98 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   const [pdfItem, setPdfItem] = useState(null)
 
   const openEdit = (p) => {
+    const rawDays = Number(p.Frequency_Value) || Number(p.PM_Type) || 90
+    const isStandard = [30, 60, 90, 120].includes(rawDays)
     setForm({
       ...p,
-      PM_Type: '90',
-      Frequency_Value: 90,
+      PM_Cycle_Select: isStandard ? String(rawDays) : 'CUSTOM',
+      Custom_PM_Days: isStandard ? '' : String(rawDays),
+      Frequency_Value: rawDays,
       ImageUrl: getPMImageUrl(p),
       Remark: stripImageUrlMeta(p.Remark),
     })
     setModal(true)
     setDetailRec(null)
+  }
+
+  const handlePMCycleChange = (cycleSelect, customDaysInput) => {
+    const rawDays = cycleSelect === 'CUSTOM'
+      ? (Number(customDaysInput) > 0 ? Number(customDaysInput) : 0)
+      : (Number(cycleSelect) > 0 ? Number(cycleSelect) : 90)
+
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        PM_Cycle_Select: cycleSelect,
+        Custom_PM_Days: customDaysInput !== undefined ? customDaysInput : prev.Custom_PM_Days,
+        Frequency_Value: rawDays,
+      }
+
+      if (rawDays > 0) {
+        const baseDate = prev.Last_PM_Date ? new Date(prev.Last_PM_Date) : startOfDay(new Date())
+        if (!isNaN(baseDate.getTime())) {
+          next.Next_PM_Date = format(addDays(baseDate, rawDays), 'yyyy-MM-dd')
+        }
+      }
+      return next
+    })
+  }
+
+  const handleLastPMDateChange = (dateVal) => {
+    setForm((prev) => {
+      const cycleDays = prev.PM_Cycle_Select === 'CUSTOM'
+        ? (Number(prev.Custom_PM_Days) > 0 ? Number(prev.Custom_PM_Days) : (Number(prev.Frequency_Value) || 90))
+        : (Number(prev.PM_Cycle_Select) || (Number(prev.Frequency_Value) || 90))
+
+      const next = { ...prev, Last_PM_Date: dateVal }
+      if (dateVal && cycleDays > 0) {
+        const baseDate = new Date(dateVal)
+        if (!isNaN(baseDate.getTime())) {
+          next.Next_PM_Date = format(addDays(baseDate, cycleDays), 'yyyy-MM-dd')
+        }
+      }
+      return next
+    })
+  }
+
+  const onQuickCycleSelect = async (row, selectedValue) => {
+    if (selectedValue === 'CUSTOM') {
+      openEdit(row)
+      return
+    }
+    const newDays = Number(selectedValue)
+    if (!newDays || newDays <= 0) return
+
+    const baseDate = row.Last_PM_Date ? new Date(row.Last_PM_Date) : startOfDay(new Date())
+    const newNextDate = format(addDays(baseDate, newDays), 'yyyy-MM-dd')
+
+    const oldRow = row
+    const payload = {
+      ...row,
+      Frequency_Type: 'CALENDAR',
+      Frequency_Value: newDays,
+      PM_Type: String(newDays),
+      Next_PM_Date: newNextDate,
+      Remark: appendPMImageMeta(row.Remark, getPMImageUrl(row)),
+    }
+
+    try {
+      await saveWithImageFallback(payload)
+      await createPMLog({
+        actionType: 'EDIT_PLAN',
+        serialOld: payload.Machine_KI,
+        oldRow,
+        newRow: payload,
+        comment: `ปรับรอบ PM ด่วนเป็น ${newDays} วัน (Next PM: ${newNextDate})`,
+      })
+      toast.success(
+        'ปรับรอบ PM สำเร็จ',
+        `เครื่อง ${row.Machine_MC} เปลี่ยนรอบเป็น ${newDays} วัน (Next: ${format(new Date(newNextDate), 'dd/MM/yyyy')})`
+      )
+      load()
+    } catch (err) {
+      toast.error('ไม่สามารถปรับรอบ PM ได้', err.message)
+    }
   }
 
   const onPickImageFile = async (file) => {
@@ -1035,21 +1118,28 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     if (saving) return
     if (!form.Machine_MC) return toast.warning('กรุณากรอกข้อมูล', 'กรุณากรอก Machine MC')
     if (!form.Next_PM_Date) return toast.warning('กรุณากรอกข้อมูล', 'กรุณากรอก PM ครั้งถัดไป')
-    if (form.PM_Type === 'CUSTOM' && !Number(form.Frequency_Value)) return toast.warning('กรุณากรอกข้อมูล', 'กรุณาระบุจำนวนวัน')
+
+    const cycleDays = form.PM_Cycle_Select === 'CUSTOM'
+      ? (Number(form.Custom_PM_Days) || Number(form.Frequency_Value) || 0)
+      : (Number(form.PM_Cycle_Select) || Number(form.Frequency_Value) || 90)
+
+    if (cycleDays <= 0) {
+      return toast.warning('กรุณากรอกข้อมูล', 'กรุณาระบุจำนวนวันรอบ PM ที่ถูกต้อง (> 0 วัน)')
+    }
+
     setSaving(true)
     const isEdit = !!(form._id || form.id)
-    const cycleDays = 90
     const cyl = cylinderBySerial.get(normalizeSerial(form.Machine_KI))
     const sourceMachine = String(cyl?.[cylCurrentMachineField] || form.Machine_MC || '').trim()
     const sourceLocation = String(cyl?.Location || form.Location || '').trim()
     const oldRow = data.find((row) => (row.id || row._id) === (form.id || form._id)) || null
-    const { PM_Type_DB, ...cleanForm } = form
+    const { PM_Type_DB, PM_Cycle_Select, Custom_PM_Days, ...cleanForm } = form
     const payload = {
       ...cleanForm,
       Machine_MC: sourceMachine,
       Machine_KI: form.Machine_KI,
       Location: sourceLocation,
-      PM_Type: 'RUNTIME',
+      PM_Type: String(cycleDays),
       Frequency_Type: 'CALENDAR',
       Frequency_Value: cycleDays,
       Remark: appendPMImageMeta(cleanForm.Remark, cleanForm.ImageUrl),
@@ -1061,9 +1151,9 @@ export default function PMPlan({ defaultTab = 'plan' }) {
         serialOld: payload.Machine_KI,
         oldRow,
         newRow: payload,
-        comment: `แก้ไขข้อมูลตรวจแผน PM ซีเรียล ${payload.Machine_KI}`,
+        comment: `แก้ไขข้อมูลตรวจแผน PM ซีเรียล ${payload.Machine_KI} (รอบ PM ${cycleDays} วัน, Next PM: ${payload.Next_PM_Date})`,
       })
-      toast.success(isEdit ? 'แก้ไขแผน PM สำเร็จ' : 'เพิ่มแผน PM สำเร็จ', `เครื่อง ${form.Machine_MC}`)
+      toast.success(isEdit ? 'แก้ไขแผน PM สำเร็จ' : 'เพิ่มแผน PM สำเร็จ', `เครื่อง ${form.Machine_MC} (รอบ ${cycleDays} วัน)`)
       setModal(false)
     } catch (e) {
       toast.error('เกิดข้อผิดพลาด', e.message)
@@ -1233,10 +1323,37 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     if (col.field === 'Status') return <StatusBadge value={val} />
     if (col.field === 'Priority') return <StatusBadge value={val} />
     if (col.field === 'PM_Type') {
+      const days = Number(row.Frequency_Value) || Number(row.PM_Type) || 0
+      const isStandard = [30, 60, 90, 120].includes(days)
+
+      if (!canEdit || !row.__hasPMPlan) {
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+            {formatPMCycle(row)}
+          </span>
+        )
+      }
+
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-          {formatPMCycle(row)}
-        </span>
+        <div onClick={(e) => e.stopPropagation()} className="relative inline-flex items-center">
+          <select
+            className="cursor-pointer text-[11px] font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 rounded-full px-2.5 py-0.5 outline-none transition-all pr-5 appearance-none shadow-sm"
+            value={isStandard ? String(days) : 'CUSTOM'}
+            onChange={(e) => onQuickCycleSelect(row, e.target.value)}
+            title="คลิกเพื่อเลือกปรับรอบ PM ทันที"
+          >
+            <option value="30">30 วัน</option>
+            <option value="60">60 วัน</option>
+            <option value="90">90 วัน</option>
+            <option value="120">120 วัน</option>
+            <option value="CUSTOM">
+              {isStandard ? '✏️ ระบุเอง...' : `${days} วัน (Custom)`}
+            </option>
+          </select>
+          <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-blue-500 text-[9px]">
+            ▼
+          </span>
+        </div>
       )
     }
     if (col.field === 'Countdown_Days') return <PMCountdownBadge date={row.Next_PM_Date} />
@@ -1910,12 +2027,81 @@ export default function PMPlan({ defaultTab = 'plan' }) {
                   <label className="label font-bold">เครื่องปัจจุบัน *</label>
                   <input className="input font-bold" value={form.Machine_MC || ''} readOnly />
                 </div>
-                <F form={form} setForm={setForm} label="PM ล่าสุด" id="Last_PM_Date" type="date" />
-                <F form={form} setForm={setForm} label="PM ครั้งถัดไป *" id="Next_PM_Date" type="date" />
                 <div>
-                  <label className="label font-bold">รอบ PM (วัน)</label>
-                  <input className="input font-bold text-blue-600" value="90 วัน" readOnly />
+                  <label className="label font-bold">PM ล่าสุด</label>
+                  <input
+                    type="date"
+                    className="input font-mono text-xs"
+                    value={form.Last_PM_Date || ''}
+                    onChange={(e) => handleLastPMDateChange(e.target.value)}
+                  />
                 </div>
+                <div>
+                  <label className="label font-bold flex items-center justify-between">
+                    <span>PM ครั้งถัดไป *</span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      (คำนวณอัตโนมัติ / ปรับเองได้)
+                    </span>
+                  </label>
+                  <input
+                    type="date"
+                    className="input font-mono font-bold text-xs"
+                    value={form.Next_PM_Date || ''}
+                    onChange={(e) => setForm((p) => ({ ...p, Next_PM_Date: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                {/* รอบ PM (วัน) Selector */}
+                <div className="space-y-1 sm:col-span-2 bg-blue-50/60 dark:bg-blue-950/25 p-3 rounded-2xl border border-blue-200 dark:border-blue-800/60 shadow-sm">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="label font-bold text-blue-900 dark:text-blue-200">รอบ PM (วัน) *</label>
+                    <span className="text-xs font-black text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                      {form.PM_Cycle_Select === 'CUSTOM'
+                        ? (Number(form.Custom_PM_Days) > 0 ? `${form.Custom_PM_Days} วัน (Custom)` : 'ระบุเอง')
+                        : `${form.PM_Cycle_Select || 90} วัน`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <select
+                      className="select font-bold text-xs bg-white dark:bg-slate-900 border-blue-300 dark:border-blue-700"
+                      value={form.PM_Cycle_Select || '90'}
+                      onChange={(e) => handlePMCycleChange(e.target.value, form.Custom_PM_Days)}
+                    >
+                      <option value="30">⚡ 30 วัน (1 เดือน)</option>
+                      <option value="60">⚡ 60 วัน (2 เดือน)</option>
+                      <option value="90">⚡ 90 วัน (3 เดือน / ไตรมาส)</option>
+                      <option value="120">⚡ 120 วัน (4 เดือน)</option>
+                      <option value="CUSTOM">✏️ กำหนดจำนวนวันเอง (Custom)...</option>
+                    </select>
+
+                    {form.PM_Cycle_Select === 'CUSTOM' && (
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="ระบุจำนวนวัน เช่น 45..."
+                          className="input font-bold text-xs pr-10 bg-white dark:bg-slate-900 border-blue-300 dark:border-blue-700"
+                          value={form.Custom_PM_Days || ''}
+                          onChange={(e) => handlePMCycleChange('CUSTOM', e.target.value)}
+                          autoFocus
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">
+                          วัน
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1 pt-1 border-t border-blue-100 dark:border-blue-900/40">
+                    <span className="text-blue-500">💡</span>
+                    <span>
+                      ระบบคำนวณ PM ถัดไปจาก: <strong>{form.Last_PM_Date ? 'วัน PM ล่าสุด' : 'วันที่ปัจจุบัน'}</strong> + <strong>{
+                        form.PM_Cycle_Select === 'CUSTOM' ? (Number(form.Custom_PM_Days) || 0) : Number(form.PM_Cycle_Select || 90)
+                      } วัน</strong> (สามารถคลิกแก้ไขวันที่ด้านบนได้อิสระ)
+                    </span>
+                  </div>
+                </div>
+
                 <F form={form} setForm={setForm} label={t('pm_th_tech')} id="Assigned_Tech" placeholder="ชื่อช่างที่รับผิดชอบ" />
               </div>
 

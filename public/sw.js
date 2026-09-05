@@ -1,4 +1,4 @@
-const CACHE_NAME = 'textileops-v1.3.54'
+const CACHE_NAME = 'textileops-v1.3.55'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
