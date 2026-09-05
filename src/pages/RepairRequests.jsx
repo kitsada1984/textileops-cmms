@@ -223,11 +223,17 @@ export default function RepairRequests() {
     } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
   }
 
+  const REPAIR_TYPE_OPTIONS = [
+    { value: 'EASY', label: '⚡ งานทั่วไป (ช่างตรง)' },
+    { value: 'COMPLEX', label: '🛡️ งานยาก (รออนุมัติ)' },
+  ]
+
   const STATUS_TH = Object.fromEntries(REPAIR_STATUS.map(s => [s.value, s.label]))
 
 
   const getRRFallbackCols = () => [
     { field:'request_no',          label: t('rr_field_no'),          type:'text'     },
+    { field:'repair_type',         label: 'ประเภทงาน',                type:'select'   },
     { field:'cylinder_serial',     label: 'ซีเรียล',                  type:'text'     },
     { field:'machine_mc',          label: 'เครื่องปัจจุบัน',          type:'text'     },
     { field:'Design',              label: 'Design',                   type:'text'     },
@@ -245,7 +251,7 @@ export default function RepairRequests() {
   const normalizedData = useMemo(() => (Array.isArray(data) ? data.map(normalizeRepairRecord) : []), [data])
 
   const searched = normalizedData.filter(r =>
-    [r.request_no, r.cylinder_serial, r.cylinder_location, r.Design, r.KI, r.roll_no, r.RollNo, r.reported_by, r.technician_name, r.problem_description]
+    [r.request_no, r.cylinder_serial, r.cylinder_location, r.Design, r.KI, r.roll_no, r.RollNo, r.reported_by, r.technician_name, r.problem_description, r.repair_type]
       .some(v => String(v || '').toLowerCase().includes(search.toLowerCase()))
   )
   const byStatus = REPAIR_STATUS.reduce((acc, s) => { acc[s.value] = normalizedData.filter(r => r.status === s.value).length; return acc }, {})
@@ -255,10 +261,12 @@ export default function RepairRequests() {
   const cols = (() => {
     const list = [...sourceCols]
     const machineIdx = list.findIndex(c => c.field === 'machine_mc')
+    const hasRepairType = list.some(c => c.field === 'repair_type')
     const hasDesign = list.some(c => c.field === 'Design' || c.field === 'design')
     const hasKI = list.some(c => c.field === 'KI' || c.field === 'ki')
     const hasRollNo = list.some(c => c.field === 'roll_no' || c.field === 'RollNo')
     const insertAt = machineIdx >= 0 ? machineIdx + 1 : 0
+    if (!hasRepairType) list.splice(1, 0, { field: 'repair_type', label: 'ประเภทงาน', type: 'select' })
     if (!hasDesign) list.splice(insertAt, 0, { field: 'Design', label: 'Design', type: 'text' })
     const kiInsertAt = list.findIndex(c => c.field === 'Design' || c.field === 'design') + 1
     if (!hasKI) list.splice(kiInsertAt, 0, { field: 'KI', label: 'KI', type: 'number' })
@@ -267,12 +275,32 @@ export default function RepairRequests() {
     return list
   })()
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
-    selectOptions: { status: REPAIR_STATUS },
+    selectOptions: { status: REPAIR_STATUS, repair_type: REPAIR_TYPE_OPTIONS },
   }), [cols])
   const displayRows = useMemo(() => applyFilterSort(searched, FS_COLS, filterSort), [searched, FS_COLS, filterSort])
 
   const renderRRCell = (row, col) => {
     const val = row[col.field]
+    if (col.field === 'repair_type') {
+      const isEasy = val === 'EASY' || (!val && (row.approved_by?.includes('งานง่าย') || (row.status === 'APPROVED' && row.technician_name)))
+      return isEasy ? (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 800,
+          background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0'
+        }}>
+          ⚡ งานง่าย
+        </span>
+      ) : (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 800,
+          background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe'
+        }}>
+          🛡️ งานยาก
+        </span>
+      )
+    }
     if (col.field === 'status') {
       const cfg = STATUS_CFG[val] || {}
       return (
@@ -314,6 +342,12 @@ export default function RepairRequests() {
       label: t('dr_request_info'),
       fields: [
         { label: t('rr_field_no'),         value: detailRec.request_no },
+        {
+          label: 'ประเภทงาน',
+          value: (detailRec.repair_type === 'EASY' || (!detailRec.repair_type && (detailRec.approved_by?.includes('งานง่าย') || (detailRec.status === 'APPROVED' && detailRec.technician_name))))
+            ? '⚡ งานทั่วไป / งานง่าย (เลือกช่างตรง / อนุมัติอัตโนมัติ)'
+            : '🛡️ งานยาก / งานซ่อมใหญ่ (รอหัวหน้าอนุมัติ)'
+        },
         { label: t('status'),              value: STATUS_TH[detailRec.status] || detailRec.status },
         { label: t('rr_field_created_at'), value: fmt(detailRec.created_at) },
       ],
@@ -428,6 +462,15 @@ export default function RepairRequests() {
                   <span className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md">
                     {r.request_no || (r._id || r.id ? `REQ-${String(r._id || r.id).slice(0, 6)}` : 'REQ')}
                   </span>
+                  {((r.repair_type === 'EASY') || (!r.repair_type && (r.approved_by?.includes('งานง่าย') || (r.status === 'APPROVED' && r.technician_name)))) ? (
+                    <span className="font-bold text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                      ⚡ งานง่าย
+                    </span>
+                  ) : (
+                    <span className="font-bold text-[10px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                      🛡️ งานยาก
+                    </span>
+                  )}
                   {r.created_at && (
                     <span className="text-[11px] text-slate-400">
                       {format(new Date(r.created_at), 'dd/MM/yy HH:mm')}

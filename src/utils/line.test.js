@@ -45,6 +45,27 @@ describe('LINE Flex Builder & Deep Linking', () => {
     expect(ctaButton.action.type).toBe('uri')
     expect(ctaButton.action.uri).toContain('openExternalBrowser=1')
     expect(ctaButton.action.uri).toContain('CYL-101')
+    expect(ctaButton.action.uri).toContain('step=approve')
+  })
+
+  it('generates valid Flex Message for easy direct repair (skips approval)', () => {
+    const request = {
+      id: 'req-easy-001',
+      request_no: 'REQ-2026-EASY',
+      cylinder_serial: 'CYL-EASY',
+      machine_mc: 'MC-EASY',
+      problem_description: 'เข็มงอ 1 เล่ม',
+      reported_by: 'ผู้แจ้งทดสอบ',
+      technician_name: 'ช่างหนึ่ง',
+      repair_type: 'EASY',
+      status: 'APPROVED',
+    }
+
+    const flex = buildRepairRequestFlexMessage(request, null, 'https://textileops-cmms.vercel.app', true)
+    expect(flex.altText).toContain('เลือกช่างตรง')
+    expect(flex.contents.header.contents[0].contents[1].text).toContain('งานง่าย')
+    const ctaButton = flex.contents.footer.contents[0]
+    expect(ctaButton.action.uri).toContain('step=view')
   })
 
   it('generates valid Flex Message for technician assignment (Step 2)', () => {

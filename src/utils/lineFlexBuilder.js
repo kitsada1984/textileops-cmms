@@ -15,7 +15,7 @@ export function buildPWALineUrl(baseUrl, path, queryParams = {}) {
 /**
  * Builds Flex Bubble for New Repair Request
  */
-export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBaseUrl) {
+export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBaseUrl, isEasy = false) {
   const serial = request.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || '—'
   const reqNo = request.request_no || (request.id ? `REQ-${String(request.id).slice(0, 8)}` : 'REQ-NEW')
   const machine = request.machine_mc || cylinder?.NewMC || '—'
@@ -25,6 +25,7 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
   const rollNo = request.roll_no || request.RollNo || request.roll_number || ''
   const problem = request.problem_description || 'ไม่มีรายละเอียดอาการเสีย'
   const reporter = request.reported_by || 'เจ้าหน้าที่'
+  const easy = isEasy || request.repair_type === 'EASY' || (request.status === 'APPROVED' && request.technician_name)
   
   let timeStr = '—'
   try {
@@ -37,15 +38,22 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
   }
 
   // Deep Links with ?openExternalBrowser=1
-  const actionUrl = buildPWALineUrl(appBaseUrl, `/repair/${encodeURIComponent(serial)}`, {
-    req: request.id || request._id || '',
-    step: 'approve',
-  })
+  const actionUrl = easy
+    ? buildPWALineUrl(appBaseUrl, `/repair/${encodeURIComponent(serial)}`, {
+        req: request.id || request._id || '',
+        step: 'view',
+      })
+    : buildPWALineUrl(appBaseUrl, `/repair/${encodeURIComponent(serial)}`, {
+        req: request.id || request._id || '',
+        step: 'approve',
+      })
   const dashboardUrl = buildPWALineUrl(appBaseUrl, '/repair-requests')
 
   return {
     type: 'flex',
-    altText: `🚨 แจ้งซ่อมใหม่: ${machine} (${serial}) - ${problem}`,
+    altText: easy
+      ? `⚡ แจ้งซ่อมทั่วไป (เลือกช่างตรง): ${machine} (${serial}) - ${problem}`
+      : `🚨 แจ้งซ่อมใหม่: ${machine} (${serial}) - ${problem}`,
     contents: {
       type: 'bubble',
       size: 'mega',
@@ -68,8 +76,8 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
               },
               {
                 type: 'text',
-                text: '🔴 รอรับงานซ่อม',
-                color: '#fbbf24',
+                text: easy ? '⚡ มอบหมายช่างแล้ว (งานง่าย)' : '🔴 รอรับงานซ่อม',
+                color: easy ? '#34d399' : '#fbbf24',
                 size: 'xs',
                 align: 'end',
                 weight: 'bold',
@@ -78,7 +86,7 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
           },
           {
             type: 'text',
-            text: '🔧 ใบแจ้งซ่อมเครื่องจักร/กระบอก',
+            text: easy ? '⚡ ใบแจ้งซ่อมทั่วไป (เลือกช่างตรง)' : '🔧 ใบแจ้งซ่อมเครื่องจักร/กระบอก',
             weight: 'bold',
             size: 'lg',
             color: '#ffffff',
@@ -160,6 +168,15 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
                   { type: 'text', text: location, wrap: true, color: '#334155', size: 'xs', flex: 7 },
                 ],
               },
+              request.technician_name ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'ช่างผู้รับผิดชอบ:', color: '#059669', size: 'xs', weight: 'bold', flex: 3 },
+                  { type: 'text', text: request.technician_name, wrap: true, color: '#047857', size: 'xs', weight: 'bold', flex: 7 },
+                ],
+              } : null,
               // Problem highlight box
               {
                 type: 'box',
@@ -201,10 +218,10 @@ export function buildRepairRequestFlexMessage(request = {}, cylinder = {}, appBa
             type: 'button',
             style: 'primary',
             height: 'sm',
-            color: '#2563eb',
+            color: easy ? '#059669' : '#2563eb',
             action: {
               type: 'uri',
-              label: '🚀 เปิดรับงานซ่อม (PWA App)',
+              label: easy ? '📋 ดูรายละเอียดใบแจ้งซ่อม (PWA App)' : '🚀 เปิดรับงานซ่อม (PWA App)',
               uri: actionUrl,
             },
           },

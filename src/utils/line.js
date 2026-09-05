@@ -178,13 +178,14 @@ export async function sendLineNotification(payload) {
 /**
  * Sends New Repair Request Notification to LINE (Step 1: Broadcast to all supervisors)
  */
-export async function notifyLineNewRepair(request, cylinder) {
+export async function notifyLineNewRepair(request, cylinder, isEasyRepair = false) {
   try {
     const cfg = await loadLineSettingsDB()
     if (!cfg.is_enabled || !cfg.notify_on_new_request) {
       return { ok: false, skipped: true, reason: 'LINE notification disabled' }
     }
 
+    const easy = isEasyRepair || request.repair_type === 'EASY' || (request.status === 'APPROVED' && request.technician_name)
     const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
 
     if (effectiveProvider === 'line_oa') {
@@ -197,7 +198,7 @@ export async function notifyLineNewRepair(request, cylinder) {
         return { ok: false, skipped: true, reason: 'No Supervisor LINE User IDs or Group ID configured' }
       }
 
-      const flexMsg = buildRepairRequestFlexMessage(request, cylinder, cfg.app_base_url)
+      const flexMsg = buildRepairRequestFlexMessage(request, cylinder, cfg.app_base_url, easy)
 
       const results = await Promise.all(
         targetIds.map(targetId =>
@@ -224,13 +225,17 @@ export async function notifyLineNewRepair(request, cylinder) {
       const problem = request.problem_description || 'ไม่มีรายละเอียด'
       const reporter = request.reported_by || 'เจ้าหน้าที่'
       const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
-      const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?req=${encodeURIComponent(request.id || '')}&step=approve&openExternalBrowser=1`
+      const stepTarget = easy ? 'view' : 'approve'
+      const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?req=${encodeURIComponent(request.id || '')}&step=${stepTarget}&openExternalBrowser=1`
 
+      const header = easy ? `\n⚡ [แจ้งซ่อมทั่วไป - เลือกช่างตรง]` : `\n🚨 [แจ้งซ่อมใหม่]`
+      const techLine = (easy && request.technician_name) ? `\nช่างผู้รับผิดชอบ: ${request.technician_name}` : ''
+      const statusLine = easy ? `\nสถานะ: อนุมัติอัตโนมัติ (งานง่าย)` : ''
       const designLine = design ? `\nDesign: ${design}` : ''
       const kiLine = (ki !== undefined && ki !== null && ki !== '') ? `\nKI: ${ki}` : ''
       const rollLine = rollNo ? `\nเลขม้วน: ${rollNo}` : ''
 
-      const textMessage = `\n🚨 [แจ้งซ่อมใหม่]\nเครื่อง: ${machine}\nกระบอก: ${serial}${designLine}${kiLine}${rollLine}\nอาการ: ${problem}\nผู้แจ้ง: ${reporter}\n👉 แตะเปิดรับงาน PWA: ${directUrl}`
+      const textMessage = `${header}\nเครื่อง: ${machine}\nกระบอก: ${serial}${techLine}${statusLine}${designLine}${kiLine}${rollLine}\nอาการ: ${problem}\nผู้แจ้ง: ${reporter}\n👉 แตะเปิดรับงาน PWA: ${directUrl}`
 
       return await sendLineNotification({
         type: 'notify',

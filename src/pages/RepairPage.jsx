@@ -43,6 +43,7 @@ import {
   Zap,
   RotateCcw,
   XCircle,
+  UserCheck,
 } from 'lucide-react'
 import gemmaLogo from '../assets/logo-gemma.png'
 
@@ -300,6 +301,9 @@ function StepReport({ serial, cylinder, onSubmitted }) {
   const [problem, setProblem] = useState('')
   const [urgency, setUrgency] = useState('ปกติ')
   const [reporter, setReporter] = useState('')
+  const [repairType, setRepairType] = useState('EASY') // 'EASY' | 'COMPLEX'
+  const [techList, setTechList] = useState([])
+  const [assignedTech, setAssignedTech] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -308,18 +312,42 @@ function StepReport({ serial, cylinder, onSubmitted }) {
     if (cylinder?.KI && !ki) setKi(String(cylinder.KI))
   }, [cylinder])
 
+  useEffect(() => {
+    Promise.allSettled([loadTelegramSettingsDB(), TechnicianAPI.list()]).then(([tgRes, techRes]) => {
+      const tgTechs = tgRes.status === 'fulfilled' ? tgRes.value?.technicians || [] : []
+      const regTechs =
+        techRes.status === 'fulfilled' && Array.isArray(techRes.value)
+          ? techRes.value.map((t) => ({ name: t.Name || t.name, chat_id: '' }))
+          : []
+      const names = new Set()
+      const merged = []
+      for (const t of [...tgTechs, ...regTechs]) {
+        if (t.name && !names.has(t.name)) {
+          names.add(t.name)
+          merged.push(t)
+        }
+      }
+      setTechList(merged)
+    })
+  }, [])
+
   const submit = async () => {
     if (saving) return
     if (!problem.trim()) return setError('กรุณาระบุรายละเอียดอาการเสียที่พบ')
     if (!reporter.trim()) return setError('กรุณาระบุชื่อผู้แจ้งซ่อม')
+    if (repairType === 'EASY' && !assignedTech.trim()) {
+      return setError('กรุณาเลือกหรือระบุชื่อช่างผู้รับผิดชอบสำหรับงานง่าย')
+    }
     setSaving(true)
     setError('')
     try {
+      const isEasy = repairType === 'EASY'
       const encodedProblem = encodeRepairProblemDescription(problem.trim(), {
         Design: design.trim(),
         KI: ki.trim(),
         roll_no: rollNo.trim(),
         priority: urgency,
+        repair_type: repairType,
       })
 
       let insertPayload = {
@@ -333,38 +361,76 @@ function StepReport({ serial, cylinder, onSubmitted }) {
         problem_description: encodedProblem,
         priority: urgency,
         reported_by: reporter.trim(),
-        status: 'PENDING',
+        repair_type: repairType,
+        status: isEasy ? 'APPROVED' : 'PENDING',
+        technician_name: isEasy ? assignedTech.trim() : null,
+        approved_by: isEasy ? 'ผู้แจ้งซ่อม (งานง่าย)' : null,
+        approved_at: isEasy ? new Date().toISOString() : null,
+        approval_notes: isEasy ? 'งานทั่วไป/งานง่าย (เลือกช่างตรง)' : null,
       }
       let insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
-      if (insertRes.error) {
+      let retryCount = 0
+      while (insertRes.error && retryCount < 5) {
+        retryCount++
         const errMsg = String(insertRes.error.message || '')
         const missingCol = errMsg.match(/Could not find the '([^']+)' column of 'repair_requests'/i)?.[1]
-        if (missingCol) {
+        if (missingCol && missingCol in insertPayload) {
           console.warn(`[RepairPage] Column '${missingCol}' not found in DB schema — removing from payload and retrying`)
           delete insertPayload[missingCol]
           insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
+        } else {
+          break
         }
       }
       if (insertRes.error) throw insertRes.error
       const data = normalizeRepairRecord({
         ...(insertRes.data || {}),
+        repair_type: repairType,
         Design: design.trim() || insertRes.data?.Design,
         KI: ki.trim() || insertRes.data?.KI,
         roll_no: rollNo.trim() || insertRes.data?.roll_no,
         machine_mc: cylinder?.NewMC || insertRes.data?.machine_mc,
         cylinder_serial: serial || cylinder?.Serial_NOW || insertRes.data?.cylinder_serial,
+        technician_name: isEasy ? assignedTech.trim() : insertRes.data?.technician_name,
+        status: isEasy ? 'APPROVED' : (insertRes.data?.status || 'PENDING'),
+        approved_by: isEasy ? 'ผู้แจ้งซ่อม (งานง่าย)' : insertRes.data?.approved_by,
       })
 
       // Notifications
-      try {
-        await notifySupervisor(data, cylinder)
-      } catch (tgErr) {
-        console.warn('Telegram notification warning:', tgErr)
-      }
-      try {
-        await notifyLineNewRepair(data, cylinder)
-      } catch (lineErr) {
-        console.warn('LINE notification warning:', lineErr)
+      if (isEasy) {
+        // 1. Notify supervisor/group with easy repair info
+        try {
+          await notifySupervisor(data, cylinder, true)
+        } catch (tgErr) {
+          console.warn('Telegram supervisor notification warning:', tgErr)
+        }
+        try {
+          await notifyLineNewRepair(data, cylinder, true)
+        } catch (lineErr) {
+          console.warn('LINE supervisor notification warning:', lineErr)
+        }
+        // 2. Notify assigned technician directly
+        try {
+          await notifyTechnician(data)
+        } catch (tgTechErr) {
+          console.warn('Telegram technician notification warning:', tgTechErr)
+        }
+        try {
+          await notifyLineTechnician(data)
+        } catch (lineTechErr) {
+          console.warn('LINE technician notification warning:', lineTechErr)
+        }
+      } else {
+        try {
+          await notifySupervisor(data, cylinder, false)
+        } catch (tgErr) {
+          console.warn('Telegram notification warning:', tgErr)
+        }
+        try {
+          await notifyLineNewRepair(data, cylinder, false)
+        } catch (lineErr) {
+          console.warn('LINE notification warning:', lineErr)
+        }
       }
 
       onSubmitted(data)
@@ -392,10 +458,172 @@ function StepReport({ serial, cylinder, onSubmitted }) {
       <StepHeader
         activeStep={1}
         title="📝 ใบแจ้งซ่อมเครื่องจักร / กระบอกสูบ"
-        subtitle="กรอกข้อมูลเพื่อส่งแจ้งเตือนเข้า LINE & Telegram หัวหน้าช่างทันที"
+        subtitle={
+          repairType === 'EASY'
+            ? '⚡ งานทั่วไป (เลือกช่างตรง): ระบบอนุมัติอัตโนมัติ แจ้งเตือนเข้าช่างทันที ไม่ต้องรอหัวหน้าอนุมัติ'
+            : '🛡️ งานยาก/งานซ่อมใหญ่: ส่งแจ้งเตือนหาหัวหน้าช่างเพื่อพิจารณาอนุมัติและมอบหมายช่าง'
+        }
       />
 
       <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        {/* ⚡ Segmented Type Selection: งานง่าย vs งานยาก ⚡ */}
+        <div
+          style={{
+            background: repairType === 'EASY' ? '#f0fdf4' : '#eff6ff',
+            border: repairType === 'EASY' ? '2px solid #10b981' : '2px solid #3b82f6',
+            borderRadius: 18,
+            padding: '16px',
+            boxShadow: repairType === 'EASY' ? '0 4px 16px rgba(16,185,129,0.12)' : '0 4px 16px rgba(59,130,246,0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            transition: 'all 200ms ease',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 900, color: repairType === 'EASY' ? '#065f46' : '#1e40af', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>⚙️ ขั้นตอนการแจ้งซ่อม (Repair Workflow) *</span>
+            </span>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                padding: '3px 10px',
+                borderRadius: 20,
+                background: repairType === 'EASY' ? '#dcfce7' : '#dbeafe',
+                color: repairType === 'EASY' ? '#15803d' : '#1d4ed8',
+              }}
+            >
+              {repairType === 'EASY' ? '⚡ ไม่ต้องรออนุมัติ (Auto-Approve)' : '🛡️ ต้องรอหัวหน้าอนุมัติ'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 10 }}>
+            {/* Option 1: งานทั่วไป / งานง่าย */}
+            <div
+              onClick={() => setRepairType('EASY')}
+              style={{
+                cursor: 'pointer',
+                padding: '14px 16px',
+                borderRadius: 14,
+                border: repairType === 'EASY' ? '2px solid #10b981' : '1.5px solid #cbd5e1',
+                background: '#ffffff',
+                boxShadow: repairType === 'EASY' ? '0 4px 12px rgba(16,185,129,0.15)' : 'none',
+                transition: 'all 150ms ease',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, fontWeight: 900, color: repairType === 'EASY' ? '#065f46' : '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>⚡ งานทั่วไป / งานง่าย (เลือกช่างตรง)</span>
+                </span>
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    border: repairType === 'EASY' ? '6px solid #10b981' : '2px solid #94a3b8',
+                    background: '#ffffff',
+                    boxSizing: 'border-box',
+                    flexShrink: 0,
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: 12, color: repairType === 'EASY' ? '#047857' : '#64748b', lineHeight: 1.4, fontWeight: 600 }}>
+                ผู้แจ้งระบุช่างได้ทันที ระบบอนุมัติอัตโนมัติ ช่างเริ่มงานได้เลยโดยไม่ต้องรอหัวหน้าช่างอนุมัติ
+              </div>
+            </div>
+
+            {/* Option 2: งานยาก / ซ่อมใหญ่ */}
+            <div
+              onClick={() => setRepairType('COMPLEX')}
+              style={{
+                cursor: 'pointer',
+                padding: '14px 16px',
+                borderRadius: 14,
+                border: repairType === 'COMPLEX' ? '2px solid #3b82f6' : '1.5px solid #cbd5e1',
+                background: '#ffffff',
+                boxShadow: repairType === 'COMPLEX' ? '0 4px 12px rgba(59,130,246,0.15)' : 'none',
+                transition: 'all 150ms ease',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, fontWeight: 900, color: repairType === 'COMPLEX' ? '#1e40af' : '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>🛡️ งานยาก / งานซ่อมใหญ่ (รออนุมัติ)</span>
+                </span>
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    border: repairType === 'COMPLEX' ? '6px solid #3b82f6' : '2px solid #94a3b8',
+                    background: '#ffffff',
+                    boxSizing: 'border-box',
+                    flexShrink: 0,
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: 12, color: repairType === 'COMPLEX' ? '#1d4ed8' : '#64748b', lineHeight: 1.4, fontWeight: 600 }}>
+                ส่งเข้าสู่การพิจารณาของหัวหน้าช่าง เพื่อวางแผน สั่งการ และมอบหมายช่างผู้รับผิดชอบ
+              </div>
+            </div>
+          </div>
+
+          {/* Technician selector dropdown when EASY */}
+          {repairType === 'EASY' && (
+            <div
+              style={{
+                background: '#ffffff',
+                border: '1.5px solid #86efac',
+                borderRadius: 14,
+                padding: '14px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                marginTop: 2,
+              }}
+            >
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, fontWeight: 800, color: '#065f46' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <UserCheck size={16} style={{ color: '#059669' }} /> 👨‍🔧 เลือกช่างผู้รับผิดชอบงานนี้ (Technician) *
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 800, background: '#bbf7d0', color: '#14532d', padding: '2px 8px', borderRadius: 20 }}>
+                  จำเป็น
+                </span>
+              </label>
+              <select
+                value={techList.some((t) => t.name === assignedTech) ? assignedTech : assignedTech ? '__custom__' : ''}
+                onChange={(e) => setAssignedTech(e.target.value === '__custom__' ? '' : e.target.value)}
+                style={{ ...inputStyle, border: '1.5px solid #10b981', background: '#f8fafc', fontWeight: 700 }}
+              >
+                <option value="">— กรุณาเลือกช่างผู้รับผิดชอบ —</option>
+                {techList.map((t, i) => (
+                  <option key={i} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+                <option value="__custom__">➕ พิมพ์ระบุชื่อเอง</option>
+              </select>
+              {!techList.some((t) => t.name === assignedTech) && (
+                <input
+                  value={assignedTech}
+                  onChange={(e) => setAssignedTech(e.target.value)}
+                  placeholder="พิมพ์ชื่อช่างผู้รับผิดชอบ..."
+                  style={{ ...inputStyle, marginTop: 4, border: '1.5px solid #10b981' }}
+                />
+              )}
+              <div style={{ fontSize: 11, color: '#047857', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span>💡 ระบบจะยิงแจ้งเตือนใบสั่งงานเข้า Telegram & LINE ของช่างท่านนี้ทันที</span>
+              </div>
+            </div>
+          )}
+        </div>
         
         {/* 2-Column Responsive Grid Layout: ซ้าย = ข้อมูลเครื่อง & งานผลิต & ผู้แจ้ง, ขวา = รายละเอียดปัญหา & อาการเสีย */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>
@@ -706,6 +934,20 @@ function StepApprove({ request, onUpdated }) {
         <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
           ช่างผู้รับผิดชอบ: <strong style={{ color: '#2563eb' }}>{request.technician_name}</strong>
         </div>
+        {request.status !== 'COMPLETED' && (
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
+            <Btn
+              onClick={() => {
+                const serialParam = encodeURIComponent(request.cylinder_serial || '')
+                window.location.href = `/repair/${serialParam}?req=${request.id}&step=complete`
+              }}
+              variant="primary"
+              style={{ padding: '12px 22px', fontSize: 14, fontWeight: 800 }}
+            >
+              <Wrench size={16} /> ไปที่ขั้นตอนบันทึกผลการซ่อม (Step 3)
+            </Btn>
+          </div>
+        )}
       </div>
     )
   }
@@ -1673,6 +1915,7 @@ function StepComplete({ request, onUpdated }) {
 
 /* ── Status & Digital Work Order View (ใบสรุปประวัติงาน) ─────────────────── */
 function StatusView({ request, onOpenPdf }) {
+  const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
   const s = STATUS_LABEL[request.status] || STATUS_LABEL.PENDING
 
@@ -1700,6 +1943,8 @@ function StatusView({ request, onOpenPdf }) {
     window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank')
   }
 
+  const isEasy = request.repair_type === 'EASY' || (!request.repair_type && (request.approved_by?.includes('งานง่าย') || (request.status === 'APPROVED' && request.technician_name)))
+
   return (
     <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Status Hero Card */}
@@ -1725,6 +1970,53 @@ function StatusView({ request, onOpenPdf }) {
           {request.request_no || `REQ-${request.id?.slice(0, 8)}`}
         </span>
       </div>
+
+      {/* Prominent Action Button for Next Step */}
+      {request.status === 'APPROVED' && (
+        <Btn
+          onClick={() => {
+            const serialParam = encodeURIComponent(request.cylinder_serial || '')
+            navigate(`/repair/${serialParam}?req=${request.id}&step=complete`)
+          }}
+          variant="primary"
+          style={{
+            padding: '14px 20px',
+            fontSize: 16,
+            fontWeight: 800,
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <Wrench size={18} /> 🛠️ ช่างเริ่มงาน / บันทึกผลการซ่อม (Step 3)
+        </Btn>
+      )}
+
+      {request.status === 'PENDING' && (
+        <Btn
+          onClick={() => {
+            const serialParam = encodeURIComponent(request.cylinder_serial || '')
+            navigate(`/repair/${serialParam}?req=${request.id}&step=approve`)
+          }}
+          variant="primary"
+          style={{
+            padding: '14px 20px',
+            fontSize: 15,
+            fontWeight: 800,
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            boxShadow: '0 4px 14px rgba(37,99,235,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <UserCheck size={18} /> 👨‍💼 สำหรับหัวหน้าช่าง: อนุมัติและมอบหมายงาน (Step 2)
+        </Btn>
+      )}
 
       {/* 🏭 ส่วนที่ 1: ข้อมูลเครื่องจักรและกระบอกสูบเป้าหมาย 🏭 */}
       <div
@@ -1794,6 +2086,16 @@ function StatusView({ request, onOpenPdf }) {
 
       {/* Complete Data Breakdown */}
       <div style={{ background: '#f8fafc', borderRadius: 18, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
+        <FieldRow
+          label="ประเภทงาน"
+          value={
+            isEasy ? (
+              <span style={{ color: '#059669', fontWeight: 800 }}>⚡ งานทั่วไป (เลือกช่างตรง / อนุมัติอัตโนมัติ)</span>
+            ) : (
+              <span style={{ color: '#2563eb', fontWeight: 800 }}>🛡️ งานยาก / ซ่อมใหญ่ (รออนุมัติ)</span>
+            )
+          }
+        />
         <FieldRow label="ระดับความเร่งด่วน" value={<PriorityBadge priority={request.priority} />} />
         <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} full />
         <FieldRow label="ผู้แจ้งซ่อม" value={request.reported_by} />

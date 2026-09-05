@@ -141,10 +141,11 @@ export function normalizeRepairRecord(row) {
   let ki = row.KI !== undefined && row.KI !== null && row.KI !== '' ? row.KI : (row.ki !== undefined && row.ki !== null && row.ki !== '' ? row.ki : '')
   let roll = row.roll_no || row.RollNo || row.roll_number || ''
   let priority = row.priority || row.urgency || 'ปกติ'
+  let repair_type = row.repair_type || ''
   let rawProb = String(row.problem_description || '')
   let cleanProb = rawProb
 
-  // 1. Try extracting from JSON metadata comment: <!--PROD:{"Design":"...","KI":"...","roll_no":"..."}-->
+  // 1. Try extracting from JSON metadata comment: <!--PROD:{"Design":"...","KI":"...","roll_no":"...","repair_type":"..."}-->
   const jsonMatch = rawProb.match(/<!--PROD:(\{.*?\})-->/)
   if (jsonMatch) {
     try {
@@ -153,6 +154,7 @@ export function normalizeRepairRecord(row) {
       if ((ki === '' || ki === undefined || ki === null) && parsed.KI !== undefined && parsed.KI !== null && parsed.KI !== '') ki = parsed.KI
       if (!roll && (parsed.roll_no || parsed.RollNo || parsed.roll_number)) roll = parsed.roll_no || parsed.RollNo || parsed.roll_number
       if (!row.priority && parsed.priority) priority = parsed.priority
+      if (!repair_type && parsed.repair_type) repair_type = parsed.repair_type
     } catch {}
     cleanProb = cleanProb.replace(/<!--PROD:\{.*?\}-->\n?/, '').trim()
   }
@@ -168,6 +170,7 @@ export function normalizeRepairRecord(row) {
 
   return {
     ...row,
+    repair_type: repair_type || (row.status === 'APPROVED' && row.technician_name ? 'EASY' : (row.status === 'PENDING' ? 'COMPLEX' : 'EASY')),
     Design: design,
     design: design,
     KI: ki,
@@ -184,7 +187,7 @@ export function normalizeRepairRecord(row) {
  * Builds the problem description with embedded metadata so that even if
  * Supabase lacks Design/KI/roll_no columns, the data is permanently preserved.
  */
-export function encodeRepairProblemDescription(problemText, { Design, KI, roll_no, priority }) {
+export function encodeRepairProblemDescription(problemText, { Design, KI, roll_no, priority, repair_type } = {}) {
   const cleanText = String(problemText || '')
     .replace(/<!--PROD:\{.*?\}-->\n?/, '')
     .replace(/\[ข้อมูลผลิต\s*\|\s*Design:[^\]]*?\]\n?/, '')
@@ -195,6 +198,7 @@ export function encodeRepairProblemDescription(problemText, { Design, KI, roll_n
     KI: KI !== undefined && KI !== null && KI !== '' ? KI : '',
     roll_no: roll_no || '',
     priority: priority || 'ปกติ',
+    repair_type: repair_type || 'EASY',
   }
 
   const jsonTag = `<!--PROD:${JSON.stringify(metaObj)}-->`
@@ -225,19 +229,28 @@ function buildRepairDetailLines(request, cylinder) {
   ].filter(Boolean)
 }
 
-export async function notifySupervisor(request, cylinder) {
+export async function notifySupervisor(request, cylinder, isEasyRepair = false) {
   const cfg     = await loadTelegramSettingsDB()
   const baseUrl = getAppBaseUrl()
   const serial  = encodeURIComponent(request.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || '')
   const reqId   = encodeURIComponent(request.id || request._id || '')
   const approveLink = `${baseUrl}/repair/${serial}?req=${reqId}&step=approve`
+  const viewLink    = `${baseUrl}/repair/${serial}?req=${reqId}&step=view`
+
+  const easy = isEasyRepair || request.repair_type === 'EASY' || (request.status === 'APPROVED' && request.technician_name)
 
   const text = [
-    `🔧 <b>แจ้งซ่อมกระบอก</b>`,
+    easy
+      ? `⚡ <b>แจ้งซ่อมทั่วไป (เลือกช่างตรง)</b>`
+      : `🔧 <b>แจ้งซ่อมกระบอก (รองานอนุมัติ)</b>`,
     ``,
     ...buildRepairDetailLines(request, cylinder),
+    request.technician_name ? `👷 ช่างผู้รับผิดชอบ: <b>${escapeHtml(request.technician_name)}</b>` : null,
+    easy ? `✅ สถานะ: <b>อนุมัติอัตโนมัติ (งานง่าย)</b>` : null,
     ``,
-    `🔗 <a href="${approveLink}">คลิกเพื่ออนุมัติและมอบหมายช่าง</a>`,
+    easy
+      ? `🔗 <a href="${viewLink}">คลิกเพื่อดูรายละเอียดใบแจ้งซ่อม</a>`
+      : `🔗 <a href="${approveLink}">คลิกเพื่ออนุมัติและมอบหมายช่าง</a>`,
   ].filter(l => l !== null).join('\n')
 
   const ids = getSupervisorIds(cfg)

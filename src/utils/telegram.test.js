@@ -4,6 +4,8 @@ import {
   loadTelegramSettings,
   saveTelegramSettings,
   getAppBaseUrl,
+  encodeRepairProblemDescription,
+  normalizeRepairRecord,
 } from './telegram'
 
 const DEFAULTS = {
@@ -164,3 +166,52 @@ describe('fetchTelegramContacts', () => {
     expect(result.error).toContain('webhook')
   })
 })
+
+describe('Repair Record Encoding and Normalization with repair_type', () => {
+  it('encodes repair_type into problem description metadata', () => {
+    const encoded = encodeRepairProblemDescription('เครื่องมีเสียงดัง', {
+      Design: 'D-999',
+      KI: 12345,
+      roll_no: 7,
+      priority: 'ด่วน',
+      repair_type: 'EASY',
+    })
+
+    expect(encoded).toContain('<!--PROD:{"Design":"D-999","KI":12345,"roll_no":7,"priority":"ด่วน","repair_type":"EASY"}-->')
+    expect(encoded).toContain('เครื่องมีเสียงดัง')
+  })
+
+  it('normalizes repair_type correctly from encoded comment', () => {
+    const encoded = encodeRepairProblemDescription('มอเตอร์ร้อน', {
+      Design: 'D-888',
+      KI: 54321,
+      roll_no: 10,
+      priority: 'ปกติ',
+      repair_type: 'EASY',
+    })
+
+    const record = normalizeRepairRecord({
+      id: 'test-1',
+      problem_description: encoded,
+      status: 'APPROVED',
+      technician_name: 'ช่างหนึ่ง',
+    })
+
+    expect(record.repair_type).toBe('EASY')
+    expect(record.Design).toBe('D-888')
+    expect(record.KI).toBe(54321)
+    expect(record.roll_no).toBe(10)
+    expect(record.problem_description).toBe('มอเตอร์ร้อน')
+  })
+
+  it('defaults repair_type to COMPLEX when status is PENDING and no explicit type is provided', () => {
+    const record = normalizeRepairRecord({
+      id: 'test-2',
+      problem_description: 'ลูกปืนแตก',
+      status: 'PENDING',
+    })
+
+    expect(record.repair_type).toBe('COMPLEX')
+  })
+})
+
