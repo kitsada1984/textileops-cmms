@@ -2037,12 +2037,10 @@ export default function PMPlan({ defaultTab = 'plan' }) {
                   />
                 </div>
                 <div>
-                  <label className="label font-bold flex items-center justify-between">
-                    <span>PM ครั้งถัดไป *</span>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      (คำนวณอัตโนมัติ / ปรับเองได้)
-                    </span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="label font-bold mb-0">PM ครั้งถัดไป *</label>
+                    {form.Next_PM_Date && <PMCountdownBadge date={form.Next_PM_Date} />}
+                  </div>
                   <input
                     type="date"
                     className="input font-mono font-bold text-xs"
