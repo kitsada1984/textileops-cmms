@@ -959,19 +959,46 @@ function StepApprove({ request, onUpdated }) {
     setError('')
     try {
       const status = action === 'approve' ? 'APPROVED' : 'REJECTED'
-      const { data, error: err } = await supabase
+      let updatePayload = {
+        status,
+        technician_name: tech.trim(),
+        approval_notes: notes.trim(),
+        approved_at: new Date().toISOString(),
+        approved_by: tech.trim() || 'Supervisor',
+      }
+      let updateRes = await supabase
         .from('repair_requests')
-        .update({
-          status,
-          technician_name: tech.trim(),
-          approval_notes: notes.trim(),
-          approved_at: new Date().toISOString(),
-          approved_by: tech.trim() || 'Supervisor',
-        })
+        .update(updatePayload)
         .eq('id', request.id)
         .select()
         .single()
-      if (err) throw err
+      let retryCount = 0
+      while (updateRes.error && retryCount < 5) {
+        retryCount++
+        const errMsg = String(updateRes.error.message || '')
+        const missingCol = errMsg.match(/Could not find the '([^']+)' column of 'repair_requests'/i)?.[1]
+        if (missingCol && missingCol in updatePayload) {
+          console.warn(`[RepairPage] Column '${missingCol}' not found in DB schema — removing from payload and retrying`)
+          delete updatePayload[missingCol]
+          updateRes = await supabase
+            .from('repair_requests')
+            .update(updatePayload)
+            .eq('id', request.id)
+            .select()
+            .single()
+        } else {
+          break
+        }
+      }
+      if (updateRes.error) throw updateRes.error
+      const data = normalizeRepairRecord({
+        ...(updateRes.data || {}),
+        status,
+        technician_name: tech.trim(),
+        approval_notes: notes.trim(),
+        approved_at: updatePayload.approved_at || new Date().toISOString(),
+        approved_by: updatePayload.approved_by || tech.trim() || 'Supervisor',
+      })
       if (action === 'approve') {
         try {
           await notifyTechnician(data)
@@ -1358,25 +1385,60 @@ function StepComplete({ request, onUpdated }) {
     const lostHours = durationRes.lostHoursDecimal
 
     try {
-      // 3. Update repair_requests in Supabase
-      const { data, error: err } = await supabase
+      // 3. Update repair_requests in Supabase (with schema-resilient retry loop)
+      let updatePayload = {
+        status: 'COMPLETED',
+        repair_details: details.trim(),
+        parts_used: partsSummary,
+        completed_at: now.toISOString(),
+        completed_by: tech.trim(),
+        interruption_logs: interruptionLogs,
+        gross_duration_hours: grossHours,
+        sunday_duration_hours: durationRes.sundayHoursDecimal,
+        lost_duration_hours: lostHours,
+        net_working_hours: netHours,
+      }
+
+      let updateRes = await supabase
         .from('repair_requests')
-        .update({
-          status: 'COMPLETED',
-          repair_details: details.trim(),
-          parts_used: partsSummary,
-          completed_at: now.toISOString(),
-          completed_by: tech.trim(),
-          interruption_logs: interruptionLogs,
-          gross_duration_hours: grossHours,
-          sunday_duration_hours: durationRes.sundayHoursDecimal,
-          lost_duration_hours: lostHours,
-          net_working_hours: netHours,
-        })
+        .update(updatePayload)
         .eq('id', request.id)
         .select()
         .single()
-      if (err) throw err
+
+      let retryCount = 0
+      while (updateRes.error && retryCount < 10) {
+        retryCount++
+        const errMsg = String(updateRes.error.message || '')
+        const missingCol = errMsg.match(/Could not find the '([^']+)' column of 'repair_requests'/i)?.[1]
+        if (missingCol && missingCol in updatePayload) {
+          console.warn(`[RepairPage] Column '${missingCol}' not found in DB schema — removing from payload and retrying`)
+          delete updatePayload[missingCol]
+          updateRes = await supabase
+            .from('repair_requests')
+            .update(updatePayload)
+            .eq('id', request.id)
+            .select()
+            .single()
+        } else {
+          break
+        }
+      }
+      if (updateRes.error) throw updateRes.error
+
+      const data = normalizeRepairRecord({
+        ...(updateRes.data || {}),
+        status: 'COMPLETED',
+        repair_details: details.trim(),
+        parts_used: partsSummary,
+        completed_at: now.toISOString(),
+        completed_by: tech.trim(),
+        gross_duration_hours: grossHours,
+        sunday_duration_hours: durationRes.sundayHoursDecimal,
+        lost_duration_hours: lostHours,
+        net_working_hours: netHours,
+        interruption_logs: interruptionLogs,
+      })
 
       // 4. Auto-Sync Q1: Create or Upsert into workorders table
       try {
@@ -1415,6 +1477,11 @@ function StepComplete({ request, onUpdated }) {
             synced_from_repair: true,
             request_no: request.request_no,
             parts_used: partsSummary,
+            gross_duration_hours: grossHours,
+            sunday_duration_hours: durationRes.sundayHoursDecimal,
+            lost_duration_hours: lostHours,
+            net_working_hours: netHours,
+            interruption_logs: interruptionLogs,
           }),
         })
       } catch (woErr) {
