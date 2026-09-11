@@ -463,6 +463,7 @@ export default function NeedleCondition() {
   // Scan QR code from uploaded image file
   const handleQrImageUpload = (e) => {
     const file = e.target.files?.[0]
+    if (e.target) e.target.value = ''
     if (!file) return
 
     const reader = new FileReader()
@@ -493,6 +494,7 @@ export default function NeedleCondition() {
   // Handle Photo upload for Needle Condition
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files || [])
+    if (e.target) e.target.value = ''
     if (!files.length) return
 
     setUploadingImage(true)

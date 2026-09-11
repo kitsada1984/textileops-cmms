@@ -715,6 +715,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
   // Handle Image Upload (Auto HEIC normalize & Google Drive with Base64 fallback)
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files || [])
+    if (e.target) e.target.value = ''
     if (!files.length) return
 
     setUploadingImage(true)
