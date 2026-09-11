@@ -749,3 +749,96 @@ export function generateCenterCheckDocNo(type = 'Single', existingRecords = []) 
   const nextSeq = String(maxNum + 1).padStart(3, '0')
   return `${prefix}${nextSeq}`
 }
+
+export const CenterCheckStandardsAPI = {
+  getStandards: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('workorders')
+        .select('Comment')
+        .eq('WO_ID', 'SYS_CENTER_CHECK_STANDARDS')
+        .maybeSingle()
+      if (!error && data?.Comment) {
+        const parsed = JSON.parse(data.Comment)
+        if (parsed && (Array.isArray(parsed.Single) || Array.isArray(parsed.Double))) {
+          try { localStorage.setItem('txops_center_check_standards', JSON.stringify(parsed)) } catch {}
+          return {
+            Single: Array.isArray(parsed.Single) ? parsed.Single : DEFAULT_SINGLE_CHECKLIST_ITEMS,
+            Double: Array.isArray(parsed.Double) ? parsed.Double : DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('CenterCheckStandards cloud load error:', e)
+    }
+
+    try {
+      const local = JSON.parse(localStorage.getItem('txops_center_check_standards') || '{}')
+      if (local && (Array.isArray(local.Single) || Array.isArray(local.Double))) {
+        return {
+          Single: Array.isArray(local.Single) ? local.Single : DEFAULT_SINGLE_CHECKLIST_ITEMS,
+          Double: Array.isArray(local.Double) ? local.Double : DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+        }
+      }
+    } catch {}
+
+    return {
+      Single: DEFAULT_SINGLE_CHECKLIST_ITEMS,
+      Double: DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+    }
+  },
+
+  saveStandards: async (standards) => {
+    const payload = {
+      Single: Array.isArray(standards?.Single) ? standards.Single : DEFAULT_SINGLE_CHECKLIST_ITEMS,
+      Double: Array.isArray(standards?.Double) ? standards.Double : DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+    }
+
+    try {
+      localStorage.setItem('txops_center_check_standards', JSON.stringify(payload))
+    } catch {}
+
+    try {
+      const { data: existing } = await supabase
+        .from('workorders')
+        .select('id')
+        .eq('WO_ID', 'SYS_CENTER_CHECK_STANDARDS')
+        .limit(1)
+
+      if (existing && existing.length > 0) {
+        await supabase
+          .from('workorders')
+          .update({
+            Comment: JSON.stringify(payload),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing[0].id)
+      } else {
+        await supabase.from('workorders').insert({
+          MC: '__SYSTEM__',
+          Problem: '__SYS_CONFIG__',
+          WO_ID: 'SYS_CENTER_CHECK_STANDARDS',
+          Comment: JSON.stringify(payload),
+          Status: 'COMPLETED',
+        })
+      }
+    } catch (e) {
+      console.warn('CenterCheckStandards cloud save error:', e)
+    }
+
+    return payload
+  },
+
+  resetStandards: async () => {
+    try {
+      localStorage.removeItem('txops_center_check_standards')
+      await supabase.from('workorders').delete().eq('WO_ID', 'SYS_CENTER_CHECK_STANDARDS')
+    } catch (e) {
+      console.warn('CenterCheckStandards reset error:', e)
+    }
+    return {
+      Single: DEFAULT_SINGLE_CHECKLIST_ITEMS,
+      Double: DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+    }
+  },
+}

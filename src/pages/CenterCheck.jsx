@@ -28,6 +28,7 @@ import { format, differenceInCalendarDays, addDays } from 'date-fns'
 import useEntity from '../hooks/useEntity'
 import {
   CenterCheckAPI,
+  CenterCheckStandardsAPI,
   PMPlanAPI,
   AuditLogAPI,
   MachineAPI,
@@ -217,6 +218,29 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
 
+  // Standards configuration state
+  const [standardsConfig, setStandardsConfig] = useState({
+    Single: DEFAULT_SINGLE_CHECKLIST_ITEMS,
+    Double: DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+  })
+  const [standardsModalOpen, setStandardsModalOpen] = useState(false)
+  const [standardsDraft, setStandardsDraft] = useState({
+    Single: DEFAULT_SINGLE_CHECKLIST_ITEMS,
+    Double: DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+  })
+  const [standardsTab, setStandardsTab] = useState('Double')
+  const [savingStandards, setSavingStandards] = useState(false)
+
+  // Load custom standards from Supabase / localStorage
+  useEffect(() => {
+    CenterCheckStandardsAPI.getStandards().then((stds) => {
+      if (stds) {
+        setStandardsConfig(stds)
+        setStandardsDraft(stds)
+      }
+    }).catch((err) => console.warn('Failed to load standards:', err))
+  }, [])
+
   // Normalized list of records
   const records = useMemo(() => {
     const list = rawRecords && rawRecords.length > 0 ? rawRecords : initialCenterChecks
@@ -278,12 +302,14 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       const type = initialPreset.type === 'Double' ? 'Double' : 'Single'
       setEditingId(null)
       setFormType(type)
-      const defaults =
-        type === 'Double' ? DEFAULT_DOUBLE_CHECKLIST_ITEMS : DEFAULT_SINGLE_CHECKLIST_ITEMS
-      const defaultItems = defaults.map((d) => ({
-        no: d.no,
+      const activeStandards = type === 'Double' ? standardsConfig.Double : standardsConfig.Single
+      const defaults = Array.isArray(activeStandards) && activeStandards.length > 0
+        ? activeStandards
+        : (type === 'Double' ? DEFAULT_DOUBLE_CHECKLIST_ITEMS : DEFAULT_SINGLE_CHECKLIST_ITEMS)
+      const defaultItems = defaults.map((d, idx) => ({
+        no: d.no || idx + 1,
         item: d.item,
-        std: d.std,
+        std: d.std || '0.03',
         val_before: '',
         val_after: '',
         result: 'ผ่าน',
@@ -342,18 +368,104 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       setActiveSubTab(type === 'Double' ? 'double_form' : 'single_form')
       if (onClearPreset) onClearPreset()
     }
-  }, [initialPreset, records])
+  }, [initialPreset, records, standardsConfig])
+
+  // Save customized standards
+  const handleSaveStandards = async () => {
+    setSavingStandards(true)
+    try {
+      const saved = await CenterCheckStandardsAPI.saveStandards(standardsDraft)
+      setStandardsConfig(saved)
+      toast.success('บันทึกค่ามาตรฐานระบบสำเร็จ', 'ค่ามาตรฐานใหม่จะถูกนำไปใช้เป็นค่าเริ่มต้นสำหรับใบตรวจเช็ค')
+
+      // Sync active form items if in new form
+      if (!editingId && (activeSubTab === 'single_form' || activeSubTab === 'double_form')) {
+        const activeStds = formType === 'Double' ? saved.Double : saved.Single
+        if (Array.isArray(activeStds)) {
+          setFormData((prev) => ({
+            ...prev,
+            items: activeStds.map((stdItem, idx) => {
+              const existingItem = (prev.items || [])[idx]
+              return {
+                no: stdItem.no || idx + 1,
+                item: stdItem.item,
+                std: stdItem.std,
+                val_before: existingItem?.val_before || '',
+                val_after: existingItem?.val_after || '',
+                result: existingItem?.result || 'ผ่าน',
+                remark: existingItem?.remark || '',
+              }
+            }),
+          }))
+        }
+      }
+      setStandardsModalOpen(false)
+    } catch (err) {
+      toast.error('ไม่สามารถบันทึกค่ามาตรฐานได้', err.message)
+    } finally {
+      setSavingStandards(false)
+    }
+  }
+
+  // Reset standards to factory defaults
+  const handleResetStandards = async () => {
+    if (!confirm('ต้องการคืนค่ามาตรฐานเริ่มต้นโรงงานทั้งหมดใช่หรือไม่?')) return
+    setSavingStandards(true)
+    try {
+      const reset = await CenterCheckStandardsAPI.resetStandards()
+      setStandardsConfig(reset)
+      setStandardsDraft(reset)
+      toast.info('คืนค่ามาตรฐานเริ่มต้นโรงงานเรียบร้อยแล้ว')
+    } catch (err) {
+      toast.error('เกิดข้อผิดพลาดในการคืนค่า', err.message)
+    } finally {
+      setSavingStandards(false)
+    }
+  }
+
+  // Standards draft item mutation handlers
+  const handleDraftItemChange = (tab, idx, field, value) => {
+    setStandardsDraft((prev) => {
+      const list = [...(prev[tab] || [])]
+      list[idx] = { ...list[idx], [field]: value }
+      return { ...prev, [tab]: list }
+    })
+  }
+
+  const handleAddDraftItem = (tab) => {
+    setStandardsDraft((prev) => {
+      const list = [...(prev[tab] || [])]
+      list.push({
+        no: list.length + 1,
+        item: '',
+        std: '0.03',
+      })
+      return { ...prev, [tab]: list }
+    })
+  }
+
+  const handleRemoveDraftItem = (tab, idx) => {
+    setStandardsDraft((prev) => {
+      const list = (prev[tab] || []).filter((_, i) => i !== idx).map((it, i) => ({
+        ...it,
+        no: i + 1,
+      }))
+      return { ...prev, [tab]: list }
+    })
+  }
 
   // Initialize new form
   const initNewForm = (type = 'Single') => {
     setEditingId(null)
     setFormType(type)
-    const defaults =
-      type === 'Double' ? DEFAULT_DOUBLE_CHECKLIST_ITEMS : DEFAULT_SINGLE_CHECKLIST_ITEMS
-    const defaultItems = defaults.map((d) => ({
-      no: d.no,
+    const activeStandards = type === 'Double' ? standardsConfig.Double : standardsConfig.Single
+    const defaults = Array.isArray(activeStandards) && activeStandards.length > 0
+      ? activeStandards
+      : (type === 'Double' ? DEFAULT_DOUBLE_CHECKLIST_ITEMS : DEFAULT_SINGLE_CHECKLIST_ITEMS)
+    const defaultItems = defaults.map((d, idx) => ({
+      no: d.no || idx + 1,
       item: d.item,
-      std: d.std,
+      std: d.std || '0.03',
       val_before: '',
       val_after: '',
       result: 'ผ่าน',
@@ -402,14 +514,16 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     setEditingId(record.id || record._id)
     setFormType(record.type || 'Single')
 
-    const defaults =
-      record.type === 'Double' ? DEFAULT_DOUBLE_CHECKLIST_ITEMS : DEFAULT_SINGLE_CHECKLIST_ITEMS
+    const activeStandards = record.type === 'Double' ? standardsConfig.Double : standardsConfig.Single
+    const defaults = Array.isArray(activeStandards) && activeStandards.length > 0
+      ? activeStandards
+      : (record.type === 'Double' ? DEFAULT_DOUBLE_CHECKLIST_ITEMS : DEFAULT_SINGLE_CHECKLIST_ITEMS)
     const currentItems = Array.isArray(record.items) && record.items.length > 0
       ? record.items
-      : defaults.map((d) => ({
-          no: d.no,
+      : defaults.map((d, idx) => ({
+          no: d.no || idx + 1,
           item: d.item,
-          std: d.std,
+          std: d.std || '0.03',
           val_before: '',
           val_after: '',
           result: 'ผ่าน',
@@ -909,6 +1023,20 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
 
           <button
             type="button"
+            onClick={() => {
+              setStandardsDraft(JSON.parse(JSON.stringify(standardsConfig)))
+              setStandardsTab(formType === 'Double' ? 'Double' : 'Single')
+              setStandardsModalOpen(true)
+            }}
+            className="btn-outline text-xs px-2.5 flex items-center gap-1.5 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+            title="ตั้งค่ามาตรฐานเริ่มต้น (Center Check Standards)"
+          >
+            <Sliders size={13} />
+            <span className="hidden sm:inline">ตั้งค่ามาตรฐาน</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setSqlModalOpen(true)}
             className="btn-outline text-xs px-2.5 flex items-center gap-1.5 text-slate-600 dark:text-slate-400"
             title="ดูคำสั่ง SQL สำหรับสร้างตารางบน Supabase"
@@ -1357,13 +1485,28 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
               </div>
             </div>
 
-            {/* Section 2: 10 Checklist Items Table */}
+            {/* Section 2: Checklist Items Table */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
-                  <Sliders size={16} className="text-blue-500" />
-                  <span>รายการตรวจสอบ 10 ข้อมาตรฐาน ({formType} Jersey)</span>
-                </h3>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <h3 className="text-sm font-black flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
+                    <Sliders size={16} className="text-blue-500" />
+                    <span>รายการตรวจสอบมาตรฐาน ({formType} Jersey)</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStandardsDraft(JSON.parse(JSON.stringify(standardsConfig)))
+                      setStandardsTab(formType === 'Double' ? 'Double' : 'Single')
+                      setStandardsModalOpen(true)
+                    }}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 flex items-center gap-1.5 font-bold transition-all shadow-sm"
+                    title="ตั้งค่าแม่แบบมาตรฐานของระบบ"
+                  >
+                    <Sliders size={13} />
+                    <span>⚙️ ตั้งค่าแม่แบบมาตรฐาน</span>
+                  </button>
+                </div>
                 <span className={`badge text-xs font-bold ${
                   formData.status === 'ผ่าน' ? 'badge-green' : 'badge-red'
                 }`}>
@@ -1377,7 +1520,12 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                     <tr className="bg-slate-100/70 dark:bg-slate-900 text-slate-600 font-bold border-b border-slate-200 dark:border-slate-800">
                       <th className="py-2.5 px-3 text-center w-12">ข้อ</th>
                       <th className="py-2.5 px-3 text-left">รายการตรวจ</th>
-                      <th className="py-2.5 px-3 text-center w-28">ค่ามาตรฐาน</th>
+                      <th className="py-2.5 px-3 text-center w-36">
+                        <span className="inline-flex items-center gap-1">
+                          ค่ามาตรฐาน
+                          <span className="text-[10px] text-blue-500 font-normal">(ปรับได้)</span>
+                        </span>
+                      </th>
                       <th className="py-2.5 px-3 text-center w-28">ก่อนทำ</th>
                       <th className="py-2.5 px-3 text-center w-28">หลังทำ</th>
                       <th className="py-2.5 px-3 text-center w-32">ผลการตรวจ</th>
@@ -1393,8 +1541,15 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                         <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">
                           {item.item}
                         </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-500 bg-slate-50 dark:bg-slate-900/40">
-                          {item.std || '—'}
+                        <td className="py-1 px-2 text-center">
+                          <input
+                            type="text"
+                            placeholder="ค่ามาตรฐาน"
+                            value={item.std ?? ''}
+                            onChange={(e) => handleItemChange(idx, 'std', e.target.value)}
+                            className="input text-center font-mono text-xs py-1 font-bold text-blue-600 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/80 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 w-full"
+                            title="สามารถแก้ไขค่ามาตรฐานเฉพาะใบงานนี้ได้ทันที"
+                          />
                         </td>
                         <td className="py-1 px-2">
                           <input
@@ -1951,6 +2106,152 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                 : getLatestLocation(printRecord.mc, printRecord.serial, 'โรงทอ'),
           })}
         />
+      )}
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* ── MODAL: 2.5 STANDARDS CONFIG MODAL ────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {standardsModalOpen && (
+        <Modal
+          open={standardsModalOpen}
+          onClose={() => setStandardsModalOpen(false)}
+          title="⚙️ ตั้งค่ามาตรฐานการตรวจเช็คศูนย์ (Center Check Standards)"
+          size="lg"
+          footer={
+            <div className="flex items-center justify-between w-full">
+              <button
+                type="button"
+                onClick={handleResetStandards}
+                disabled={savingStandards}
+                className="btn-outline text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                title="ล้างค่าที่กำหนดเองและใช้ค่ามาตรฐานเริ่มต้นจากโรงงาน"
+              >
+                คืนค่าเริ่มต้นโรงงาน
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStandardsModalOpen(false)}
+                  disabled={savingStandards}
+                  className="btn-outline text-xs"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveStandards}
+                  disabled={savingStandards}
+                  className="btn-primary text-xs flex items-center gap-1.5"
+                >
+                  {savingStandards ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      <span>กำลังบันทึก...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} />
+                      <span>บันทึกค่ามาตรฐาน</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <div className="space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStandardsTab('Double')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    standardsTab === 'Double'
+                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/30'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Double Jersey ({(standardsDraft.Double || []).length} ข้อ)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStandardsTab('Single')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    standardsTab === 'Single'
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Single Jersey ({(standardsDraft.Single || []).length} ข้อ)
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleAddDraftItem(standardsTab)}
+                className="btn-outline text-xs px-2.5 py-1 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 flex items-center gap-1 font-bold hover:bg-blue-50 dark:hover:bg-blue-900/30"
+              >
+                <Plus size={13} />
+                <span>เพิ่มรายการตรวจ</span>
+              </button>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-800 dark:text-blue-200 leading-relaxed">
+              💡 <b>คำแนะนำ:</b> ค่ามาตรฐานนี้จะถูกบันทึกลงระบบคลาวด์ Supabase และแคชไว้ในบราวเซอร์ เพื่อนำไปใช้เป็นค่ามาตรฐานตั้งต้นเมื่อเปิดเอกสารตรวจเช็คศูนย์ใบใหม่ทุกครั้ง
+            </div>
+
+            <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="table w-full text-xs">
+                <thead className="sticky top-0 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
+                  <tr className="text-slate-600 dark:text-slate-300 font-bold">
+                    <th className="py-2.5 px-3 text-center w-12">ข้อ</th>
+                    <th className="py-2.5 px-3 text-left">รายการตรวจ</th>
+                    <th className="py-2.5 px-3 text-center w-36">ค่ามาตรฐาน</th>
+                    <th className="py-2.5 px-3 text-center w-16">ลบ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {(standardsDraft[standardsTab] || []).map((item, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                      <td className="py-2 px-3 text-center font-bold text-slate-400">
+                        {idx + 1}
+                      </td>
+                      <td className="py-1 px-2">
+                        <input
+                          type="text"
+                          value={item.item || ''}
+                          placeholder="ชื่อรายการตรวจสอบ"
+                          onChange={(e) => handleDraftItemChange(standardsTab, idx, 'item', e.target.value)}
+                          className="input text-xs py-1 w-full"
+                        />
+                      </td>
+                      <td className="py-1 px-2">
+                        <input
+                          type="text"
+                          value={item.std ?? ''}
+                          placeholder="ค่ามาตรฐาน (เช่น 0.03)"
+                          onChange={(e) => handleDraftItemChange(standardsTab, idx, 'std', e.target.value)}
+                          className="input text-center font-mono text-xs py-1 font-bold text-blue-600 dark:text-blue-400 bg-blue-50/40 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/80 w-full"
+                        />
+                      </td>
+                      <td className="py-1 px-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDraftItem(standardsTab, idx)}
+                          disabled={(standardsDraft[standardsTab] || []).length <= 1}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                          title="ลบรายการนี้"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* ══════════════════════════════════════════════════════════ */}

@@ -63,3 +63,11 @@ describe('Sunday Calculation Helpers', () => {
     expect(workingDays).toBe(1)
   })
 })
+
+describe('CenterCheckStandardsAPI', () => {
+  it('identifies SYS_CENTER_CHECK_STANDARDS as a system work order', () => {
+    expect(isSystemWorkOrder({ WO_ID: 'SYS_CENTER_CHECK_STANDARDS' })).toBe(true)
+    expect(isSystemWorkOrder({ MC: '__SYSTEM__', WO_ID: 'SYS_CENTER_CHECK_STANDARDS', Problem: '__SYS_CONFIG__' })).toBe(true)
+  })
+})
+
