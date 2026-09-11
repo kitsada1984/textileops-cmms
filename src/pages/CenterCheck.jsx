@@ -108,6 +108,8 @@ function CenterCheckPhotoCard({ url, index, onRemove, onPreview }) {
         <img
           src={resolvedSrc}
           alt={`Needle condition ${index + 1}`}
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
           className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
           onClick={onPreview}
           onError={handleImgError}

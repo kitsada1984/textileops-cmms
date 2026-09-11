@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Image as ImageIcon } from 'lucide-react'
-import { getDirectImageUrl } from '../../utils/imageUrlUtils'
+import { getDirectImageUrl, getImageFallbackUrls } from '../../utils/imageUrlUtils'
 import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
 
 export default function ImageThumbnail({
@@ -12,28 +12,46 @@ export default function ImageThumbnail({
   showLabel = true,
 }) {
   const [error, setError] = useState(false)
+  const [fallbackIndex, setFallbackIndex] = useState(0)
   const [resolvedSrc, setResolvedSrc] = useState('')
+
+  const fallbacks = getImageFallbackUrls(url, `s${Math.max(160, size * 3)}`)
+  const currentSrc = fallbacks[fallbackIndex] || getDirectImageUrl(url, 'w160')
+
+  useEffect(() => {
+    setError(false)
+    setFallbackIndex(0)
+  }, [url])
 
   useEffect(() => {
     let active = true
-    const baseSrc = getDirectImageUrl(url, 'w160')
-    if (!baseSrc) {
+    if (!currentSrc) {
       setResolvedSrc('')
       return
     }
 
-    if (baseSrc.startsWith('data:image/heic') || baseSrc.startsWith('data:image/heif')) {
-      convertHeicDataUrlIfNeeded(baseSrc).then((converted) => {
+    if (currentSrc.startsWith('data:image/heic') || currentSrc.startsWith('data:image/heif')) {
+      convertHeicDataUrlIfNeeded(currentSrc).then((converted) => {
         if (active) setResolvedSrc(converted)
       })
     } else {
-      setResolvedSrc(baseSrc)
+      setResolvedSrc(currentSrc)
     }
 
     return () => {
       active = false
     }
-  }, [url])
+  }, [currentSrc])
+
+  const handleImageError = () => {
+    if (fallbackIndex < fallbacks.length - 1) {
+      const next = fallbackIndex + 1
+      setFallbackIndex(next)
+      setResolvedSrc(fallbacks[next])
+    } else {
+      setError(true)
+    }
+  }
 
   if (!url) {
     return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
@@ -56,7 +74,9 @@ export default function ImageThumbnail({
           <img
             src={resolvedSrc}
             alt={alt}
-            onError={() => setError(true)}
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={handleImageError}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
             loading="lazy"
           />

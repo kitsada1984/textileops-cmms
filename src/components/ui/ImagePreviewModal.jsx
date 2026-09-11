@@ -175,6 +175,8 @@ export default function ImagePreviewModal({ open, onClose, url, title = 'รู�
               <img
                 src={resolvedSrc}
                 alt={title}
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
                 onLoad={() => setLoading(false)}
                 onError={handleImageError}
                 className={`max-h-[68vh] w-auto max-w-full object-contain mx-auto transition-opacity duration-300 ${

@@ -55,7 +55,7 @@ import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateNeedleConditionPdfProps } from '../utils/pdfDocGenerators'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
-import { getDirectImageUrl } from '../utils/imageUrlUtils'
+import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
 import { normalizeImageFile, convertHeicDataUrlIfNeeded } from '../utils/imageFileProcessor'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
@@ -69,25 +69,43 @@ const normalizeMachine = (val = '') =>
 function FormPhotoCard({ url, onRemove, onPreview, index }) {
   const [resolvedSrc, setResolvedSrc] = useState('')
   const [error, setError] = useState(false)
+  const [fallbackIndex, setFallbackIndex] = useState(0)
+
+  const fallbacks = getImageFallbackUrls(url, 'w600')
+  const currentSrc = fallbacks[fallbackIndex] || getDirectImageUrl(url, 'w400')
+
+  useEffect(() => {
+    setError(false)
+    setFallbackIndex(0)
+  }, [url])
 
   useEffect(() => {
     let active = true
-    const baseSrc = getDirectImageUrl(url, 'w400')
-    if (!baseSrc) {
+    if (!currentSrc) {
       setResolvedSrc('')
       return
     }
-    if (baseSrc.startsWith('data:image/heic') || baseSrc.startsWith('data:image/heif')) {
-      convertHeicDataUrlIfNeeded(baseSrc).then((converted) => {
+    if (currentSrc.startsWith('data:image/heic') || currentSrc.startsWith('data:image/heif')) {
+      convertHeicDataUrlIfNeeded(currentSrc).then((converted) => {
         if (active) setResolvedSrc(converted)
       })
     } else {
-      setResolvedSrc(baseSrc)
+      setResolvedSrc(currentSrc)
     }
     return () => {
       active = false
     }
-  }, [url])
+  }, [currentSrc])
+
+  const handleImageError = () => {
+    if (fallbackIndex < fallbacks.length - 1) {
+      const next = fallbackIndex + 1
+      setFallbackIndex(next)
+      setResolvedSrc(fallbacks[next])
+    } else {
+      setError(true)
+    }
+  }
 
   return (
     <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-xs">
@@ -95,9 +113,11 @@ function FormPhotoCard({ url, onRemove, onPreview, index }) {
         <img
           src={resolvedSrc}
           alt={`Needle condition ${index}`}
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
           className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
           onClick={onPreview}
-          onError={() => setError(true)}
+          onError={handleImageError}
         />
       ) : (
         <div

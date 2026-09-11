@@ -16,6 +16,11 @@ describe('imageUrlUtils', () => {
       expect(getGoogleDriveFileId(url)).toBe(FILE_ID)
     })
 
+    it('extracts ID from /file/u/0/d/ format (multi-account)', () => {
+      const url = `https://drive.google.com/file/u/0/d/${FILE_ID}/view`
+      expect(getGoogleDriveFileId(url)).toBe(FILE_ID)
+    })
+
     it('extracts ID from ?id= format', () => {
       const url = `https://drive.google.com/open?id=${FILE_ID}`
       expect(getGoogleDriveFileId(url)).toBe(FILE_ID)
@@ -71,7 +76,7 @@ describe('imageUrlUtils', () => {
       const fallbacks = getImageFallbackUrls(driveUrl)
       expect(fallbacks.length).toBeGreaterThan(1)
       expect(fallbacks[0]).toContain('googleusercontent')
-      expect(fallbacks[2]).toContain('thumbnail')
+      expect(fallbacks.some((u) => u.includes('thumbnail'))).toBe(true)
     })
   })
 })

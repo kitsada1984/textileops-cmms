@@ -82,13 +82,13 @@ const TAPE5_NOTE_PREFIX = 'Tape5:'
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'machines'|column machines\.([^ ]+) does not exist/i
 
 function extractImageUrl(note = '') {
-  const line = String(note || '').split('\n').find((item) => item.trim().startsWith(IMAGE_NOTE_PREFIX))
-  return line?.trim().slice(IMAGE_NOTE_PREFIX.length).trim() || ''
+  const match = String(note || '').match(/ImageUrl:\s*(https?:\/\/[^\s\r\n]+)/i)
+  return match?.[1]?.trim() || ''
 }
 
 function extractTape5(note = '') {
-  const line = String(note || '').split('\n').find((item) => item.trim().startsWith(TAPE5_NOTE_PREFIX))
-  return line?.trim().slice(TAPE5_NOTE_PREFIX.length).trim() || ''
+  const match = String(note || '').match(/Tape5:\s*([^\r\n]+)/i)
+  return match?.[1]?.trim() || ''
 }
 
 function stripMachineMeta(note = '') {
@@ -96,7 +96,7 @@ function stripMachineMeta(note = '') {
     .split('\n')
     .filter((line) => {
       const t = line.trim()
-      return !t.startsWith(IMAGE_NOTE_PREFIX) && !t.startsWith(TAPE5_NOTE_PREFIX)
+      return !t.match(/^ImageUrl:\s*/i) && !t.match(/^Tape5:\s*/i)
     })
     .join('\n')
     .trim()
@@ -466,6 +466,25 @@ export default function Machines() {
     setUploadingImage(false)
   }
 
+  const saveMachineWithColumnFallback = async (payload) => {
+    let nextPayload = { ...payload }
+    const removedColumns = []
+    while (true) {
+      try {
+        const saved = await save(nextPayload)
+        return { saved, removedColumns }
+      } catch (error) {
+        const missingCol = getMissingMachineColumn(error)
+        if (missingCol && !removedColumns.includes(missingCol)) {
+          removedColumns.push(missingCol)
+          nextPayload = omitKeys(nextPayload, [missingCol])
+          continue
+        }
+        throw error
+      }
+    }
+  }
+
   const submit = async () => {
     const mc = String(form.Mc || '').trim()
     const loc = String(form.Location || '').trim()
@@ -477,14 +496,17 @@ export default function Machines() {
     const isEdit = !!(form._id || form.id)
     try {
       const itemNum = form.ITEM !== '' && form.ITEM !== null && form.ITEM !== undefined ? Number(form.ITEM) : null
-      const payload = {
+      const remarkWithMeta = appendMachineMeta(form.Remark, { imageUrl: form.ImageUrl, tape5: form.Tape5_No })
+      let payload = {
         ...form,
         Mc: mc,
         Location: loc,
         ITEM: Number.isFinite(itemNum) ? itemNum : null,
-        Remark: appendMachineMeta(form.Remark, { imageUrl: form.ImageUrl, tape5: form.Tape5_No }),
+        Remark: remarkWithMeta,
       }
-      await save(payload)
+      // Omit virtual/client-only fields not in machines DB schema to prevent schema cache errors
+      payload = omitKeys(payload, ['ImageUrl', 'Tape5_No', 'ImagePreview'])
+      await saveMachineWithColumnFallback(payload)
       toast.success(isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', `เครื่อง ${mc}`)
       setModal(false)
     } catch (e) {

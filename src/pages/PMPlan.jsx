@@ -43,6 +43,8 @@ import CenterCheck from './CenterCheck'
 import NeedleCondition from './NeedleCondition'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generatePMPlanPdfProps } from '../utils/pdfDocGenerators'
+import ImagePreviewModal from '../components/ui/ImagePreviewModal'
+import ImageThumbnail from '../components/ui/ImageThumbnail'
 
 const PM_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
@@ -317,6 +319,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [previewImageModal, setPreviewImageModal] = useState(null)
   const [syncingPM, setSyncingPM] = useState(false)
   const [cylinders, setCylinders] = useState([])
   const autoSyncDoneRef = useRef(false)
@@ -1292,32 +1295,33 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     }
 
     if (col.field === 'ImageUrl') {
+      const imgUrl = String(val || '').trim()
+      if (!imgUrl) return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
       return (
         <a
-          href={String(val)}
+          href={imgUrl}
           target="_blank"
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-mono text-[11px] flex items-center gap-1 hover:underline max-w-[200px] truncate"
         >
-          <span className="truncate">{String(val)}</span>
+          <span className="truncate">{imgUrl}</span>
           <ExternalLink size={11} className="flex-shrink-0 opacity-70" />
         </a>
       )
     }
 
     if (col.field === 'ImagePreview') {
+      const imgUrl = String(val || '').trim()
+      if (!imgUrl) return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
       return (
-        <a
-          href={String(val)}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20"
-        >
-          <ImageIcon size={12} />
-          <span>เปิดรูป</span>
-        </a>
+        <div className="flex items-center justify-center">
+          <ImageThumbnail
+            url={imgUrl}
+            alt={`แผน PM ${row.Machine_MC || ''}`}
+            onClick={() => setPreviewImageModal({ url: imgUrl, title: `แผน PM เครื่อง ${row.Machine_MC || ''}` })}
+          />
+        </div>
       )
     }
 
@@ -1770,10 +1774,32 @@ export default function PMPlan({ defaultTab = 'plan' }) {
                 label: t('dr_details'),
                 single: true,
                 fields: [
-                  { label: 'ลิงก์รูป', value: getPMImageUrl(detailRec), full: true },
+                  ...(getPMImageUrl(detailRec) ? [{
+                    label: 'รูปภาพประกอบแผน PM',
+                    full: true,
+                    node: (
+                      <div className="flex items-center gap-3 pt-1">
+                        <ImageThumbnail
+                          url={getPMImageUrl(detailRec)}
+                          alt={`แผน PM ${detailRec.Machine_MC || ''}`}
+                          size={48}
+                          onClick={() => setPreviewImageModal({ url: getPMImageUrl(detailRec), title: `แผน PM เครื่อง ${detailRec.Machine_MC || ''}` })}
+                        />
+                        <a
+                          href={getPMImageUrl(detailRec)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-mono break-all"
+                        >
+                          <ExternalLink size={12} className="flex-shrink-0" />
+                          <span>เปิดใน Google Drive</span>
+                        </a>
+                      </div>
+                    ),
+                  }] : []),
                   { label: t('field_req_parts'), value: detailRec.Required_Parts, full: true },
                   { label: t('remark'), value: stripImageUrlMeta(detailRec.Remark), full: true },
-                ].filter((f) => f.value),
+                ].filter((f) => f && (f.node || f.value)),
               },
             ].filter((g) => g.fields.length > 0) : []}
           />
@@ -2186,6 +2212,16 @@ export default function PMPlan({ defaultTab = 'plan' }) {
           open={!!pdfItem}
           onClose={() => setPdfItem(null)}
           {...generatePMPlanPdfProps(pdfItem)}
+        />
+      )}
+
+      {/* ── IMAGE PREVIEW MODAL ───────────────────────── */}
+      {previewImageModal && (
+        <ImagePreviewModal
+          open={Boolean(previewImageModal)}
+          onClose={() => setPreviewImageModal(null)}
+          url={previewImageModal.url}
+          title={previewImageModal.title}
         />
       )}
     </div>
