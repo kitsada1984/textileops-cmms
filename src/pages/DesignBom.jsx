@@ -36,6 +36,7 @@ import { useToast } from '../components/ui/Toast'
 import F from '../components/ui/FormField'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+import { normalizeImageFile } from '../utils/imageFileProcessor'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
 
@@ -256,7 +257,9 @@ export default function DesignBom() {
     if (!file) return
     setUploadingImage(true)
     try {
-      const { imageUrl } = await uploadImageToGoogleDrive(file, { folderName: DESIGN_BOM_IMAGE_FOLDER })
+      const normalized = await normalizeImageFile(file, 1600, 0.82)
+      const fileToUpload = normalized?.file || file
+      const { imageUrl } = await uploadImageToGoogleDrive(fileToUpload, { folderName: DESIGN_BOM_IMAGE_FOLDER })
       setForm((prev) => ({ ...prev, ImageUrl: imageUrl }))
       toast.success('อัปโหลดรูปสำเร็จ', `บันทึกไว้ในโฟลเดอร์ ${DESIGN_BOM_IMAGE_FOLDER}`)
     } catch (e) {
@@ -744,7 +747,11 @@ export default function DesignBom() {
                       type="file"
                       accept="image/*"
                       disabled={uploadingImage}
-                      onChange={(e) => onPickImageFile(e.target.files?.[0])}
+                      onChange={(e) => {
+                        const picked = e.target.files?.[0]
+                        e.target.value = ''
+                        if (picked) onPickImageFile(picked)
+                      }}
                       className="hidden"
                     />
                   </label>

@@ -34,6 +34,7 @@ import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { generatePartCode, getPartStockStatus } from '../utils/inventory'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+import { normalizeImageFile } from '../utils/imageFileProcessor'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateSparePartPdfProps } from '../utils/pdfDocGenerators'
@@ -276,7 +277,9 @@ export default function SpareParts() {
     if (!file) return
     setUploadingImage(true)
     try {
-      const { imageUrl } = await uploadImageToGoogleDrive(file, { folderName: SPARE_PART_IMAGE_FOLDER })
+      const normalized = await normalizeImageFile(file, 1600, 0.82)
+      const fileToUpload = normalized?.file || file
+      const { imageUrl } = await uploadImageToGoogleDrive(fileToUpload, { folderName: SPARE_PART_IMAGE_FOLDER })
       setForm((prev) => ({
         ...prev,
         ImageUrl: imageUrl,
@@ -840,7 +843,11 @@ export default function SpareParts() {
                       type="file"
                       accept="image/*"
                       disabled={uploadingImage}
-                      onChange={(e) => onPickImageFile(e.target.files?.[0])}
+                      onChange={(e) => {
+                        const picked = e.target.files?.[0]
+                        e.target.value = ''
+                        if (picked) onPickImageFile(picked)
+                      }}
                       className="hidden"
                     />
                   </label>

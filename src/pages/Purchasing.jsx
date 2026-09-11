@@ -36,6 +36,7 @@ import F from '../components/ui/FormField'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+import { normalizeImageFile } from '../utils/imageFileProcessor'
 import { generateStockTxnId, getPartStockStatus, toNumber } from '../utils/inventory'
 import { appendSparePartImageMeta, getSparePartImageUrl } from '../utils/sparePartImage'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
@@ -401,7 +402,9 @@ export default function Purchasing() {
     if (!file) return
     setUploadingImage(true)
     try {
-      const { imageUrl } = await uploadImageToGoogleDrive(file, { folderName: PURCHASE_IMAGE_FOLDER })
+      const normalized = await normalizeImageFile(file, 1600, 0.82)
+      const fileToUpload = normalized?.file || file
+      const { imageUrl } = await uploadImageToGoogleDrive(fileToUpload, { folderName: PURCHASE_IMAGE_FOLDER })
       setForm((prev) => ({
         ...prev,
         ImageUrl: imageUrl,
@@ -1067,7 +1070,11 @@ export default function Purchasing() {
                       type="file"
                       accept="image/*"
                       disabled={uploadingImage}
-                      onChange={(e) => onPickImageFile(e.target.files?.[0])}
+                      onChange={(e) => {
+                        const picked = e.target.files?.[0]
+                        e.target.value = ''
+                        if (picked) onPickImageFile(picked)
+                      }}
                       className="hidden"
                     />
                   </label>

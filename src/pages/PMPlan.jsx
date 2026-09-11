@@ -37,6 +37,7 @@ import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { applyFilterSort } from '../utils/filterSort'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
+import { normalizeImageFile } from '../utils/imageFileProcessor'
 import { useAuth } from '../contexts/AuthContext'
 import PMLog from './PMLog'
 import CenterCheck from './CenterCheck'
@@ -1090,7 +1091,9 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     if (!file) return
     setUploadingImage(true)
     try {
-      const { imageUrl } = await uploadImageToGoogleDrive(file, { folderName: PM_IMAGE_FOLDER })
+      const normalized = await normalizeImageFile(file, 1600, 0.82)
+      const fileToUpload = normalized?.file || file
+      const { imageUrl } = await uploadImageToGoogleDrive(fileToUpload, { folderName: PM_IMAGE_FOLDER })
       setForm((prev) => ({
         ...prev,
         ImageUrl: imageUrl,
@@ -2161,7 +2164,11 @@ export default function PMPlan({ defaultTab = 'plan' }) {
                         type="file"
                         accept="image/*"
                         disabled={uploadingImage}
-                        onChange={(e) => onPickImageFile(e.target.files?.[0])}
+                        onChange={(e) => {
+                          const picked = e.target.files?.[0]
+                          e.target.value = ''
+                          if (picked) onPickImageFile(picked)
+                        }}
                         className="hidden"
                       />
                     </label>

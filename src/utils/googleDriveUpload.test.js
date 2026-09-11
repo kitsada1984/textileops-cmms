@@ -156,4 +156,36 @@ describe('uploadImageToGoogleDrive', () => {
       'Google Drive upload ยังไม่ได้ตั้งค่า'
     )
   })
+
+  it('retries with direct Apps Script webhook when /api/drive-upload returns 413', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          provider: 'webhook',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 413,
+        json: async () => ({ error: 'Payload Too Large' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          fileId: 'fallback-file-1',
+          webViewLink: 'https://drive.google.com/file/d/fallback-file-1/view',
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const file = new File(['abc'], 'large_photo.png', { type: 'image/png' })
+    const result = await uploadImageToGoogleDrive(file)
+
+    expect(result.fileId).toBe('fallback-file-1')
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/drive-upload')
+    expect(fetchMock.mock.calls[2][0]).toContain('script.google.com')
+  })
 })
