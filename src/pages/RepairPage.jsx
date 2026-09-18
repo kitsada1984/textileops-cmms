@@ -1497,6 +1497,7 @@ function StepComplete({ request, onUpdated }) {
             QuantityOnHand: nextStock,
             updated_at: now.toISOString(),
           })
+          const machineCode = String(request.machine_mc || request.mc || '').trim()
           await StockTxnAPI.create({
             TXN_ID: `TXN-USE-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
             TXN_Type: 'USE',
@@ -1504,10 +1505,17 @@ function StepComplete({ request, onUpdated }) {
             Part_Code: p.PartNumber,
             Part_Name_EN: p.PartName,
             Quantity: -Math.abs(p.qty),
+            Qty_Change: Math.abs(p.qty),
+            Reference: request.request_no,
             Reference_ID: request.request_no,
-            Remarks: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no} (เครื่อง ${request.machine_mc || ''})`,
+            MC: machineCode,
+            Machine_MC: machineCode,
+            Remarks: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no}${machineCode ? ` (เครื่อง ${machineCode})` : ''}`,
+            Note: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no}${machineCode ? ` (เครื่อง ${machineCode})` : ''}${machineCode ? `\nMC: ${machineCode}` : ''}`,
             Created_By: tech.trim(),
+            Performed_By: tech.trim(),
             Date: now.toISOString(),
+            created_date: now.toISOString(),
           })
         } catch (stockErr) {
           console.warn(`Stock deduction warning for ${p.PartName}:`, stockErr)

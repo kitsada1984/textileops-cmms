@@ -18,10 +18,11 @@ import {
   Sparkles,
   User,
   Tag,
+  Cpu,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
-import { StockTxnAPI, TXN_TYPE, SparePartAPI } from '../api/entities'
+import { StockTxnAPI, TXN_TYPE, SparePartAPI, MachineAPI } from '../api/entities'
 import useWebBuilderMenu, { useFieldOptions } from '../hooks/useWebBuilderMenu'
 import Modal from '../components/ui/Modal'
 import StatusBadge from '../components/ui/StatusBadge'
@@ -38,6 +39,14 @@ import { getSparePartImageUrl } from '../utils/sparePartImage'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
+import MachinePartsHistoryModal from '../components/inventory/MachinePartsHistoryModal'
+import {
+  getMovementMC,
+  appendMCMetaToNote,
+  stripMCMetaFromNote,
+  MC_NOTE_PREFIX,
+  MACHINE_MC_NOTE_PREFIX,
+} from '../utils/stockMovementMC'
 
 const SM_FIELD_KEYS = {
   created_date: 'sm_th_date',
@@ -51,10 +60,12 @@ const SM_FIELD_KEYS = {
 }
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
 const CATEGORY_NOTE_PREFIX = 'Category:'
-const MISSING_COLUMN_RE = /Could not find the '([^']+)' column/i
+const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'stocktransactions'|column stocktransactions\.([^ ]+) does not exist|Could not find the '([^']+)' column/i
 const HIDDEN_IMAGE_NOTE_PREFIXES = [
   IMAGE_NOTE_PREFIX,
   CATEGORY_NOTE_PREFIX,
+  MC_NOTE_PREFIX,
+  MACHINE_MC_NOTE_PREFIX,
 ]
 const CATEGORY_OPTIONS = ['อะไหล่', 'เครื่องมือช่าง']
 const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
@@ -66,6 +77,7 @@ const getSMFallbackCols = (t) => [
   { field: 'Part_Code', label: 'รหัสอะไหล่', type: 'text' },
   { field: 'Part_Name_EN', label: t('sm_th_name'), type: 'text' },
   { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: CATEGORY_OPTIONS },
+  { field: 'MC', label: 'M/C', type: 'text', width: '110px' },
   { field: 'Qty_Before', label: t('sm_th_before'), type: 'number' },
   { field: 'Qty_Change', label: t('sm_th_change'), type: 'number' },
   { field: 'Qty_After', label: t('sm_th_after'), type: 'number' },
@@ -86,6 +98,7 @@ const getSMRequiredCols = (t) => [
   { field: 'Part_Code', label: 'รหัสอะไหล่' },
   { field: 'Part_Name_EN', label: t('sm_th_name') },
   { field: 'Category', label: 'หมวดหมู่', width: '140px' },
+  { field: 'MC', label: 'M/C', width: '110px' },
   { field: 'Qty_Before', label: t('sm_th_before') },
   { field: 'Qty_Change', label: t('sm_th_change') },
   { field: 'Qty_After', label: t('sm_th_after') },
@@ -104,6 +117,7 @@ const EMPTY = {
   Part_Code: '',
   Part_Name_EN: '',
   Category: '',
+  MC: '',
   Qty_Before: 0,
   Qty_Change: 0,
   Qty_After: 0,
@@ -156,11 +170,12 @@ function stripImageUrlFromNote(note = '') {
     .trim()
 }
 
-function appendStockMetaToNote(note = '', { category = '' } = {}) {
+function appendStockMetaToNote(note = '', { category = '', mc = '' } = {}) {
   const cleanNote = stripImageUrlFromNote(note)
   return [
     cleanNote,
     category ? `${CATEGORY_NOTE_PREFIX} ${category}` : '',
+    mc ? `${MC_NOTE_PREFIX} ${mc}` : '',
   ].filter(Boolean).join('\n')
 }
 
@@ -171,7 +186,12 @@ function getHiddenStockCategory(row = {}) {
 function buildStockPayload(form = {}) {
   return {
     ...omitKeys(form, ['ImageUrl', 'Category']),
-    Note: appendStockMetaToNote(form.Note, { category: getHiddenStockCategory(form) }),
+    MC: form.MC || '',
+    Machine_MC: form.MC || '',
+    Note: appendStockMetaToNote(form.Note, {
+      category: getHiddenStockCategory(form),
+      mc: form.MC || '',
+    }),
   }
 }
 
@@ -186,7 +206,7 @@ function omitKeys(item, keys) {
 function getMissingStockColumn(error) {
   const message = String(error?.message || '')
   const match = message.match(MISSING_COLUMN_RE)
-  return match?.[1] || null
+  return match?.[1] || match?.[2] || match?.[3] || null
 }
 
 export default function StockMovement() {
@@ -202,6 +222,24 @@ export default function StockMovement() {
   const [filterSort, setFilterSort] = useState(INIT_FS)
   const [detailRec, setDetailRec] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
+  const [selectedMachineForHistory, setSelectedMachineForHistory] = useState(null)
+  const [machineList, setMachineList] = useState([])
+
+  useEffect(() => {
+    MachineAPI.list()
+      .then((res) => {
+        const rows = res?.data || res || []
+        setMachineList(rows)
+      })
+      .catch(() => {})
+  }, [])
+
+  const mcOptions = useMemo(() => {
+    const fromData = data.map((tx) => getMovementMC(tx)).filter(Boolean)
+    const fromMachines = machineList.map((m) => String(m.MC || m.Machine_MC || m.Machine_ID || m.name || '').trim()).filter(Boolean)
+    const values = Array.from(new Set([...fromData, ...fromMachines])).sort()
+    return values.map((v) => ({ value: v, label: v }))
+  }, [data, machineList])
 
   // Summary statistics
   const stats = useMemo(() => {
@@ -230,7 +268,7 @@ export default function StockMovement() {
 
   const baseRows = useMemo(() => {
     return data.filter((tx) =>
-      [tx.TXN_ID, tx.Part_Code, tx.Part_Name_EN, getStockCategory(tx), tx.Reference, tx.Performed_By, stripImageUrlFromNote(tx.Note)]
+      [tx.TXN_ID, tx.Part_Code, tx.Part_Name_EN, getStockCategory(tx), getMovementMC(tx), tx.Reference, tx.Performed_By, stripImageUrlFromNote(tx.Note)]
         .some((v) => String(v || '').toLowerCase().includes(search.toLowerCase()))
     )
   }, [data, parts, search])
@@ -243,14 +281,16 @@ export default function StockMovement() {
     selectOptions: {
       TXN_Type: txnTypeOptions || TXN_TYPE,
       Category: CATEGORY_OPTIONS,
+      MC: mcOptions,
     },
     valueGetters: {
       Category: getStockCategory,
+      MC: getMovementMC,
       ImageUrl: getStockPartImageUrl,
       ImagePreview: getStockPartImageUrl,
       Note: (row) => stripImageUrlFromNote(row.Note),
     },
-  }), [cols, parts, txnTypeOptions])
+  }), [cols, parts, txnTypeOptions, mcOptions])
 
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
@@ -263,6 +303,7 @@ export default function StockMovement() {
     setForm({
       ...EMPTY,
       ...tx,
+      MC: getMovementMC(tx),
       Note: stripImageUrlFromNote(tx.Note),
       Category: getStockCategory(tx),
       ImageUrl: getStockPartImageUrl(tx),
@@ -342,9 +383,30 @@ export default function StockMovement() {
     return { before, after, partId: saved.id || saved._id || existing?.id || null }
   }
 
+  const saveStockTxnWithFallback = async (payload) => {
+    let toSave = { ...payload }
+    while (true) {
+      try {
+        await save(toSave)
+        return
+      } catch (error) {
+        const missingColumn = getMissingStockColumn(error)
+        if (missingColumn && ['MC', 'Machine_MC', 'Category', 'ImageUrl'].includes(missingColumn)) {
+          toSave = omitKeys(toSave, [missingColumn])
+          continue
+        }
+        throw error
+      }
+    }
+  }
+
   const submit = async () => {
     if (!form.Part_Code) {
       toast.warning('กรุณากรอกข้อมูล', 'รหัสอะไหล่จำเป็นต้องกรอก')
+      return
+    }
+    if (form.TXN_Type === 'ISSUE' && !String(form.MC || '').trim()) {
+      toast.warning('กรุณาระบุเลขเครื่องจักร', 'รายการเบิกจ่าย (ISSUE) จำเป็นต้องระบุเครื่องจักร (M/C)')
       return
     }
     setSaving(true)
@@ -363,7 +425,7 @@ export default function StockMovement() {
         }
       }
 
-      await save(buildStockPayload(finalPayload))
+      await saveStockTxnWithFallback(buildStockPayload(finalPayload))
       toast.success(
         isEdit ? 'แก้ไขรายการเคลื่อนไหวสำเร็จ' : 'บันทึกเคลื่อนไหวสต๊อกสำเร็จ',
         `${finalPayload.Part_Code} (${finalPayload.TXN_Type})`
@@ -391,10 +453,29 @@ export default function StockMovement() {
       ? getStockPartImageUrl(row)
       : col.field === 'Category'
         ? getStockCategory(row)
-        : row[col.field]
+        : col.field === 'MC'
+          ? getMovementMC(row)
+          : row[col.field]
 
     if (val === null || val === undefined || val === '') {
       return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
+    }
+
+    if (col.field === 'MC') {
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setSelectedMachineForHistory(String(val))
+          }}
+          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors shadow-xs group"
+          title={`คลิกเพื่อดูประวัติอะไหล่ของเครื่อง ${val}`}
+        >
+          <Cpu size={12} className="text-blue-500 group-hover:scale-110 transition-transform" />
+          <span>{String(val)}</span>
+        </button>
+      )
     }
 
     if (col.field === 'TXN_ID') {
@@ -549,7 +630,7 @@ export default function StockMovement() {
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="ค้นหา เลขรายการ / รหัสอะไหล่ / ชื่ออะไหล่ / ผู้ดำเนินการ..."
+            placeholder="ค้นหา เลขรายการ / รหัสอะไหล่ / ชื่ออะไหล่ / M/C / ผู้ดำเนินการ..."
             className="w-full sm:w-80"
           />
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
@@ -559,6 +640,7 @@ export default function StockMovement() {
             rows={displayRows}
             valueGetters={{
               Category: getStockCategory,
+              MC: getMovementMC,
               ImageUrl: getStockPartImageUrl,
               ImagePreview: getStockPartImageUrl,
               Note: (row) => stripImageUrlFromNote(row.Note),
@@ -704,11 +786,27 @@ export default function StockMovement() {
           {
             label: 'อ้างอิงและผู้ดำเนินการ',
             fields: [
+              ...(getMovementMC(detailRec) ? [{
+                label: 'เครื่องจักร (M/C)',
+                mono: true,
+                node: (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMachineForHistory(getMovementMC(detailRec))}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors shadow-xs"
+                    title={`ดูประวัติอะไหล่เครื่อง ${getMovementMC(detailRec)}`}
+                  >
+                    <Cpu size={13} className="text-blue-500" />
+                    <span>{getMovementMC(detailRec)}</span>
+                    <span className="text-[10px] font-normal text-blue-500 underline ml-1">ดูประวัติเครื่อง</span>
+                  </button>
+                ),
+              }] : []),
               { label: 'เอกสารอ้างอิง', value: detailRec.Reference },
               { label: 'ประเภทอ้างอิง', value: detailRec.Reference_Type },
               { label: 'ผู้ทำรายการ', value: detailRec.Performed_By },
               { label: 'หมายเหตุ', value: stripImageUrlFromNote(detailRec.Note), full: true },
-            ].filter((f) => f.value),
+            ].filter((f) => f && (f.node || f.value)),
           },
         ].filter((g) => g.fields.length > 0) : []}
       />
@@ -809,17 +907,42 @@ export default function StockMovement() {
             </div>
           </div>
 
-          {/* Section 3: Reference & Notes */}
+          {/* Section 3: Reference, Machine & Notes */}
           <div className="space-y-2">
             <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
               <Tag size={14} className="text-emerald-500" />
-              <span>เอกสารอ้างอิงและผู้ดำเนินการ</span>
+              <span>เครื่องจักร เอกสารอ้างอิง และผู้ดำเนินการ</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="label">
+                  <span className="flex items-center gap-1">
+                    <Cpu size={12} className="text-blue-500" />
+                    <span>เครื่องจักร (M/C)</span>
+                  </span>
+                  {form.TXN_Type === 'ISSUE' && <span className="text-red-500 font-bold ml-1">*</span>}
+                </label>
+                <input
+                  list="mc-datalist-options"
+                  type="text"
+                  className="input text-xs w-full font-mono"
+                  placeholder="เช่น SB-361M, DB-3411T..."
+                  value={form.MC || ''}
+                  onChange={(e) => setForm((prev) => ({ ...prev, MC: e.target.value }))}
+                />
+                <datalist id="mc-datalist-options">
+                  {mcOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value} />
+                  ))}
+                </datalist>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  {form.TXN_Type === 'ISSUE' ? 'จำเป็นต้องระบุสำหรับรายการเบิกใช้' : 'ระบุเครื่องจักรที่เกี่ยวข้อง (ถ้ามี)'}
+                </span>
+              </div>
               <F form={form} setForm={setForm} label="เอกสารอ้างอิง / เลขที่งาน" id="Reference" placeholder="เช่น WO-2026-001 หรือ PO-001" />
               <F form={form} setForm={setForm} label="ผู้ทำรายการ" id="Performed_By" placeholder="ชื่อผู้เบิกหรือผู้รับของ" />
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-3">
                 <F
                   form={form}
                   setForm={setForm}
@@ -839,6 +962,18 @@ export default function StockMovement() {
         onClose={() => setPreviewImageModal(null)}
         url={previewImageModal?.url}
         title={previewImageModal?.title}
+      />
+
+      {/* ── MACHINE PARTS HISTORY MODAL ───────────────────────── */}
+      <MachinePartsHistoryModal
+        open={!!selectedMachineForHistory}
+        onClose={() => setSelectedMachineForHistory(null)}
+        machineCode={selectedMachineForHistory}
+        transactions={data}
+        onSelectTxn={(tx) => {
+          setSelectedMachineForHistory(null)
+          setDetailRec(tx)
+        }}
       />
     </div>
   )
