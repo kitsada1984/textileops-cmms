@@ -39,32 +39,35 @@ import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { normalizeImageFile } from '../utils/imageFileProcessor'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
+import {
+  DESIGN_BOM_COVER_FOLDER,
+  DESIGN_BOM_APP_FOLDER,
+  COVER_NOTE_PREFIX,
+  APP_NOTE_PREFIX,
+  LEGACY_NOTE_PREFIX,
+  extractCoverImageUrl,
+  extractAppImageUrl,
+  stripDesignImagesMeta,
+  getDesignCoverImageUrl,
+  getDesignAppImageUrl,
+  appendDesignImagesMeta,
+} from '../utils/designBomImage'
 
-const DESIGN_BOM_IMAGE_FOLDER = 'Design-BOM'
-const IMAGE_NOTE_PREFIX = 'ImageUrl:'
+export {
+  DESIGN_BOM_COVER_FOLDER,
+  DESIGN_BOM_APP_FOLDER,
+  COVER_NOTE_PREFIX,
+  APP_NOTE_PREFIX,
+  LEGACY_NOTE_PREFIX,
+  extractCoverImageUrl,
+  extractAppImageUrl,
+  stripDesignImagesMeta,
+  getDesignCoverImageUrl,
+  getDesignAppImageUrl,
+  appendDesignImagesMeta,
+}
+
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'design_bom'|column design_bom\.([^ ]+) does not exist/i
-
-function extractImageUrl(note = '') {
-  const line = String(note || '').split('\n').find((item) => item.trim().startsWith(IMAGE_NOTE_PREFIX))
-  return line?.trim().slice(IMAGE_NOTE_PREFIX.length).trim() || ''
-}
-
-function stripImageUrlMeta(note = '') {
-  return String(note || '')
-    .split('\n')
-    .filter((line) => !line.trim().startsWith(IMAGE_NOTE_PREFIX))
-    .join('\n')
-    .trim()
-}
-
-function getDesignImageUrl(row = {}) {
-  return row.ImageUrl || extractImageUrl(row.Comment) || ''
-}
-
-function appendDesignImageMeta(comment = '', imageUrl = '') {
-  const cleanComment = stripImageUrlMeta(comment)
-  return [cleanComment, imageUrl ? `${IMAGE_NOTE_PREFIX} ${imageUrl}` : ''].filter(Boolean).join('\n')
-}
 
 function omitKeys(item, keys = []) {
   const clone = { ...item }
@@ -92,19 +95,21 @@ const getFallbackCols = () => [
   { field: 'SL2',          label: 'SL2',          type: 'text' },
   { field: 'SL3',          label: 'SL3',          type: 'text' },
   { field: 'SL4',          label: 'SL4',          type: 'text' },
-  { field: 'ImageUrl',     label: 'URL',          type: 'text', width: '220px' },
-  { field: 'ImagePreview', label: 'รูป',          type: 'text', width: '110px' },
+  { field: 'CoverImage',   label: 'รูปใบปะหน้า',  type: 'text', width: '120px' },
+  { field: 'AppImage',     label: 'รูปใบApp',     type: 'text', width: '120px' },
   { field: 'Comment',      label: 'หมายเหตุ',     type: 'text' },
   { field: 'LastUpdated',  label: 'อัปเดตล่าสุด',  type: 'date' },
 ]
 
 const REQUIRED_IMAGE_COLS = [
-  { field: 'ImageUrl',     label: 'URL', type: 'text', width: '220px' },
-  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
+  { field: 'CoverImage', label: 'รูปใบปะหน้า', type: 'text', width: '120px' },
+  { field: 'AppImage',   label: 'รูปใบApp',   type: 'text', width: '120px' },
 ]
 
 function resolveDesignColumns(wbCols) {
-  const sourceCols = (wbCols && wbCols.length > 0) ? wbCols : getFallbackCols()
+  const rawCols = (wbCols && wbCols.length > 0) ? wbCols : getFallbackCols()
+  // Filter out legacy single-image columns ('ImageUrl', 'ImagePreview') if present
+  const sourceCols = rawCols.filter((col) => col.field !== 'ImageUrl' && col.field !== 'ImagePreview')
   const nextCols = [...sourceCols]
   REQUIRED_IMAGE_COLS.forEach((requiredCol) => {
     if (!nextCols.some((col) => col.field === requiredCol.field)) {
@@ -134,7 +139,8 @@ const EMPTY = {
   SL2: '',
   SL3: '',
   SL4: '',
-  ImageUrl: '',
+  CoverImageUrl: '',
+  AppImageUrl: '',
   Comment: '',
   LastUpdated: '',
 }
@@ -148,7 +154,8 @@ export default function DesignBom() {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
-  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [uploadingApp, setUploadingApp] = useState(false)
   const [detailRec, setDetailRec] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [filterSort, setFilterSort] = useState(INIT_FS)
@@ -171,15 +178,31 @@ export default function DesignBom() {
     const total = data.length
     const uniqueMCs = new Set(data.map((r) => r.MC).filter(Boolean)).size
     const uniqueDesigns = new Set(data.map((r) => r.Design).filter(Boolean)).size
-    const withImages = data.filter((r) => Boolean(getDesignImageUrl(r))).length
-    return { total, uniqueMCs, uniqueDesigns, withImages }
+    const withCover = data.filter((r) => Boolean(getDesignCoverImageUrl(r))).length
+    const withApp = data.filter((r) => Boolean(getDesignAppImageUrl(r))).length
+    return { total, uniqueMCs, uniqueDesigns, withCover, withApp }
   }, [data])
 
   const filtered = useMemo(() => {
     return data.filter((r) =>
-      [r.MC, r.Design, r.KI, r.BOM, r.CL1, r.CL2, r.CL3, r.CL4, r.SP, r.SL1, r.SL2, r.SL3, r.SL4, stripImageUrlMeta(r.Comment), getDesignImageUrl(r)].some((v) =>
-        String(v || '').toLowerCase().includes(search.toLowerCase())
-      )
+      [
+        r.MC,
+        r.Design,
+        r.KI,
+        r.BOM,
+        r.CL1,
+        r.CL2,
+        r.CL3,
+        r.CL4,
+        r.SP,
+        r.SL1,
+        r.SL2,
+        r.SL3,
+        r.SL4,
+        stripDesignImagesMeta(r.Comment),
+        getDesignCoverImageUrl(r),
+        getDesignAppImageUrl(r),
+      ].some((v) => String(v || '').toLowerCase().includes(search.toLowerCase()))
     )
   }, [data, search])
 
@@ -226,10 +249,12 @@ export default function DesignBom() {
         label,
         sortable: true,
         getValue:
-          key === 'ImageUrl' || key === 'ImagePreview'
-            ? getDesignImageUrl
+          key === 'CoverImage'
+            ? getDesignCoverImageUrl
+            : key === 'AppImage'
+            ? getDesignAppImageUrl
             : key === 'Comment'
-            ? (row) => stripImageUrlMeta(row.Comment)
+            ? (row) => stripDesignImagesMeta(row.Comment)
             : undefined,
         filter: filterConfig,
       }
@@ -246,39 +271,55 @@ export default function DesignBom() {
   const openEdit = (r) => {
     setForm({
       ...r,
-      ImageUrl: getDesignImageUrl(r),
-      Comment: stripImageUrlMeta(r.Comment),
+      CoverImageUrl: getDesignCoverImageUrl(r),
+      AppImageUrl: getDesignAppImageUrl(r),
+      Comment: stripDesignImagesMeta(r.Comment),
     })
     setModal(true)
     setDetailRec(null)
   }
 
-  const onPickImageFile = async (file) => {
+  const onPickImageFile = async (file, type = 'cover') => {
     if (!file) return
-    setUploadingImage(true)
+    const isCover = type === 'cover'
+    if (isCover) setUploadingCover(true)
+    else setUploadingApp(true)
+
     try {
       const normalized = await normalizeImageFile(file, 1600, 0.82)
       const fileToUpload = normalized?.file || file
-      const { imageUrl } = await uploadImageToGoogleDrive(fileToUpload, { folderName: DESIGN_BOM_IMAGE_FOLDER })
-      setForm((prev) => ({ ...prev, ImageUrl: imageUrl }))
-      toast.success('อัปโหลดรูปสำเร็จ', `บันทึกไว้ในโฟลเดอร์ ${DESIGN_BOM_IMAGE_FOLDER}`)
+      const folder = isCover ? DESIGN_BOM_COVER_FOLDER : DESIGN_BOM_APP_FOLDER
+      const { imageUrl } = await uploadImageToGoogleDrive(fileToUpload, { folderName: folder })
+      setForm((prev) => ({
+        ...prev,
+        [isCover ? 'CoverImageUrl' : 'AppImageUrl']: imageUrl,
+      }))
+      toast.success(
+        isCover ? 'อัปโหลดรูปใบปะหน้าสำเร็จ' : 'อัปโหลดรูปใบ App สำเร็จ',
+        `บันทึกไว้ในโฟลเดอร์ ${folder}`
+      )
     } catch (e) {
       toast.error('อัปโหลดรูปไม่สำเร็จ', e.message)
+    } finally {
+      if (isCover) setUploadingCover(false)
+      else setUploadingApp(false)
     }
-    setUploadingImage(false)
   }
 
   const saveWithImageFallback = async (payload) => {
-    try {
-      await save(payload)
-    } catch (error) {
-      const missingColumn = getMissingDesignColumn(error)
-      if (missingColumn === 'ImageUrl') {
-        await save(omitKeys(payload, ['ImageUrl']))
-        toast.success('บันทึกลิงก์รูปในหมายเหตุแล้ว', 'ฐานข้อมูลยังไม่มีคอลัมน์ ImageUrl ของ Design/BOM')
+    let toSave = { ...payload }
+    while (true) {
+      try {
+        await save(toSave)
         return
+      } catch (error) {
+        const missingColumn = getMissingDesignColumn(error)
+        if (missingColumn && ['CoverImageUrl', 'AppImageUrl', 'ImageUrl'].includes(missingColumn)) {
+          toSave = omitKeys(toSave, [missingColumn])
+          continue
+        }
+        throw error
       }
-      throw error
     }
   }
 
@@ -292,7 +333,10 @@ export default function DesignBom() {
     try {
       await saveWithImageFallback({
         ...form,
-        Comment: appendDesignImageMeta(form.Comment, form.ImageUrl),
+        ImageUrl: form.CoverImageUrl || '', // Backward-compatibility
+        CoverImageUrl: form.CoverImageUrl || '',
+        AppImageUrl: form.AppImageUrl || '',
+        Comment: appendDesignImagesMeta(form.Comment, form.CoverImageUrl, form.AppImageUrl),
         LastUpdated: format(new Date(), 'yyyy-MM-dd'),
       })
       toast.success(isEdit ? 'แก้ไข Design/BOM สำเร็จ' : 'เพิ่ม Design/BOM สำเร็จ', form.Design || form.MC || form.KI)
@@ -314,10 +358,39 @@ export default function DesignBom() {
   }
 
   const renderCellContent = (row, col) => {
-    const v = col.field === 'ImageUrl' || col.field === 'ImagePreview'
-      ? getDesignImageUrl(row)
-      : col.field === 'Comment'
-        ? stripImageUrlMeta(row.Comment)
+    if (col.field === 'CoverImage') {
+      const imgUrl = getDesignCoverImageUrl(row)
+      if (!imgUrl) return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
+      return (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <ImageThumbnail
+            url={imgUrl}
+            alt={row.Design || row.MC || 'ใบปะหน้า'}
+            onClick={() => setPreviewImageModal({ url: imgUrl, title: `ใบปะหน้า: ${row.Design || row.MC || ''}` })}
+          />
+        </div>
+      )
+    }
+
+    if (col.field === 'AppImage') {
+      const imgUrl = getDesignAppImageUrl(row)
+      if (!imgUrl) return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
+      return (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <ImageThumbnail
+            url={imgUrl}
+            alt={row.Design || row.MC || 'ใบApp'}
+            onClick={() => setPreviewImageModal({ url: imgUrl, title: `ใบ App: ${row.Design || row.MC || ''}` })}
+          />
+        </div>
+      )
+    }
+
+    const v =
+      col.field === 'ImageUrl' || col.field === 'ImagePreview'
+        ? getDesignCoverImageUrl(row)
+        : col.field === 'Comment'
+        ? stripDesignImagesMeta(row.Comment)
         : row[col.field]
 
     if (v === null || v === undefined || v === '') {
@@ -450,9 +523,10 @@ export default function DesignBom() {
 
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">มีรูป Master</div>
-            <div className="text-xl font-black mt-0.5 text-emerald-600 dark:text-emerald-400">
-              {stats.withImages} <span className="text-xs font-normal text-slate-400">แบบ</span>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รูปภาพเอกสาร</div>
+            <div className="text-xs font-black mt-1 text-emerald-600 dark:text-emerald-400 flex flex-col gap-0.5">
+              <span>📄 ปะหน้า: {stats.withCover} <span className="font-normal text-slate-400 text-[10px]">แบบ</span></span>
+              <span>📑 ใบ App: {stats.withApp} <span className="font-normal text-slate-400 text-[10px]">แบบ</span></span>
             </div>
           </div>
           <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
@@ -476,9 +550,11 @@ export default function DesignBom() {
             columns={cols}
             rows={displayRows}
             valueGetters={{
-              ImageUrl: getDesignImageUrl,
-              ImagePreview: getDesignImageUrl,
-              Comment: (row) => stripImageUrlMeta(row.Comment),
+              CoverImage: getDesignCoverImageUrl,
+              AppImage: getDesignAppImageUrl,
+              ImageUrl: getDesignCoverImageUrl,
+              ImagePreview: getDesignCoverImageUrl,
+              Comment: (row) => stripDesignImagesMeta(row.Comment),
             }}
           />
         </div>
@@ -621,28 +697,42 @@ export default function DesignBom() {
             ].filter((f) => f.value),
           },
           {
-            label: 'รูปภาพ Master',
+            label: 'รูปภาพเอกสาร Design/BOM',
             fields: [
-              ...(getDesignImageUrl(detailRec) ? [{
-                label: 'รูป Master',
+              ...(getDesignCoverImageUrl(detailRec) ? [{
+                label: '📄 รูปใบปะหน้า',
                 full: true,
                 node: (
                   <div className="pt-1">
                     <ImageThumbnail
-                      url={getDesignImageUrl(detailRec)}
-                      alt={detailRec.Design || detailRec.MC || 'Master Image'}
+                      url={getDesignCoverImageUrl(detailRec)}
+                      alt={`ใบปะหน้า: ${detailRec.Design || detailRec.MC || ''}`}
                       size={48}
-                      onClick={() => setPreviewImageModal({ url: getDesignImageUrl(detailRec), title: detailRec.Design || detailRec.MC || 'Master Image' })}
+                      onClick={() => setPreviewImageModal({ url: getDesignCoverImageUrl(detailRec), title: `ใบปะหน้า: ${detailRec.Design || detailRec.MC || ''}` })}
                     />
                   </div>
                 ),
-              }] : []),
-            ].filter((f) => f && (f.node || f.value)),
+              }] : [{ label: '📄 รูปใบปะหน้า', value: '—' }]),
+              ...(getDesignAppImageUrl(detailRec) ? [{
+                label: '📑 รูปใบ App',
+                full: true,
+                node: (
+                  <div className="pt-1">
+                    <ImageThumbnail
+                      url={getDesignAppImageUrl(detailRec)}
+                      alt={`ใบ App: ${detailRec.Design || detailRec.MC || ''}`}
+                      size={48}
+                      onClick={() => setPreviewImageModal({ url: getDesignAppImageUrl(detailRec), title: `ใบ App: ${detailRec.Design || detailRec.MC || ''}` })}
+                    />
+                  </div>
+                ),
+              }] : [{ label: '📑 รูปใบ App', value: '—' }]),
+            ],
           },
           {
             label: 'ข้อมูลเพิ่มเติม',
             fields: [
-              { label: 'หมายเหตุ', value: stripImageUrlMeta(detailRec.Comment), full: true },
+              { label: 'หมายเหตุ', value: stripDesignImagesMeta(detailRec.Comment), full: true },
               { label: 'อัปเดตล่าสุด', value: detailRec.LastUpdated ? format(new Date(detailRec.LastUpdated), 'dd/MM/yyyy') : null },
             ].filter((f) => f.value),
           },
@@ -720,19 +810,28 @@ export default function DesignBom() {
             </div>
           </div>
 
-          {/* Section 4: Image & Comments */}
-          <div className="space-y-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
-            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs">
+          {/* Section 4: Document Images & Comments */}
+          <div className="space-y-4">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
               <ImageIcon size={14} className="text-indigo-500" />
-              <span>รูปภาพ Master & หมายเหตุ</span>
+              <span>รูปภาพเอกสาร Design/BOM (จัดเก็บแยกโฟลเดอร์ Google Drive)</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="label font-bold">อัปโหลดรูปภาพเข้า Google Drive</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Card 1: รูปใบปะหน้า */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    📄 <span>รูปใบปะหน้า</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md font-medium">
+                    📁 {DESIGN_BOM_COVER_FOLDER}
+                  </span>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <label className="btn-primary text-xs py-2 px-3 cursor-pointer flex items-center gap-1.5 flex-1 justify-center">
-                    {uploadingImage ? (
+                    {uploadingCover ? (
                       <>
                         <RefreshCw size={13} className="animate-spin" />
                         <span>กำลังอัปโหลด...</span>
@@ -740,49 +839,136 @@ export default function DesignBom() {
                     ) : (
                       <>
                         <Upload size={13} />
-                        <span>เลือกไฟล์รูปภาพ</span>
+                        <span>เลือกรูปใบปะหน้า</span>
                       </>
                     )}
                     <input
                       type="file"
                       accept="image/*"
-                      disabled={uploadingImage}
+                      disabled={uploadingCover}
                       onChange={(e) => {
                         const picked = e.target.files?.[0]
                         e.target.value = ''
-                        if (picked) onPickImageFile(picked)
+                        if (picked) onPickImageFile(picked, 'cover')
                       }}
                       className="hidden"
                     />
                   </label>
+                  {form.CoverImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, CoverImageUrl: '' }))}
+                      className="btn-outline text-red-500 hover:text-red-600 hover:border-red-300 py-2 px-2.5"
+                      title="ลบรูปใบปะหน้า"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
-              </div>
 
-              <div>
-                <F form={form} setForm={setForm} label="หรือวางลิงก์รูป (URL)" id="ImageUrl" useBuilder={false} placeholder="https://..." />
-              </div>
+                <F form={form} setForm={setForm} label="หรือวางลิงก์รูป (URL)" id="CoverImageUrl" useBuilder={false} placeholder="https://..." />
 
-              {form.ImageUrl && (
-                <div className="col-span-1 sm:col-span-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <ImageIcon size={16} className="text-blue-600 flex-shrink-0" />
-                    <span className="font-mono text-blue-700 dark:text-blue-300 truncate">{form.ImageUrl}</span>
+                {form.CoverImageUrl && (
+                  <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ImageThumbnail
+                        url={form.CoverImageUrl}
+                        alt="ใบปะหน้า"
+                        size={32}
+                        onClick={() => setPreviewImageModal({ url: form.CoverImageUrl, title: 'รูปใบปะหน้า' })}
+                      />
+                      <span className="font-mono text-[11px] text-blue-700 dark:text-blue-300 truncate">{form.CoverImageUrl}</span>
+                    </div>
+                    <a
+                      href={form.CoverImageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-outline text-[10px] py-1 px-2 flex-shrink-0 flex items-center gap-1"
+                    >
+                      <span>ดูรูป</span>
+                      <ExternalLink size={10} />
+                    </a>
                   </div>
-                  <a
-                    href={form.ImageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-outline text-[11px] py-1 px-2 flex-shrink-0 flex items-center gap-1"
-                  >
-                    <span>ดูรูป</span>
-                    <ExternalLink size={10} />
-                  </a>
-                </div>
-              )}
-
-              <div className="col-span-1 sm:col-span-2">
-                <F form={form} setForm={setForm} label="หมายเหตุ (Comment)" id="Comment" placeholder="ข้อสังเกต หรือข้อมูลประกอบแบบงาน" />
+                )}
               </div>
+
+              {/* Card 2: รูปใบ App */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    📑 <span>รูปใบ App</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md font-medium">
+                    📁 {DESIGN_BOM_APP_FOLDER}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="btn-primary text-xs py-2 px-3 cursor-pointer flex items-center gap-1.5 flex-1 justify-center">
+                    {uploadingApp ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>กำลังอัปโหลด...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={13} />
+                        <span>เลือกรูปใบ App</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingApp}
+                      onChange={(e) => {
+                        const picked = e.target.files?.[0]
+                        e.target.value = ''
+                        if (picked) onPickImageFile(picked, 'app')
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  {form.AppImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, AppImageUrl: '' }))}
+                      className="btn-outline text-red-500 hover:text-red-600 hover:border-red-300 py-2 px-2.5"
+                      title="ลบรูปใบ App"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+
+                <F form={form} setForm={setForm} label="หรือวางลิงก์รูป (URL)" id="AppImageUrl" useBuilder={false} placeholder="https://..." />
+
+                {form.AppImageUrl && (
+                  <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ImageThumbnail
+                        url={form.AppImageUrl}
+                        alt="ใบ App"
+                        size={32}
+                        onClick={() => setPreviewImageModal({ url: form.AppImageUrl, title: 'รูปใบ App' })}
+                      />
+                      <span className="font-mono text-[11px] text-purple-700 dark:text-purple-300 truncate">{form.AppImageUrl}</span>
+                    </div>
+                    <a
+                      href={form.AppImageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-outline text-[10px] py-1 px-2 flex-shrink-0 flex items-center gap-1"
+                    >
+                      <span>ดูรูป</span>
+                      <ExternalLink size={10} />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <F form={form} setForm={setForm} label="หมายเหตุ (Comment)" id="Comment" placeholder="ข้อสังเกต หรือข้อมูลประกอบแบบงาน" />
             </div>
           </div>
         </div>
@@ -793,7 +979,7 @@ export default function DesignBom() {
         open={!!previewImageModal}
         onClose={() => setPreviewImageModal(null)}
         url={previewImageModal?.url}
-        title={`รูป Master: ${previewImageModal?.title || ''}`}
+        title={previewImageModal?.title || 'รูปภาพเอกสาร Design/BOM'}
       />
     </div>
   )
