@@ -2077,13 +2077,16 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         <PdfPreviewModal
           open={!!printRecord}
           onClose={() => setPrintRecord(null)}
-          {...generateCenterCheckPdfProps({
-            ...printRecord,
-            location:
-              printRecord.location && printRecord.location !== '—'
-                ? printRecord.location
-                : getLatestLocation(printRecord.mc, printRecord.serial, 'โรงทอ'),
-          })}
+          {...generateCenterCheckPdfProps(
+            {
+              ...printRecord,
+              location:
+                printRecord.location && printRecord.location !== '—'
+                  ? printRecord.location
+                  : getLatestLocation(printRecord.mc, printRecord.serial, 'โรงทอ'),
+            },
+            { cylinders: rawCylinders }
+          )}
         />
       )}
 

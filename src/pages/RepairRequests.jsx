@@ -794,7 +794,7 @@ export default function RepairRequests() {
         <PdfPreviewModal
           open={!!pdfItem}
           onClose={() => setPdfItem(null)}
-          {...generateRepairRequestPdfProps(pdfItem)}
+          {...generateRepairRequestPdfProps(pdfItem, { cylinders })}
         />
       )}
     </div>

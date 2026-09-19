@@ -1555,7 +1555,8 @@ export default function NeedleCondition() {
           onClose={() => setPdfItem(null)}
           {...generateNeedleConditionPdfProps(
             pdfItem,
-            historyMap.get(normalizeSerial(pdfItem.serial) || normalizeMachine(pdfItem.machine_mc) || pdfItem.id) || []
+            historyMap.get(normalizeSerial(pdfItem.serial) || normalizeMachine(pdfItem.machine_mc) || pdfItem.id) || [],
+            { cylinders }
           )}
         />
       )}
