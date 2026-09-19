@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
-import { notifySupervisor, notifyTechnician, notifyCompleted, loadTelegramSettingsDB, normalizeRepairRecord, encodeRepairProblemDescription } from '../utils/telegram'
-import { notifyLineNewRepair, notifyLineTechnician, notifyLineCompleted } from '../utils/line'
+import { loadTelegramSettingsDB } from '../utils/telegram'
+import {
+  createRepairRequest,
+  approveRepairRequest,
+  completeRepairRequest,
+  normalizeRepairRecord,
+  encodeRepairProblemDescription,
+} from '../modules/repair'
 import {
   TechnicianAPI,
   SparePartAPI,
@@ -368,70 +374,7 @@ function StepReport({ serial, cylinder, onSubmitted }) {
         approved_at: isEasy ? new Date().toISOString() : null,
         approval_notes: isEasy ? 'งานทั่วไป/งานง่าย (เลือกช่างตรง)' : null,
       }
-      let insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
-      let retryCount = 0
-      while (insertRes.error && retryCount < 5) {
-        retryCount++
-        const errMsg = String(insertRes.error.message || '')
-        const missingCol = errMsg.match(/Could not find the '([^']+)' column of 'repair_requests'/i)?.[1]
-        if (missingCol && missingCol in insertPayload) {
-          console.warn(`[RepairPage] Column '${missingCol}' not found in DB schema — removing from payload and retrying`)
-          delete insertPayload[missingCol]
-          insertRes = await supabase.from('repair_requests').insert(insertPayload).select().single()
-        } else {
-          break
-        }
-      }
-      if (insertRes.error) throw insertRes.error
-      const data = normalizeRepairRecord({
-        ...(insertRes.data || {}),
-        repair_type: repairType,
-        Design: design.trim() || insertRes.data?.Design,
-        KI: ki.trim() || insertRes.data?.KI,
-        roll_no: rollNo.trim() || insertRes.data?.roll_no,
-        machine_mc: cylinder?.NewMC || insertRes.data?.machine_mc,
-        cylinder_serial: serial || cylinder?.Serial_NOW || insertRes.data?.cylinder_serial,
-        technician_name: isEasy ? assignedTech.trim() : insertRes.data?.technician_name,
-        status: isEasy ? 'APPROVED' : (insertRes.data?.status || 'PENDING'),
-        approved_by: isEasy ? 'ผู้แจ้งซ่อม (งานง่าย)' : insertRes.data?.approved_by,
-      })
-
-      // Notifications
-      if (isEasy) {
-        // 1. Notify supervisor/group with easy repair info
-        try {
-          await notifySupervisor(data, cylinder, true)
-        } catch (tgErr) {
-          console.warn('Telegram supervisor notification warning:', tgErr)
-        }
-        try {
-          await notifyLineNewRepair(data, cylinder, true)
-        } catch (lineErr) {
-          console.warn('LINE supervisor notification warning:', lineErr)
-        }
-        // 2. Notify assigned technician directly
-        try {
-          await notifyTechnician(data)
-        } catch (tgTechErr) {
-          console.warn('Telegram technician notification warning:', tgTechErr)
-        }
-        try {
-          await notifyLineTechnician(data)
-        } catch (lineTechErr) {
-          console.warn('LINE technician notification warning:', lineTechErr)
-        }
-      } else {
-        try {
-          await notifySupervisor(data, cylinder, false)
-        } catch (tgErr) {
-          console.warn('Telegram notification warning:', tgErr)
-        }
-        try {
-          await notifyLineNewRepair(data, cylinder, false)
-        } catch (lineErr) {
-          console.warn('LINE notification warning:', lineErr)
-        }
-      }
+      const { data } = await createRepairRequest(insertPayload, { cylinder })
 
       onSubmitted(data)
     } catch (e) {
@@ -959,58 +902,13 @@ function StepApprove({ request, onUpdated }) {
     setError('')
     try {
       const status = action === 'approve' ? 'APPROVED' : 'REJECTED'
-      let updatePayload = {
+      const { data } = await approveRepairRequest(request.id, {
         status,
         technician_name: tech.trim(),
         approval_notes: notes.trim(),
         approved_at: new Date().toISOString(),
         approved_by: tech.trim() || 'Supervisor',
-      }
-      let updateRes = await supabase
-        .from('repair_requests')
-        .update(updatePayload)
-        .eq('id', request.id)
-        .select()
-        .single()
-      let retryCount = 0
-      while (updateRes.error && retryCount < 5) {
-        retryCount++
-        const errMsg = String(updateRes.error.message || '')
-        const missingCol = errMsg.match(/Could not find the '([^']+)' column of 'repair_requests'/i)?.[1]
-        if (missingCol && missingCol in updatePayload) {
-          console.warn(`[RepairPage] Column '${missingCol}' not found in DB schema — removing from payload and retrying`)
-          delete updatePayload[missingCol]
-          updateRes = await supabase
-            .from('repair_requests')
-            .update(updatePayload)
-            .eq('id', request.id)
-            .select()
-            .single()
-        } else {
-          break
-        }
-      }
-      if (updateRes.error) throw updateRes.error
-      const data = normalizeRepairRecord({
-        ...(updateRes.data || {}),
-        status,
-        technician_name: tech.trim(),
-        approval_notes: notes.trim(),
-        approved_at: updatePayload.approved_at || new Date().toISOString(),
-        approved_by: updatePayload.approved_by || tech.trim() || 'Supervisor',
       })
-      if (action === 'approve') {
-        try {
-          await notifyTechnician(data)
-        } catch (tgErr) {
-          console.warn('Telegram technician notify warning:', tgErr)
-        }
-        try {
-          await notifyLineTechnician(data)
-        } catch (lineErr) {
-          console.warn('LINE technician notify warning:', lineErr)
-        }
-      }
       onUpdated(data)
     } catch (e) {
       setError(e.message)
@@ -1386,8 +1284,7 @@ function StepComplete({ request, onUpdated }) {
 
     try {
       // 3. Update repair_requests in Supabase (with schema-resilient retry loop)
-      let updatePayload = {
-        status: 'COMPLETED',
+      const { data } = await completeRepairRequest(request.id, {
         repair_details: details.trim(),
         parts_used: partsSummary,
         completed_at: now.toISOString(),
@@ -1397,47 +1294,8 @@ function StepComplete({ request, onUpdated }) {
         sunday_duration_hours: durationRes.sundayHoursDecimal,
         lost_duration_hours: lostHours,
         net_working_hours: netHours,
-      }
-
-      let updateRes = await supabase
-        .from('repair_requests')
-        .update(updatePayload)
-        .eq('id', request.id)
-        .select()
-        .single()
-
-      let retryCount = 0
-      while (updateRes.error && retryCount < 10) {
-        retryCount++
-        const errMsg = String(updateRes.error.message || '')
-        const missingCol = errMsg.match(/Could not find the '([^']+)' column of 'repair_requests'/i)?.[1]
-        if (missingCol && missingCol in updatePayload) {
-          console.warn(`[RepairPage] Column '${missingCol}' not found in DB schema — removing from payload and retrying`)
-          delete updatePayload[missingCol]
-          updateRes = await supabase
-            .from('repair_requests')
-            .update(updatePayload)
-            .eq('id', request.id)
-            .select()
-            .single()
-        } else {
-          break
-        }
-      }
-      if (updateRes.error) throw updateRes.error
-
-      const data = normalizeRepairRecord({
-        ...(updateRes.data || {}),
-        status: 'COMPLETED',
-        repair_details: details.trim(),
-        parts_used: partsSummary,
-        completed_at: now.toISOString(),
-        completed_by: tech.trim(),
-        gross_duration_hours: grossHours,
-        sunday_duration_hours: durationRes.sundayHoursDecimal,
-        lost_duration_hours: lostHours,
-        net_working_hours: netHours,
-        interruption_logs: interruptionLogs,
+        machine_mc: request.machine_mc,
+        cylinder_serial: request.cylinder_serial,
       })
 
       // 4. Auto-Sync Q1: Create or Upsert into workorders table
@@ -1520,18 +1378,6 @@ function StepComplete({ request, onUpdated }) {
         } catch (stockErr) {
           console.warn(`Stock deduction warning for ${p.PartName}:`, stockErr)
         }
-      }
-
-      // 6. Send Telegram and LINE completion notifications
-      try {
-        await notifyCompleted(data)
-      } catch (tgErr) {
-        console.warn('Telegram completed notify warning:', tgErr)
-      }
-      try {
-        await notifyLineCompleted(data)
-      } catch (lineErr) {
-        console.warn('LINE completed notify warning:', lineErr)
       }
 
       onUpdated(data)

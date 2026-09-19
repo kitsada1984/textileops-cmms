@@ -13,8 +13,13 @@ import F from '../components/ui/FormField'
 import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
-import { getAppBaseUrl, notifySupervisor, normalizeRepairRecord, encodeRepairProblemDescription } from '../utils/telegram'
-import { notifyLineNewRepair } from '../utils/line'
+import { getAppBaseUrl } from '../utils/telegram'
+import {
+  createRepairRequest,
+  updateRepairRequest,
+  normalizeRepairRecord,
+  encodeRepairProblemDescription,
+} from '../modules/repair'
 import CylinderQRModal from '../components/CylinderQR'
 import { useT } from '../contexts/LanguageContext'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
@@ -30,9 +35,6 @@ const EMPTY = {
   repair_details: '', parts_used: '', completed_by: '', completed_at: '',
 }
 
-const OPTIONAL_DB_FIELDS = ['KI', 'Design', 'roll_no', 'RollNo', 'roll_number']
-const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'repair_requests'/i
-
 const STATUS_CFG = {
   PENDING:     { bg:'rgba(251,191,36,0.12)',  border:'rgba(251,191,36,0.35)',  color:'#f59e0b', dot:'#f59e0b'  },
   IN_PROGRESS: { bg:'rgba(59,130,246,0.12)',  border:'rgba(59,130,246,0.35)',  color:'#3b82f6', dot:'#3b82f6'  },
@@ -43,16 +45,6 @@ const STATUS_CFG = {
 function fmt(dt) {
   if (!dt) return '-'
   try { return format(new Date(dt), 'dd/MM/yy HH:mm') } catch { return dt }
-}
-
-function omitKeys(item, keys) {
-  const clone = { ...item }
-  keys.forEach((key) => { delete clone[key] })
-  return clone
-}
-
-function getMissingRepairColumn(error) {
-  return String(error?.message || '').match(MISSING_COLUMN_RE)?.[1] || null
 }
 
 export default function RepairRequests() {
@@ -138,31 +130,16 @@ export default function RepairRequests() {
           priority: form.priority || 'ปกติ',
         }),
       }
-      const removedColumns = []
       let savedRecord = null
-      while (true) {
-        try {
-          savedRecord = await save(payload)
-          break
-        } catch (error) {
-          const missingColumn = getMissingRepairColumn(error)
-          if (!OPTIONAL_DB_FIELDS.includes(missingColumn) || removedColumns.includes(missingColumn)) throw error
-          removedColumns.push(missingColumn)
-          payload = omitKeys(payload, [missingColumn])
-        }
-      }
-      if (!isEdit && savedRecord) {
+      if (isEdit && payload.id) {
+        const res = await updateRepairRequest(payload.id, payload)
+        savedRecord = res.data
+        await load()
+      } else {
         const matchingCyl = cylMap[serialForSave] || cylinders.find((c) => c.Serial_NOW === serialForSave || c.Serial_OLD === serialForSave)
-        try {
-          await notifySupervisor(savedRecord, matchingCyl)
-        } catch (tgErr) {
-          console.warn('Telegram notification warning:', tgErr)
-        }
-        try {
-          await notifyLineNewRepair(savedRecord, matchingCyl)
-        } catch (lineErr) {
-          console.warn('LINE notification warning:', lineErr)
-        }
+        const res = await createRepairRequest(payload, { cylinder: matchingCyl })
+        savedRecord = res.data
+        await load()
       }
 
       // Auto-Sync Q1: If status is COMPLETED, sync to Work Orders & Tech KPI
