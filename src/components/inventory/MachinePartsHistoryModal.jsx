@@ -14,7 +14,13 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import Modal from '../ui/Modal'
-import { filterTransactionsByMachine, summarizeMachineParts, getMovementMC } from '../../utils/stockMovementMC'
+import {
+  filterTransactionsByMachine,
+  summarizeMachineParts,
+  getMovementMC,
+  getStockTxnDate,
+  formatStockTxnDate,
+} from '../../utils/stockMovementMC'
 
 export default function MachinePartsHistoryModal({
   open,
@@ -28,9 +34,9 @@ export default function MachinePartsHistoryModal({
 
   const machineTxs = useMemo(() => {
     return filterTransactionsByMachine(transactions, machineCode).sort((a, b) => {
-      const dateA = new Date(a.created_date || a.Date || 0)
-      const dateB = new Date(b.created_date || b.Date || 0)
-      return dateB - dateA
+      const dateA = new Date(getStockTxnDate(a) || 0).getTime()
+      const dateB = new Date(getStockTxnDate(b) || 0).getTime()
+      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA)
     })
   }, [transactions, machineCode])
 
@@ -208,7 +214,7 @@ export default function MachinePartsHistoryModal({
                           }`}
                         >
                           <td className="py-2 px-3 whitespace-nowrap text-slate-500 font-mono text-[11px]">
-                            {tx.created_date ? format(new Date(tx.created_date), 'dd/MM/yyyy HH:mm') : '—'}
+                            {formatStockTxnDate(getStockTxnDate(tx))}
                           </td>
                           <td className="py-2 px-3 whitespace-nowrap">
                             <span
@@ -283,7 +289,7 @@ export default function MachinePartsHistoryModal({
                           {item.totalCost > 0 ? `฿${item.totalCost.toLocaleString()}` : '—'}
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap text-slate-500 font-mono text-[11px]">
-                          {item.lastDate ? format(new Date(item.lastDate), 'dd/MM/yyyy') : '—'}
+                          {formatStockTxnDate(item.lastDate)}
                         </td>
                       </tr>
                     ))

@@ -7,6 +7,10 @@ import {
   getMovementMC,
   filterTransactionsByMachine,
   summarizeMachineParts,
+  extractDateFromTxnId,
+  getStockTxnDate,
+  toInputDateValue,
+  formatStockTxnDate,
 } from './stockMovementMC'
 
 describe('stockMovementMC utility', () => {
@@ -133,4 +137,69 @@ describe('stockMovementMC utility', () => {
       expect(summary.partBreakdown[0].lastDate).toBe('2026-06-05T10:00:00Z')
     })
   })
+
+  describe('extractDateFromTxnId', () => {
+    it('parses YYYY-MM-DD from standard SM-YYYYMMDD-HHmmss... format', () => {
+      expect(extractDateFromTxnId('SM-20260601-112142854')).toBe('2026-06-01')
+      expect(extractDateFromTxnId('SM-20260602-085412175')).toBe('2026-06-02')
+    })
+
+    it('returns empty string if TXN_ID does not match pattern', () => {
+      expect(extractDateFromTxnId('TXN-CUSTOM-001')).toBe('')
+      expect(extractDateFromTxnId('')).toBe('')
+      expect(extractDateFromTxnId(null)).toBe('')
+    })
+  })
+
+  describe('getStockTxnDate', () => {
+    it('prioritizes created_date if present', () => {
+      expect(getStockTxnDate({ created_date: '2026-06-15', TXN_ID: 'SM-20260601-112142854' })).toBe('2026-06-15')
+    })
+
+    it('falls back to Date column if created_date is absent', () => {
+      expect(getStockTxnDate({ Date: '2026-06-10', TXN_ID: 'SM-20260601-112142854' })).toBe('2026-06-10')
+    })
+
+    it('falls back to created_at if created_date and Date are absent', () => {
+      expect(getStockTxnDate({ created_at: '2026-06-08T00:00:00Z' })).toBe('2026-06-08T00:00:00Z')
+    })
+
+    it('falls back to Date metadata in Note if direct columns are absent', () => {
+      expect(getStockTxnDate({ Note: 'หมายเหตุ\nDate: 2026-06-05' })).toBe('2026-06-05')
+    })
+
+    it('recovers date from TXN_ID for legacy records with no date fields', () => {
+      expect(getStockTxnDate({ TXN_ID: 'SM-20260601-112142854' })).toBe('2026-06-01')
+    })
+
+    it('returns empty string when no date source exists', () => {
+      expect(getStockTxnDate({})).toBe('')
+    })
+  })
+
+  describe('toInputDateValue', () => {
+    it('formats ISO date string to YYYY-MM-DD for date input', () => {
+      expect(toInputDateValue('2026-06-01T11:21:42.854Z')).toBe('2026-06-01')
+      expect(toInputDateValue('2026-06-15')).toBe('2026-06-15')
+    })
+
+    it('returns empty string on invalid or empty input', () => {
+      expect(toInputDateValue('')).toBe('')
+      expect(toInputDateValue(null)).toBe('')
+      expect(toInputDateValue('not-a-date')).toBe('')
+    })
+  })
+
+  describe('formatStockTxnDate', () => {
+    it('formats YYYY-MM-DD or ISO strings to dd/MM/yyyy', () => {
+      expect(formatStockTxnDate('2026-06-01')).toBe('01/06/2026')
+      expect(formatStockTxnDate('2026-12-25')).toBe('25/12/2026')
+    })
+
+    it('returns dash on empty input', () => {
+      expect(formatStockTxnDate('')).toBe('—')
+      expect(formatStockTxnDate(null)).toBe('—')
+    })
+  })
 })
+

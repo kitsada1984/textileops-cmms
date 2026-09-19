@@ -19,6 +19,7 @@ import {
   User,
   Tag,
   Cpu,
+  CalendarDays,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -46,6 +47,10 @@ import {
   stripMCMetaFromNote,
   MC_NOTE_PREFIX,
   MACHINE_MC_NOTE_PREFIX,
+  getStockTxnDate,
+  toInputDateValue,
+  formatStockTxnDate,
+  DATE_NOTE_PREFIX,
 } from '../utils/stockMovementMC'
 
 const SM_FIELD_KEYS = {
@@ -66,6 +71,7 @@ const HIDDEN_IMAGE_NOTE_PREFIXES = [
   CATEGORY_NOTE_PREFIX,
   MC_NOTE_PREFIX,
   MACHINE_MC_NOTE_PREFIX,
+  DATE_NOTE_PREFIX,
 ]
 const CATEGORY_OPTIONS = ['อะไหล่', 'เครื่องมือช่าง']
 const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
@@ -114,6 +120,7 @@ const getSMRequiredCols = (t) => [
 
 const EMPTY = {
   TXN_Type: 'ISSUE',
+  created_date: '',
   Part_Code: '',
   Part_Name_EN: '',
   Category: '',
@@ -170,12 +177,28 @@ function stripImageUrlFromNote(note = '') {
     .trim()
 }
 
-function appendStockMetaToNote(note = '', { category = '', mc = '' } = {}) {
+function parseStockDateInput(dateStr) {
+  if (!dateStr) return new Date()
+  if (dateStr instanceof Date) return dateStr
+  const parts = String(dateStr).split('T')[0].split('-')
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10)
+    const m = parseInt(parts[1], 10) - 1
+    const d = parseInt(parts[2], 10)
+    const now = new Date()
+    return new Date(y, m, d, now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds())
+  }
+  const d = new Date(dateStr)
+  return Number.isNaN(d.getTime()) ? new Date() : d
+}
+
+function appendStockMetaToNote(note = '', { category = '', mc = '', date = '' } = {}) {
   const cleanNote = stripImageUrlFromNote(note)
   return [
     cleanNote,
     category ? `${CATEGORY_NOTE_PREFIX} ${category}` : '',
     mc ? `${MC_NOTE_PREFIX} ${mc}` : '',
+    date ? `${DATE_NOTE_PREFIX} ${date}` : '',
   ].filter(Boolean).join('\n')
 }
 
@@ -184,13 +207,18 @@ function getHiddenStockCategory(row = {}) {
 }
 
 function buildStockPayload(form = {}) {
+  const dateInput = form.created_date || toInputDateValue(new Date())
+  const dateObj = parseStockDateInput(dateInput)
   return {
     ...omitKeys(form, ['ImageUrl', 'Category']),
     MC: form.MC || '',
     Machine_MC: form.MC || '',
+    created_date: dateObj.toISOString(),
+    Date: dateInput,
     Note: appendStockMetaToNote(form.Note, {
       category: getHiddenStockCategory(form),
       mc: form.MC || '',
+      date: dateInput,
     }),
   }
 }
@@ -219,7 +247,10 @@ export default function StockMovement() {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
-  const [filterSort, setFilterSort] = useState(INIT_FS)
+  const [filterSort, setFilterSort] = useState(() => ({
+    ...INIT_FS,
+    sort: { key: 'created_date', dir: 'desc' },
+  }))
   const [detailRec, setDetailRec] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [selectedMachineForHistory, setSelectedMachineForHistory] = useState(null)
@@ -268,7 +299,17 @@ export default function StockMovement() {
 
   const baseRows = useMemo(() => {
     return data.filter((tx) =>
-      [tx.TXN_ID, tx.Part_Code, tx.Part_Name_EN, getStockCategory(tx), getMovementMC(tx), tx.Reference, tx.Performed_By, stripImageUrlFromNote(tx.Note)]
+      [
+        tx.TXN_ID,
+        tx.Part_Code,
+        tx.Part_Name_EN,
+        getStockCategory(tx),
+        getMovementMC(tx),
+        formatStockTxnDate(getStockTxnDate(tx)),
+        tx.Reference,
+        tx.Performed_By,
+        stripImageUrlFromNote(tx.Note),
+      ]
         .some((v) => String(v || '').toLowerCase().includes(search.toLowerCase()))
     )
   }, [data, parts, search])
@@ -284,6 +325,7 @@ export default function StockMovement() {
       MC: mcOptions,
     },
     valueGetters: {
+      created_date: (row) => getStockTxnDate(row),
       Category: getStockCategory,
       MC: getMovementMC,
       ImageUrl: getStockPartImageUrl,
@@ -295,7 +337,10 @@ export default function StockMovement() {
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
   const openNew = () => {
-    setForm(EMPTY)
+    setForm({
+      ...EMPTY,
+      created_date: toInputDateValue(new Date()),
+    })
     setModal(true)
   }
 
@@ -303,6 +348,7 @@ export default function StockMovement() {
     setForm({
       ...EMPTY,
       ...tx,
+      created_date: toInputDateValue(getStockTxnDate(tx)),
       MC: getMovementMC(tx),
       Note: stripImageUrlFromNote(tx.Note),
       Category: getStockCategory(tx),
@@ -391,7 +437,7 @@ export default function StockMovement() {
         return
       } catch (error) {
         const missingColumn = getMissingStockColumn(error)
-        if (missingColumn && ['MC', 'Machine_MC', 'Category', 'ImageUrl'].includes(missingColumn)) {
+        if (missingColumn && ['MC', 'Machine_MC', 'Category', 'ImageUrl', 'created_date', 'Date'].includes(missingColumn)) {
           toSave = omitKeys(toSave, [missingColumn])
           continue
         }
@@ -405,6 +451,10 @@ export default function StockMovement() {
       toast.warning('กรุณากรอกข้อมูล', 'รหัสอะไหล่จำเป็นต้องกรอก')
       return
     }
+    if (!form.created_date) {
+      toast.warning('กรุณาระบุวันที่', 'กรุณาเลือกวันที่ทำรายการ')
+      return
+    }
     if (form.TXN_Type === 'ISSUE' && !String(form.MC || '').trim()) {
       toast.warning('กรุณาระบุเลขเครื่องจักร', 'รายการเบิกจ่าย (ISSUE) จำเป็นต้องระบุเครื่องจักร (M/C)')
       return
@@ -413,15 +463,21 @@ export default function StockMovement() {
     const isEdit = !!(form._id || form.id)
     try {
       let finalPayload = { ...form }
+      const dateObj = parseStockDateInput(form.created_date)
       if (!isEdit) {
         const { before, after, partId } = await applyMovementToSparePart(form)
         finalPayload = {
           ...finalPayload,
-          TXN_ID: generateStockTxnId(new Date()),
+          TXN_ID: generateStockTxnId(dateObj),
           Part_ID: partId,
           Qty_Before: before,
           Qty_After: after,
-          created_date: new Date().toISOString(),
+          created_date: dateObj.toISOString(),
+        }
+      } else {
+        finalPayload = {
+          ...finalPayload,
+          created_date: dateObj.toISOString(),
         }
       }
 
@@ -455,7 +511,9 @@ export default function StockMovement() {
         ? getStockCategory(row)
         : col.field === 'MC'
           ? getMovementMC(row)
-          : row[col.field]
+          : col.field === 'created_date'
+            ? getStockTxnDate(row)
+            : row[col.field]
 
     if (val === null || val === undefined || val === '') {
       return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
@@ -529,11 +587,7 @@ export default function StockMovement() {
     }
 
     if (col.type === 'datetime' || col.field === 'created_date') {
-      try {
-        return <span className="font-mono text-slate-500 text-[11px]">{format(new Date(val), 'dd/MM/yy HH:mm')}</span>
-      } catch {
-        return <span className="font-mono text-slate-500 text-[11px]">{String(val)}</span>
-      }
+      return <span className="font-mono text-slate-500 text-[11px]">{formatStockTxnDate(val)}</span>
     }
 
     if (col.field === 'ImageUrl') {
@@ -639,6 +693,7 @@ export default function StockMovement() {
             columns={cols}
             rows={displayRows}
             valueGetters={{
+              created_date: (row) => formatStockTxnDate(getStockTxnDate(row)),
               Category: getStockCategory,
               MC: getMovementMC,
               ImageUrl: getStockPartImageUrl,
@@ -767,7 +822,7 @@ export default function StockMovement() {
             fields: [
               { label: 'เลขรายการ', value: detailRec.TXN_ID, mono: true },
               { label: 'ประเภทรายการ', value: detailRec.TXN_Type === 'RECEIVE' ? 'รับเข้า' : detailRec.TXN_Type === 'ISSUE' ? 'เบิกจ่าย' : 'ปรับสต๊อก' },
-              { label: 'วันที่ทำรายการ', value: detailRec.created_date ? format(new Date(detailRec.created_date), 'dd/MM/yyyy HH:mm') : null },
+              { label: 'วันที่ทำรายการ', value: formatStockTxnDate(getStockTxnDate(detailRec)) || null },
               { label: 'รหัสอะไหล่', value: detailRec.Part_Code, mono: true },
               { label: 'ชื่ออะไหล่', value: detailRec.Part_Name_EN },
               { label: 'หมวดหมู่', value: getStockCategory(detailRec) },
@@ -865,11 +920,27 @@ export default function StockMovement() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div>
+                <label className="label flex items-center gap-1">
+                  <CalendarDays size={12} className="text-blue-500" />
+                  <span>วันที่ทำรายการ *</span>
+                </label>
+                <input
+                  type="date"
+                  className="input text-xs w-full font-mono"
+                  value={form.created_date || ''}
+                  onChange={(e) => setForm((prev) => ({ ...prev, created_date: e.target.value }))}
+                  required
+                />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">ใส่อัตโนมัติ (แก้ไขได้)</span>
+              </div>
               <F form={form} setForm={setForm} label="ประเภทรายการ" id="TXN_Type" opts={TXN_TYPE} />
-              <F form={form} setForm={setForm} label="รหัสอะไหล่ *" id="Part_Code" placeholder="เช่น SP-001" />
-              <F form={form} setForm={setForm} label="ชื่ออะไหล่" id="Part_Name_EN" placeholder="ชื่ออะไหล่" />
               <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
+              <F form={form} setForm={setForm} label="รหัสอะไหล่ *" id="Part_Code" placeholder="เช่น SP-001" />
+              <div className="sm:col-span-2">
+                <F form={form} setForm={setForm} label="ชื่ออะไหล่" id="Part_Name_EN" placeholder="ชื่ออะไหล่" />
+              </div>
             </div>
           </div>
 
