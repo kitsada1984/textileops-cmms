@@ -16,6 +16,11 @@ import {
   buildStockMovementMCOptions,
   matchStockMovementMC,
   matchStockMovementType,
+  buildStockMovementPartCodeOptions,
+  buildStockMovementPartNameOptions,
+  matchStockMovementPartCode,
+  matchStockMovementPartName,
+  findMatchingSparePart,
 } from './stockMovementMC'
 
 describe('stockMovementMC utility', () => {
@@ -284,5 +289,90 @@ describe('stockMovementMC utility', () => {
       expect(matchStockMovementType(row, 'issue')).toBe(false)
     })
   })
+
+  describe('buildStockMovementPartCodeOptions & buildStockMovementPartNameOptions', () => {
+    const parts = [
+      { Part_Code: 'SP-001', Part_Name_EN: 'Bearing 6204', Part_Name_TH: 'ลูกปืน 6204' },
+      { Part_Code: 'SP-002', Part_Name_EN: 'Timing Belt' },
+    ]
+    const txns = [
+      { Part_Code: 'SP-001', Part_Name_EN: 'Bearing 6204' },
+      { Part_Code: 'SP-003', Part_Name_EN: 'Needle VO 79.80' },
+    ]
+
+    it('combines and deduplicates part codes from parts menu and transactions', () => {
+      const opts = buildStockMovementPartCodeOptions(parts, txns)
+      expect(opts).toHaveLength(3)
+      expect(opts.map((o) => o.value)).toEqual(['SP-001', 'SP-002', 'SP-003'])
+      expect(opts[0].label).toContain('SP-001')
+      expect(opts[0].label).toContain('Bearing 6204')
+    })
+
+    it('combines and deduplicates part names from parts menu and transactions', () => {
+      const opts = buildStockMovementPartNameOptions(parts, txns)
+      expect(opts).toHaveLength(3)
+      expect(opts.map((o) => o.value)).toContain('Bearing 6204')
+      expect(opts.map((o) => o.value)).toContain('Timing Belt')
+      expect(opts.map((o) => o.value)).toContain('Needle VO 79.80')
+    })
+  })
+
+  describe('matchStockMovementPartCode', () => {
+    const row = { Part_Code: 'SP-001-A' }
+
+    it('matches part code by string query case-insensitively', () => {
+      expect(matchStockMovementPartCode(row, 'sp-001')).toBe(true)
+      expect(matchStockMovementPartCode(row, 'SP-001-A')).toBe(true)
+      expect(matchStockMovementPartCode(row, '001')).toBe(true)
+      expect(matchStockMovementPartCode(row, 'SP-002')).toBe(false)
+    })
+
+    it('matches part code by array selection', () => {
+      expect(matchStockMovementPartCode(row, ['SP-001-A'])).toBe(true)
+      expect(matchStockMovementPartCode(row, ['SP-002', 'SP-001'])).toBe(true)
+      expect(matchStockMovementPartCode(row, ['SP-002'])).toBe(false)
+    })
+  })
+
+  describe('matchStockMovementPartName', () => {
+    const row = { Part_Name_EN: 'Bearing 6204', Part_Name_TH: 'ลูกปืน 6204' }
+
+    it('matches part name by string query in English or Thai', () => {
+      expect(matchStockMovementPartName(row, 'bearing')).toBe(true)
+      expect(matchStockMovementPartName(row, 'ลูกปืน')).toBe(true)
+      expect(matchStockMovementPartName(row, '6204')).toBe(true)
+      expect(matchStockMovementPartName(row, 'timing')).toBe(false)
+    })
+
+    it('matches part name by array selection', () => {
+      expect(matchStockMovementPartName(row, ['Bearing 6204'])).toBe(true)
+      expect(matchStockMovementPartName(row, ['ลูกปืน 6204'])).toBe(true)
+      expect(matchStockMovementPartName(row, ['Timing Belt', 'Bearing 6204'])).toBe(true)
+      expect(matchStockMovementPartName(row, ['Timing Belt'])).toBe(false)
+    })
+  })
+
+  describe('findMatchingSparePart', () => {
+    const parts = [
+      { Part_Code: 'SP-001', Part_Name_EN: 'Bearing 6204', Part_Name_TH: 'ลูกปืน 6204' },
+      { Part_Code: 'SP-002', Part_Name_EN: 'Timing Belt', Part_Name_TH: 'สายพาน' },
+    ]
+
+    it('finds part by exact code case-insensitively', () => {
+      expect(findMatchingSparePart(parts, 'sp-001')?.Part_Code).toBe('SP-001')
+      expect(findMatchingSparePart(parts, 'SP-002')?.Part_Name_EN).toBe('Timing Belt')
+    })
+
+    it('finds part by name EN or TH', () => {
+      expect(findMatchingSparePart(parts, 'Bearing 6204')?.Part_Code).toBe('SP-001')
+      expect(findMatchingSparePart(parts, 'สายพาน')?.Part_Code).toBe('SP-002')
+    })
+
+    it('returns null for empty or non-matching query', () => {
+      expect(findMatchingSparePart(parts, '')).toBeNull()
+      expect(findMatchingSparePart(parts, 'UNKNOWN-PART')).toBeNull()
+    })
+  })
 })
+
 

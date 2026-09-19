@@ -56,6 +56,11 @@ import {
   buildStockMovementMCOptions,
   matchStockMovementMC,
   matchStockMovementType,
+  buildStockMovementPartCodeOptions,
+  buildStockMovementPartNameOptions,
+  matchStockMovementPartCode,
+  matchStockMovementPartName,
+  findMatchingSparePart,
 } from '../utils/stockMovementMC'
 
 const SM_FILTER_KEYS = ['created_date', 'TXN_Type', 'Part_Code', 'Part_Name_EN', 'Category', 'MC']
@@ -281,6 +286,16 @@ export default function StockMovement() {
 
   const mcFilterOptions = useMemo(() => buildStockMovementMCOptions(mcOptions), [mcOptions])
 
+  const partCodeOptions = useMemo(
+    () => buildStockMovementPartCodeOptions(parts, data),
+    [parts, data]
+  )
+
+  const partNameOptions = useMemo(
+    () => buildStockMovementPartNameOptions(parts, data),
+    [parts, data]
+  )
+
   // Summary statistics
   const stats = useMemo(() => {
     const total = data.length
@@ -334,10 +349,14 @@ export default function StockMovement() {
       TXN_Type: SM_TXN_TYPE_OPTIONS,
       Category: CATEGORY_OPTIONS,
       MC: mcFilterOptions,
+      Part_Code: partCodeOptions,
+      Part_Name_EN: partNameOptions,
     },
     matchers: {
       TXN_Type: matchStockMovementType,
       MC: matchStockMovementMC,
+      Part_Code: matchStockMovementPartCode,
+      Part_Name_EN: matchStockMovementPartName,
     },
     valueGetters: {
       created_date: (row) => getStockTxnDate(row),
@@ -346,7 +365,7 @@ export default function StockMovement() {
       Part_Code: (row) => row.Part_Code,
       Part_Name_EN: (row) => row.Part_Name_EN || row.Part_Name_TH,
     },
-  }), [cols, mcFilterOptions])
+  }), [cols, mcFilterOptions, partCodeOptions, partNameOptions])
 
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
@@ -373,7 +392,8 @@ export default function StockMovement() {
   }
 
   useEffect(() => {
-    const part = parts.find((item) => String(item.Part_Code || '').toLowerCase() === String(form.Part_Code || '').toLowerCase())
+    const code = String(form.Part_Code || '').trim()
+    const part = code ? (findMatchingSparePart(parts, code) || parts.find((item) => String(item.Part_Code || '').toLowerCase() === code.toLowerCase())) : null
     if (!part) return
     const before = toNumber(part.Stock_Qty)
     const after = before + getSignedStockDelta(form.TXN_Type, form.Qty_Change)
@@ -383,16 +403,33 @@ export default function StockMovement() {
   }, [form.Part_Code, form.Qty_Change, form.TXN_Type, parts])
 
   const applyPartToForm = (partCode) => {
-    const part = parts.find((item) => String(item.Part_Code || '').toLowerCase() === String(partCode || '').toLowerCase())
+    const code = String(partCode || '').trim()
+    const part = findMatchingSparePart(parts, code) || parts.find((item) => String(item.Part_Code || '').toLowerCase() === code.toLowerCase())
     setForm((prev) => ({
       ...prev,
       Part_Code: partCode,
-      Part_Name_EN: part?.Part_Name_EN || prev.Part_Name_EN,
+      Part_Name_EN: part ? (part.Part_Name_EN || part.Part_Name_TH || prev.Part_Name_EN) : prev.Part_Name_EN,
       Category: part?.Category || prev.Category,
       Qty_Before: part ? toNumber(part.Stock_Qty) : prev.Qty_Before,
       Qty_After: part ? toNumber(part.Stock_Qty) + getSignedStockDelta(prev.TXN_Type, prev.Qty_Change) : prev.Qty_After,
       Unit: part?.Unit || prev.Unit,
-      Unit_Price: part?.Unit_Price || prev.Unit_Price,
+      Unit_Price: part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : prev.Unit_Price,
+      Location_Store: part?.Location_Store || prev.Location_Store,
+    }))
+  }
+
+  const applyPartNameToForm = (partName) => {
+    const name = String(partName || '').trim()
+    const part = findMatchingSparePart(parts, name)
+    setForm((prev) => ({
+      ...prev,
+      Part_Name_EN: partName,
+      Part_Code: part?.Part_Code || prev.Part_Code,
+      Category: part?.Category || prev.Category,
+      Qty_Before: part ? toNumber(part.Stock_Qty) : prev.Qty_Before,
+      Qty_After: part ? toNumber(part.Stock_Qty) + getSignedStockDelta(prev.TXN_Type, prev.Qty_Change) : prev.Qty_After,
+      Unit: part?.Unit || prev.Unit,
+      Unit_Price: part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : prev.Unit_Price,
       Location_Store: part?.Location_Store || prev.Location_Store,
     }))
   }
@@ -917,16 +954,18 @@ export default function StockMovement() {
               </div>
               {parts?.length > 0 && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-slate-400">เลือกอะไหล่:</span>
+                  <span className="text-[11px] text-slate-400">เลือกด่วน:</span>
                   <select
-                    className="select text-[11px] py-0.5 px-2 max-w-[180px]"
-                    onChange={(e) => applyPartToForm(e.target.value)}
+                    className="select text-[11px] py-0.5 px-2 max-w-[200px]"
+                    onChange={(e) => {
+                      if (e.target.value) applyPartToForm(e.target.value)
+                    }}
                     value=""
                   >
-                    <option value="">— เลือกอะไหล่ —</option>
-                    {parts.map((p) => (
-                      <option key={p.Part_Code} value={p.Part_Code}>
-                        {p.Part_Code} - {p.Part_Name_EN}
+                    <option value="">— เลือกจากเมนูอะไหล่ —</option>
+                    {partCodeOptions.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
                       </option>
                     ))}
                   </select>
@@ -951,9 +990,57 @@ export default function StockMovement() {
               </div>
               <F form={form} setForm={setForm} label="ประเภทรายการ" id="TXN_Type" opts={TXN_TYPE} />
               <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
-              <F form={form} setForm={setForm} label="รหัสอะไหล่ *" id="Part_Code" placeholder="เช่น SP-001" />
+              <div>
+                <label className="label flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Tag size={12} className="text-blue-500" />
+                    <span>รหัสอะไหล่ *</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">เลือก/พิมพ์เอง</span>
+                </label>
+                <input
+                  list="sm-modal-part-code-datalist"
+                  type="text"
+                  className="input text-xs w-full font-mono font-bold text-blue-600 dark:text-blue-400"
+                  placeholder="เช่น SP-001 หรือพิมพ์รหัสใหม่..."
+                  value={form.Part_Code || ''}
+                  onChange={(e) => applyPartToForm(e.target.value)}
+                  required
+                />
+                <datalist id="sm-modal-part-code-datalist">
+                  {partCodeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label !== opt.value ? opt.label : undefined}
+                    </option>
+                  ))}
+                </datalist>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">ดึงจากเมนู หรือพิมพ์เองได้</span>
+              </div>
+
               <div className="sm:col-span-2">
-                <F form={form} setForm={setForm} label="ชื่ออะไหล่" id="Part_Name_EN" placeholder="ชื่ออะไหล่" />
+                <label className="label flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Package size={12} className="text-blue-500" />
+                    <span>ชื่ออะไหล่</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">เลือก/พิมพ์เอง</span>
+                </label>
+                <input
+                  list="sm-modal-part-name-datalist"
+                  type="text"
+                  className="input text-xs w-full font-medium"
+                  placeholder="เช่น Bearing 6204 หรือพิมพ์ชื่อใหม่..."
+                  value={form.Part_Name_EN || ''}
+                  onChange={(e) => applyPartNameToForm(e.target.value)}
+                />
+                <datalist id="sm-modal-part-name-datalist">
+                  {partNameOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label !== opt.value ? opt.label : undefined}
+                    </option>
+                  ))}
+                </datalist>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">ดึงจากเมนู หรือพิมพ์เองได้</span>
               </div>
             </div>
           </div>

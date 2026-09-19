@@ -243,3 +243,103 @@ export function matchStockMovementType(row = {}, filterValue = '') {
   return rawType.toLowerCase().includes(query) || thaiLabel.toLowerCase().includes(query)
 }
 
+export function buildStockMovementPartCodeOptions(parts = [], transactions = []) {
+  const map = new Map()
+  ;(parts || []).forEach((p) => {
+    const code = String(p?.Part_Code || '').trim()
+    if (!code) return
+    const name = String(p?.Part_Name_EN || p?.Part_Name_TH || '').trim()
+    map.set(code, {
+      value: code,
+      label: name ? `${code} - ${name}` : code,
+    })
+  })
+  ;(transactions || []).forEach((tx) => {
+    const code = String(tx?.Part_Code || '').trim()
+    if (!code || map.has(code)) return
+    const name = String(tx?.Part_Name_EN || tx?.Part_Name_TH || '').trim()
+    map.set(code, {
+      value: code,
+      label: name ? `${code} - ${name}` : code,
+    })
+  })
+  return Array.from(map.values()).sort((a, b) =>
+    a.value.localeCompare(b.value, 'th', { numeric: true, sensitivity: 'base' })
+  )
+}
+
+export function buildStockMovementPartNameOptions(parts = [], transactions = []) {
+  const map = new Map()
+  ;(parts || []).forEach((p) => {
+    const name = String(p?.Part_Name_EN || p?.Part_Name_TH || '').trim()
+    if (!name) return
+    const code = String(p?.Part_Code || '').trim()
+    if (!map.has(name)) {
+      map.set(name, {
+        value: name,
+        label: code ? `${name} (${code})` : name,
+      })
+    }
+  })
+  ;(transactions || []).forEach((tx) => {
+    const name = String(tx?.Part_Name_EN || tx?.Part_Name_TH || '').trim()
+    if (!name || map.has(name)) return
+    const code = String(tx?.Part_Code || '').trim()
+    map.set(name, {
+      value: name,
+      label: code ? `${name} (${code})` : name,
+    })
+  })
+  return Array.from(map.values()).sort((a, b) =>
+    a.value.localeCompare(b.value, 'th', { numeric: true, sensitivity: 'base' })
+  )
+}
+
+export function matchStockMovementPartCode(row = {}, filterValue = '') {
+  if (filterValue === undefined || filterValue === null || filterValue === '') return true
+  const rowVal = String(row?.Part_Code || '').toLowerCase().trim()
+
+  if (Array.isArray(filterValue)) {
+    if (filterValue.length === 0) return true
+    return filterValue.some((v) => {
+      const valStr = String(v ?? '').trim().toLowerCase()
+      return rowVal === valStr || rowVal.includes(valStr)
+    })
+  }
+
+  const query = String(filterValue).trim().toLowerCase()
+  if (!query) return true
+  return rowVal.includes(query)
+}
+
+export function matchStockMovementPartName(row = {}, filterValue = '') {
+  if (filterValue === undefined || filterValue === null || filterValue === '') return true
+  const targets = [row?.Part_Name_EN, row?.Part_Name_TH]
+    .filter(Boolean)
+    .map((v) => String(v).toLowerCase().trim())
+
+  if (Array.isArray(filterValue)) {
+    if (filterValue.length === 0) return true
+    return filterValue.some((v) => {
+      const needle = String(v ?? '').toLowerCase().trim()
+      return targets.some((t) => t === needle || t.includes(needle))
+    })
+  }
+
+  const needle = String(filterValue).toLowerCase().trim()
+  if (!needle) return true
+  return targets.some((t) => t.includes(needle))
+}
+
+export function findMatchingSparePart(parts = [], query = '') {
+  const q = String(query || '').trim().toLowerCase()
+  if (!q) return null
+  return (parts || []).find((p) => {
+    const code = String(p?.Part_Code || '').trim().toLowerCase()
+    const nameEn = String(p?.Part_Name_EN || '').trim().toLowerCase()
+    const nameTh = String(p?.Part_Name_TH || '').trim().toLowerCase()
+    return code === q || nameEn === q || nameTh === q
+  }) || null
+}
+
+

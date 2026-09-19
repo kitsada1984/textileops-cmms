@@ -288,52 +288,67 @@ function FilterField({ col, value, onChange, onToggle }) {
         )}
       </div>
 
-      {type === 'select' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <input
-            className="input text-xs"
-            type="text"
-            value={Array.isArray(value) ? value.join(', ') : (value || '')}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={`พิมพ์ค้นหา หรือคลิกเลือก ${col.label}...`}
-            style={{ fontSize: 12, minHeight: 36 }}
-          />
+      {type === 'select' && (() => {
+        const filterQuery = (typeof value === 'string' ? value : '').trim().toLowerCase()
+        const displayedOptions = (filterQuery && !Array.isArray(value))
+          ? options.filter(opt => {
+              const ov = String(optionValue(opt)).toLowerCase()
+              const ol = String(optionLabel(opt)).toLowerCase()
+              return ov.includes(filterQuery) || ol.includes(filterQuery)
+            })
+          : options
 
-          {options.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 110, overflowY: 'auto' }}>
-              {options.map(opt => {
-                const ov = optionValue(opt)
-                const ol = optionLabel(opt)
-                const selected = Array.isArray(value) ? value.includes(ov) : String(value || '') === String(ov)
-                return (
-                  <button
-                    key={String(ov)}
-                    type="button"
-                    onClick={() => onToggle(col.key, ov, col.filter.multi !== false)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '4px 9px',
-                      borderRadius: 999,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      border: `1px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
-                      background: selected ? 'var(--accent-gradient)' : 'var(--bg-thead)',
-                      color: selected ? '#fff' : 'var(--text-700)',
-                      boxShadow: selected ? '0 2px 8px rgba(37,99,235,0.25)' : 'none',
-                    }}
-                  >
-                    {selected && <Check size={10} strokeWidth={3} />}
-                    {ol}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input
+              className="input text-xs"
+              type="text"
+              value={Array.isArray(value) ? value.join(', ') : (value || '')}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={`พิมพ์ค้นหา หรือคลิกเลือก ${col.label}...`}
+              style={{ fontSize: 12, minHeight: 36 }}
+            />
+
+            {displayedOptions.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 110, overflowY: 'auto' }}>
+                {displayedOptions.map(opt => {
+                  const ov = optionValue(opt)
+                  const ol = optionLabel(opt)
+                  const selected = Array.isArray(value) ? value.includes(ov) : String(value || '') === String(ov)
+                  return (
+                    <button
+                      key={String(ov)}
+                      type="button"
+                      onClick={() => onToggle(col.key, ov, col.filter.multi !== false)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '4px 9px',
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: `1px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
+                        background: selected ? 'var(--accent-gradient)' : 'var(--bg-thead)',
+                        color: selected ? '#fff' : 'var(--text-700)',
+                        boxShadow: selected ? '0 2px 8px rgba(37,99,235,0.25)' : 'none',
+                      }}
+                    >
+                      {selected && <Check size={10} strokeWidth={3} />}
+                      {ol}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : options.length > 0 ? (
+              <div style={{ fontSize: 11, color: 'var(--text-400)', fontStyle: 'italic', padding: '2px 4px' }}>
+                ไม่พบตัวเลือกที่ตรงกับคำค้นหา (จะกรองตามข้อความที่พิมพ์)
+              </div>
+            ) : null}
+          </div>
+        )
+      })()}
 
       {type === 'number' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
