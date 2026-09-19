@@ -1,6 +1,7 @@
 import { createEntityClient } from './supabaseClient'
 import { supabase } from '../supabase'
 import initialCenterChecks from '../data/initialCenterChecks.json'
+import { getSystemConfig, saveSystemConfig, deleteSystemConfig } from '../modules/systemConfig'
 
 export const DEFAULT_TECHS = []
 
@@ -41,62 +42,24 @@ export const WorkOrderAPI = {
 
 export const TechnicianAPI = {
   list: async () => {
-    try {
-      const { data, error } = await supabase
-        .from('workorders')
-        .select('Comment')
-        .eq('WO_ID', 'SYS_TECHNICIANS')
-        .maybeSingle()
-      if (!error && data?.Comment) {
-        const parsed = JSON.parse(data.Comment)
-        if (Array.isArray(parsed)) {
-          try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(parsed)) } catch {}
-          return parsed
-        }
-      }
-    } catch (e) {
-      console.warn('Technician cloud load error:', e)
-    }
-    try {
-      const local = JSON.parse(localStorage.getItem('txops_tbl_technicians') || 'null')
-      if (Array.isArray(local)) return local
-    } catch {}
-    return DEFAULT_TECHS
+    return getSystemConfig('technicians', {
+      legacyWorkOrderId: 'SYS_TECHNICIANS',
+      localCacheKey: 'txops_tbl_technicians',
+      defaultValue: DEFAULT_TECHS,
+    })
   },
   saveAll: async (techsList) => {
-    try {
-      if (!techsList || techsList.length === 0) {
-        try { localStorage.removeItem('txops_tbl_technicians') } catch {}
-        await supabase.from('workorders').delete().eq('WO_ID', 'SYS_TECHNICIANS')
-        return
-      }
-      localStorage.setItem('txops_tbl_technicians', JSON.stringify(techsList))
-    } catch {}
-    try {
-      const { data: existing } = await supabase
-        .from('workorders')
-        .select('id')
-        .eq('WO_ID', 'SYS_TECHNICIANS')
-      if (existing && existing.length > 0) {
-        await supabase
-          .from('workorders')
-          .update({
-            Comment: JSON.stringify(techsList),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing[0].id)
-      } else {
-        await supabase.from('workorders').insert({
-          MC: '__SYSTEM__',
-          Problem: '__SYS_CONFIG__',
-          WO_ID: 'SYS_TECHNICIANS',
-          Comment: JSON.stringify(techsList),
-          Status: 'COMPLETED',
-        })
-      }
-    } catch (e) {
-      console.warn('Technician cloud save error:', e)
+    if (!techsList || techsList.length === 0) {
+      await deleteSystemConfig('technicians', {
+        legacyWorkOrderId: 'SYS_TECHNICIANS',
+        localCacheKey: 'txops_tbl_technicians',
+      })
+      return
     }
+    await saveSystemConfig('technicians', techsList, {
+      legacyWorkOrderId: 'SYS_TECHNICIANS',
+      localCacheKey: 'txops_tbl_technicians',
+    })
   },
   create: async (item) => {
     const list = await TechnicianAPI.list()
@@ -124,62 +87,24 @@ export const PMPlanAPI          = createEntityClient('pmplans')
 
 export const CenterCheckAPI = {
   list: async () => {
-    try {
-      const { data, error } = await supabase
-        .from('workorders')
-        .select('Comment')
-        .eq('WO_ID', 'SYS_CENTER_CHECKS')
-        .maybeSingle()
-      if (!error && data?.Comment) {
-        const parsed = JSON.parse(data.Comment)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          try { localStorage.setItem('txops_tbl_center_checks', JSON.stringify(parsed)) } catch {}
-          return parsed
-        }
-      }
-    } catch (e) {
-      console.warn('CenterCheck cloud load error:', e)
-    }
-    try {
-      const local = JSON.parse(localStorage.getItem('txops_tbl_center_checks') || '[]')
-      if (Array.isArray(local) && local.length > 0) return local
-    } catch {}
-    return initialCenterChecks
+    return getSystemConfig('center_checks', {
+      legacyWorkOrderId: 'SYS_CENTER_CHECKS',
+      localCacheKey: 'txops_tbl_center_checks',
+      defaultValue: initialCenterChecks,
+    })
   },
   saveAll: async (checksList) => {
-    try {
-      if (!checksList || checksList.length === 0) {
-        try { localStorage.removeItem('txops_tbl_center_checks') } catch {}
-        await supabase.from('workorders').delete().eq('WO_ID', 'SYS_CENTER_CHECKS')
-        return
-      }
-      localStorage.setItem('txops_tbl_center_checks', JSON.stringify(checksList))
-    } catch {}
-    try {
-      const { data: existing } = await supabase
-        .from('workorders')
-        .select('id')
-        .eq('WO_ID', 'SYS_CENTER_CHECKS')
-      if (existing && existing.length > 0) {
-        await supabase
-          .from('workorders')
-          .update({
-            Comment: JSON.stringify(checksList),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing[0].id)
-      } else {
-        await supabase.from('workorders').insert({
-          MC: '__SYSTEM__',
-          Problem: '__SYS_CONFIG__',
-          WO_ID: 'SYS_CENTER_CHECKS',
-          Comment: JSON.stringify(checksList),
-          Status: 'COMPLETED',
-        })
-      }
-    } catch (e) {
-      console.warn('CenterCheck cloud save error:', e)
+    if (!checksList || checksList.length === 0) {
+      await deleteSystemConfig('center_checks', {
+        legacyWorkOrderId: 'SYS_CENTER_CHECKS',
+        localCacheKey: 'txops_tbl_center_checks',
+      })
+      return
     }
+    await saveSystemConfig('center_checks', checksList, {
+      legacyWorkOrderId: 'SYS_CENTER_CHECKS',
+      localCacheKey: 'txops_tbl_center_checks',
+    })
   },
   create: async (item) => {
     const list = await CenterCheckAPI.list()
@@ -224,63 +149,24 @@ export const NeedleConditionAPI = {
       console.warn('NeedleCondition direct table load error, falling back to sys config:', e)
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('workorders')
-        .select('Comment')
-        .eq('WO_ID', 'SYS_NEEDLE_CONDITIONS')
-        .maybeSingle()
-      if (!error && data?.Comment) {
-        const parsed = JSON.parse(data.Comment)
-        if (Array.isArray(parsed)) {
-          try { localStorage.setItem('txops_tbl_needle_conditions', JSON.stringify(parsed)) } catch {}
-          return parsed
-        }
-      }
-    } catch (e) {
-      console.warn('NeedleCondition cloud load error:', e)
-    }
-
-    try {
-      const local = JSON.parse(localStorage.getItem('txops_tbl_needle_conditions') || '[]')
-      if (Array.isArray(local)) return local
-    } catch {}
-    return []
+    return getSystemConfig('needle_conditions', {
+      legacyWorkOrderId: 'SYS_NEEDLE_CONDITIONS',
+      localCacheKey: 'txops_tbl_needle_conditions',
+      defaultValue: [],
+    })
   },
   saveAll: async (recordsList) => {
-    try {
-      if (!recordsList || recordsList.length === 0) {
-        try { localStorage.removeItem('txops_tbl_needle_conditions') } catch {}
-        await supabase.from('workorders').delete().eq('WO_ID', 'SYS_NEEDLE_CONDITIONS')
-        return
-      }
-      localStorage.setItem('txops_tbl_needle_conditions', JSON.stringify(recordsList))
-    } catch {}
-    try {
-      const { data: existing } = await supabase
-        .from('workorders')
-        .select('id')
-        .eq('WO_ID', 'SYS_NEEDLE_CONDITIONS')
-      if (existing && existing.length > 0) {
-        await supabase
-          .from('workorders')
-          .update({
-            Comment: JSON.stringify(recordsList),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing[0].id)
-      } else {
-        await supabase.from('workorders').insert({
-          MC: '__SYSTEM__',
-          Problem: '__SYS_CONFIG__',
-          WO_ID: 'SYS_NEEDLE_CONDITIONS',
-          Comment: JSON.stringify(recordsList),
-          Status: 'COMPLETED',
-        })
-      }
-    } catch (e) {
-      console.warn('NeedleCondition cloud save error:', e)
+    if (!recordsList || recordsList.length === 0) {
+      await deleteSystemConfig('needle_conditions', {
+        legacyWorkOrderId: 'SYS_NEEDLE_CONDITIONS',
+        localCacheKey: 'txops_tbl_needle_conditions',
+      })
+      return
     }
+    await saveSystemConfig('needle_conditions', recordsList, {
+      legacyWorkOrderId: 'SYS_NEEDLE_CONDITIONS',
+      localCacheKey: 'txops_tbl_needle_conditions',
+    })
   },
   create: async (item) => {
     const list = await NeedleConditionAPI.list()
@@ -752,39 +638,18 @@ export function generateCenterCheckDocNo(type = 'Single', existingRecords = []) 
 
 export const CenterCheckStandardsAPI = {
   getStandards: async () => {
-    try {
-      const { data, error } = await supabase
-        .from('workorders')
-        .select('Comment')
-        .eq('WO_ID', 'SYS_CENTER_CHECK_STANDARDS')
-        .maybeSingle()
-      if (!error && data?.Comment) {
-        const parsed = JSON.parse(data.Comment)
-        if (parsed && (Array.isArray(parsed.Single) || Array.isArray(parsed.Double))) {
-          try { localStorage.setItem('txops_center_check_standards', JSON.stringify(parsed)) } catch {}
-          return {
-            Single: Array.isArray(parsed.Single) ? parsed.Single : DEFAULT_SINGLE_CHECKLIST_ITEMS,
-            Double: Array.isArray(parsed.Double) ? parsed.Double : DEFAULT_DOUBLE_CHECKLIST_ITEMS,
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('CenterCheckStandards cloud load error:', e)
-    }
-
-    try {
-      const local = JSON.parse(localStorage.getItem('txops_center_check_standards') || '{}')
-      if (local && (Array.isArray(local.Single) || Array.isArray(local.Double))) {
-        return {
-          Single: Array.isArray(local.Single) ? local.Single : DEFAULT_SINGLE_CHECKLIST_ITEMS,
-          Double: Array.isArray(local.Double) ? local.Double : DEFAULT_DOUBLE_CHECKLIST_ITEMS,
-        }
-      }
-    } catch {}
+    const standards = await getSystemConfig('center_check_standards', {
+      legacyWorkOrderId: 'SYS_CENTER_CHECK_STANDARDS',
+      localCacheKey: 'txops_center_check_standards',
+      defaultValue: {
+        Single: DEFAULT_SINGLE_CHECKLIST_ITEMS,
+        Double: DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+      },
+    })
 
     return {
-      Single: DEFAULT_SINGLE_CHECKLIST_ITEMS,
-      Double: DEFAULT_DOUBLE_CHECKLIST_ITEMS,
+      Single: Array.isArray(standards?.Single) ? standards.Single : DEFAULT_SINGLE_CHECKLIST_ITEMS,
+      Double: Array.isArray(standards?.Double) ? standards.Double : DEFAULT_DOUBLE_CHECKLIST_ITEMS,
     }
   },
 
@@ -794,48 +659,20 @@ export const CenterCheckStandardsAPI = {
       Double: Array.isArray(standards?.Double) ? standards.Double : DEFAULT_DOUBLE_CHECKLIST_ITEMS,
     }
 
-    try {
-      localStorage.setItem('txops_center_check_standards', JSON.stringify(payload))
-    } catch {}
-
-    try {
-      const { data: existing } = await supabase
-        .from('workorders')
-        .select('id')
-        .eq('WO_ID', 'SYS_CENTER_CHECK_STANDARDS')
-        .limit(1)
-
-      if (existing && existing.length > 0) {
-        await supabase
-          .from('workorders')
-          .update({
-            Comment: JSON.stringify(payload),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing[0].id)
-      } else {
-        await supabase.from('workorders').insert({
-          MC: '__SYSTEM__',
-          Problem: '__SYS_CONFIG__',
-          WO_ID: 'SYS_CENTER_CHECK_STANDARDS',
-          Comment: JSON.stringify(payload),
-          Status: 'COMPLETED',
-        })
-      }
-    } catch (e) {
-      console.warn('CenterCheckStandards cloud save error:', e)
-    }
+    await saveSystemConfig('center_check_standards', payload, {
+      legacyWorkOrderId: 'SYS_CENTER_CHECK_STANDARDS',
+      localCacheKey: 'txops_center_check_standards',
+    })
 
     return payload
   },
 
   resetStandards: async () => {
-    try {
-      localStorage.removeItem('txops_center_check_standards')
-      await supabase.from('workorders').delete().eq('WO_ID', 'SYS_CENTER_CHECK_STANDARDS')
-    } catch (e) {
-      console.warn('CenterCheckStandards reset error:', e)
-    }
+    await deleteSystemConfig('center_check_standards', {
+      legacyWorkOrderId: 'SYS_CENTER_CHECK_STANDARDS',
+      localCacheKey: 'txops_center_check_standards',
+    })
+
     return {
       Single: DEFAULT_SINGLE_CHECKLIST_ITEMS,
       Double: DEFAULT_DOUBLE_CHECKLIST_ITEMS,

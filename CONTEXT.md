@@ -18,6 +18,7 @@
 | **ใบแจ้งซ่อม** | `RepairRequests` | ใบแจ้งซ่อมเครื่องจักรจากฝ่ายผลิต/โอเปอเรเตอร์ส่งถึงฝ่ายช่าง |
 | **วงจรชีวิตใบแจ้งซ่อม** | `RepairLifecycle` | โมดูลจัดการวงจรชีวิตงานแจ้งซ่อม (แจ้ง > อนุมัติ > ปิดงาน) พร้อมระบบ Schema Resilience และ Multi-Channel Dispatch (LINE + Telegram) |
 | **การสร้างเอกสารและพิมพ์ PDF** | `DocumentGeneration` | โมดูลการสร้างและพรีวิวเอกสาร PDF A4 ทั้ง 9 ประเภท โดยแยก Pure Projection, Cross-Entity Context Hydration และ LocalStorage Fallback Adapter ออกจากกันอย่างเด็ดขาด |
+| **การตั้งค่าและข้อมูลระบบ** | `SystemConfigRepository` | โมดูลจัดการข้อมูลระบบและการตั้งค่า (Technicians, Standards, Checklist Config) ผ่านตาราง `appconfigs` พร้อมระบบ Dual-Write และ Self-Healing ย้ายจาก `workorders.Comment` เดิมแบบไร้รอยต่อ |
 | **ประวัติการทำงาน** | `AuditLogs` | บันทึกประวัติการ เพิ่ม/แก้ไข/ลบ ข้อมูลทั้งหมดในระบบเพื่อความโปร่งใสและตรวจสอบได้ |
 
 ---
