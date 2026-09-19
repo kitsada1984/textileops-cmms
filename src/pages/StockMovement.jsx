@@ -34,6 +34,7 @@ import DetailDrawer from '../components/ui/DetailDrawer'
 import { useToast } from '../components/ui/Toast'
 import F from '../components/ui/FormField'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
+import SearchableDropdown from '../components/ui/SearchableDropdown'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { generateStockTxnId, getPartStockStatus, getSignedStockDelta, toNumber } from '../utils/inventory'
 import { getSparePartImageUrl } from '../utils/sparePartImage'
@@ -991,56 +992,31 @@ export default function StockMovement() {
               <F form={form} setForm={setForm} label="ประเภทรายการ" id="TXN_Type" opts={TXN_TYPE} />
               <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
               <div>
-                <label className="label flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Tag size={12} className="text-blue-500" />
-                    <span>รหัสอะไหล่ *</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-normal">เลือก/พิมพ์เอง</span>
-                </label>
-                <input
-                  list="sm-modal-part-code-datalist"
-                  type="text"
-                  className="input text-xs w-full font-mono font-bold text-blue-600 dark:text-blue-400"
-                  placeholder="เช่น SP-001 หรือพิมพ์รหัสใหม่..."
-                  value={form.Part_Code || ''}
-                  onChange={(e) => applyPartToForm(e.target.value)}
+                <SearchableDropdown
+                  id="Part_Code"
+                  label="รหัสอะไหล่"
                   required
+                  icon={Tag}
+                  value={form.Part_Code || ''}
+                  onChange={(val) => applyPartToForm(val)}
+                  options={partCodeOptions}
+                  placeholder="เลือกจากดรอปดาวน์ หรือพิมพ์รหัสใหม่..."
+                  inputClassName="font-mono font-bold text-blue-600 dark:text-blue-400"
+                  helperText="คลิกลูกศรเพื่อเลือกดรอปดาวน์ หรือพิมพ์รหัสใหม่"
                 />
-                <datalist id="sm-modal-part-code-datalist">
-                  {partCodeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label !== opt.value ? opt.label : undefined}
-                    </option>
-                  ))}
-                </datalist>
-                <span className="text-[10px] text-slate-400 mt-0.5 block">ดึงจากเมนู หรือพิมพ์เองได้</span>
               </div>
 
               <div className="sm:col-span-2">
-                <label className="label flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Package size={12} className="text-blue-500" />
-                    <span>ชื่ออะไหล่</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-normal">เลือก/พิมพ์เอง</span>
-                </label>
-                <input
-                  list="sm-modal-part-name-datalist"
-                  type="text"
-                  className="input text-xs w-full font-medium"
-                  placeholder="เช่น Bearing 6204 หรือพิมพ์ชื่อใหม่..."
+                <SearchableDropdown
+                  id="Part_Name_EN"
+                  label="ชื่ออะไหล่"
+                  icon={Package}
                   value={form.Part_Name_EN || ''}
-                  onChange={(e) => applyPartNameToForm(e.target.value)}
+                  onChange={(val) => applyPartNameToForm(val)}
+                  options={partNameOptions}
+                  placeholder="เลือกจากดรอปดาวน์ หรือพิมพ์ชื่อใหม่..."
+                  helperText="คลิกลูกศรเพื่อเลือกดรอปดาวน์ หรือพิมพ์ชื่อใหม่"
                 />
-                <datalist id="sm-modal-part-name-datalist">
-                  {partNameOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label !== opt.value ? opt.label : undefined}
-                    </option>
-                  ))}
-                </datalist>
-                <span className="text-[10px] text-slate-400 mt-0.5 block">ดึงจากเมนู หรือพิมพ์เองได้</span>
               </div>
             </div>
           </div>
@@ -1088,29 +1064,18 @@ export default function StockMovement() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="label">
-                  <span className="flex items-center gap-1">
-                    <Cpu size={12} className="text-blue-500" />
-                    <span>เครื่องจักร (M/C)</span>
-                  </span>
-                  {form.TXN_Type === 'ISSUE' && <span className="text-red-500 font-bold ml-1">*</span>}
-                </label>
-                <input
-                  list="mc-datalist-options"
-                  type="text"
-                  className="input text-xs w-full font-mono"
-                  placeholder="เช่น SB-361M, DB-3411T..."
+                <SearchableDropdown
+                  id="MC"
+                  label="เครื่องจักร (M/C)"
+                  required={form.TXN_Type === 'ISSUE'}
+                  icon={Cpu}
                   value={form.MC || ''}
-                  onChange={(e) => setForm((prev) => ({ ...prev, MC: e.target.value }))}
+                  onChange={(val) => setForm((prev) => ({ ...prev, MC: val }))}
+                  options={mcOptions}
+                  placeholder="เช่น SB-361M, DB-3411T..."
+                  inputClassName="font-mono font-bold"
+                  helperText={form.TXN_Type === 'ISSUE' ? 'จำเป็นต้องระบุสำหรับรายการเบิกใช้' : 'คลิกลูกศรเพื่อเลือกดรอปดาวน์ หรือพิมพ์เลขเครื่อง'}
                 />
-                <datalist id="mc-datalist-options">
-                  {mcOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value} />
-                  ))}
-                </datalist>
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
-                  {form.TXN_Type === 'ISSUE' ? 'จำเป็นต้องระบุสำหรับรายการเบิกใช้' : 'ระบุเครื่องจักรที่เกี่ยวข้อง (ถ้ามี)'}
-                </span>
               </div>
               <F form={form} setForm={setForm} label="เอกสารอ้างอิง / เลขที่งาน" id="Reference" placeholder="เช่น WO-2026-001 หรือ PO-001" />
               <F form={form} setForm={setForm} label="ผู้ทำรายการ" id="Performed_By" placeholder="ชื่อผู้เบิกหรือผู้รับของ" />

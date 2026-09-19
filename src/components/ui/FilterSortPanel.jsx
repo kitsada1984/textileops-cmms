@@ -298,19 +298,50 @@ function FilterField({ col, value, onChange, onToggle }) {
             })
           : options
 
+        const selectedSingleVal = Array.isArray(value) ? (value.length === 1 ? value[0] : '') : (value || '')
+
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {/* 1. Dropdown List (<select>) */}
+            <select
+              className="select text-xs w-full font-medium"
+              value={selectedSingleVal}
+              onChange={(e) => {
+                const val = e.target.value
+                if (!val) {
+                  onChange(col.filter.multi !== false ? [] : '')
+                } else {
+                  onChange(col.filter.multi !== false ? [val] : val)
+                }
+              }}
+              style={{ minHeight: 38, fontSize: 12 }}
+              aria-label={`ดรอปดาวน์ลิสต์ ${col.label}`}
+            >
+              <option value="">— ดรอปดาวน์ลิสต์: เลือก {col.label} —</option>
+              {options.map((opt) => {
+                const ov = optionValue(opt)
+                const ol = optionLabel(opt)
+                return (
+                  <option key={String(ov)} value={String(ov)}>
+                    {ol}
+                  </option>
+                )
+              })}
+            </select>
+
+            {/* 2. Text Search Input */}
             <input
               className="input text-xs"
               type="text"
               value={Array.isArray(value) ? value.join(', ') : (value || '')}
               onChange={(e) => onChange(e.target.value)}
-              placeholder={`พิมพ์ค้นหา หรือคลิกเลือก ${col.label}...`}
-              style={{ fontSize: 12, minHeight: 36 }}
+              placeholder={`หรือพิมพ์ระบุคำค้นหา ${col.label}...`}
+              style={{ fontSize: 12, minHeight: 34 }}
             />
 
+            {/* 3. Quick Tags / Multi-Select Pills */}
             {displayedOptions.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 110, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 95, overflowY: 'auto' }}>
                 {displayedOptions.map(opt => {
                   const ov = optionValue(opt)
                   const ol = optionLabel(opt)
@@ -324,7 +355,7 @@ function FilterField({ col, value, onChange, onToggle }) {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 4,
-                        padding: '4px 9px',
+                        padding: '3px 8px',
                         borderRadius: 999,
                         fontSize: 11,
                         fontWeight: 700,
