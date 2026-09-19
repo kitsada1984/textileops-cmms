@@ -35,8 +35,7 @@ import DetailDrawer from '../components/ui/DetailDrawer'
 import { useToast } from '../components/ui/Toast'
 import F from '../components/ui/FormField'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
-import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
-import { normalizeImageFile } from '../utils/imageFileProcessor'
+import { uploadMedia } from '../modules/media'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
 import {
@@ -286,10 +285,8 @@ export default function DesignBom() {
     else setUploadingApp(true)
 
     try {
-      const normalized = await normalizeImageFile(file, 1600, 0.82)
-      const fileToUpload = normalized?.file || file
       const folder = isCover ? DESIGN_BOM_COVER_FOLDER : DESIGN_BOM_APP_FOLDER
-      const { imageUrl } = await uploadImageToGoogleDrive(fileToUpload, { folderName: folder })
+      const { imageUrl } = await uploadMedia(file, { folderName: folder })
       setForm((prev) => ({
         ...prev,
         [isCover ? 'CoverImageUrl' : 'AppImageUrl']: imageUrl,

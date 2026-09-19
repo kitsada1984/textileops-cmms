@@ -50,7 +50,7 @@ import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateCenterCheckPdfProps } from '../utils/pdfDocGenerators'
 import initialCenterChecks from '../data/initialCenterChecks.json'
 import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
-import { normalizeImageFile, convertHeicDataUrlIfNeeded } from '../utils/imageFileProcessor'
+import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../modules/media'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 
 const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
@@ -720,33 +720,11 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
 
     setUploadingImage(true)
     try {
-      const newUrls = []
-      for (const rawFile of files) {
-        // Auto convert HEIC to JPEG & optimize image size
-        const normalized = await normalizeImageFile(rawFile, 1920, 0.85)
-        const fileToUpload = normalized?.file || rawFile
-        const dataUrl = normalized?.dataUrl || ''
-
-        try {
-          const res = await uploadImageToGoogleDrive(fileToUpload, { folderName: CENTER_CHECK_IMAGE_FOLDER })
-          const imgUrl = res?.imageUrl || res?.url
-          if (imgUrl) {
-            newUrls.push(imgUrl)
-          } else if (dataUrl) {
-            newUrls.push(dataUrl)
-          } else {
-            const fallback = await readFileAsDataUrl(fileToUpload)
-            newUrls.push(fallback)
-          }
-        } catch {
-          if (dataUrl) {
-            newUrls.push(dataUrl)
-          } else {
-            const fallback = await readFileAsDataUrl(fileToUpload)
-            newUrls.push(fallback)
-          }
-        }
-      }
+      const results = await uploadMediaBatch(files, {
+        folderName: CENTER_CHECK_IMAGE_FOLDER,
+        fallbackToLocal: true,
+      })
+      const newUrls = results.map((r) => r.imageUrl || r.url || r.dataUrl).filter(Boolean)
 
       setFormData((prev) => ({
         ...prev,

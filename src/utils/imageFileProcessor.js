@@ -1,4 +1,16 @@
-import heic2any from 'heic2any'
+let heic2anyPromise = null
+async function getHeicConverter() {
+  if (typeof window === 'undefined' || typeof Worker === 'undefined') return null
+  if (!heic2anyPromise) {
+    heic2anyPromise = import('heic2any')
+      .then((m) => m?.default || m)
+      .catch((err) => {
+        console.warn('heic2any dynamic import failed:', err)
+        return null
+      })
+  }
+  return heic2anyPromise
+}
 
 /**
  * Normalizes and compresses any image file (including iPhone HEIC/HEIF)
@@ -18,12 +30,15 @@ export async function normalizeImageFile(file, maxDimension = 1920, quality = 0.
   // 1. Convert HEIC to JPEG Blob if needed
   if (isHeic) {
     try {
-      const converted = await heic2any({
-        blob: file,
-        toType: 'image/jpeg',
-        quality: quality,
-      })
-      targetBlob = Array.isArray(converted) ? converted[0] : converted
+      const heic2any = await getHeicConverter()
+      if (heic2any) {
+        const converted = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: quality,
+        })
+        targetBlob = Array.isArray(converted) ? converted[0] : converted
+      }
     } catch (e) {
       console.warn('heic2any conversion error:', e)
     }
@@ -105,6 +120,8 @@ export async function convertHeicDataUrlIfNeeded(srcUrl = '') {
   }
 
   try {
+    const heic2any = await getHeicConverter()
+    if (!heic2any) return srcUrl
     const res = await fetch(srcUrl)
     const blob = await res.blob()
     const converted = await heic2any({

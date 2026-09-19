@@ -153,3 +153,7 @@ export async function uploadImageToGoogleDrive(file, options = {}) {
     folderId: json?.folderId || '',
   }
 }
+
+// Re-exported from deep media module
+export { uploadMedia, uploadMediaBatch } from '../modules/media/mediaUploader'
+

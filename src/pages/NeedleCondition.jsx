@@ -54,9 +54,8 @@ import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateNeedleConditionPdfProps } from '../utils/pdfDocGenerators'
 import { applyFilterSort } from '../utils/filterSort'
-import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
 import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
-import { normalizeImageFile, convertHeicDataUrlIfNeeded } from '../utils/imageFileProcessor'
+import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../modules/media'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
 
@@ -499,33 +498,11 @@ export default function NeedleCondition() {
 
     setUploadingImage(true)
     try {
-      const newUrls = []
-      for (const rawFile of files) {
-        // Auto convert HEIC to JPEG & compress image
-        const normalized = await normalizeImageFile(rawFile, 1920, 0.85)
-        const fileToUpload = normalized?.file || rawFile
-        const dataUrl = normalized?.dataUrl || ''
-
-        try {
-          const res = await uploadImageToGoogleDrive(fileToUpload, { folderName: NEEDLE_IMAGE_FOLDER })
-          const imgUrl = res?.imageUrl || res?.url
-          if (imgUrl) {
-            newUrls.push(imgUrl)
-          } else if (dataUrl) {
-            newUrls.push(dataUrl)
-          } else {
-            const fallback = await readFileAsDataUrl(fileToUpload)
-            newUrls.push(fallback)
-          }
-        } catch {
-          if (dataUrl) {
-            newUrls.push(dataUrl)
-          } else {
-            const fallback = await readFileAsDataUrl(fileToUpload)
-            newUrls.push(fallback)
-          }
-        }
-      }
+      const results = await uploadMediaBatch(files, {
+        folderName: NEEDLE_IMAGE_FOLDER,
+        fallbackToLocal: true,
+      })
+      const newUrls = results.map((r) => r.imageUrl || r.url || r.dataUrl).filter(Boolean)
 
       setFormData((prev) => ({
         ...prev,
