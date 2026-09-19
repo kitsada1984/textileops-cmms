@@ -39,6 +39,7 @@ export function buildFilterSortColumns(cols = [], {
   labels = {},
   selectOptions = {},
   valueGetters = {},
+  matchers = {},
   exclude = [],
   include = null,
 } = {}) {
@@ -57,6 +58,7 @@ export function buildFilterSortColumns(cols = [], {
         sortable: true,
         type: col.type,
         getValue: valueGetters[key],
+        matcher: matchers[key] || col.matcher,
       }
 
       if (type === 'select' || selectOptions[key]) {
@@ -89,6 +91,9 @@ function toNumberOrNull(value) {
 
 function matchFilter(row, col, value) {
   if (!isFilterValueActive(value)) return true
+  if (typeof col?.matcher === 'function') {
+    return Boolean(col.matcher(row, value, col))
+  }
   const raw = getFilterValue(row, col)
   const type = col.filter?.type || 'text'
 

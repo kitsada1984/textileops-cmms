@@ -11,6 +11,11 @@ import {
   getStockTxnDate,
   toInputDateValue,
   formatStockTxnDate,
+  NO_MC_VALUE,
+  SM_TXN_TYPE_OPTIONS,
+  buildStockMovementMCOptions,
+  matchStockMovementMC,
+  matchStockMovementType,
 } from './stockMovementMC'
 
 describe('stockMovementMC utility', () => {
@@ -199,6 +204,84 @@ describe('stockMovementMC utility', () => {
     it('returns dash on empty input', () => {
       expect(formatStockTxnDate('')).toBe('—')
       expect(formatStockTxnDate(null)).toBe('—')
+    })
+  })
+
+  describe('buildStockMovementMCOptions', () => {
+    it('prepends "ไม่ระบุเครื่อง" option to machine list', () => {
+      const opts = buildStockMovementMCOptions(['SB-361M', 'DB-3411T'])
+      expect(opts[0]).toEqual({ value: NO_MC_VALUE, label: 'ไม่ระบุเครื่อง' })
+      expect(opts[1]).toEqual({ value: 'SB-361M', label: 'SB-361M' })
+      expect(opts[2]).toEqual({ value: 'DB-3411T', label: 'DB-3411T' })
+    })
+
+    it('handles object-based options', () => {
+      const opts = buildStockMovementMCOptions([
+        { value: 'MC-1', label: 'MC-1' },
+      ])
+      expect(opts[0].value).toBe(NO_MC_VALUE)
+      expect(opts[1].value).toBe('MC-1')
+    })
+  })
+
+  describe('matchStockMovementMC', () => {
+    it('returns true when filterValue is empty or undefined', () => {
+      expect(matchStockMovementMC({ MC: 'SB-361M' }, '')).toBe(true)
+      expect(matchStockMovementMC({ MC: 'SB-361M' }, [])).toBe(true)
+      expect(matchStockMovementMC({ MC: 'SB-361M' }, null)).toBe(true)
+    })
+
+    it('matches specific machine by array value', () => {
+      const row = { MC: 'SB-361M' }
+      expect(matchStockMovementMC(row, ['SB-361M'])).toBe(true)
+      expect(matchStockMovementMC(row, ['DB-3411T'])).toBe(false)
+      expect(matchStockMovementMC(row, ['DB-3411T', 'sb-361m'])).toBe(true)
+    })
+
+    it('matches "ไม่ระบุเครื่อง" for rows with no MC', () => {
+      const emptyRow = { Note: 'No MC here' }
+      const hasMCRow = { Note: 'MC: SB-361M' }
+      expect(matchStockMovementMC(emptyRow, [NO_MC_VALUE])).toBe(true)
+      expect(matchStockMovementMC(emptyRow, ['ไม่ระบุเครื่อง'])).toBe(true)
+      expect(matchStockMovementMC(hasMCRow, [NO_MC_VALUE])).toBe(false)
+      expect(matchStockMovementMC(emptyRow, NO_MC_VALUE)).toBe(true)
+      expect(matchStockMovementMC(emptyRow, 'ไม่ระบุ')).toBe(true)
+    })
+
+    it('matches machine by substring text query', () => {
+      const row = { MC: 'SB-361M' }
+      expect(matchStockMovementMC(row, '361')).toBe(true)
+      expect(matchStockMovementMC(row, 'sb')).toBe(true)
+      expect(matchStockMovementMC(row, 'db')).toBe(false)
+    })
+  })
+
+  describe('matchStockMovementType', () => {
+    it('returns true when filterValue is empty', () => {
+      expect(matchStockMovementType({ TXN_Type: 'RECEIVE' }, '')).toBe(true)
+      expect(matchStockMovementType({ TXN_Type: 'RECEIVE' }, [])).toBe(true)
+    })
+
+    it('matches English type by array selection', () => {
+      const row = { TXN_Type: 'RECEIVE' }
+      expect(matchStockMovementType(row, ['RECEIVE'])).toBe(true)
+      expect(matchStockMovementType(row, ['ISSUE'])).toBe(false)
+      expect(matchStockMovementType(row, ['ISSUE', 'RECEIVE'])).toBe(true)
+    })
+
+    it('matches Thai label by array selection', () => {
+      const row = { TXN_Type: 'ISSUE' }
+      expect(matchStockMovementType(row, ['เบิกจ่าย'])).toBe(true)
+      expect(matchStockMovementType(row, ['รับเข้า'])).toBe(false)
+    })
+
+    it('matches text query in English and Thai', () => {
+      const row = { TXN_Type: 'ADJUST' }
+      expect(matchStockMovementType(row, 'adjust')).toBe(true)
+      expect(matchStockMovementType(row, 'ปรับสต๊อก')).toBe(true)
+      expect(matchStockMovementType(row, 'ปรับ')).toBe(true)
+      expect(matchStockMovementType(row, 'รับเข้า')).toBe(false)
+      expect(matchStockMovementType(row, 'issue')).toBe(false)
     })
   })
 })

@@ -171,3 +171,75 @@ export function summarizeMachineParts(transactions = []) {
     partBreakdown,
   }
 }
+
+export const NO_MC_VALUE = '__NO_MC__'
+
+export const SM_TXN_TYPE_OPTIONS = [
+  { value: 'RECEIVE', label: 'รับเข้า' },
+  { value: 'ISSUE', label: 'เบิกจ่าย' },
+  { value: 'ADJUST', label: 'ปรับสต๊อก' },
+]
+
+export function buildStockMovementMCOptions(machineOptions = []) {
+  const normalized = (machineOptions || []).map((opt) =>
+    typeof opt === 'string'
+      ? { value: opt, label: opt }
+      : { value: opt.value ?? opt.id ?? opt.label, label: opt.label ?? opt.value }
+  ).filter((opt) => opt.value && opt.value !== NO_MC_VALUE)
+
+  return [
+    { value: NO_MC_VALUE, label: 'ไม่ระบุเครื่อง' },
+    ...normalized,
+  ]
+}
+
+export function matchStockMovementMC(row = {}, filterValue = '') {
+  if (filterValue === undefined || filterValue === null || filterValue === '') return true
+  const mc = getMovementMC(row)
+  const hasNoMC = !mc || mc === '—'
+
+  if (Array.isArray(filterValue)) {
+    if (filterValue.length === 0) return true
+    return filterValue.some((v) => {
+      const valStr = String(v ?? '').trim().toLowerCase()
+      if (valStr === NO_MC_VALUE.toLowerCase() || valStr === 'ไม่ระบุเครื่อง' || valStr === 'ไม่ระบุ') {
+        return hasNoMC
+      }
+      return !hasNoMC && mc.toLowerCase() === valStr
+    })
+  }
+
+  const query = String(filterValue).trim().toLowerCase()
+  if (!query) return true
+  if (query === NO_MC_VALUE.toLowerCase() || query === 'ไม่ระบุเครื่อง' || query === 'ไม่ระบุ') {
+    return hasNoMC
+  }
+  return !hasNoMC && mc.toLowerCase().includes(query)
+}
+
+const TXN_TYPE_THAI_LABELS = {
+  RECEIVE: 'รับเข้า',
+  ISSUE: 'เบิกจ่าย',
+  ADJUST: 'ปรับสต๊อก',
+  RETURN: 'คืนเข้า',
+  SCRAP: 'ตัดทิ้ง',
+}
+
+export function matchStockMovementType(row = {}, filterValue = '') {
+  if (filterValue === undefined || filterValue === null || filterValue === '') return true
+  const rawType = String(row?.TXN_Type || '').trim().toUpperCase()
+  const thaiLabel = TXN_TYPE_THAI_LABELS[rawType] || ''
+
+  if (Array.isArray(filterValue)) {
+    if (filterValue.length === 0) return true
+    return filterValue.some((v) => {
+      const valStr = String(v ?? '').trim().toLowerCase()
+      return rawType.toLowerCase() === valStr || (thaiLabel && thaiLabel.toLowerCase() === valStr)
+    })
+  }
+
+  const query = String(filterValue).trim().toLowerCase()
+  if (!query) return true
+  return rawType.toLowerCase().includes(query) || thaiLabel.toLowerCase().includes(query)
+}
+

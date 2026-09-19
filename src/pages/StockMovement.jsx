@@ -51,7 +51,14 @@ import {
   toInputDateValue,
   formatStockTxnDate,
   DATE_NOTE_PREFIX,
+  NO_MC_VALUE,
+  SM_TXN_TYPE_OPTIONS,
+  buildStockMovementMCOptions,
+  matchStockMovementMC,
+  matchStockMovementType,
 } from '../utils/stockMovementMC'
+
+const SM_FILTER_KEYS = ['created_date', 'TXN_Type', 'Part_Code', 'Part_Name_EN', 'Category', 'MC']
 
 const SM_FIELD_KEYS = {
   created_date: 'sm_th_date',
@@ -272,6 +279,8 @@ export default function StockMovement() {
     return values.map((v) => ({ value: v, label: v }))
   }, [data, machineList])
 
+  const mcFilterOptions = useMemo(() => buildStockMovementMCOptions(mcOptions), [mcOptions])
+
   // Summary statistics
   const stats = useMemo(() => {
     const total = data.length
@@ -303,6 +312,8 @@ export default function StockMovement() {
         tx.TXN_ID,
         tx.Part_Code,
         tx.Part_Name_EN,
+        tx.TXN_Type,
+        tx.TXN_Type === 'RECEIVE' ? 'รับเข้า' : tx.TXN_Type === 'ISSUE' ? 'เบิกจ่าย' : tx.TXN_Type === 'ADJUST' ? 'ปรับสต๊อก' : '',
         getStockCategory(tx),
         getMovementMC(tx),
         formatStockTxnDate(getStockTxnDate(tx)),
@@ -316,23 +327,26 @@ export default function StockMovement() {
 
   const wbCols = useWebBuilderMenu('/stock-movement')
   const cols = resolveSMColumns(wbCols, t)
-  const txnTypeOptions = useFieldOptions('/stock-movement', 'TXN_Type', TXN_TYPE)
 
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
+    include: SM_FILTER_KEYS,
     selectOptions: {
-      TXN_Type: txnTypeOptions || TXN_TYPE,
+      TXN_Type: SM_TXN_TYPE_OPTIONS,
       Category: CATEGORY_OPTIONS,
-      MC: mcOptions,
+      MC: mcFilterOptions,
+    },
+    matchers: {
+      TXN_Type: matchStockMovementType,
+      MC: matchStockMovementMC,
     },
     valueGetters: {
       created_date: (row) => getStockTxnDate(row),
       Category: getStockCategory,
       MC: getMovementMC,
-      ImageUrl: getStockPartImageUrl,
-      ImagePreview: getStockPartImageUrl,
-      Note: (row) => stripImageUrlFromNote(row.Note),
+      Part_Code: (row) => row.Part_Code,
+      Part_Name_EN: (row) => row.Part_Name_EN || row.Part_Name_TH,
     },
-  }), [cols, parts, txnTypeOptions, mcOptions])
+  }), [cols, mcFilterOptions])
 
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
