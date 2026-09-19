@@ -34,9 +34,9 @@ describe('FilterSortPanel Component', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /ตัวกรอง/i }))
     
-    // Click RUNNING tag
-    const runningOpt = screen.getByRole('button', { name: /RUNNING/i })
-    fireEvent.click(runningOpt)
+    // Select RUNNING from dropdown list
+    const statusSelect = screen.getByLabelText(/ดรอปดาวน์ลิสต์ สถานะ/i)
+    fireEvent.change(statusSelect, { target: { value: 'RUNNING' } })
 
     // Click Apply
     const applyBtn = screen.getByRole('button', { name: /นำไปใช้/i })

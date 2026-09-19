@@ -289,20 +289,11 @@ function FilterField({ col, value, onChange, onToggle }) {
       </div>
 
       {type === 'select' && (() => {
-        const filterQuery = (typeof value === 'string' ? value : '').trim().toLowerCase()
-        const displayedOptions = (filterQuery && !Array.isArray(value))
-          ? options.filter(opt => {
-              const ov = String(optionValue(opt)).toLowerCase()
-              const ol = String(optionLabel(opt)).toLowerCase()
-              return ov.includes(filterQuery) || ol.includes(filterQuery)
-            })
-          : options
-
         const selectedSingleVal = Array.isArray(value) ? (value.length === 1 ? value[0] : '') : (value || '')
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {/* 1. Dropdown List (<select>) */}
+            {/* Dropdown List (<select>) */}
             <select
               className="select text-xs w-full font-medium"
               value={selectedSingleVal}
@@ -317,7 +308,7 @@ function FilterField({ col, value, onChange, onToggle }) {
               style={{ minHeight: 38, fontSize: 12 }}
               aria-label={`ดรอปดาวน์ลิสต์ ${col.label}`}
             >
-              <option value="">— ดรอปดาวน์ลิสต์: เลือก {col.label} —</option>
+              <option value="">— เลือกจากดรอปดาวน์ลิสต์ ({col.label}) —</option>
               {options.map((opt) => {
                 const ov = optionValue(opt)
                 const ol = optionLabel(opt)
@@ -329,7 +320,7 @@ function FilterField({ col, value, onChange, onToggle }) {
               })}
             </select>
 
-            {/* 2. Text Search Input */}
+            {/* Optional Free Text Search */}
             <input
               className="input text-xs"
               type="text"
@@ -338,45 +329,6 @@ function FilterField({ col, value, onChange, onToggle }) {
               placeholder={`หรือพิมพ์ระบุคำค้นหา ${col.label}...`}
               style={{ fontSize: 12, minHeight: 34 }}
             />
-
-            {/* 3. Quick Tags / Multi-Select Pills */}
-            {displayedOptions.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 95, overflowY: 'auto' }}>
-                {displayedOptions.map(opt => {
-                  const ov = optionValue(opt)
-                  const ol = optionLabel(opt)
-                  const selected = Array.isArray(value) ? value.includes(ov) : String(value || '') === String(ov)
-                  return (
-                    <button
-                      key={String(ov)}
-                      type="button"
-                      onClick={() => onToggle(col.key, ov, col.filter.multi !== false)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '3px 8px',
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        border: `1px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
-                        background: selected ? 'var(--accent-gradient)' : 'var(--bg-thead)',
-                        color: selected ? '#fff' : 'var(--text-700)',
-                        boxShadow: selected ? '0 2px 8px rgba(37,99,235,0.25)' : 'none',
-                      }}
-                    >
-                      {selected && <Check size={10} strokeWidth={3} />}
-                      {ol}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : options.length > 0 ? (
-              <div style={{ fontSize: 11, color: 'var(--text-400)', fontStyle: 'italic', padding: '2px 4px' }}>
-                ไม่พบตัวเลือกที่ตรงกับคำค้นหา (จะกรองตามข้อความที่พิมพ์)
-              </div>
-            ) : null}
           </div>
         )
       })()}
