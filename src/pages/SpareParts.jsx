@@ -724,12 +724,12 @@ export default function SpareParts() {
           <button
             type="button"
             onClick={() => setCategoryModalOpen(true)}
-            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5"
-            title="จัดการหมวดหมู่อะไหล่"
+            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 font-semibold"
+            title="จัดการหมวดหมู่อะไหล่ (เพิ่ม ลบ แก้ไข)"
           >
-            <Layers size={13} className="text-blue-500" />
-            <span className="hidden sm:inline">หมวดหมู่อะไหล่</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+            <Layers size={14} className="text-blue-600 dark:text-blue-400" />
+            <span>จัดการหมวดหมู่</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-[10px] font-bold">
               {allCategories.length}
             </span>
           </button>
