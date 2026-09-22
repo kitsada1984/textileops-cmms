@@ -58,6 +58,7 @@ import {
   matchStockMovementMC,
   matchStockMovementType,
   buildStockMovementPartCodeOptions,
+  buildStockMovementWarehousePartOptions,
   buildStockMovementPartNameOptions,
   matchStockMovementPartCode,
   matchStockMovementPartName,
@@ -297,6 +298,11 @@ export default function StockMovement() {
     [parts, data]
   )
 
+  const warehousePartOptions = useMemo(
+    () => buildStockMovementWarehousePartOptions(parts),
+    [parts]
+  )
+
   // Summary statistics
   const stats = useMemo(() => {
     const total = data.length
@@ -394,18 +400,22 @@ export default function StockMovement() {
 
   useEffect(() => {
     const code = String(form.Part_Code || '').trim()
-    const part = code ? (findMatchingSparePart(parts, code) || parts.find((item) => String(item.Part_Code || '').toLowerCase() === code.toLowerCase())) : null
+    const loc = String(form.Location_Store || '').trim()
+    const part = code
+      ? (findMatchingSparePart(parts, code, loc) || parts.find((item) => String(item.Part_Code || '').toLowerCase() === code.toLowerCase()))
+      : null
     if (!part) return
     const before = toNumber(part.Stock_Qty)
     const after = before + getSignedStockDelta(form.TXN_Type, form.Qty_Change)
     if (toNumber(form.Qty_Before) !== before || toNumber(form.Qty_After) !== after) {
       setForm((prev) => ({ ...prev, Qty_Before: before, Qty_After: after }))
     }
-  }, [form.Part_Code, form.Qty_Change, form.TXN_Type, parts])
+  }, [form.Part_Code, form.Location_Store, form.Qty_Change, form.TXN_Type, parts])
 
-  const applyPartToForm = (partCode) => {
+  const applyPartToForm = (partCode, targetLocation = '') => {
     const code = String(partCode || '').trim()
-    const part = findMatchingSparePart(parts, code) || parts.find((item) => String(item.Part_Code || '').toLowerCase() === code.toLowerCase())
+    const loc = String(targetLocation || form.Location_Store || '').trim()
+    const part = findMatchingSparePart(parts, code, loc) || parts.find((item) => String(item.Part_Code || '').toLowerCase() === code.toLowerCase())
     setForm((prev) => ({
       ...prev,
       Part_Code: partCode,
@@ -415,13 +425,13 @@ export default function StockMovement() {
       Qty_After: part ? toNumber(part.Stock_Qty) + getSignedStockDelta(prev.TXN_Type, prev.Qty_Change) : prev.Qty_After,
       Unit: part?.Unit || prev.Unit,
       Unit_Price: part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : prev.Unit_Price,
-      Location_Store: part?.Location_Store || prev.Location_Store,
+      Location_Store: targetLocation || part?.Location_Store || prev.Location_Store,
     }))
   }
 
   const applyPartNameToForm = (partName) => {
     const name = String(partName || '').trim()
-    const part = findMatchingSparePart(parts, name)
+    const part = findMatchingSparePart(parts, name, form.Location_Store)
     setForm((prev) => ({
       ...prev,
       Part_Name_EN: partName,
@@ -439,10 +449,20 @@ export default function StockMovement() {
     const partCode = String(payload.Part_Code || '').trim()
     if (!partCode) throw new Error('กรุณากรอกรหัสอะไหล่')
 
+    const targetLoc = String(payload.Location_Store || '').trim().toLowerCase()
     const allParts = await SparePartAPI.list()
-    const existing = allParts.find((part) => String(part.Part_Code || '').toLowerCase() === partCode.toLowerCase())
+    // Match by both Part_Code and Location_Store so different warehouses for the same part code remain isolated
+    const existing = allParts.find((part) => {
+      const codeMatch = String(part.Part_Code || '').trim().toLowerCase() === partCode.toLowerCase()
+      if (!codeMatch) return false
+      if (!targetLoc) return true
+      return String(part.Location_Store || '').trim().toLowerCase() === targetLoc
+    }) || allParts.find((part) => String(part.Part_Code || '').trim().toLowerCase() === partCode.toLowerCase())
+
     const delta = getSignedStockDelta(payload.TXN_Type, payload.Qty_Change)
-    if (!existing && delta < 0) throw new Error(`ไม่พบอะไหล่ ${partCode} ในเมนูอะไหล่`)
+    if (!existing && delta < 0) {
+      throw new Error(`ไม่พบอะไหล่ ${partCode}${payload.Location_Store ? ` ในคลัง "${payload.Location_Store}"` : ''} ในระบบ`)
+    }
 
     const before = toNumber(existing?.Stock_Qty)
     const after = before + delta
@@ -957,15 +977,19 @@ export default function StockMovement() {
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] text-slate-400">เลือกด่วน:</span>
                   <select
-                    className="select text-[11px] py-0.5 px-2 max-w-[200px]"
+                    className="select text-[11px] py-0.5 px-2 max-w-[240px]"
                     onChange={(e) => {
-                      if (e.target.value) applyPartToForm(e.target.value)
+                      const idx = e.target.selectedIndex - 1
+                      if (idx >= 0 && warehousePartOptions[idx]) {
+                        const opt = warehousePartOptions[idx]
+                        applyPartToForm(opt.partCode, opt.location)
+                      }
                     }}
                     value=""
                   >
-                    <option value="">— เลือกจากเมนูอะไหล่ —</option>
-                    {partCodeOptions.map((p) => (
-                      <option key={p.value} value={p.value}>
+                    <option value="">— เลือกจากเมนูอะไหล่ (แยกตามคลัง) —</option>
+                    {warehousePartOptions.map((p, idx) => (
+                      <option key={`${p.partCode}_${p.location}_${idx}`} value={p.partCode}>
                         {p.label}
                       </option>
                     ))}

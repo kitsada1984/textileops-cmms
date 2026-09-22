@@ -1224,11 +1224,12 @@ function StepComplete({ request, onUpdated }) {
         ...prev,
         {
           id: p.id || p._id,
-          PartNumber: p.PartNumber || p.Code || '',
-          PartName: p.PartName || p.Name || p.Part_Name_EN || 'อะไหล่',
+          PartNumber: p.Part_Code || p.PartNumber || p.Code || '',
+          PartName: p.Part_Name_EN || p.Part_Name_TH || p.PartName || p.Name || 'อะไหล่',
           Unit: p.Unit || 'ชิ้น',
-          UnitPrice: Number(p.UnitPrice || 0),
-          QuantityOnHand: Number(p.QuantityOnHand || p.Stock || 0),
+          UnitPrice: Number(p.Unit_Price ?? p.UnitPrice ?? 0),
+          QuantityOnHand: Number(p.Stock_Qty ?? p.QuantityOnHand ?? p.Stock ?? 0),
+          Location_Store: p.Location_Store || '',
           qty,
         },
       ]
@@ -1352,6 +1353,7 @@ function StepComplete({ request, onUpdated }) {
           const currentStock = Number(p.QuantityOnHand || 0)
           const nextStock = Math.max(0, currentStock - p.qty)
           await SparePartAPI.update(p.id, {
+            Stock_Qty: nextStock,
             QuantityOnHand: nextStock,
             updated_at: now.toISOString(),
           })
@@ -1362,14 +1364,15 @@ function StepComplete({ request, onUpdated }) {
             Part_ID: p.id,
             Part_Code: p.PartNumber,
             Part_Name_EN: p.PartName,
+            Location_Store: p.Location_Store || '',
             Quantity: -Math.abs(p.qty),
             Qty_Change: Math.abs(p.qty),
             Reference: request.request_no,
             Reference_ID: request.request_no,
             MC: machineCode,
             Machine_MC: machineCode,
-            Remarks: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no}${machineCode ? ` (เครื่อง ${machineCode})` : ''}`,
-            Note: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no}${machineCode ? ` (เครื่อง ${machineCode})` : ''}${machineCode ? `\nMC: ${machineCode}` : ''}`,
+            Remarks: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no}${machineCode ? ` (เครื่อง ${machineCode})` : ''}${p.Location_Store ? ` [คลัง ${p.Location_Store}]` : ''}`,
+            Note: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no}${machineCode ? ` (เครื่อง ${machineCode})` : ''}${machineCode ? `\nMC: ${machineCode}` : ''}${p.Location_Store ? `\nคลัง: ${p.Location_Store}` : ''}`,
             Created_By: tech.trim(),
             Performed_By: tech.trim(),
             Date: now.toISOString(),
@@ -1545,10 +1548,14 @@ function StepComplete({ request, onUpdated }) {
                   <option value="">-- เลือกอะไหล่จากคลัง --</option>
                   {catalogParts.map((p) => {
                     const id = p.id || p._id
-                    const stock = Number(p.QuantityOnHand || p.Stock || 0)
+                    const stock = Number(p.Stock_Qty ?? p.QuantityOnHand ?? p.Stock ?? 0)
+                    const code = p.Part_Code || p.PartNumber || p.Code || ''
+                    const name = p.Part_Name_EN || p.Part_Name_TH || p.PartName || p.Name || 'อะไหล่'
+                    const loc = p.Location_Store || p.location || ''
+                    const locBadge = loc ? ` · คลัง ${loc}` : ''
                     return (
                       <option key={id} value={id}>
-                        {p.PartName || p.Name} {p.PartNumber ? `[${p.PartNumber}]` : ''} (คงเหลือ: {stock} {p.Unit || 'ชิ้น'})
+                        {name} {code ? `[${code}]` : ''}{locBadge} (คงเหลือ: {stock} {p.Unit || 'ชิ้น'})
                       </option>
                     )
                   })}

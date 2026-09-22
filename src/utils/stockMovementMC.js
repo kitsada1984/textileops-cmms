@@ -244,14 +244,29 @@ export function matchStockMovementType(row = {}, filterValue = '') {
 }
 
 export function buildStockMovementPartCodeOptions(parts = [], transactions = []) {
+  const warehouseMap = new Map()
+  ;(parts || []).forEach((p) => {
+    const code = String(p?.Part_Code || '').trim()
+    if (!code) return
+    const loc = String(p?.Location_Store || '').trim()
+    if (!warehouseMap.has(code)) warehouseMap.set(code, new Set())
+    if (loc) warehouseMap.get(code).add(loc)
+  })
+
   const map = new Map()
   ;(parts || []).forEach((p) => {
     const code = String(p?.Part_Code || '').trim()
     if (!code) return
     const name = String(p?.Part_Name_EN || p?.Part_Name_TH || '').trim()
+    const locs = Array.from(warehouseMap.get(code) || [])
+    const locTag = locs.length > 1
+      ? ` [${locs.join(', ')}]`
+      : locs.length === 1
+        ? ` [${locs[0]}]`
+        : ''
     map.set(code, {
       value: code,
-      label: name ? `${code} - ${name}` : code,
+      label: name ? `${code} - ${name}${locTag}` : `${code}${locTag}`,
     })
   })
   ;(transactions || []).forEach((tx) => {
@@ -266,6 +281,33 @@ export function buildStockMovementPartCodeOptions(parts = [], transactions = [])
   return Array.from(map.values()).sort((a, b) =>
     a.value.localeCompare(b.value, 'th', { numeric: true, sensitivity: 'base' })
   )
+}
+
+/**
+ * Builds warehouse-specific options for selecting a spare part in a specific warehouse.
+ */
+export function buildStockMovementWarehousePartOptions(parts = []) {
+  return (parts || [])
+    .filter((p) => p && (p.Part_Code || p.Part_Name_EN))
+    .map((p) => {
+      const code = String(p.Part_Code || '').trim()
+      const name = String(p.Part_Name_EN || p.Part_Name_TH || '').trim()
+      const loc = String(p.Location_Store || '').trim()
+      const stock = Number(p.Stock_Qty) || 0
+      const unit = p.Unit || ''
+      const locBadge = loc ? ` [${loc}]` : ''
+      return {
+        id: p.id || p._id,
+        partCode: code,
+        location: loc,
+        stock,
+        unit,
+        value: code,
+        label: `${code} - ${name}${locBadge} (คงเหลือ: ${stock} ${unit})`.trim(),
+        part: p,
+      }
+    })
+    .sort((a, b) => a.partCode.localeCompare(b.partCode, 'th', { numeric: true, sensitivity: 'base' }))
 }
 
 export function buildStockMovementPartNameOptions(parts = [], transactions = []) {
@@ -331,15 +373,24 @@ export function matchStockMovementPartName(row = {}, filterValue = '') {
   return targets.some((t) => t.includes(needle))
 }
 
-export function findMatchingSparePart(parts = [], query = '') {
+export function findMatchingSparePart(parts = [], query = '', targetLocation = '') {
   const q = String(query || '').trim().toLowerCase()
   if (!q) return null
-  return (parts || []).find((p) => {
+  const loc = String(targetLocation || '').trim().toLowerCase()
+
+  const matches = (parts || []).filter((p) => {
     const code = String(p?.Part_Code || '').trim().toLowerCase()
     const nameEn = String(p?.Part_Name_EN || '').trim().toLowerCase()
     const nameTh = String(p?.Part_Name_TH || '').trim().toLowerCase()
     return code === q || nameEn === q || nameTh === q
-  }) || null
+  })
+
+  if (matches.length === 0) return null
+  if (loc) {
+    const exactLoc = matches.find((p) => String(p?.Location_Store || '').trim().toLowerCase() === loc)
+    if (exactLoc) return exactLoc
+  }
+  return matches[0]
 }
 
 

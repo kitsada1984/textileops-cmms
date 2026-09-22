@@ -368,6 +368,20 @@ describe('stockMovementMC utility', () => {
       expect(findMatchingSparePart(parts, 'สายพาน')?.Part_Code).toBe('SP-002')
     })
 
+    it('finds the correct part matching both code and specific warehouse location', () => {
+      const multiWarehouseParts = [
+        { id: '1', Part_Code: 'SP-027', Part_Name_EN: 'Sensor Pro', Location_Store: 'Store', Stock_Qty: 1 },
+        { id: '2', Part_Code: 'SP-027', Part_Name_EN: 'Sensor Pro', Location_Store: 'GMK', Stock_Qty: 2 },
+      ]
+      const storePart = findMatchingSparePart(multiWarehouseParts, 'SP-027', 'Store')
+      expect(storePart?.id).toBe('1')
+      expect(storePart?.Location_Store).toBe('Store')
+
+      const gmkPart = findMatchingSparePart(multiWarehouseParts, 'SP-027', 'GMK')
+      expect(gmkPart?.id).toBe('2')
+      expect(gmkPart?.Location_Store).toBe('GMK')
+    })
+
     it('returns null for empty or non-matching query', () => {
       expect(findMatchingSparePart(parts, '')).toBeNull()
       expect(findMatchingSparePart(parts, 'UNKNOWN-PART')).toBeNull()

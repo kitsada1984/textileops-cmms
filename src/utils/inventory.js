@@ -41,3 +41,100 @@ export function generatePartCode(parts = [], prefix = 'SP-', padSize = 3) {
   }, 0)
   return `${prefix}${String(maxNum + 1).padStart(padSize, '0')}`
 }
+
+export function normalizeWarehouseName(location = '') {
+  return String(location || '').trim()
+}
+
+/**
+ * Check if a part with the same Part_Code already exists in the SAME warehouse/location.
+ */
+export function findDuplicatePartInWarehouse(parts = [], partCode = '', locationStore = '', currentId = null) {
+  const targetCode = String(partCode || '').trim().toLowerCase()
+  if (!targetCode) return null
+  const targetLoc = normalizeWarehouseName(locationStore).toLowerCase()
+  const cid = currentId ? String(currentId).trim() : null
+
+  return (Array.isArray(parts) ? parts : []).find((p) => {
+    const pid = String(p?.id || p?._id || '').trim()
+    if (cid && pid === cid) return false
+    const pCode = String(p?.Part_Code || '').trim().toLowerCase()
+    const pLoc = normalizeWarehouseName(p?.Location_Store).toLowerCase()
+    return pCode === targetCode && pLoc === targetLoc
+  }) || null
+}
+
+/**
+ * Find other warehouses that stock the same Part_Code.
+ */
+export function getOtherWarehousesForPart(parts = [], partCode = '', currentLocation = '', currentId = null) {
+  const targetCode = String(partCode || '').trim().toLowerCase()
+  if (!targetCode) return []
+  const targetLoc = normalizeWarehouseName(currentLocation).toLowerCase()
+  const cid = currentId ? String(currentId).trim() : null
+
+  return (Array.isArray(parts) ? parts : [])
+    .filter((p) => {
+      const pid = String(p?.id || p?._id || '').trim()
+      if (cid && pid === cid) return false
+      const pCode = String(p?.Part_Code || '').trim().toLowerCase()
+      if (pCode !== targetCode) return false
+      const pLoc = normalizeWarehouseName(p?.Location_Store).toLowerCase()
+      return !targetLoc || pLoc !== targetLoc
+    })
+    .map((p) => ({
+      id: p?.id || p?._id || null,
+      location: normalizeWarehouseName(p?.Location_Store) || 'ไม่ระบุคลัง',
+      stock: toNumber(p?.Stock_Qty),
+      min: toNumber(p?.Min_Qty),
+      unit: p?.Unit || '',
+      partName: p?.Part_Name_EN || p?.Part_Name_TH || '',
+      status: getPartStockStatus(p?.Stock_Qty, p?.Min_Qty),
+    }))
+}
+
+/**
+ * Find base info from an existing part record with the same Part_Code.
+ * Useful for auto-filling details when creating a part in a new warehouse.
+ */
+export function findBasePartInfo(parts = [], partCode = '') {
+  const targetCode = String(partCode || '').trim().toLowerCase()
+  if (!targetCode) return null
+  return (Array.isArray(parts) ? parts : []).find(
+    (p) => String(p?.Part_Code || '').trim().toLowerCase() === targetCode
+  ) || null
+}
+
+/**
+ * Calculate total stock and summary breakdown across all warehouses for a given Part_Code.
+ */
+export function getTotalStockAcrossWarehouses(parts = [], partCode = '') {
+  const targetCode = String(partCode || '').trim().toLowerCase()
+  if (!targetCode) {
+    return { totalStock: 0, totalMin: 0, locations: [], warehouseCount: 0 }
+  }
+
+  const matches = (Array.isArray(parts) ? parts : []).filter(
+    (p) => String(p?.Part_Code || '').trim().toLowerCase() === targetCode
+  )
+
+  const locations = matches.map((p) => ({
+    id: p?.id || p?._id || null,
+    location: normalizeWarehouseName(p?.Location_Store) || 'ไม่ระบุคลัง',
+    stock: toNumber(p?.Stock_Qty),
+    min: toNumber(p?.Min_Qty),
+    unit: p?.Unit || '',
+    status: getPartStockStatus(p?.Stock_Qty, p?.Min_Qty),
+  }))
+
+  const totalStock = locations.reduce((sum, item) => sum + item.stock, 0)
+  const totalMin = locations.reduce((sum, item) => sum + item.min, 0)
+
+  return {
+    totalStock,
+    totalMin,
+    locations,
+    warehouseCount: locations.length,
+  }
+}
+

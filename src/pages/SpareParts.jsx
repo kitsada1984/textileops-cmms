@@ -34,7 +34,14 @@ import SearchableDropdown from '../components/ui/SearchableDropdown'
 import { useSparePartCategories, DEFAULT_SPARE_PART_CATEGORIES } from '../modules/sparePart'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
-import { generatePartCode, getPartStockStatus } from '../utils/inventory'
+import {
+  generatePartCode,
+  getPartStockStatus,
+  findDuplicatePartInWarehouse,
+  getOtherWarehousesForPart,
+  findBasePartInfo,
+  getTotalStockAcrossWarehouses,
+} from '../utils/inventory'
 import { uploadMedia } from '../modules/media'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
@@ -67,7 +74,7 @@ const MISSING_SPAREPART_COLUMN_RE = /Could not find the '([^']+)' column of 'spa
 const SPARE_PART_IMAGE_FOLDER = 'รูปอะไหล่'
 const CATEGORY_OPTIONS = DEFAULT_SPARE_PART_CATEGORIES
 const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
-const SP_FILTER_KEYS = ['Category', 'Status']
+const SP_FILTER_KEYS = ['Location_Store', 'Category', 'Status']
 
 function optionRawValue(option) {
   if (option && typeof option === 'object') return option.value ?? option.id ?? option.label ?? ''
@@ -394,6 +401,10 @@ export default function SpareParts() {
   const cols = resolveSPColumns(wbCols, t)
   const statusOpts = useFieldOptions('/spareparts', 'Status', PART_STATUS)
 
+  const locationFilterOptions = useMemo(
+    () => buildSparePartFilterOptions(data, 'Location_Store', WAREHOUSE_OPTIONS),
+    [data]
+  )
   const categoryFilterOptions = useMemo(
     () => buildSparePartFilterOptions(data, 'Category', allCategories),
     [data, allCategories]
@@ -405,7 +416,11 @@ export default function SpareParts() {
 
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
     include: SP_FILTER_KEYS,
-    selectOptions: { Status: statusFilterOptions, Category: categoryFilterOptions },
+    selectOptions: {
+      Location_Store: locationFilterOptions,
+      Status: statusFilterOptions,
+      Category: categoryFilterOptions,
+    },
     valueGetters: {
       Part_Name_EN: getSparePartName,
       ImageUrl: getSparePartImageUrl,
@@ -413,7 +428,7 @@ export default function SpareParts() {
       Remark: (row) => stripSparePartImageMeta(row.Remark),
       Status: getSparePartStatus,
     },
-  }), [categoryFilterOptions, cols, statusFilterOptions])
+  }), [categoryFilterOptions, cols, locationFilterOptions, statusFilterOptions])
 
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
@@ -432,6 +447,38 @@ export default function SpareParts() {
     })
     setModal(true)
     setDetailRec(null)
+  }
+
+  const otherWarehousesForForm = useMemo(() => {
+    return getOtherWarehousesForPart(data, form.Part_Code, form.Location_Store, form.id || form._id)
+  }, [data, form.Part_Code, form.Location_Store, form.id, form._id])
+
+  const basePartForForm = useMemo(() => {
+    return findBasePartInfo(data, form.Part_Code)
+  }, [data, form.Part_Code])
+
+  const handleCopyBasePartInfo = () => {
+    if (!basePartForForm) return
+    setForm((prev) => ({
+      ...prev,
+      Part_Name_EN: basePartForForm.Part_Name_EN || basePartForForm.Part_Name_TH || prev.Part_Name_EN,
+      Category: basePartForForm.Category || prev.Category,
+      Unit: basePartForForm.Unit || prev.Unit,
+      Unit_Price: basePartForForm.Unit_Price !== undefined ? basePartForForm.Unit_Price : prev.Unit_Price,
+      Supplier: basePartForForm.Supplier || prev.Supplier,
+      Compatible_Machines: Array.isArray(basePartForForm.Compatible_Machines)
+        ? basePartForForm.Compatible_Machines.join(',')
+        : basePartForForm.Compatible_Machines || prev.Compatible_Machines,
+      ImageUrl: getSparePartImageUrl(basePartForForm) || prev.ImageUrl,
+      Remark: preserveRemarkWithSparePartImageMeta(
+        prev.Remark,
+        stripSparePartImageMeta(basePartForForm.Remark)
+      ),
+    }))
+    toast.success(
+      'คัดลอกรายละเอียดอะไหล่สำเร็จ',
+      `คัดลอกข้อมูลจากรหัส ${form.Part_Code} เรียบร้อยแล้ว`
+    )
   }
 
   const onPickImageFile = async (file) => {
@@ -484,6 +531,22 @@ export default function SpareParts() {
       toast.warning('กรุณากรอกข้อมูล', t('sp_req'))
       return
     }
+
+    // Check if the exact same Part_Code already exists in the same warehouse/location
+    const duplicate = findDuplicatePartInWarehouse(
+      data,
+      form.Part_Code,
+      form.Location_Store,
+      form.id || form._id
+    )
+    if (duplicate) {
+      toast.warning(
+        'รหัสอะไหล่ซ้ำในคลังเดียวกัน',
+        `รหัส ${form.Part_Code} มีอยู่ในคลัง "${form.Location_Store || 'ไม่ระบุคลัง'}" แล้ว หากต้องการแยกคลังสินค้า กรุณาเลือกคลังสินค้าอื่น`
+      )
+      return
+    }
+
     const nextStatus = getSparePartStatus(form)
     const payload = buildSparePartImagePayload({
       ...form,
@@ -506,12 +569,19 @@ export default function SpareParts() {
       } else {
         toast.success(
           isEdit ? t('sp_edit_success') : t('sp_add_success'),
-          `${form.Part_Code} - ${getSparePartName(form)}`
+          `${form.Part_Code} - ${getSparePartName(form)} (${form.Location_Store || 'ไม่ระบุคลัง'})`
         )
       }
       setModal(false)
     } catch (e) {
-      toast.error('เกิดข้อผิดพลาด', e.message)
+      if (String(e?.message || '').includes('spareparts_Part_Code_key')) {
+        toast.error(
+          'รหัสอะไหล่ซ้ำในฐานข้อมูล',
+          'ฐานข้อมูล Supabase ยังมี constraint ห้ามรหัสซ้ำ กรุณารันคำสั่ง SQL ใน Supabase SQL Editor เพื่อปลดล็อคให้รหัสเดียวกันอยู่คนละคลังได้'
+        )
+      } else {
+        toast.error('เกิดข้อผิดพลาด', e.message)
+      }
     }
     setSaving(false)
   }
@@ -540,9 +610,23 @@ export default function SpareParts() {
     }
 
     if (col.field === 'Part_Code') {
+      const codeStr = String(val)
+      const sameCodeCount = data.filter(
+        (p) => String(p?.Part_Code || '').trim().toLowerCase() === codeStr.trim().toLowerCase()
+      ).length
       return (
-        <span className="font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">
-          {String(val)}
+        <span className="inline-flex items-center gap-1.5 font-mono">
+          <span className="font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">
+            {codeStr}
+          </span>
+          {sameCodeCount > 1 && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+              title={`รหัสนี้มีจัดเก็บใน ${sameCodeCount} คลังสินค้า (สต๊อกแยกกัน)`}
+            >
+              {sameCodeCount} คลัง
+            </span>
+          )}
         </span>
       )
     }
@@ -586,9 +670,18 @@ export default function SpareParts() {
     }
 
     if (col.field === 'Location_Store') {
+      const locStr = String(val || '').trim()
+      const isStore = locStr.toLowerCase() === 'store'
+      const isGMK = locStr.toLowerCase().startsWith('gmk')
       return (
-        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md font-semibold text-[11px]">
-          {String(val)}
+        <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] inline-flex items-center gap-1 ${
+          isStore
+            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+            : isGMK
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+        }`}>
+          {locStr || '—'}
         </span>
       )
     }
@@ -921,6 +1014,21 @@ export default function SpareParts() {
               { label: 'เครื่องที่ใช้ได้', value: Array.isArray(detailRec.Compatible_Machines) ? detailRec.Compatible_Machines.join(', ') : detailRec.Compatible_Machines },
             ].filter((f) => f.value),
           },
+          ...(detailRec && getTotalStockAcrossWarehouses(data, detailRec.Part_Code).warehouseCount > 1 ? [{
+            label: `📦 สถานะสต๊อกทุกคลังสำหรับรหัสนี้ (รวม ${getTotalStockAcrossWarehouses(data, detailRec.Part_Code).totalStock.toLocaleString()} ${detailRec.Unit || 'ชิ้น'})`,
+            fields: [
+              ...getTotalStockAcrossWarehouses(data, detailRec.Part_Code).locations.map((loc) => ({
+                label: `คลัง ${loc.location}`,
+                mono: true,
+                value: `${loc.stock.toLocaleString()} ${loc.unit || detailRec.Unit || 'ชิ้น'}${loc.id === (detailRec.id || detailRec._id) ? ' (รายการนี้)' : ''}`,
+              })),
+              {
+                label: 'ยอดรวมสต๊อกทุกคลัง',
+                mono: true,
+                value: `${getTotalStockAcrossWarehouses(data, detailRec.Part_Code).totalStock.toLocaleString()} ${detailRec.Unit || 'ชิ้น'}`,
+              },
+            ],
+          }] : []),
           {
             label: t('remark'),
             single: true,
@@ -965,6 +1073,33 @@ export default function SpareParts() {
               <Package size={14} className="text-blue-500" />
               <span>ข้อมูลหลักและหมวดหมู่อะไหล่</span>
             </div>
+            {otherWarehousesForForm.length > 0 && (
+              <div className="p-3 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                <div className="flex items-start gap-2 min-w-0">
+                  <Sparkles size={16} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-blue-900 dark:text-blue-200">
+                      พบรหัส {form.Part_Code} ในคลังอื่นแล้ว:
+                    </div>
+                    <div className="text-blue-700 dark:text-blue-300 font-medium">
+                      {otherWarehousesForForm.map((w) => `${w.location} (${w.stock} ${w.unit || ''})`).join(', ')}
+                    </div>
+                    <div className="text-[11px] text-blue-600/70 dark:text-blue-400/70 mt-0.5">
+                      ระบบรองรับการแยกสต๊อกอิสระต่อคลังสินค้า หากเป็นอะไหล่เดียวกันสามารถกดคัดลอกข้อมูลได้
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyBasePartInfo}
+                  className="btn-outline text-[11px] py-1.5 px-3 bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40 flex-shrink-0 flex items-center gap-1 font-bold shadow-xs"
+                >
+                  <Sparkles size={12} />
+                  <span>คัดลอกข้อมูลอะไหล่</span>
+                </button>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <F form={form} setForm={setForm} label={`${t('sp_th_code')} *`} id="Part_Code" placeholder="เช่น SP-001" />
               <div>
@@ -992,7 +1127,12 @@ export default function SpareParts() {
               </div>
               <F form={form} setForm={setForm} label={`${t('sp_th_name_en')} *`} id="Part_Name_EN" placeholder="ชื่ออะไหล่ภาษาอังกฤษหรือไทย" />
               <F form={form} setForm={setForm} label={t('field_unit')} id="Unit" placeholder="เช่น ชิ้น, อัน, ตัว, กล่อง" />
-              <F form={form} setForm={setForm} label={t('field_warehouse')} id="Location_Store" opts={WAREHOUSE_OPTIONS} />
+              <div>
+                <F form={form} setForm={setForm} label={t('field_warehouse')} id="Location_Store" opts={WAREHOUSE_OPTIONS} />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  💡 สามารถใช้รหัสเดียวกันในคลังต่างกันได้ (แยกสต๊อกอิสระ)
+                </span>
+              </div>
               <F form={form} setForm={setForm} label={t('field_supplier')} id="Supplier" placeholder="ผู้ผลิตหรือร้านค้าที่ซื้อ" />
             </div>
           </div>

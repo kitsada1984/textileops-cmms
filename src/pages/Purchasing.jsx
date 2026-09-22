@@ -454,7 +454,14 @@ export default function Purchasing() {
 
   const updateSparePartStock = async (partCode, delta, po) => {
     const allParts = await SparePartAPI.list()
-    const existing = allParts.find((part) => String(part.Part_Code || '').toLowerCase() === String(partCode || '').toLowerCase())
+    const targetLoc = String(po?.Location_Store || po?.Warehouse || '').trim().toLowerCase()
+    const existing = allParts.find((part) => {
+      const matchCode = String(part.Part_Code || '').toLowerCase() === String(partCode || '').toLowerCase()
+      if (!matchCode) return false
+      if (!targetLoc) return true
+      return String(part.Location_Store || '').trim().toLowerCase() === targetLoc
+    }) || allParts.find((part) => String(part.Part_Code || '').toLowerCase() === String(partCode || '').toLowerCase())
+
     const partName = getPOPartName(po)
     const poImageUrl = getPOImageUrl(po)
     const category = getPOCategory(po) || existing?.Category || 'อะไหล่'
