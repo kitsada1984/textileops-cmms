@@ -30,6 +30,8 @@ import usePagePerms from '../hooks/usePagePerms'
 import DetailDrawer from '../components/ui/DetailDrawer'
 import { useToast } from '../components/ui/Toast'
 import F from '../components/ui/FormField'
+import SearchableDropdown from '../components/ui/SearchableDropdown'
+import { useSparePartCategories, DEFAULT_SPARE_PART_CATEGORIES } from '../modules/sparePart'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { generatePartCode, getPartStockStatus } from '../utils/inventory'
@@ -63,7 +65,7 @@ const SP_FIELD_KEYS = {
 
 const MISSING_SPAREPART_COLUMN_RE = /Could not find the '([^']+)' column of 'spareparts'|column spareparts\.([^ ]+) does not exist/i
 const SPARE_PART_IMAGE_FOLDER = 'รูปอะไหล่'
-const CATEGORY_OPTIONS = ['อะไหล่', 'เครื่องมือช่าง']
+const CATEGORY_OPTIONS = DEFAULT_SPARE_PART_CATEGORIES
 const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
 const SP_FILTER_KEYS = ['Category', 'Status']
 
@@ -182,6 +184,16 @@ export default function SpareParts() {
   const { canAdd, canEdit, canDelete } = usePagePerms('spareparts')
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(SparePartAPI)
+
+  const {
+    categories: allCategories,
+    defaultCategories,
+    categoryCounts,
+    addCategory,
+    deleteCategory,
+    isDefaultCategory,
+  } = useSparePartCategories(data)
+
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY)
@@ -191,6 +203,67 @@ export default function SpareParts() {
   const [detailRec, setDetailRec] = useState(null)
   const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
+  const [newCategoryInput, setNewCategoryInput] = useState('')
+  const [categoryActionLoading, setCategoryActionLoading] = useState(false)
+
+  const handleAddCategory = async (e) => {
+    e?.preventDefault?.()
+    const trimmed = String(newCategoryInput || '').trim()
+    if (!trimmed) {
+      toast.warning('กรุณากรอกชื่อหมวดหมู่', 'ชื่อหมวดหมู่ต้องไม่เป็นค่าว่าง')
+      return
+    }
+    setCategoryActionLoading(true)
+    try {
+      const res = await addCategory(trimmed)
+      if (res.success) {
+        if (res.existed) {
+          toast.info('หมวดหมู่นี้มีอยู่ในระบบแล้ว', `หมวดหมู่ "${res.name}" พร้อมใช้งาน`)
+        } else {
+          toast.success('เพิ่มหมวดหมู่สำเร็จ', `เพิ่มหมวดหมู่ "${res.name}" เรียบร้อยแล้ว`)
+        }
+        setNewCategoryInput('')
+      } else {
+        toast.error('ไม่สามารถเพิ่มหมวดหมู่ได้', res.error || '')
+      }
+    } catch (err) {
+      toast.error('เกิดข้อผิดพลาด', err.message)
+    } finally {
+      setCategoryActionLoading(false)
+    }
+  }
+
+  const handleDeleteCategory = async (categoryName) => {
+    if (isDefaultCategory(categoryName)) {
+      toast.warning('ไม่สามารถลบได้', 'หมวดหมู่นี้เป็นค่าเริ่มต้นของระบบ')
+      return
+    }
+    const count = categoryCounts[categoryName] || 0
+    if (count > 0) {
+      if (!confirm(`มีอะไหล่จำนวน ${count} รายการที่กำลังใช้งานหมวดหมู่ "${categoryName}" อยู่\nต้องการลบหมวดหมู่นี้ออกจากรายการตัวเลือกใช่หรือไม่? (ข้อมูลอะไหล่เดิมจะไม่ถูกลบ)`)) {
+        return
+      }
+    } else {
+      if (!confirm(`ต้องการลบหมวดหมู่ "${categoryName}" ใช่หรือไม่?`)) {
+        return
+      }
+    }
+
+    setCategoryActionLoading(true)
+    try {
+      const res = await deleteCategory(categoryName)
+      if (res.success) {
+        toast.success('ลบหมวดหมู่สำเร็จ', `ลบหมวดหมู่ "${categoryName}" เรียบร้อยแล้ว`)
+      } else {
+        toast.error('ไม่สามารถลบหมวดหมู่ได้', res.error || '')
+      }
+    } catch (err) {
+      toast.error('เกิดข้อผิดพลาด', err.message)
+    } finally {
+      setCategoryActionLoading(false)
+    }
+  }
 
   // 1-Click Purchase Request from Low Stock
   const handle1ClickPR = (part) => {
@@ -233,8 +306,8 @@ export default function SpareParts() {
   const statusOpts = useFieldOptions('/spareparts', 'Status', PART_STATUS)
 
   const categoryFilterOptions = useMemo(
-    () => buildSparePartFilterOptions(data, 'Category', CATEGORY_OPTIONS),
-    [data]
+    () => buildSparePartFilterOptions(data, 'Category', allCategories),
+    [data, allCategories]
   )
   const statusFilterOptions = useMemo(
     () => buildSparePartFilterOptions(data, 'Status', statusOpts || PART_STATUS),
@@ -333,6 +406,9 @@ export default function SpareParts() {
     const isEdit = !!(form._id || form.id)
     try {
       const removedColumns = await saveWithColumnFallback(payload)
+      if (form.Category) {
+        addCategory(form.Category).catch(() => {})
+      }
       if (removedColumns.length > 0) {
         toast.warning(
           isEdit ? 'แก้ไขสำเร็จ (บางคอลัมน์บันทึกลงหมายเหตุ)' : 'เพิ่มสำเร็จ (บางคอลัมน์บันทึกลงหมายเหตุ)',
@@ -554,6 +630,19 @@ export default function SpareParts() {
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">{t('refresh')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCategoryModalOpen(true)}
+            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5"
+            title="จัดการหมวดหมู่อะไหล่"
+          >
+            <Layers size={13} className="text-blue-500" />
+            <span className="hidden sm:inline">หมวดหมู่อะไหล่</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+              {allCategories.length}
+            </span>
           </button>
 
           {canAdd && (
@@ -789,7 +878,29 @@ export default function SpareParts() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <F form={form} setForm={setForm} label={`${t('sp_th_code')} *`} id="Part_Code" placeholder="เช่น SP-001" />
-              <F form={form} setForm={setForm} label={t('sp_th_cat')} id="Category" opts={CATEGORY_OPTIONS} />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="label">{t('sp_th_cat')}</label>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryModalOpen(true)}
+                    className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium"
+                    title="เปิดหน้าต่างจัดการหมวดหมู่"
+                  >
+                    <Layers size={11} />
+                    <span>จัดการหมวดหมู่</span>
+                  </button>
+                </div>
+                <SearchableDropdown
+                  id="Category"
+                  value={form.Category || 'อะไหล่'}
+                  onChange={(val) => setForm((p) => ({ ...p, Category: val }))}
+                  options={allCategories.map((c) => ({ value: c, label: c }))}
+                  placeholder="เลือก หรือพิมพ์หมวดหมู่ใหม่..."
+                  allowCustom={true}
+                  className="w-full"
+                />
+              </div>
               <F form={form} setForm={setForm} label={`${t('sp_th_name_en')} *`} id="Part_Name_EN" placeholder="ชื่ออะไหล่ภาษาอังกฤษหรือไทย" />
               <F form={form} setForm={setForm} label={t('field_unit')} id="Unit" placeholder="เช่น ชิ้น, อัน, ตัว, กล่อง" />
               <F form={form} setForm={setForm} label={t('field_warehouse')} id="Location_Store" opts={WAREHOUSE_OPTIONS} />
@@ -886,6 +997,128 @@ export default function SpareParts() {
                   }))}
                 />
               </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── CATEGORY MANAGEMENT MODAL ───────────────────────── */}
+      <Modal
+        open={categoryModalOpen}
+        onClose={() => {
+          setCategoryModalOpen(false)
+          setNewCategoryInput('')
+        }}
+        title="🏷️ จัดการหมวดหมู่อะไหล่"
+        size="md"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <span className="text-xs text-slate-500">
+              รวมทั้งหมด {allCategories.length} หมวดหมู่
+            </span>
+            <button
+              type="button"
+              className="btn-outline px-4 text-xs"
+              onClick={() => {
+                setCategoryModalOpen(false)
+                setNewCategoryInput('')
+              }}
+            >
+              {t('close') || 'ปิด'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4 text-xs">
+          <p className="text-slate-600 dark:text-slate-400">
+            เพิ่ม หรือลบหมวดหมู่อะไหล่สำหรับจัดกลุ่มในระบบ หมวดหมู่ใหม่จะถูกบันทึกและซิงค์ใช้งานได้ทันที
+          </p>
+
+          {/* Add Category Form */}
+          <form onSubmit={handleAddCategory} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Plus size={13} className="text-blue-500" />
+              <span>เพิ่มหมวดหมู่ใหม่</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                className="input flex-1 text-xs"
+                placeholder="ระบุชื่อหมวดหมู่ เช่น ลูกปืน, สายพาน, น้ำมันหล่อลื่น..."
+                value={newCategoryInput}
+                onChange={(e) => setNewCategoryInput(e.target.value)}
+                disabled={categoryActionLoading}
+              />
+              <button
+                type="submit"
+                disabled={categoryActionLoading || !newCategoryInput.trim()}
+                className="btn-primary text-xs px-3 py-2 flex items-center gap-1.5 flex-shrink-0"
+              >
+                {categoryActionLoading ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Plus size={13} />
+                )}
+                <span>เพิ่ม</span>
+              </button>
+            </div>
+          </form>
+
+          {/* Categories List */}
+          <div className="space-y-1.5">
+            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
+              <span className="flex items-center gap-1.5">
+                <Layers size={13} className="text-blue-500" />
+                <span>รายการหมวดหมู่ทั้งหมด</span>
+              </span>
+              <span className="text-[11px] text-slate-400 font-normal">
+                (หมวดหมู่เริ่มต้นไม่สามารถลบได้)
+              </span>
+            </div>
+
+            <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
+              {allCategories.map((cat) => {
+                const isDefault = isDefaultCategory(cat)
+                const count = categoryCounts[cat] || 0
+
+                return (
+                  <div
+                    key={cat}
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium text-slate-800 dark:text-slate-100 truncate">
+                        {cat}
+                      </span>
+                      {isDefault && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                          ค่าเริ่มต้น
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50">
+                        {count} รายการ
+                      </span>
+
+                      {!isDefault ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(cat)}
+                          disabled={categoryActionLoading}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                          title={`ลบหมวดหมู่ ${cat}`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      ) : (
+                        <div className="w-7" />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
