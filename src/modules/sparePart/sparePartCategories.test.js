@@ -4,6 +4,8 @@ import {
   cleanCategoryName,
   isDefaultSparePartCategory,
   mergeSparePartCategories,
+  renameCategoryInList,
+  deleteCategoryFromList,
   fetchSparePartCategories,
   saveSparePartCategories,
   SPARE_PART_CATEGORIES_CONFIG_KEY,
@@ -48,40 +50,49 @@ describe('SparePartCategories Domain Module', () => {
     })
   })
 
+  describe('renameCategoryInList', () => {
+    it('renames an existing category while keeping list deduplicated and sorted', () => {
+      const list = ['อะไหล่', 'เครื่องมือช่าง', 'ลูกปืน']
+      const updated = renameCategoryInList(list, 'ลูกปืน', 'ตลับลูกปืน NSK')
+
+      expect(updated).toContain('ตลับลูกปืน NSK')
+      expect(updated).not.toContain('ลูกปืน')
+      expect(updated.length).toBe(3)
+    })
+
+    it('handles case-insensitivity when renaming', () => {
+      const list = ['Bearing', 'Motor']
+      const updated = renameCategoryInList(list, 'BEARING', 'Ball Bearing')
+
+      expect(updated).toContain('Ball Bearing')
+      expect(updated).not.toContain('Bearing')
+      expect(updated.length).toBe(2)
+    })
+  })
+
+  describe('deleteCategoryFromList', () => {
+    it('removes a category from list case-insensitively', () => {
+      const list = ['อะไหล่', 'สายพาน', 'ลูกปืน']
+      const updated = deleteCategoryFromList(list, 'สายพาน')
+
+      expect(updated).toEqual(['อะไหล่', 'ลูกปืน'])
+    })
+  })
+
   describe('mergeSparePartCategories', () => {
-    it('includes default categories even when inputs are empty', () => {
-      const merged = mergeSparePartCategories([], [])
+    it('includes default categories when stored categories is null', () => {
+      const merged = mergeSparePartCategories(null, [])
       expect(merged).toContain('อะไหล่')
       expect(merged).toContain('เครื่องมือช่าง')
       expect(merged.length).toBe(2)
     })
 
-    it('merges stored categories and row categories without duplicates', () => {
-      const stored = ['ลูกปืน', 'สายพาน']
-      const rows = [
-        { Part_Code: 'SP-1', Category: 'อะไหล่' },
-        { Part_Code: 'SP-2', Category: 'ลูกปืน' },
-        { Part_Code: 'SP-3', Category: 'น้ำมันหล่อลื่น' },
-        { Part_Code: 'SP-4', Category: '' },
-      ]
+    it('uses stored categories as primary when user has configured them', () => {
+      const stored = ['หมวดหมู่พิเศษ', 'เครื่องมือ']
+      const rows = [{ Category: 'หมวดหมู่อื่น' }]
 
       const merged = mergeSparePartCategories(stored, rows)
-
-      expect(merged).toContain('อะไหล่')
-      expect(merged).toContain('เครื่องมือช่าง')
-      expect(merged).toContain('ลูกปืน')
-      expect(merged).toContain('สายพาน')
-      expect(merged).toContain('น้ำมันหล่อลื่น')
-      expect(merged.length).toBe(5)
-    })
-
-    it('handles case-insensitivity in Thai and English names', () => {
-      const stored = ['Bearing', 'motor']
-      const rows = [{ Category: 'BEARING' }, { Category: 'Motor' }]
-
-      const merged = mergeSparePartCategories(stored, rows)
-      const bearings = merged.filter((c) => c.toLowerCase() === 'bearing')
-      expect(bearings.length).toBe(1)
+      expect(merged).toEqual(['เครื่องมือ', 'หมวดหมู่พิเศษ'].sort((a, b) => a.localeCompare(b, 'th')))
     })
   })
 
@@ -100,14 +111,14 @@ describe('SparePartCategories Domain Module', () => {
       expect(result).toEqual(['ลูกปืน', 'สายพาน'])
     })
 
-    it('saves categories ensuring defaults are preserved', async () => {
+    it('saves exact cleaned list to SystemConfigRepository', async () => {
       vi.mocked(systemRepo.saveSystemConfig).mockResolvedValueOnce([])
 
-      await saveSparePartCategories(['ลูกปืน', 'สายพาน'])
+      await saveSparePartCategories(['ลูกปืน', '  สายพาน  '])
 
       expect(systemRepo.saveSystemConfig).toHaveBeenCalledWith(
         SPARE_PART_CATEGORIES_CONFIG_KEY,
-        expect.arrayContaining([...DEFAULT_SPARE_PART_CATEGORIES, 'ลูกปืน', 'สายพาน']),
+        expect.arrayContaining(['ลูกปืน', 'สายพาน']),
         expect.objectContaining({
           localCacheKey: SPARE_PART_CATEGORIES_CACHE_KEY,
         })

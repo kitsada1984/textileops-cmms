@@ -2,7 +2,7 @@
  * useSparePartCategories Hook
  *
  * React hook to manage spare part categories with cloud persistence,
- * local fallback, and dynamic merge with active table rows.
+ * local fallback, and full CRUD (Add, Edit, Delete, Reset).
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
@@ -13,10 +13,12 @@ import {
   mergeSparePartCategories,
   fetchSparePartCategories,
   saveSparePartCategories,
+  renameCategoryInList,
+  deleteCategoryFromList,
 } from './sparePartCategories'
 
 export function useSparePartCategories(sparePartsData = []) {
-  const [storedCategories, setStoredCategories] = useState([])
+  const [storedCategories, setStoredCategories] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Load persisted categories on mount
@@ -26,7 +28,13 @@ export function useSparePartCategories(sparePartsData = []) {
       try {
         const fetched = await fetchSparePartCategories()
         if (active) {
-          setStoredCategories(fetched)
+          if (Array.isArray(fetched) && fetched.length > 0) {
+            setStoredCategories(fetched)
+          } else {
+            // Seed with merged defaults and any active rows
+            const initial = mergeSparePartCategories(null, sparePartsData)
+            setStoredCategories(initial)
+          }
         }
       } finally {
         if (active) {
@@ -40,7 +48,7 @@ export function useSparePartCategories(sparePartsData = []) {
     }
   }, [])
 
-  // Dynamic merged categories (defaults + stored + active rows)
+  // Dynamic active categories list
   const allCategories = useMemo(() => {
     return mergeSparePartCategories(storedCategories, sparePartsData)
   }, [storedCategories, sparePartsData])
@@ -57,7 +65,7 @@ export function useSparePartCategories(sparePartsData = []) {
     return counts
   }, [sparePartsData])
 
-  // Add a new custom category
+  // 1. Add Category
   const addCategory = useCallback(
     async (rawName) => {
       const clean = cleanCategoryName(rawName)
@@ -66,21 +74,48 @@ export function useSparePartCategories(sparePartsData = []) {
       }
 
       const lower = clean.toLowerCase()
-      const alreadyExists = allCategories.some((c) => c.toLowerCase() === lower)
+      const currentList = storedCategories || allCategories
+      const alreadyExists = currentList.some((c) => c.toLowerCase() === lower)
       if (alreadyExists) {
         return { success: true, name: clean, existed: true }
       }
 
-      const nextStored = [...storedCategories, clean]
-      setStoredCategories(nextStored)
-      await saveSparePartCategories(nextStored)
+      const next = [...currentList, clean].sort((a, b) =>
+        a.localeCompare(b, 'th', { numeric: true, sensitivity: 'base' })
+      )
+      setStoredCategories(next)
+      await saveSparePartCategories(next)
 
       return { success: true, name: clean, existed: false }
     },
     [allCategories, storedCategories]
   )
 
-  // Delete a custom category
+  // 2. Edit Category (Rename)
+  const editCategory = useCallback(
+    async (oldName, newName) => {
+      const cleanOld = cleanCategoryName(oldName)
+      const cleanNew = cleanCategoryName(newName)
+
+      if (!cleanOld || !cleanNew) {
+        return { success: false, error: 'กรุณากรอกชื่อหมวดหมู่ให้ถูกต้อง' }
+      }
+
+      if (cleanOld.toLowerCase() === cleanNew.toLowerCase()) {
+        return { success: true, oldName: cleanOld, newName: cleanNew, unchanged: true }
+      }
+
+      const currentList = storedCategories || allCategories
+      const next = renameCategoryInList(currentList, cleanOld, cleanNew)
+      setStoredCategories(next)
+      await saveSparePartCategories(next)
+
+      return { success: true, oldName: cleanOld, newName: cleanNew }
+    },
+    [allCategories, storedCategories]
+  )
+
+  // 3. Delete Category
   const deleteCategory = useCallback(
     async (rawName) => {
       const clean = cleanCategoryName(rawName)
@@ -88,19 +123,22 @@ export function useSparePartCategories(sparePartsData = []) {
         return { success: false, error: 'ชื่อหมวดหมู่ไม่ถูกต้อง' }
       }
 
-      if (isDefaultSparePartCategory(clean)) {
-        return { success: false, error: 'ไม่สามารถลบหมวดหมู่เริ่มต้นของระบบได้' }
-      }
-
-      const lower = clean.toLowerCase()
-      const nextStored = storedCategories.filter((c) => c.toLowerCase() !== lower)
-      setStoredCategories(nextStored)
-      await saveSparePartCategories(nextStored)
+      const currentList = storedCategories || allCategories
+      const next = deleteCategoryFromList(currentList, clean)
+      setStoredCategories(next)
+      await saveSparePartCategories(next)
 
       return { success: true, name: clean }
     },
-    [storedCategories]
+    [allCategories, storedCategories]
   )
+
+  // 4. Reset to Default Categories
+  const resetToDefaults = useCallback(async () => {
+    setStoredCategories(DEFAULT_SPARE_PART_CATEGORIES)
+    await saveSparePartCategories(DEFAULT_SPARE_PART_CATEGORIES)
+    return { success: true }
+  }, [])
 
   return {
     categories: allCategories,
@@ -109,7 +147,9 @@ export function useSparePartCategories(sparePartsData = []) {
     categoryCounts,
     loading,
     addCategory,
+    editCategory,
     deleteCategory,
+    resetToDefaults,
     isDefaultCategory: isDefaultSparePartCategory,
   }
 }

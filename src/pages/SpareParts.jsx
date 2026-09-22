@@ -190,7 +190,9 @@ export default function SpareParts() {
     defaultCategories,
     categoryCounts,
     addCategory,
+    editCategory,
     deleteCategory,
+    resetToDefaults,
     isDefaultCategory,
   } = useSparePartCategories(data)
 
@@ -205,6 +207,8 @@ export default function SpareParts() {
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const [newCategoryInput, setNewCategoryInput] = useState('')
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [editingCategoryValue, setEditingCategoryValue] = useState('')
   const [categoryActionLoading, setCategoryActionLoading] = useState(false)
 
   const handleAddCategory = async (e) => {
@@ -234,18 +238,85 @@ export default function SpareParts() {
     }
   }
 
-  const handleDeleteCategory = async (categoryName) => {
-    if (isDefaultCategory(categoryName)) {
-      toast.warning('ไม่สามารถลบได้', 'หมวดหมู่นี้เป็นค่าเริ่มต้นของระบบ')
+  const startEditCategory = (cat) => {
+    setEditingCategory(cat)
+    setEditingCategoryValue(cat)
+  }
+
+  const cancelEditCategory = () => {
+    setEditingCategory(null)
+    setEditingCategoryValue('')
+  }
+
+  const handleSaveEditCategory = async (oldName) => {
+    const trimmed = String(editingCategoryValue || '').trim()
+    if (!trimmed) {
+      toast.warning('กรุณากรอกชื่อหมวดหมู่', 'ชื่อหมวดหมู่ต้องไม่เป็นค่าว่าง')
       return
     }
+    if (trimmed.toLowerCase() === oldName.trim().toLowerCase()) {
+      setEditingCategory(null)
+      return
+    }
+
+    setCategoryActionLoading(true)
+    try {
+      const matchingParts = data.filter(
+        (p) => (p?.Category || '').trim().toLowerCase() === oldName.trim().toLowerCase()
+      )
+
+      let shouldUpdateParts = false
+      if (matchingParts.length > 0) {
+        shouldUpdateParts = confirm(
+          `พบอะไหล่จำนวน ${matchingParts.length} รายการที่กำลังใช้หมวดหมู่ "${oldName}"\nต้องการเปลี่ยนหมวดหมู่ของอะไหล่ทั้งหมดให้เป็น "${trimmed}" ด้วยหรือไม่?`
+        )
+      }
+
+      const res = await editCategory(oldName, trimmed)
+      if (res.success) {
+        if (shouldUpdateParts) {
+          let updatedCount = 0
+          for (const part of matchingParts) {
+            try {
+              await SparePartAPI.update(part.id || part._id, { Category: trimmed })
+              updatedCount++
+            } catch (err) {
+              console.warn('Failed to update part category:', part, err)
+            }
+          }
+          await load()
+          toast.success(
+            'แก้ไขหมวดหมู่สำเร็จ',
+            `เปลี่ยนเป็น "${trimmed}" และอัปเดตอะไหล่ ${updatedCount} รายการเรียบร้อยแล้ว`
+          )
+        } else {
+          toast.success('แก้ไขหมวดหมู่สำเร็จ', `เปลี่ยนหมวดหมู่เป็น "${trimmed}" เรียบร้อยแล้ว`)
+        }
+
+        if (form.Category?.trim().toLowerCase() === oldName.trim().toLowerCase()) {
+          setForm((prev) => ({ ...prev, Category: trimmed }))
+        }
+
+        setEditingCategory(null)
+        setEditingCategoryValue('')
+      } else {
+        toast.error('ไม่สามารถแก้ไขหมวดหมู่ได้', res.error || '')
+      }
+    } catch (err) {
+      toast.error('เกิดข้อผิดพลาด', err.message)
+    } finally {
+      setCategoryActionLoading(false)
+    }
+  }
+
+  const handleDeleteCategory = async (categoryName) => {
     const count = categoryCounts[categoryName] || 0
     if (count > 0) {
-      if (!confirm(`มีอะไหล่จำนวน ${count} รายการที่กำลังใช้งานหมวดหมู่ "${categoryName}" อยู่\nต้องการลบหมวดหมู่นี้ออกจากรายการตัวเลือกใช่หรือไม่? (ข้อมูลอะไหล่เดิมจะไม่ถูกลบ)`)) {
+      if (!confirm(`มีอะไหล่จำนวน ${count} รายการที่กำลังใช้งานหมวดหมู่ "${categoryName}" อยู่\nต้องการลบหมวดหมู่นี้ออกจากตัวเลือกดรอปดาวน์ใช่หรือไม่? (ข้อมูลอะไหล่เดิมจะไม่ถูกลบ)`)) {
         return
       }
     } else {
-      if (!confirm(`ต้องการลบหมวดหมู่ "${categoryName}" ใช่หรือไม่?`)) {
+      if (!confirm(`ต้องการลบหมวดหมู่ "${categoryName}" ออกจากตัวเลือกดรอปดาวน์ใช่หรือไม่?`)) {
         return
       }
     }
@@ -255,9 +326,27 @@ export default function SpareParts() {
       const res = await deleteCategory(categoryName)
       if (res.success) {
         toast.success('ลบหมวดหมู่สำเร็จ', `ลบหมวดหมู่ "${categoryName}" เรียบร้อยแล้ว`)
+        if (form.Category?.trim().toLowerCase() === categoryName.trim().toLowerCase()) {
+          setForm((prev) => ({ ...prev, Category: 'อะไหล่' }))
+        }
       } else {
         toast.error('ไม่สามารถลบหมวดหมู่ได้', res.error || '')
       }
+    } catch (err) {
+      toast.error('เกิดข้อผิดพลาด', err.message)
+    } finally {
+      setCategoryActionLoading(false)
+    }
+  }
+
+  const handleResetDefaults = async () => {
+    if (!confirm('ต้องการรีเซ็ตหมวดหมู่อะไหล่กลับเป็นค่าเริ่มต้น (อะไหล่, เครื่องมือช่าง) ใช่หรือไม่?')) {
+      return
+    }
+    setCategoryActionLoading(true)
+    try {
+      await resetToDefaults()
+      toast.success('รีเซ็ตสำเร็จ', 'คืนค่าหมวดหมู่เริ่มต้นเรียบร้อยแล้ว')
     } catch (err) {
       toast.error('เกิดข้อผิดพลาด', err.message)
     } finally {
@@ -1013,15 +1102,21 @@ export default function SpareParts() {
         size="md"
         footer={
           <div className="flex items-center justify-between w-full">
-            <span className="text-xs text-slate-500">
-              รวมทั้งหมด {allCategories.length} หมวดหมู่
-            </span>
+            <button
+              type="button"
+              onClick={handleResetDefaults}
+              disabled={categoryActionLoading}
+              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
+            >
+              รีเซ็ตเป็นค่าเริ่มต้น
+            </button>
             <button
               type="button"
               className="btn-outline px-4 text-xs"
               onClick={() => {
                 setCategoryModalOpen(false)
                 setNewCategoryInput('')
+                cancelEditCategory()
               }}
             >
               {t('close') || 'ปิด'}
@@ -1031,7 +1126,7 @@ export default function SpareParts() {
       >
         <div className="space-y-4 text-xs">
           <p className="text-slate-600 dark:text-slate-400">
-            เพิ่ม หรือลบหมวดหมู่อะไหล่สำหรับจัดกลุ่มในระบบ หมวดหมู่ใหม่จะถูกบันทึกและซิงค์ใช้งานได้ทันที
+            เพิ่ม ลบ หรือแก้ไขชื่อหมวดหมู่อะไหล่ในดรอปดาวน์ ระบบจะบันทึกและอัปเดตตัวเลือกทันที
           </p>
 
           {/* Add Category Form */}
@@ -1069,17 +1164,62 @@ export default function SpareParts() {
             <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
               <span className="flex items-center gap-1.5">
                 <Layers size={13} className="text-blue-500" />
-                <span>รายการหมวดหมู่ทั้งหมด</span>
+                <span>รายการตัวเลือกในดรอปดาวน์ ({allCategories.length})</span>
               </span>
               <span className="text-[11px] text-slate-400 font-normal">
-                (หมวดหมู่เริ่มต้นไม่สามารถลบได้)
+                (คลิก ✏️ เพื่อแก้ไขชื่อ หรือ 🗑️ เพื่อลบ)
               </span>
             </div>
 
             <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
               {allCategories.map((cat) => {
+                const isEditing = editingCategory === cat
                 const isDefault = isDefaultCategory(cat)
                 const count = categoryCounts[cat] || 0
+
+                if (isEditing) {
+                  return (
+                    <div
+                      key={cat}
+                      className="flex items-center gap-2 p-2 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-400 dark:border-blue-600 shadow-sm"
+                    >
+                      <input
+                        type="text"
+                        className="input flex-1 text-xs py-1 px-2.5 h-8 bg-white dark:bg-slate-900 font-medium"
+                        value={editingCategoryValue}
+                        onChange={(e) => setEditingCategoryValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleSaveEditCategory(cat)
+                          } else if (e.key === 'Escape') {
+                            cancelEditCategory()
+                          }
+                        }}
+                        autoFocus
+                        disabled={categoryActionLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEditCategory(cat)}
+                        disabled={categoryActionLoading || !editingCategoryValue.trim()}
+                        className="btn-primary text-xs p-1.5 h-8 w-8 flex items-center justify-center flex-shrink-0"
+                        title="บันทึกชื่อหมวดหมู่"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEditCategory}
+                        disabled={categoryActionLoading}
+                        className="btn-outline text-xs p-1.5 h-8 w-8 flex items-center justify-center flex-shrink-0 text-slate-500 hover:text-slate-700"
+                        title="ยกเลิก"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )
+                }
 
                 return (
                   <div
@@ -1097,24 +1237,30 @@ export default function SpareParts() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50">
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 mr-1">
                         {count} รายการ
                       </span>
 
-                      {!isDefault ? (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCategory(cat)}
-                          disabled={categoryActionLoading}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                          title={`ลบหมวดหมู่ ${cat}`}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      ) : (
-                        <div className="w-7" />
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => startEditCategory(cat)}
+                        disabled={categoryActionLoading}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                        title={`แก้ไขชื่อหมวดหมู่ ${cat}`}
+                      >
+                        <Pencil size={13} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(cat)}
+                        disabled={categoryActionLoading}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                        title={`ลบหมวดหมู่ ${cat}`}
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
                 )
