@@ -21,6 +21,7 @@ import {
 import { QUICK_INTERRUPTION_PRESETS } from './WorkOrders'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
+import { isItemInText, toggleItemInText } from '../utils/textToggle'
 import {
   CheckCircle,
   Clock,
@@ -750,26 +751,36 @@ function StepReport({ serial, cylinder, onSubmitted }) {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
                 ⚠️ อาการเสีย / ปัญหาที่พบ (รายละเอียด) *
               </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
-                {COMMON_ISSUES.map((issue) => (
-                  <button
-                    key={issue}
-                    type="button"
-                    onClick={() => setProblem((prev) => (prev ? `${prev}, ${issue}` : issue))}
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: '4px 9px',
-                      borderRadius: 20,
-                      background: '#ffffff',
-                      color: '#334155',
-                      border: '1px solid #cbd5e1',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    + {issue}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {COMMON_ISSUES.map((issue) => {
+                  const isSelected = isItemInText(problem, issue)
+                  return (
+                    <button
+                      key={issue}
+                      type="button"
+                      onClick={() => setProblem((prev) => toggleItemInText(prev, issue))}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: isSelected ? 800 : 700,
+                        padding: '5px 10px',
+                        borderRadius: 20,
+                        background: isSelected ? '#10b981' : '#ffffff',
+                        color: isSelected ? '#ffffff' : '#334155',
+                        border: isSelected ? '1.5px solid #059669' : '1px solid #cbd5e1',
+                        boxShadow: isSelected ? '0 2px 6px rgba(16, 185, 129, 0.3)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease-in-out',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        userSelect: 'none',
+                      }}
+                    >
+                      <span style={{ fontWeight: 900 }}>{isSelected ? '✓' : '+'}</span>
+                      <span>{issue}</span>
+                    </button>
+                  )
+                })}
               </div>
               <textarea
                 value={problem}
@@ -1502,26 +1513,36 @@ function StepComplete({ request, onUpdated }) {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
                 🛠️ รายละเอียดการซ่อม / วิธีแก้ไข *
               </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
-                {COMMON_SOLUTIONS.map((sol) => (
-                  <button
-                    key={sol}
-                    type="button"
-                    onClick={() => setDetails((prev) => (prev ? `${prev}, ${sol}` : sol))}
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: '4px 9px',
-                      borderRadius: 20,
-                      background: '#f1f5f9',
-                      color: '#334155',
-                      border: '1px solid #e2e8f0',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    + {sol}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {COMMON_SOLUTIONS.map((sol) => {
+                  const isSelected = isItemInText(details, sol)
+                  return (
+                    <button
+                      key={sol}
+                      type="button"
+                      onClick={() => setDetails((prev) => toggleItemInText(prev, sol))}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: isSelected ? 800 : 700,
+                        padding: '5px 10px',
+                        borderRadius: 20,
+                        background: isSelected ? '#10b981' : '#f1f5f9',
+                        color: isSelected ? '#ffffff' : '#334155',
+                        border: isSelected ? '1.5px solid #059669' : '1px solid #e2e8f0',
+                        boxShadow: isSelected ? '0 2px 6px rgba(16, 185, 129, 0.3)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease-in-out',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        userSelect: 'none',
+                      }}
+                    >
+                      <span style={{ fontWeight: 900 }}>{isSelected ? '✓' : '+'}</span>
+                      <span>{sol}</span>
+                    </button>
+                  )
+                })}
               </div>
               <textarea
                 value={details}
