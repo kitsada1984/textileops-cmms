@@ -27,6 +27,8 @@ const IMAGE_SUB_FOLDERS = [
   'รูปอะไหล่',
   'จัดซื้อ',
   'Design-BOM',
+  'Stock-เข็ม',
+  'Needle_Photos_Storage',
 ];
 
 /**
