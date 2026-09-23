@@ -1434,8 +1434,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
 
               <form onSubmit={handleStartJob} className="space-y-4 text-xs">
-                {/* 6 Fields */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {/* 1. M/C, KI, Design, Roll No */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
                     <label className="label">รหัสเครื่อง (M/C) *</label>
                     <input
@@ -1479,7 +1479,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       className="input font-mono"
                     />
                   </div>
-                  <div>
+                </div>
+
+                {/* 2. ประเภท, รายละเอียด (ถัดจากประเภท), สถานะ */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-3">
                     <label className="label">ประเภทงาน (Job Type)</label>
                     <select
                       value={jobType}
@@ -1491,7 +1495,17 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       <option value="PM">🧹 PM / ล้างเครื่อง</option>
                     </select>
                   </div>
-                  <div>
+                  <div className="sm:col-span-6">
+                    <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
+                    <input
+                      type="text"
+                      placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div className="sm:col-span-3">
                     <label className="label">สถานะ (Status)</label>
                     <select
                       value={status}
@@ -1544,18 +1558,6 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       )
                     })}
                   </div>
-                </div>
-
-                {/* Job Comment */}
-                <div>
-                  <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
-                  <input
-                    type="text"
-                    placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    className="input"
-                  />
                 </div>
 
                 {/* Submit Button */}
@@ -2300,6 +2302,27 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
             </div>
 
+            <div>
+              <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
+              <input
+                type="text"
+                placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
+                value={editJob.Comment || editJob.Details || editJob.details || editJob.Problem || ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setEditJob({
+                    ...editJob,
+                    Comment: val,
+                    Details: val,
+                    details: val,
+                    Problem: val,
+                    Detail: val,
+                  })
+                }}
+                className="input"
+              />
+            </div>
+
             {/* Technicians Checklist */}
             <div className="space-y-1.5">
               <label className="label">ช่างปรับผู้ปฏิบัติงาน</label>
@@ -2329,27 +2352,6 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   )
                 })}
               </div>
-            </div>
-
-            <div>
-              <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
-              <input
-                type="text"
-                placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
-                value={editJob.Comment || editJob.Details || editJob.details || editJob.Problem || ''}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setEditJob({
-                    ...editJob,
-                    Comment: val,
-                    Details: val,
-                    details: val,
-                    Problem: val,
-                    Detail: val,
-                  })
-                }}
-                className="input"
-              />
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
