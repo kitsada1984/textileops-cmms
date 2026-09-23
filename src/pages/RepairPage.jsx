@@ -1338,6 +1338,8 @@ function StepComplete({ request, onUpdated }) {
           AssignedTo: tech.trim(),
           Status: 'COMPLETED',
           Problem: request.problem_description || '',
+          Details: request.problem_description || '',
+          details: request.problem_description || '',
           Solution: details.trim(),
           Title: request.Design ? `ซ่อมเครื่อง ${request.machine_mc || ''} (ลาย ${request.Design})` : `งานแจ้งซ่อม ${request.request_no} (เครื่อง ${request.machine_mc || ''})`,
           CreatedBy: request.reported_by || 'Operator',

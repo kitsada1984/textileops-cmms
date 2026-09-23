@@ -96,17 +96,26 @@ export const SHEET_EXPORTS = [
       col('MC', 'M/C'),
       col('Design', 'Design'),
       col('JobType', 'Job Type'),
+      col('Comment', 'รายละเอียด'),
+      col('Status', 'สถานะ'),
       col('Technicians', 'Technicians'),
-      col('Comment', 'Comment'),
       col('EndDate', 'End Date'),
       col('EndTime', 'End Time'),
       col('WorkingHoursDecimal', 'Working Hours Decimal'),
       col('WorkingDurationText', 'Working Duration Text'),
-      col('Status', 'Status'),
       col('CreatedBy', 'Created By'),
       col('CompletedBy', 'Completed By'),
       col('updated_at', 'Updated At'),
     ],
+    valueGetters: {
+      Comment: (row) => {
+        const c = row.Comment || row.comment || ''
+        if (typeof c === 'string' && c.trim().startsWith('{') && c.includes('synced_from_repair')) {
+          return row.Problem || row.problem || row.Details || row.details || row.Detail || '—'
+        }
+        return c || row.Details || row.details || row.Problem || '—'
+      },
+    },
   },
   {
     key: 'pmplans',

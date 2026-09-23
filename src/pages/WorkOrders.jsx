@@ -85,6 +85,22 @@ export const QUICK_INTERRUPTION_PRESETS = [
   { label: '🧹 ทำความสะอาด / สลับกะ', template: 'ทำความสะอาด / สลับกะงาน' },
 ]
 
+/**
+ * Normalizes details text for work orders, safely extracting user-readable description
+ * even if stored as JSON or under legacy column aliases (Problem, Detail, Details, etc.).
+ */
+export function getWorkOrderDetails(job = {}) {
+  if (!job) return '—'
+  const comment = job.Comment || job.comment || ''
+  if (comment && typeof comment === 'string') {
+    if (comment.trim().startsWith('{') && comment.includes('synced_from_repair')) {
+      return job.Problem || job.problem || job.Details || job.details || job.Detail || job.Solution || '—'
+    }
+    return comment
+  }
+  return job.Details || job.details || job.Problem || job.problem || job.Detail || job.Description || '—'
+}
+
 export function getTechSkillInfo(skillLevel = 'Senior') {
   const norm = String(skillLevel || '').trim().toLowerCase()
   if (norm.includes('master')) {
@@ -219,6 +235,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [jobType, setJobType] = useState('REPAIR')
   const [selectedTechs, setSelectedTechs] = useState([])
   const [comment, setComment] = useState('')
+  const [status, setStatus] = useState('IN_PROGRESS')
   const [submittingStart, setSubmittingStart] = useState(false)
 
   // Modals State
@@ -509,6 +526,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           String(job.Design || '').toLowerCase().includes(q) ||
           String(job.Technicians || '').toLowerCase().includes(q) ||
           String(job.CreatedBy || '').toLowerCase().includes(q) ||
+          String(getWorkOrderDetails(job) || '').toLowerCase().includes(q) ||
+          String(job.Details || '').toLowerCase().includes(q) ||
           String(job.Comment || '').toLowerCase().includes(q)
         if (!match) return false
       }
@@ -616,6 +635,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       const startTimestamp = now.toISOString()
       const jobId = generateJobId(allJobs)
 
+      const isComp = status === 'COMPLETED'
+      const detailText = comment.trim() || 'เปิดใบสั่งงาน'
+
       const payload = {
         // Modern CMMS columns
         Job_ID: jobId,
@@ -629,17 +651,30 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         roll_no: rollNo.trim(),
         JobType: jobType,
         Technicians: selectedTechs.join(', '),
-        Comment: comment.trim() || 'เปิดใบสั่งงาน',
-        Status: 'IN_PROGRESS',
+        Comment: detailText,
+        Details: detailText,
+        details: detailText,
+        Status: status,
         IsDeleted: false,
         CreatedBy: user?.username || user?.full_name || 'ช่างประจำกะ',
+
+        // If created directly as completed
+        ...(isComp ? {
+          EndDate: startDate,
+          EndTime: startTimestamp,
+          EndTimestamp: startTimestamp,
+          DateEnd: startTimestamp,
+          WorkingDurationText: '0 ชม.',
+          WorkingHoursDecimal: 0,
+          CompletedBy: user?.username || user?.full_name || 'ช่างประจำกะ',
+        } : {}),
 
         // Legacy compatibility columns
         WO_ID: jobId,
         DateStart: startTimestamp,
         Tech: selectedTechs.join(', '),
-        Problem: comment.trim() || 'เปิดใบสั่งงาน',
-        Detail: comment.trim() || 'เปิดใบสั่งงาน',
+        Problem: detailText,
+        Detail: detailText,
         Priority: 'MEDIUM',
       }
 
@@ -654,6 +689,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       setJobType('REPAIR')
       setSelectedTechs([])
       setComment('')
+      setStatus('IN_PROGRESS')
     } catch (err) {
       toast.error('ไม่สามารถเปิดใบสั่งงานได้', err.message)
     } finally {
@@ -731,7 +767,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Open Edit Modal
   const openEditModal = (job) => {
-    setEditJob({ ...job })
+    const detailsVal = getWorkOrderDetails(job)
+    setEditJob({
+      ...job,
+      Comment: detailsVal === '—' ? (job.Comment || '') : detailsVal,
+      Details: detailsVal === '—' ? (job.Details || '') : detailsVal,
+      Status: job.Status || 'IN_PROGRESS',
+    })
     const techArray = (job.Technicians || '')
       .split(',')
       .map((s) => s.trim())
@@ -745,11 +787,26 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     if (!editJob) return
     setEditSubmitting(true)
     try {
+      const isComp = editJob.Status === 'COMPLETED' || editJob.Status === 'เสร็จสิ้น'
+      const detailVal = editJob.Comment || editJob.Details || ''
       const payload = {
         ...editJob,
+        Comment: detailVal,
+        Details: detailVal,
+        details: detailVal,
+        Problem: detailVal,
+        Detail: detailVal,
+        Status: editJob.Status || 'IN_PROGRESS',
         Technicians: editTechs.join(', '),
         Tech: editTechs.join(', '),
         UpdatedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
+        ...(isComp && !editJob.EndDate ? {
+          EndDate: format(new Date(), 'yyyy-MM-dd'),
+          EndTime: new Date().toISOString(),
+          EndTimestamp: new Date().toISOString(),
+          DateEnd: new Date().toISOString(),
+          CompletedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
+        } : {}),
       }
       await saveJob(payload)
       toast.success('แก้ไขข้อมูลใบสั่งงานสำเร็จ', editJob.Job_ID || editJob['Job ID'])
@@ -1377,8 +1434,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
 
               <form onSubmit={handleStartJob} className="space-y-4 text-xs">
-                {/* 5 Fields */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {/* 6 Fields */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                   <div>
                     <label className="label">รหัสเครื่อง (M/C) *</label>
                     <input
@@ -1434,6 +1491,17 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       <option value="PM">🧹 PM / ล้างเครื่อง</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="label">สถานะ (Status)</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="select font-semibold"
+                    >
+                      <option value="IN_PROGRESS">🟡 กำลังทำ</option>
+                      <option value="COMPLETED">🟢 เสร็จสิ้น</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Technicians Multi-Select Checklist */}
@@ -1480,7 +1548,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
                 {/* Job Comment */}
                 <div>
-                  <label className="label">อาการเสีย / รายละเอียดงานซ่อม</label>
+                  <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
                   <input
                     type="text"
                     placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
@@ -1563,8 +1631,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <th>Design</th>
                   <th>เลขม้วน</th>
                   <th>ประเภท</th>
-                  <th>ช่างผู้ปฏิบัติงาน</th>
+                  <th>รายละเอียด</th>
                   <th>สถานะ</th>
+                  <th>ช่างผู้ปฏิบัติงาน</th>
                   <th>เวลาเริ่ม</th>
                   <th>ระยะเวลา</th>
                   <th>SLA Performance</th>
@@ -1577,6 +1646,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
                   const sla = calculateSlaPerformance(job, kpiTargets)
                   const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
+                  const detailsDisplay = getWorkOrderDetails(job)
 
                   return (
                     <tr key={job.id || idx}>
@@ -1620,16 +1690,23 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                         </span>
                       </td>
 
-                      {/* Technicians */}
-                      <td className="max-w-[180px] truncate" style={{ color: 'var(--text-700)' }}>
-                        {job.Technicians || '—'}
+                      {/* รายละเอียด */}
+                      <td className="max-w-[220px] min-w-[130px]" style={{ color: 'var(--text-700)' }}>
+                        <div className="truncate text-xs font-medium" title={detailsDisplay}>
+                          {detailsDisplay}
+                        </div>
                       </td>
 
-                      {/* Status */}
+                      {/* สถานะ */}
                       <td>
                         <span className={`badge ${isCompleted ? 'badge-green' : 'badge-orange'}`}>
                           {isCompleted ? 'เสร็จสิ้น' : 'กำลังทำ'}
                         </span>
+                      </td>
+
+                      {/* Technicians */}
+                      <td className="max-w-[180px] truncate" style={{ color: 'var(--text-700)' }}>
+                        {job.Technicians || '—'}
                       </td>
 
                       {/* Start Time */}
@@ -1753,7 +1830,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
                 {filteredJobs.length === 0 && (
                   <tr>
-                    <td colSpan={12} className="text-center py-12 text-slate-400">
+                    <td colSpan={14} className="text-center py-12 text-slate-400">
                       {jobsLoading ? 'กำลังโหลดข้อมูล...' : 'ไม่พบรายการใบสั่งงาน'}
                     </td>
                   </tr>
@@ -2210,6 +2287,17 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <option value="PM">🧹 PM / ล้างเครื่อง</option>
                 </select>
               </div>
+              <div>
+                <label className="label">สถานะ (Status)</label>
+                <select
+                  value={editJob.Status || 'IN_PROGRESS'}
+                  onChange={(e) => setEditJob({ ...editJob, Status: e.target.value })}
+                  className="select font-semibold"
+                >
+                  <option value="IN_PROGRESS">🟡 กำลังทำ (In Progress)</option>
+                  <option value="COMPLETED">🟢 เสร็จสิ้น (Completed)</option>
+                </select>
+              </div>
             </div>
 
             {/* Technicians Checklist */}
@@ -2244,11 +2332,22 @@ export default function WorkOrders({ defaultTab = 'records' }) {
             </div>
 
             <div>
-              <label className="label">อาการเสีย / รายละเอียดงานซ่อม</label>
+              <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
               <input
                 type="text"
-                value={editJob.Comment || ''}
-                onChange={(e) => setEditJob({ ...editJob, Comment: e.target.value })}
+                placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
+                value={editJob.Comment || editJob.Details || editJob.details || editJob.Problem || ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setEditJob({
+                    ...editJob,
+                    Comment: val,
+                    Details: val,
+                    details: val,
+                    Problem: val,
+                    Detail: val,
+                  })
+                }}
                 className="input"
               />
             </div>
