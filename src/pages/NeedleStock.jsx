@@ -385,68 +385,64 @@ export default function NeedleStock() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-16">
-      {/* TOP HEADER */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Title & Icon */}
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-700 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-600/20">
-                <Layers className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold text-slate-800 leading-tight">Needle Grade & Stock</h1>
-                <p className="text-xs text-slate-500">ระบบบันทึกประวัติและสต็อกเข็มแต่ละเกรด</p>
-              </div>
-            </div>
-
-            {/* Header Action Buttons */}
-            <div className="flex items-center space-x-2 sm:space-x-2.5">
-              <button
-                type="button"
-                onClick={() => loadData(true)}
-                disabled={refreshing}
-                className="p-2 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-lg transition"
-                title="รีเฟรชข้อมูล"
-              >
-                <RotateCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-sky-600' : ''}`} />
-              </button>
-
-              <button
-                type="button"
-                onClick={activeTab === 'inventory' ? exportSetsCSV : exportLedgerCSV}
-                className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export CSV</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openStockModal(null)}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-xs transition shadow-blue-500/20"
-                title="ทำรายการสต็อกเข็ม (เบิกออก / รับเข้า / ตัดยอด / ตัดทิ้ง)"
-              >
-                <ArrowLeftRight className="w-4 h-4" />
-                <span>ทำรายการสต็อก</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAddModalOpen(true)}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs sm:text-sm font-medium shadow-xs transition shadow-sky-600/30"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>เพิ่มชุดเข็มใหม่</span>
-              </button>
-            </div>
+    <div className="w-full space-y-5 pb-16">
+      {/* TOP HEADER / ACTION BAR */}
+      <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Title & Icon */}
+        <div className="flex items-center space-x-3.5">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-600/20 shrink-0">
+            <Layers className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight">Needle Grade & Stock</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">ระบบบันทึกประวัติและสต็อกเข็มแต่ละเกรด</p>
           </div>
         </div>
-      </header>
 
-      {/* MAIN CONTAINER */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+        {/* Header Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto justify-end">
+          <button
+            type="button"
+            onClick={() => loadData(true)}
+            disabled={refreshing}
+            className="p-2 text-slate-500 hover:text-sky-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+            title="รีเฟรชข้อมูล"
+          >
+            <RotateCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-sky-600' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={activeTab === 'inventory' ? exportSetsCSV : exportLedgerCSV}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openStockModal(null)}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition shadow-blue-500/20 cursor-pointer"
+            title="ทำรายการสต็อกเข็ม (เบิกออก / รับเข้า / ตัดยอด / ตัดทิ้ง)"
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            <span>ทำรายการสต็อก</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAddModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition shadow-sky-600/30 cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>เพิ่มชุดเข็มใหม่</span>
+          </button>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="w-full space-y-5">
         {/* TABS: INVENTORY vs LEDGER */}
         <div className="flex items-center space-x-2 border-b border-slate-200 pb-3" role="tablist">
           <button
@@ -805,7 +801,7 @@ export default function NeedleStock() {
               </div>
             ) : viewMode === 'grid' ? (
               /* GRID CARDS VIEW */
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4">
                 {filteredSets.map(item => {
                   const hasImages = item.images && item.images.length > 0
                   const mainImg = hasImages ? (typeof item.images[0] === 'string' ? item.images[0] : item.images[0].url) : ''
@@ -1292,7 +1288,7 @@ export default function NeedleStock() {
             </div>
           </section>
         )}
-      </main>
+      </div>
 
       {/* ================= MODALS ================= */}
 
