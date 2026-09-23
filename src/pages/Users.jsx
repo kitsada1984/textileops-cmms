@@ -28,6 +28,7 @@ const MENU_GROUPS = [
       { key: 'workorders', label: 'ใบสั่งงาน' },
       { key: 'pm',         label: 'แผน PM' },
       { key: 'designbom',  label: 'Design/BOM' },
+      { key: 'needlestock', label: 'Stock เข็ม' },
     ],
   },
   {

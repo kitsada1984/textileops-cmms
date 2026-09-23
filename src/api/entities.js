@@ -1,6 +1,7 @@
 import { createEntityClient } from './supabaseClient'
 import { supabase } from '../supabase'
 import initialCenterChecks from '../data/initialCenterChecks.json'
+import initialNeedleSets from '../data/initialNeedleSets.json'
 import { getSystemConfig, saveSystemConfig, deleteSystemConfig } from '../modules/systemConfig'
 
 export const DEFAULT_TECHS = []
@@ -202,6 +203,198 @@ export const AppConfigAPI       = createEntityClient('appconfigs')
 export const UserAPI            = createEntityClient('users')
 export const RepairRequestAPI   = createEntityClient('repair_requests')
 export const DesignBomAPI       = createEntityClient('design_bom')
+
+/* ── Needle Stock & Grade Entities (needle_grade_latest_v16) ── */
+export function normalizeNeedleSet(item = {}) {
+  const setId = item.id || item.Set_ID || item.setId || `NS-${Date.now()}`
+  let images = []
+  if (Array.isArray(item.images)) images = item.images
+  else if (Array.isArray(item.Image_URLs)) images = item.Image_URLs
+  else if (typeof item.Image_URLs === 'string') {
+    try { images = JSON.parse(item.Image_URLs) } catch { images = [] }
+  } else if (typeof item.images === 'string') {
+    try { images = JSON.parse(item.images) } catch { images = [] }
+  }
+
+  return {
+    ...item,
+    id: setId,
+    setId,
+    Set_ID: setId,
+    machineType: item.Machine_Type || item.machineType || 'Single',
+    Machine_Type: item.Machine_Type || item.machineType || 'Single',
+    gauge: item.Gauge || item.gauge || '28G',
+    Gauge: item.Gauge || item.gauge || '28G',
+    machineId: item.Machine_ID || item.machineId || '',
+    Machine_ID: item.Machine_ID || item.machineId || '',
+    brand: item.Brand || item.brand || '',
+    Brand: item.Brand || item.brand || '',
+    needleModel: item.Needle_Model || item.needleModel || '',
+    Needle_Model: item.Needle_Model || item.needleModel || '',
+    grade: item.Grade || item.grade || 'เกรด B',
+    Grade: item.Grade || item.grade || 'เกรด B',
+    conditionDetail: item.Condition_Detail || item.conditionDetail || 'สึกปานกลาง',
+    Condition_Detail: item.Condition_Detail || item.conditionDetail || 'สึกปานกลาง',
+    status: item.Status || item.status || 'คัดแล้ว',
+    Status: item.Status || item.status || 'คัดแล้ว',
+    quantity: parseInt(item.Quantity ?? item.quantity, 10) || 0,
+    Quantity: parseInt(item.Quantity ?? item.quantity, 10) || 0,
+    dateRecorded: item.Date_Recorded || item.dateRecorded || '',
+    Date_Recorded: item.Date_Recorded || item.dateRecorded || '',
+    inspector: item.Inspector || item.inspector || 'ช่างประจำกะ',
+    Inspector: item.Inspector || item.inspector || 'ช่างประจำกะ',
+    remarks: item.Remarks || item.remarks || '',
+    Remarks: item.Remarks || item.remarks || '',
+    images,
+    Image_URLs: images,
+    location: item.Location || item.location || 'STORE',
+    Location: item.Location || item.location || 'STORE',
+    updatedAt: item.updated_at || item.Updated_At || item.updatedAt || new Date().toISOString(),
+  }
+}
+
+export function normalizeNeedleLog(log = {}) {
+  const logId = log.id || log.Log_ID || log.logId || `LOG-${Date.now()}`
+  let images = []
+  if (Array.isArray(log.images)) images = log.images
+  else if (Array.isArray(log.Image_URLs)) images = log.Image_URLs
+  else if (typeof log.Image_URLs === 'string') {
+    try { images = JSON.parse(log.Image_URLs) } catch { images = [] }
+  } else if (typeof log.images === 'string') {
+    try { images = JSON.parse(log.images) } catch { images = [] }
+  }
+
+  return {
+    ...log,
+    id: logId,
+    logId,
+    Log_ID: logId,
+    setId: log.Set_ID || log.setId || '',
+    Set_ID: log.Set_ID || log.setId || '',
+    actionType: log.Action_Type || log.actionType || '',
+    Action_Type: log.Action_Type || log.actionType || '',
+    oldGrade: log.Old_Grade || log.oldGrade || '',
+    newGrade: log.New_Grade || log.newGrade || '',
+    conditionDetail: log.Condition_Detail || log.conditionDetail || '',
+    quantity: parseInt(log.Quantity ?? log.quantity, 10) || 0,
+    dateAction: log.Date_Action || log.dateAction || '',
+    technician: log.Technician || log.technician || 'tuk',
+    remarks: log.Remarks || log.remarks || '',
+    targetMachine: log.Target_Machine || log.targetMachine || '',
+    sourceFrom: log.Source_From || log.sourceFrom || '',
+    scrapReason: log.Scrap_Reason || log.scrapReason || '',
+    qtyChange: log.Qty_Change || log.qtyChange || '',
+    balanceAfter: parseInt(log.Balance_After ?? log.balanceAfter, 10) || 0,
+    stockDetail: log.Stock_Detail || log.stockDetail || 'PM',
+    images,
+    Image_URLs: images,
+    createdAt: log.created_at || log.Created_At || log.createdAt || new Date().toISOString(),
+  }
+}
+
+const rawNeedleSetClient = createEntityClient('needle_sets')
+const rawNeedleHistoryClient = createEntityClient('needle_history_logs')
+export const NeedleConfigAPI = createEntityClient('needle_configs')
+
+export const NeedleSetAPI = {
+  ...rawNeedleSetClient,
+  list: async (filters = {}) => {
+    try {
+      const res = await rawNeedleSetClient.list(filters)
+      const rows = Array.isArray(res) ? res : (res?.data || [])
+      if (rows && rows.length > 0) {
+        return rows.map(normalizeNeedleSet)
+      }
+      return (initialNeedleSets || []).map(normalizeNeedleSet)
+    } catch {
+      return (initialNeedleSets || []).map(normalizeNeedleSet)
+    }
+  },
+  create: async (item) => {
+    const norm = normalizeNeedleSet(item)
+    const payload = {
+      id: norm.id,
+      Set_ID: norm.id,
+      Machine_Type: norm.machineType,
+      Gauge: norm.gauge,
+      Machine_ID: norm.machineId,
+      Brand: norm.brand,
+      Needle_Model: norm.needleModel,
+      Grade: norm.grade,
+      Condition_Detail: norm.conditionDetail,
+      Status: norm.status,
+      Quantity: norm.quantity,
+      Date_Recorded: norm.dateRecorded,
+      Inspector: norm.inspector,
+      Remarks: norm.remarks,
+      Image_URLs: norm.images,
+      Location: norm.location,
+    }
+    const res = await rawNeedleSetClient.create(payload)
+    return normalizeNeedleSet(res || payload)
+  },
+  update: async (id, item) => {
+    const norm = normalizeNeedleSet({ ...item, id })
+    const payload = {
+      Set_ID: norm.id,
+      Machine_Type: norm.machineType,
+      Gauge: norm.gauge,
+      Machine_ID: norm.machineId,
+      Brand: norm.brand,
+      Needle_Model: norm.needleModel,
+      Grade: norm.grade,
+      Condition_Detail: norm.conditionDetail,
+      Status: norm.status,
+      Quantity: norm.quantity,
+      Date_Recorded: norm.dateRecorded,
+      Inspector: norm.inspector,
+      Remarks: norm.remarks,
+      Image_URLs: norm.images,
+      Location: norm.location,
+    }
+    const res = await rawNeedleSetClient.update(id, payload)
+    return normalizeNeedleSet(res || { ...payload, id })
+  },
+}
+
+export const NeedleHistoryAPI = {
+  ...rawNeedleHistoryClient,
+  list: async (filters = {}) => {
+    try {
+      const res = await rawNeedleHistoryClient.list(filters)
+      const rows = Array.isArray(res) ? res : (res?.data || [])
+      return rows.map(normalizeNeedleLog)
+    } catch {
+      return []
+    }
+  },
+  create: async (log) => {
+    const norm = normalizeNeedleLog(log)
+    const payload = {
+      id: norm.id,
+      Log_ID: norm.id,
+      Set_ID: norm.setId,
+      Action_Type: norm.actionType,
+      Old_Grade: norm.oldGrade,
+      New_Grade: norm.newGrade,
+      Condition_Detail: norm.conditionDetail,
+      Quantity: norm.quantity,
+      Date_Action: norm.dateAction,
+      Technician: norm.technician,
+      Remarks: norm.remarks,
+      Image_URLs: norm.images,
+      Target_Machine: norm.targetMachine,
+      Source_From: norm.sourceFrom,
+      Scrap_Reason: norm.scrapReason,
+      Qty_Change: norm.qtyChange,
+      Balance_After: norm.balanceAfter,
+      Stock_Detail: norm.stockDetail,
+    }
+    const res = await rawNeedleHistoryClient.create(payload)
+    return normalizeNeedleLog(res || payload)
+  },
+}
+
 
 export const MACHINE_STATUS = [
   { value: 'RUNNING', label: 'เดินเครื่อง' },

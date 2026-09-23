@@ -155,7 +155,23 @@ const DEFAULT_APP_MENUS = [
     ],
   },
   {
-    id: uid(), label:'อะไหล่', icon:'Package', route:'/spareparts', order:5,
+    id: uid(), label:'Stock เข็ม', icon:'Layers', route:'/needle-stock', order:5,
+    columns:[
+      col('Set_ID','รหัสชุด','text','120px',{required:true}),
+      col('Machine_ID','เครื่องจักร','text','120px'),
+      col('Machine_Type','ประเภทเครื่อง','text','120px'),
+      col('Gauge','เกจ','text','90px'),
+      col('Brand','ยี่ห้อ','text','120px'),
+      col('Needle_Model','รุ่นเข็ม','text','160px',{required:true}),
+      sel('Grade','เกรด',['เกรด A','เกรด B','รอคัดแยก','ปลดระวาง'],'110px'),
+      col('Condition_Detail','สภาพเข็ม','text','140px'),
+      col('Quantity','จำนวน','number','100px',{required:true}),
+      col('Location','ตำแหน่งจัดเก็บ','text','110px'),
+      col('Remarks','หมายเหตุ','textarea','200px',{height:'2'}),
+    ],
+  },
+  {
+    id: uid(), label:'อะไหล่', icon:'Package', route:'/spareparts', order:6,
     columns:[
       col('Part_Code','รหัสอะไหล่','text','130px',{required:true}),
       col('Part_Name_EN','ชื่ออะไหล่','text','180px',{required:true}),

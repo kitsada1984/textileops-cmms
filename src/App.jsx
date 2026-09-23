@@ -35,6 +35,7 @@ import UsersPage     from './pages/Users'
 import WebBuilder       from './pages/WebBuilder'
 import RepairRequests  from './pages/RepairRequests'
 import DesignBom from './pages/DesignBom'
+import NeedleStock from './pages/NeedleStock'
 
 const NAV_SECTIONS = [
   {
@@ -51,6 +52,7 @@ const NAV_SECTIONS = [
       { to: '/workorders',    icon: ClipboardList,   key: 'nav_workorders',    permKey: 'workorders' },
       { to: '/pm',            icon: Calendar,        key: 'nav_pm',            permKey: 'pm' },
       { to: '/design-bom',    icon: FileText,        key: 'nav_design_bom',    permKey: 'designbom' },
+      { to: '/needle-stock',  icon: Layers,          key: 'nav_needle_stock',  permKey: 'needlestock' },
     ]
   },
   {
@@ -93,6 +95,7 @@ function PageRoutes() {
         <Route path="/center-check" element={<PMPlan defaultTab="center_check" />} />
         <Route path="/needle-condition" element={<PMPlan defaultTab="needle" />} />
         <Route path="/design-bom"   element={<DesignBom />} />
+        <Route path="/needle-stock" element={<NeedleStock />} />
         <Route path="/spareparts" element={<SpareParts />} />
         <Route path="/purchasing" element={<Purchasing />} />
         <Route path="/stock"      element={<StockMovement />} />

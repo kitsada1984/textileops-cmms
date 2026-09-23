@@ -9,6 +9,7 @@ const MENU_LABEL_BY_ROUTE = {
   '/workorders': 'ใบสั่งงาน',
   '/pm': 'แผน PM',
   '/design-bom': 'Design/BOM',
+  '/needle-stock': 'Stock เข็ม',
   '/spareparts': 'อะไหล่',
   '/purchasing': 'จัดซื้อ',
   '/stock': 'เคลื่อนไหวสต็อก',
