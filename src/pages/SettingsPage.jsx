@@ -805,10 +805,10 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-xs font-bold text-sky-800 dark:text-sky-300">
-                      🪡 รายชื่อผู้ดูแลเข็ม / สโตร์เข็ม (Needle Keepers)
+                      🎯 คนคัดเข็ม / ผู้ดูแลสต็อกเข็ม (LINE USER ID ล็อคคนคัดเข็ม)
                     </div>
                     <div className="text-[11px] text-slate-400">
-                      จะได้รับแจ้งเตือนทาง LINE ทันทีเมื่อมีช่างสแกนขอเบิกเข็ม Spare
+                      เมื่อช่างสแกนขอเบิกเข็ม Spare ข้อความแจ้งเตือนจะเด้งไปที่ LINE USER ID ของคนคัดเข็มทันที
                     </div>
                   </div>
                   <button
@@ -816,12 +816,12 @@ export default function SettingsPage() {
                     onClick={() => setLine((p) => ({ ...p, needle_keepers: [...(p.needle_keepers || []), { name: '', user_id: '' }] }))}
                     className="text-xs text-sky-600 hover:underline font-bold flex items-center gap-1"
                   >
-                    <UserPlus size={12} /> <span>+ เพิ่มผู้ดูแลเข็ม</span>
+                    <UserPlus size={12} /> <span>+ เพิ่ม / ล็อคคนคัดเข็ม</span>
                   </button>
                 </div>
 
                 {(!line.needle_keepers || line.needle_keepers.length === 0) && (
-                  <div className="text-xs text-slate-400 py-1.5">ยังไม่ได้ระบุผู้ดูแลเข็ม — ระบบจะส่งหาหัวหน้างานเป็นค่าเริ่มต้น</div>
+                  <div className="text-xs text-slate-400 py-1.5">ยังไม่ได้ล็อค LINE USER ID คนคัดเข็ม — ระบบจะส่งหาหัวหน้างานเป็นค่าเริ่มต้น</div>
                 )}
 
                 <div className="space-y-2">

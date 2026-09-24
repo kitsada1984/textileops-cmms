@@ -7,6 +7,7 @@ import {
   buildRepairRequestFlexMessage,
   buildTechnicianAssignedFlexMessage,
   buildRepairCompletedFlexMessage,
+  buildSpareNeedleRequestFlexMessage,
   buildTestFlexMessage,
 } from './lineFlexBuilder'
 
@@ -18,6 +19,7 @@ export const DEFAULT_LINE_SETTINGS = {
   channel_access_token: '',
   target_group_id: '',
   supervisors: [{ name: 'กฤษดา', user_id: 'U66f2b207af94e739c10a3cf937af2965' }],
+  needle_keeper_user_id: '',
   needle_keepers: [],
   needle_keeper_notify_token: '',
   technicians: [{ name: 'หนึ่ง', user_id: '' }],
@@ -38,6 +40,7 @@ export const loadLineSettings = () => {
       ...DEFAULT_LINE_SETTINGS,
       ...saved,
       supervisors: saved.supervisors || (saved.target_group_id ? [{ name: 'หัวหน้างาน', user_id: saved.target_group_id }] : DEFAULT_LINE_SETTINGS.supervisors),
+      needle_keeper_user_id: saved.needle_keeper_user_id || '',
       needle_keepers: saved.needle_keepers || [],
       needle_keeper_notify_token: saved.needle_keeper_notify_token || '',
       technicians: saved.technicians || DEFAULT_LINE_SETTINGS.technicians,
@@ -131,10 +134,19 @@ export function getSupervisorLineIds(cfg) {
 }
 
 export function getNeedleKeeperLineIds(cfg) {
-  if (cfg?.needle_keepers?.length) {
-    const ids = cfg.needle_keepers.map(k => String(k.user_id || '').trim()).filter(Boolean)
-    if (ids.length > 0) return ids
+  const ids = []
+  if (cfg?.needle_keeper_user_id?.trim()) {
+    ids.push(cfg.needle_keeper_user_id.trim())
   }
+  if (Array.isArray(cfg?.needle_keepers)) {
+    for (const k of cfg.needle_keepers) {
+      const id = String(k.user_id || '').trim()
+      if (id && !ids.includes(id)) {
+        ids.push(id)
+      }
+    }
+  }
+  if (ids.length > 0) return ids
   return getSupervisorLineIds(cfg)
 }
 
@@ -433,6 +445,62 @@ export async function testLineNotification() {
 }
 
 /**
+ * Test LINE notification specifically for Needle Keeper (คนคัดเข็ม)
+ */
+export async function testNeedleKeeperLineNotification(customTargetId) {
+  try {
+    const cfg = await loadLineSettingsDB()
+    if (!cfg.is_enabled) {
+      return { ok: false, error: 'กรุณาเปิดสวิตช์ใช้งานการแจ้งเตือน LINE ก่อน' }
+    }
+    const targetId = customTargetId?.trim() || getNeedleKeeperLineIds(cfg)[0]
+    if (!targetId) {
+      return { ok: false, error: 'ยังไม่มี LINE USER ID ของคนคัดเข็ม กรุณาระบุหรือเลือกคนคัดเข็มก่อน' }
+    }
+    if (!cfg.channel_access_token?.trim()) {
+      return { ok: false, error: 'กรุณากรอก LINE Channel Access Token ในการตั้งค่า LINE ก่อน' }
+    }
+
+    const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+    const testFlex = buildSpareNeedleRequestFlexMessage({
+      id: 'SNR-TEST-DEMO',
+      request_no: 'SNR-TEST-8888',
+      machine_mc: 'MC-TEST (สาธิต)',
+      gauge: '24G',
+      technician_name: 'ระบบทดสอบแจ้งเตือน',
+      shift: 'กะเช้า',
+      tracks_requested: {
+        dial: { t1: 50, t2: 50 },
+        cylinder: { t1: 50, t2: 50, t3: 50, t4: 50 },
+      },
+      request_comment: 'ทดสอบการเชื่อมต่อ LINE USER ID คนคัดเข็ม สำเร็จเรียบร้อย!',
+      created_at: new Date().toISOString(),
+    }, { Machine: 'MC-TEST', Gauge: '24G', Serial_NOW: 'CYL-DEMO-01' }, appUrl)
+
+    const testText = `\n🔔 [ทดสอบการแจ้งเตือนคนคัดเข็ม]\nระบบ TextileOps CMMS ได้เชื่อมโยง LINE USER ID (${targetId}) เรียบร้อยแล้ว!\n👉 เมื่อช่างขอเบิกเข็ม Spare ระบบจะเด้งข้อความมาที่บัญชีนี้โดยตรง\n👉 เปิดแอป: ${appUrl}/needle-stock?openExternalBrowser=1`
+
+    const flexRes = await sendLineNotification({
+      type: 'flex',
+      token: cfg.channel_access_token.trim(),
+      targetId,
+      messages: [testFlex],
+    })
+
+    if (!flexRes.ok) {
+      return await sendLineNotification({
+        type: 'text',
+        token: cfg.channel_access_token.trim(),
+        targetId,
+        textMessage: testText,
+      })
+    }
+    return flexRes
+  } catch (err) {
+    return { ok: false, error: err.message || 'เกิดข้อผิดพลาดในการทดสอบ' }
+  }
+}
+
+/**
  * Sends Spare Needle Requested Notification to LINE
  */
 export async function notifyLineSpareNeedleRequested(snr, cylinder) {
@@ -450,16 +518,16 @@ export async function notifyLineSpareNeedleRequested(snr, cylinder) {
     const trackLines = []
     if (dial.t1 > 0 || dial.t2 > 0) {
       const parts = []
-      if (dial.t1 > 0) parts.push(`T1: ${dial.t1} ตัว`)
-      if (dial.t2 > 0) parts.push(`T2: ${dial.t2} ตัว`)
+      if (dial.t1 > 0) parts.push(`T1: ${dial.t1} เล่ม`)
+      if (dial.t2 > 0) parts.push(`T2: ${dial.t2} เล่ม`)
       trackLines.push(`• Dial: ${parts.join(', ')}`)
     }
     if (cyl.t1 > 0 || cyl.t2 > 0 || cyl.t3 > 0 || cyl.t4 > 0) {
       const parts = []
-      if (cyl.t1 > 0) parts.push(`T1: ${cyl.t1} ตัว`)
-      if (cyl.t2 > 0) parts.push(`T2: ${cyl.t2} ตัว`)
-      if (cyl.t3 > 0) parts.push(`T3: ${cyl.t3} ตัว`)
-      if (cyl.t4 > 0) parts.push(`T4: ${cyl.t4} ตัว`)
+      if (cyl.t1 > 0) parts.push(`T1: ${cyl.t1} เล่ม`)
+      if (cyl.t2 > 0) parts.push(`T2: ${cyl.t2} เล่ม`)
+      if (cyl.t3 > 0) parts.push(`T3: ${cyl.t3} เล่ม`)
+      if (cyl.t4 > 0) parts.push(`T4: ${cyl.t4} เล่ม`)
       trackLines.push(`• Cylinder: ${parts.join(', ')}`)
     }
 
@@ -480,14 +548,24 @@ export async function notifyLineSpareNeedleRequested(snr, cylinder) {
     let oaResults = null
 
     if (cfg.channel_access_token && targetIds.length > 0) {
-      oaResults = await Promise.all(targetIds.map(targetId =>
-        sendLineNotification({
-          type: 'text',
+      const flexMsg = buildSpareNeedleRequestFlexMessage(snr, cylinder, cfg.app_base_url)
+      oaResults = await Promise.all(targetIds.map(async targetId => {
+        const res = await sendLineNotification({
+          type: 'flex',
           token: cfg.channel_access_token,
           targetId,
-          textMessage,
+          messages: [flexMsg],
         })
-      ))
+        if (!res.ok) {
+          return await sendLineNotification({
+            type: 'text',
+            token: cfg.channel_access_token,
+            targetId,
+            textMessage,
+          })
+        }
+        return res
+      }))
       sentOa = true
     }
 

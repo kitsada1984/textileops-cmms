@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X,
@@ -11,6 +11,8 @@ import {
   AlertCircle,
   Save,
   ShieldCheck,
+  Lock,
+  Check,
 } from 'lucide-react'
 import {
   loadTelegramSettingsDB,
@@ -21,12 +23,15 @@ import {
   loadLineSettingsDB,
   saveLineSettingsDB,
   fetchLineContacts,
+  testNeedleKeeperLineNotification,
 } from '../../utils/line'
+import { TechnicianAPI } from '../../api/entities'
 
 export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) {
-  const [activeSubTab, setActiveSubTab] = useState('telegram') // 'telegram' | 'line'
+  const [activeSubTab, setActiveSubTab] = useState('line') // 'line' | 'telegram'
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testingLine, setTestingLine] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' }) // 'success' | 'error'
 
   // Telegram state
@@ -40,24 +45,74 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
   const [lineNotifyToken, setLineNotifyToken] = useState('')
   const [lineContacts, setLineContacts] = useState([])
   const [loadingLineContacts, setLoadingLineContacts] = useState(false)
+  const [techList, setTechList] = useState([])
+  const [customName, setCustomName] = useState('')
+  const [customUserId, setCustomUserId] = useState('')
 
   useEffect(() => {
     if (!isOpen) return
     setLoading(true)
     setMsg({ text: '', type: '' })
 
-    Promise.all([loadTelegramSettingsDB(), loadLineSettingsDB()])
-      .then(([tg, line]) => {
+    Promise.all([
+      loadTelegramSettingsDB(),
+      loadLineSettingsDB(),
+      fetchLineContacts().catch(() => ({ ok: false, contacts: [] })),
+      TechnicianAPI.list().catch(() => []),
+    ])
+      .then(([tg, line, lineRes, techs]) => {
         setTgBotToken(tg?.bot_token || '')
         setTgKeepers(Array.isArray(tg?.needle_keepers) ? tg.needle_keepers : [])
         setLineKeepers(Array.isArray(line?.needle_keepers) ? line.needle_keepers : [])
         setLineNotifyToken(line?.needle_keeper_notify_token || '')
+        if (lineRes?.ok && Array.isArray(lineRes.contacts)) {
+          setLineContacts(lineRes.contacts)
+        }
+        if (Array.isArray(techs)) {
+          setTechList(techs.filter((t) => t.Active !== false && t.Active !== 'false'))
+        }
       })
       .catch((e) => {
         setMsg({ text: 'โหลดการตั้งค่าล้มเหลว: ' + e.message, type: 'error' })
       })
       .finally(() => setLoading(false))
   }, [isOpen])
+
+  // Unified candidates list from lineContacts + technicians with Line_ID
+  const allCandidates = useMemo(() => {
+    const list = []
+    const seen = new Set()
+
+    // 1. From lineContacts (Webhook)
+    for (const c of lineContacts) {
+      const uid = String(c.user_id || '').trim()
+      if (uid && !seen.has(uid)) {
+        seen.add(uid)
+        list.push({
+          name: c.name || 'ผู้ใช้ LINE',
+          user_id: uid,
+          source: 'LINE Webhook',
+          picture_url: c.picture_url,
+        })
+      }
+    }
+
+    // 2. From techList (Technicians with Line_ID)
+    for (const t of techList) {
+      const uid = String(t.Line_ID || t.line_id || '').trim()
+      if (uid && !seen.has(uid)) {
+        seen.add(uid)
+        list.push({
+          name: t.Name || t.name || 'ช่าง',
+          user_id: uid,
+          source: 'รายชื่อช่าง',
+          role: t.SkillLevel || t.Specialization,
+        })
+      }
+    }
+
+    return list
+  }, [lineContacts, techList])
 
   // Fetch Telegram contacts
   const handleLoadTgContacts = async () => {
@@ -114,13 +169,57 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
     ])
   }
 
-  // Add from LINE Contact
-  const handleAddLineContact = (contact) => {
-    if (lineKeepers.some((k) => k.user_id === contact.user_id)) return
-    setLineKeepers((prev) => [
-      ...prev,
-      { name: contact.name || 'ผู้ดูแลเข็ม', user_id: String(contact.user_id) },
-    ])
+  // Lock a user as needle keeper
+  const handleLockNeedleKeeper = (name, userId) => {
+    const trimmedId = String(userId || '').trim()
+    const trimmedName = String(name || 'คนคัดเข็ม').trim()
+    if (!trimmedId) return
+    setLineKeepers([{ name: trimmedName, user_id: trimmedId }])
+    setMsg({
+      text: `🔒 ล็อคคุณ "${trimmedName}" (${trimmedId}) เป็นคนคัดเข็มเรียบร้อย! (กด "บันทึกการตั้งค่า" ด้านล่างเพื่อยืนยัน)`,
+      type: 'success',
+    })
+  }
+
+  // Add custom needle keeper
+  const handleAddCustom = () => {
+    if (!customUserId.trim()) {
+      setMsg({ text: 'กรุณากรอก LINE USER ID (เช่น Uxxxx...)', type: 'error' })
+      return
+    }
+    const name = customName.trim() || 'คนคัดเข็ม'
+    handleLockNeedleKeeper(name, customUserId.trim())
+    setCustomName('')
+    setCustomUserId('')
+  }
+
+  // Test send to locked LINE
+  const handleTestLine = async (targetUserId) => {
+    const uid = targetUserId || lineKeepers[0]?.user_id
+    if (!uid) {
+      setMsg({ text: 'ยังไม่ได้ระบุหรือล็อค LINE USER ID คนคัดเข็ม', type: 'error' })
+      return
+    }
+    setTestingLine(true)
+    setMsg({ text: 'กำลังทดสอบส่งข้อความเด้งเข้า LINE...', type: '' })
+    try {
+      const res = await testNeedleKeeperLineNotification(uid)
+      if (res.ok) {
+        setMsg({
+          text: `✅ ทดสอบสำเร็จ! ข้อความตัวอย่างถูกส่งเด้งไปที่ LINE ของ User ID: ${uid} เรียบร้อยแล้ว`,
+          type: 'success',
+        })
+      } else {
+        setMsg({
+          text: `❌ ส่งทดสอบไม่สำเร็จ: ${res.error || 'ตรวจสอบ LINE Channel Access Token'}`,
+          type: 'error',
+        })
+      }
+    } catch (e) {
+      setMsg({ text: `❌ เกิดข้อผิดพลาดในการทดสอบ: ${e.message}`, type: 'error' })
+    } finally {
+      setTestingLine(false)
+    }
   }
 
   // Save Settings
@@ -141,16 +240,19 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
 
       // 2. Update LINE Settings
       const currentLine = await loadLineSettingsDB()
+      const validKeepers = lineKeepers
+        .filter((k) => k.name.trim() || k.user_id.trim())
+        .map((k) => ({ name: k.name.trim(), user_id: k.user_id.trim() }))
+
       const updatedLine = {
         ...currentLine,
-        needle_keepers: lineKeepers
-          .filter((k) => k.name.trim() || k.user_id.trim())
-          .map((k) => ({ name: k.name.trim(), user_id: k.user_id.trim() })),
+        needle_keeper_user_id: validKeepers[0]?.user_id || '',
+        needle_keepers: validKeepers,
         needle_keeper_notify_token: lineNotifyToken.trim(),
       }
       await saveLineSettingsDB(updatedLine)
 
-      setMsg({ text: 'บันทึกการตั้งค่าผู้ดูแลเข็มเรียบร้อยแล้ว!', type: 'success' })
+      setMsg({ text: 'บันทึกการตั้งค่าคนคัดเข็มเรียบร้อยแล้ว!', type: 'success' })
       if (onSuccess) onSuccess()
       setTimeout(() => {
         onClose()
@@ -212,10 +314,10 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
             <span style={{ fontSize: 22 }}>🪡</span>
             <div>
               <div style={{ fontSize: 16, fontWeight: 800, color: '#f8fafc' }}>
-                ระบุ LINE & Telegram ผู้ดูแลเข็ม (สโตร์เข็ม)
+                🎯 ล็อคคนคัดเข็ม (LINE & Telegram ผู้ดูแล/คัดเข็ม)
               </div>
               <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                ระบบจะส่งการแจ้งเตือนคำขอเบิกเข็ม Spare ไปยังบุคคลหรือกลุ่มนี้โดยตรง
+                เมื่อช่างสแกนขอเบิกเข็ม Spare ข้อความแจ้งเตือนจะเด้งไปที่ LINE USER ID ของคนคัดเข็มทันที
               </div>
             </div>
           </div>
@@ -248,26 +350,6 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
         >
           <button
             type="button"
-            onClick={() => setActiveSubTab('telegram')}
-            style={{
-              padding: '10px 16px',
-              border: 'none',
-              borderBottom: activeSubTab === 'telegram' ? '2px solid #0284c7' : '2px solid transparent',
-              background: 'none',
-              color: activeSubTab === 'telegram' ? '#0284c7' : '#64748b',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <Send size={15} style={{ color: activeSubTab === 'telegram' ? '#0284c7' : '#94a3b8' }} />
-            <span>✈️ Telegram ผู้ดูแลเข็ม ({tgKeepers.length})</span>
-          </button>
-          <button
-            type="button"
             onClick={() => setActiveSubTab('line')}
             style={{
               padding: '10px 16px',
@@ -284,7 +366,27 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
             }}
           >
             <MessageSquare size={15} style={{ color: activeSubTab === 'line' ? '#16a34a' : '#94a3b8' }} />
-            <span>🟢 LINE ผู้ดูแลเข็ม ({lineKeepers.length})</span>
+            <span>🟢 LINE คนคัดเข็ม {lineKeepers.length > 0 ? `(🔒 ${lineKeepers[0].name || 'ล็อคแล้ว'})` : ''}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('telegram')}
+            style={{
+              padding: '10px 16px',
+              border: 'none',
+              borderBottom: activeSubTab === 'telegram' ? '2px solid #0284c7' : '2px solid transparent',
+              background: 'none',
+              color: activeSubTab === 'telegram' ? '#0284c7' : '#64748b',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Send size={15} style={{ color: activeSubTab === 'telegram' ? '#0284c7' : '#94a3b8' }} />
+            <span>✈️ Telegram ({tgKeepers.length})</span>
           </button>
         </div>
 
@@ -514,7 +616,115 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
           ) : (
             /* LINE TAB CONTENT */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Quick fetch from LINE Webhook */}
+              {/* Status Card: คนคัดเข็มที่ล็อคไว้ */}
+              <div
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: 14,
+                  background: lineKeepers.length > 0 ? '#f0fdf4' : '#fffbeb',
+                  border: lineKeepers.length > 0 ? '1.5px solid #86efac' : '1.5px solid #fde68a',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <div
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 10,
+                        background: lineKeepers.length > 0 ? '#dcfce7' : '#fef3c7',
+                        color: lineKeepers.length > 0 ? '#16a34a' : '#d97706',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {lineKeepers.length > 0 ? <Lock size={20} /> : <AlertCircle size={20} />}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: lineKeepers.length > 0 ? '#166534' : '#92400e' }}>
+                        {lineKeepers.length > 0 ? 'คนคัดเข็มที่ล็อคไว้ในระบบ (รับแจ้งเตือนเบิกเข็ม)' : 'ยังไม่ได้ระบุ/ล็อคคนคัดเข็ม'}
+                      </div>
+                      <div style={{ fontSize: 11, color: lineKeepers.length > 0 ? '#15803d' : '#b45309', marginTop: 2 }}>
+                        {lineKeepers.length > 0
+                          ? `เมื่อมีช่างขอเบิกเข็ม Spare ข้อความจะเด้งไปที่ LINE USER ID ของ "${lineKeepers[0].name || 'คนคัดเข็ม'}" โดยตรง`
+                          : 'กรุณากด "🔒 ล็อคคนนี้" จากรายชื่อด้านล่าง หรือกรอก User ID ด้านล่าง'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {lineKeepers.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleTestLine(lineKeepers[0]?.user_id)}
+                      disabled={testingLine}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 8,
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: testingLine ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 2px 6px rgba(22,163,74,0.3)',
+                      }}
+                    >
+                      <Send size={12} />
+                      {testingLine ? 'กำลังส่งทดสอบ...' : '🧪 ทดสอบส่ง LINE'}
+                    </button>
+                  )}
+                </div>
+
+                {lineKeepers.length > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      background: '#ffffff',
+                      border: '1px solid #bbf7d0',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#166534' }}>
+                        👤 {lineKeepers[0].name || 'คนคัดเข็ม'}
+                      </span>
+                      <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#15803d', background: '#dcfce7', padding: '2px 8px', borderRadius: 6 }}>
+                        LINE USER ID: {lineKeepers[0].user_id}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLineKeepers([])}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ปลดล็อค / เปลี่ยนคน
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Direct manual input / paste */}
               <div
                 style={{
                   padding: 12,
@@ -523,13 +733,66 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
                   border: '1px solid #e2e8f0',
                 }}
               >
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                  ✏️ กรอกหรือวาง LINE USER ID ของคนคัดเข็มโดยตรง
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="ชื่อคนคัดเข็ม เช่น ช.ต๋อง"
+                    style={{
+                      width: 140,
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 12,
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={customUserId}
+                    onChange={(e) => setCustomUserId(e.target.value)}
+                    placeholder="LINE USER ID (ขึ้นต้นด้วย U... เช่น U8ce7b7...)"
+                    style={{
+                      flex: 1,
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustom}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: '#4f46e5',
+                      color: '#ffffff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    🔒 ล็อคคนนี้
+                  </button>
+                </div>
+              </div>
+
+              {/* Candidates selection */}
+              <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>
-                      ดึงรายชื่อจาก LINE Webhook
+                      📋 เลือกจากรายชื่อที่ตรวจพบในระบบ ({allCandidates.length} คน)
                     </div>
                     <div style={{ fontSize: 11, color: '#64748b' }}>
-                      ให้ผู้ดูแลเข็มหรือกลุ่มสโตร์ทัก LINE บอทเข้ามา จากนั้นกดดึงรายชื่อ
+                      คลิกปุ่ม "🔒 ล็อคคนนี้" เพื่อตั้งเป็นคนคัดเข็มหลักที่จะรับแจ้งเตือนเบิกเข็ม
                     </div>
                   </div>
                   <button
@@ -537,8 +800,8 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
                     onClick={handleLoadLineContacts}
                     disabled={loadingLineContacts}
                     style={{
-                      padding: '6px 12px',
-                      borderRadius: 8,
+                      padding: '4px 10px',
+                      borderRadius: 6,
                       border: '1px solid #cbd5e1',
                       background: '#ffffff',
                       fontSize: 11,
@@ -549,15 +812,19 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
                       gap: 4,
                     }}
                   >
-                    <RefreshCw size={12} style={{ animation: loadingLineContacts ? 'spin 1s linear infinite' : 'none' }} />
-                    {loadingLineContacts ? 'กำลังดึง...' : 'ดึงรายชื่อ'}
+                    <RefreshCw size={11} style={{ animation: loadingLineContacts ? 'spin 1s linear infinite' : 'none' }} />
+                    ดึงรายชื่อเพิ่ม
                   </button>
                 </div>
 
-                {lineContacts.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                    {lineContacts.map((c, i) => {
-                      const isAdded = lineKeepers.some((k) => k.user_id === c.user_id)
+                {allCandidates.length === 0 ? (
+                  <div style={{ padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 10, color: '#94a3b8', fontSize: 12 }}>
+                    ยังไม่พบรายชื่อในระบบ — ให้คนคัดเข็มทัก LINE บอทเข้ามา หรือกรอก User ID ด้านบน
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                    {allCandidates.map((c, i) => {
+                      const isLocked = lineKeepers[0]?.user_id === c.user_id
                       return (
                         <div
                           key={i}
@@ -565,123 +832,123 @@ export default function NeedleKeeperConfigModal({ isOpen, onClose, onSuccess }) 
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '6px 10px',
-                            borderRadius: 8,
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
+                            padding: '8px 12px',
+                            borderRadius: 10,
+                            background: isLocked ? '#f0fdf4' : '#ffffff',
+                            border: isLocked ? '1.5px solid #86efac' : '1px solid #e2e8f0',
+                            transition: 'all 0.15s ease',
                           }}
                         >
-                          <div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{c.name}</div>
-                            <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>User ID: {c.user_id}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {c.picture_url ? (
+                              <img
+                                src={c.picture_url}
+                                alt=""
+                                style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: '50%',
+                                  background: '#e0e7ff',
+                                  color: '#4f46e5',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {c.name.slice(0, 1)}
+                              </div>
+                            )}
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{c.name}</span>
+                                <span
+                                  style={{
+                                    fontSize: 9,
+                                    fontWeight: 700,
+                                    padding: '1px 6px',
+                                    borderRadius: 4,
+                                    background: c.source === 'รายชื่อช่าง' ? '#e0f2fe' : '#f1f5f9',
+                                    color: c.source === 'รายชื่อช่าง' ? '#0369a1' : '#475569',
+                                  }}
+                                >
+                                  {c.source} {c.role ? `(${c.role})` : ''}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>
+                                User ID: {c.user_id}
+                              </div>
+                            </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleAddLineContact(c)}
-                            disabled={isAdded}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: 6,
-                              fontSize: 11,
-                              fontWeight: 700,
-                              cursor: isAdded ? 'default' : 'pointer',
-                              border: '1px solid #86efac',
-                              background: isAdded ? '#f1f5f9' : '#dcfce7',
-                              color: isAdded ? '#94a3b8' : '#15803d',
-                            }}
-                          >
-                            {isAdded ? 'เพิ่มแล้ว' : '+ เพิ่มเป็นผู้ดูแลเข็ม'}
-                          </button>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isLocked ? (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  padding: '4px 10px',
+                                  borderRadius: 8,
+                                  background: '#dcfce7',
+                                  color: '#15803d',
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                }}
+                              >
+                                <Check size={12} />
+                                <span>ล็อคอยู่</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleLockNeedleKeeper(c.name, c.user_id)}
+                                style={{
+                                  padding: '5px 12px',
+                                  borderRadius: 8,
+                                  border: '1px solid #818cf8',
+                                  background: '#eef2ff',
+                                  color: '#4338ca',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                }}
+                              >
+                                <Lock size={11} />
+                                <span>ล็อคคนนี้</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleTestLine(c.user_id)}
+                              disabled={testingLine}
+                              title="ทดสอบส่ง LINE ไปยังคนนี้"
+                              style={{
+                                padding: '5px 8px',
+                                borderRadius: 8,
+                                border: '1px solid #cbd5e1',
+                                background: '#f8fafc',
+                                color: '#475569',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                cursor: testingLine ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              ทดสอบ
+                            </button>
+                          </div>
                         </div>
                       )
                     })}
-                  </div>
-                )}
-              </div>
-
-              {/* Keepers list */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>
-                    รายชื่อผู้ดูแลเข็ม / สโตร์เข็ม (LINE OA)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setLineKeepers((prev) => [...prev, { name: '', user_id: '' }])}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: 6,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      border: '1px solid #bbf7d0',
-                      background: '#f0fdf4',
-                      color: '#16a34a',
-                    }}
-                  >
-                    + เพิ่มรายชื่อ
-                  </button>
-                </div>
-
-                {lineKeepers.length === 0 ? (
-                  <div style={{ fontSize: 12, color: '#94a3b8', padding: '12px 0', textAlign: 'center' }}>
-                    ยังไม่มีรายชื่อผู้ดูแลเข็ม (จะส่งแจ้งเตือนหาหัวหน้างานเป็นค่าเริ่มต้น)
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {lineKeepers.map((k, idx) => (
-                      <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          value={k.name}
-                          onChange={(e) => {
-                            const arr = [...lineKeepers]
-                            arr[idx] = { ...arr[idx], name: e.target.value }
-                            setLineKeepers(arr)
-                          }}
-                          placeholder="ชื่อ เช่น สโตร์เข็ม"
-                          style={{
-                            width: 140,
-                            padding: '8px 10px',
-                            borderRadius: 8,
-                            border: '1px solid #cbd5e1',
-                            fontSize: 12,
-                          }}
-                        />
-                        <input
-                          type="text"
-                          value={k.user_id}
-                          onChange={(e) => {
-                            const arr = [...lineKeepers]
-                            arr[idx] = { ...arr[idx], user_id: e.target.value }
-                            setLineKeepers(arr)
-                          }}
-                          placeholder="User ID เช่น U66f... หรือ Group ID C..."
-                          style={{
-                            flex: 1,
-                            padding: '8px 10px',
-                            borderRadius: 8,
-                            border: '1px solid #cbd5e1',
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setLineKeepers(lineKeepers.filter((_, i) => i !== idx))}
-                          style={{
-                            padding: '8px',
-                            borderRadius: 8,
-                            border: '1px solid #fecaca',
-                            background: '#fef2f2',
-                            color: '#ef4444',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
                   </div>
                 )}
               </div>

@@ -1386,9 +1386,9 @@ export default function NeedleStock() {
                     type="button"
                     onClick={() => setKeeperConfigModalOpen(true)}
                     className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
-                    title="ระบุ LINE & Telegram ผู้ดูแลเข็มที่จะรับแจ้งเตือนเบิกเข็ม"
+                    title="ล็อค LINE USER ID คนคัดเข็มที่จะรับแจ้งเตือนเมื่อมีใบเบิกเข็ม Spare"
                   >
-                    <span>⚙️ ผู้ดูแลเข็ม (LINE / TG)</span>
+                    <span>🎯 ล็อคคนคัดเข็ม (LINE / TG)</span>
                   </button>
                 </div>
               </div>

@@ -883,11 +883,11 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
         >
           <Send size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
           <span>
-            ยิงแจ้งเตือนอัตโนมัติไปยัง:{' '}
+            ยิงแจ้งเตือนเด้งตรงไปยัง:{' '}
             <strong style={{ color: '#15803d' }}>
-              {keeperSummary || 'ผู้ดูแลเข็ม / สโตร์เข็ม'}
+              {keeperSummary ? `คนคัดเข็ม (${keeperSummary})` : 'คนคัดเข็ม / ผู้ดูแลสต็อกเข็ม'}
             </strong>{' '}
-            (Telegram & LINE)
+            (LINE & Telegram)
           </span>
         </div>
 

@@ -657,3 +657,220 @@ export function buildTestFlexMessage(appBaseUrl) {
 
   return buildRepairRequestFlexMessage(sampleRequest, null, appBaseUrl)
 }
+
+/**
+ * Builds Flex Bubble for Spare Needle Request
+ */
+export function buildSpareNeedleRequestFlexMessage(snr = {}, cylinder = {}, appBaseUrl) {
+  const serial = snr.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || '—'
+  const reqNo = snr.request_no || snr.id || 'SNR-NEW'
+  const machine = snr.machine_mc || cylinder?.Machine || '—'
+  const gauge = snr.gauge || cylinder?.Gauge || '—'
+  const tech = snr.technician_name || 'ช่าง'
+  const shift = snr.shift || 'กะเช้า'
+  const comment = snr.request_comment || ''
+
+  const dial = snr.tracks_requested?.dial || {}
+  const cyl = snr.tracks_requested?.cylinder || {}
+  const trackItems = []
+  if (dial.t1 > 0) trackItems.push(`Dial Track 1: ${dial.t1} เล่ม`)
+  if (dial.t2 > 0) trackItems.push(`Dial Track 2: ${dial.t2} เล่ม`)
+  if (cyl.t1 > 0) trackItems.push(`Cylinder Track 1: ${cyl.t1} เล่ม`)
+  if (cyl.t2 > 0) trackItems.push(`Cylinder Track 2: ${cyl.t2} เล่ม`)
+  if (cyl.t3 > 0) trackItems.push(`Cylinder Track 3: ${cyl.t3} เล่ม`)
+  if (cyl.t4 > 0) trackItems.push(`Cylinder Track 4: ${cyl.t4} เล่ม`)
+
+  let timeStr = '—'
+  try {
+    timeStr = new Date(snr.created_at || Date.now()).toLocaleString('th-TH', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  } catch {
+    timeStr = String(snr.created_at || '')
+  }
+
+  const prepareUrl = buildPWALineUrl(appBaseUrl, `/repair/${encodeURIComponent(serial)}`, {
+    needle_req: snr.id || '',
+    step: 'prepare',
+  })
+  const stockUrl = buildPWALineUrl(appBaseUrl, '/needle-stock')
+
+  return {
+    type: 'flex',
+    altText: `🪡 ขอเบิกเข็ม Spare: เครื่อง ${machine} (${gauge}) โดย ${tech}`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#312e81',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              {
+                type: 'text',
+                text: 'TextileOps • สโตร์เข็ม',
+                color: '#a5b4fc',
+                size: 'xs',
+                weight: 'bold',
+              },
+              {
+                type: 'text',
+                text: '⏳ รอจัดเตรียม (รอจ่าย)',
+                color: '#fbbf24',
+                size: 'xs',
+                align: 'end',
+                weight: 'bold',
+              },
+            ],
+          },
+          {
+            type: 'text',
+            text: '🪡 ใบขอเบิกเข็ม Spare ประจำเครื่อง',
+            weight: 'bold',
+            size: 'md',
+            color: '#ffffff',
+            margin: 'sm',
+          },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '16px',
+        backgroundColor: '#ffffff',
+        contents: [
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เลขที่ใบเบิก:', color: '#64748b', size: 'xs', flex: 3 },
+                  { type: 'text', text: reqNo, wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 7 },
+                ],
+              },
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เครื่องจักร (M/C):', color: '#64748b', size: 'xs', flex: 3 },
+                  { type: 'text', text: `${machine} (กระบอก: ${serial})`, wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 7 },
+                ],
+              },
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เบอร์ Gauge:', color: '#64748b', size: 'xs', flex: 3 },
+                  { type: 'text', text: String(gauge), wrap: true, color: '#4338ca', size: 'xs', weight: 'bold', flex: 7 },
+                ],
+              },
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'ช่างผู้ขอเบิก:', color: '#64748b', size: 'xs', flex: 3 },
+                  { type: 'text', text: `${tech} (${shift})`, wrap: true, color: '#047857', size: 'xs', weight: 'bold', flex: 7 },
+                ],
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                margin: 'md',
+                paddingAll: '10px',
+                backgroundColor: '#eef2ff',
+                cornerRadius: '8px',
+                borderColor: '#c7d2fe',
+                borderWidth: '1px',
+                contents: [
+                  { type: 'text', text: '📌 Track ที่ขอเบิก:', color: '#4338ca', size: 'xs', weight: 'bold' },
+                  ...(trackItems.length > 0
+                    ? trackItems.map(item => ({
+                        type: 'text',
+                        text: `• ${item}`,
+                        color: '#1e1b4b',
+                        size: 'xs',
+                        weight: 'bold',
+                        margin: 'xs',
+                      }))
+                    : [{
+                        type: 'text',
+                        text: '• ระบุตามหน้างาน',
+                        color: '#64748b',
+                        size: 'xs',
+                        margin: 'xs',
+                      }]),
+                ],
+              },
+              comment ? {
+                type: 'box',
+                layout: 'vertical',
+                margin: 'xs',
+                paddingAll: '8px',
+                backgroundColor: '#f8fafc',
+                cornerRadius: '6px',
+                contents: [
+                  { type: 'text', text: `💬 หมายเหตุ: ${comment}`, color: '#475569', size: 'xs', wrap: true },
+                ],
+              } : null,
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                margin: 'sm',
+                contents: [
+                  { type: 'text', text: 'เวลาขอเบิก:', color: '#94a3b8', size: 'xxs', flex: 3 },
+                  { type: 'text', text: timeStr, color: '#94a3b8', size: 'xxs', flex: 7 },
+                ],
+              },
+            ].filter(Boolean),
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        backgroundColor: '#f8fafc',
+        paddingAll: '14px',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            height: 'sm',
+            color: '#4f46e5',
+            action: {
+              type: 'uri',
+              label: '📦 เปิดจัดเตรียมเข็ม (PWA App)',
+              uri: prepareUrl,
+            },
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            height: 'sm',
+            action: {
+              type: 'uri',
+              label: '📊 ดูสต็อกเข็มทั้งหมด',
+              uri: stockUrl,
+            },
+          },
+        ],
+      },
+    },
+  }
+}
+
