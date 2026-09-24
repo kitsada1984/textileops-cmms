@@ -298,17 +298,44 @@ export const NeedleConfigAPI = createEntityClient('needle_configs')
 
 export const NeedleSetAPI = {
   ...rawNeedleSetClient,
-  list: async (filters = {}) => {
+  list: async () => {
+    // 1. Try dedicated table needle_sets in Supabase
     try {
-      const res = await rawNeedleSetClient.list(filters)
-      const rows = Array.isArray(res) ? res : (res?.data || [])
-      if (rows && rows.length > 0) {
-        return rows.map(normalizeNeedleSet)
+      const { data, error } = await supabase.from('needle_sets').select('*')
+      if (!error && Array.isArray(data) && data.length > 0) {
+        try { localStorage.setItem('textileops_tbl_needle_sets', JSON.stringify(data)) } catch {}
+        return data.map(normalizeNeedleSet)
       }
-      return (initialNeedleSets || []).map(normalizeNeedleSet)
-    } catch {
-      return (initialNeedleSets || []).map(normalizeNeedleSet)
+    } catch {}
+
+    // 2. Fallback to Supabase appconfigs cloud key-value store
+    const cloudSets = await getSystemConfig('needle_sets', {
+      legacyWorkOrderId: 'SYS_NEEDLE_SETS',
+      localCacheKey: 'textileops_tbl_needle_sets',
+      defaultValue: null,
+    })
+
+    if (Array.isArray(cloudSets) && cloudSets.length > 0) {
+      return cloudSets.map(normalizeNeedleSet)
     }
+
+    // 3. Fallback to bundled initialNeedleSets and seed to Supabase in background
+    const defaultList = (initialNeedleSets || []).map(normalizeNeedleSet)
+    saveSystemConfig('needle_sets', defaultList, {
+      legacyWorkOrderId: 'SYS_NEEDLE_SETS',
+      localCacheKey: 'textileops_tbl_needle_sets',
+    }).catch(() => {})
+
+    return defaultList
+  },
+  getById: async (id) => {
+    try {
+      const { data, error } = await supabase.from('needle_sets').select('*').eq('id', id).maybeSingle()
+      if (!error && data) return normalizeNeedleSet(data)
+    } catch {}
+
+    const list = await NeedleSetAPI.list()
+    return list.find((s) => s.id === id || s.setId === id || s.Set_ID === id) || null
   },
   create: async (item) => {
     const norm = normalizeNeedleSet(item)
@@ -330,8 +357,18 @@ export const NeedleSetAPI = {
       Image_URLs: norm.images,
       Location: norm.location,
     }
-    const res = await rawNeedleSetClient.create(payload)
-    return normalizeNeedleSet(res || payload)
+
+    try {
+      await supabase.from('needle_sets').insert([payload])
+    } catch {}
+
+    const list = await NeedleSetAPI.list()
+    const updated = [norm, ...list.filter((s) => s.id !== norm.id)]
+    await saveSystemConfig('needle_sets', updated, {
+      legacyWorkOrderId: 'SYS_NEEDLE_SETS',
+      localCacheKey: 'textileops_tbl_needle_sets',
+    })
+    return norm
   },
   update: async (id, item) => {
     const norm = normalizeNeedleSet({ ...item, id })
@@ -351,22 +388,57 @@ export const NeedleSetAPI = {
       Remarks: norm.remarks,
       Image_URLs: norm.images,
       Location: norm.location,
+      updated_at: new Date().toISOString(),
     }
-    const res = await rawNeedleSetClient.update(id, payload)
-    return normalizeNeedleSet(res || { ...payload, id })
+
+    try {
+      await supabase.from('needle_sets').update(payload).eq('id', id)
+    } catch {}
+
+    const list = await NeedleSetAPI.list()
+    const updated = list.map((s) => (s.id === id || s.setId === id || s.Set_ID === id ? norm : s))
+    await saveSystemConfig('needle_sets', updated, {
+      legacyWorkOrderId: 'SYS_NEEDLE_SETS',
+      localCacheKey: 'textileops_tbl_needle_sets',
+    })
+    return norm
+  },
+  delete: async (id) => {
+    try {
+      await supabase.from('needle_sets').delete().eq('id', id)
+    } catch {}
+
+    const list = await NeedleSetAPI.list()
+    const updated = list.filter((s) => s.id !== id && s.setId !== id && s.Set_ID !== id)
+    await saveSystemConfig('needle_sets', updated, {
+      legacyWorkOrderId: 'SYS_NEEDLE_SETS',
+      localCacheKey: 'textileops_tbl_needle_sets',
+    })
+    return true
   },
 }
 
 export const NeedleHistoryAPI = {
   ...rawNeedleHistoryClient,
-  list: async (filters = {}) => {
+  list: async () => {
     try {
-      const res = await rawNeedleHistoryClient.list(filters)
-      const rows = Array.isArray(res) ? res : (res?.data || [])
-      return rows.map(normalizeNeedleLog)
-    } catch {
-      return []
-    }
+      const { data, error } = await supabase
+        .from('needle_history_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (!error && Array.isArray(data) && data.length > 0) {
+        try { localStorage.setItem('textileops_tbl_needle_history_logs', JSON.stringify(data)) } catch {}
+        return data.map(normalizeNeedleLog)
+      }
+    } catch {}
+
+    const cloudLogs = await getSystemConfig('needle_history_logs', {
+      legacyWorkOrderId: 'SYS_NEEDLE_HISTORY_LOGS',
+      localCacheKey: 'textileops_tbl_needle_history_logs',
+      defaultValue: [],
+    })
+
+    return (cloudLogs || []).map(normalizeNeedleLog)
   },
   create: async (log) => {
     const norm = normalizeNeedleLog(log)
@@ -390,8 +462,18 @@ export const NeedleHistoryAPI = {
       Balance_After: norm.balanceAfter,
       Stock_Detail: norm.stockDetail,
     }
-    const res = await rawNeedleHistoryClient.create(payload)
-    return normalizeNeedleLog(res || payload)
+
+    try {
+      await supabase.from('needle_history_logs').insert([payload])
+    } catch {}
+
+    const currentLogs = await NeedleHistoryAPI.list()
+    const updated = [norm, ...currentLogs]
+    await saveSystemConfig('needle_history_logs', updated, {
+      legacyWorkOrderId: 'SYS_NEEDLE_HISTORY_LOGS',
+      localCacheKey: 'textileops_tbl_needle_history_logs',
+    })
+    return norm
   },
 }
 
