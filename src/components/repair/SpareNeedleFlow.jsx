@@ -303,12 +303,14 @@ export function ActionChoiceModal({ cylinder, serial, onSelectAction, onCancel }
 
 /* ── 2. Track Counter Item Component ─────────────────────────────────────── */
 function TrackCounterItem({ label, checked, quantity, onToggle, onChangeQty }) {
+  const PRESETS = [50, 100, 150, 200, 250, 300]
+
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
+        gap: 10,
         padding: '12px 14px',
         borderRadius: 14,
         background: checked ? '#f0fdf4' : '#f8fafc',
@@ -342,8 +344,9 @@ function TrackCounterItem({ label, checked, quantity, onToggle, onChangeQty }) {
               fontWeight: 800,
               color: '#15803d',
               background: '#dcfce7',
-              padding: '2px 8px',
+              padding: '2px 10px',
               borderRadius: 6,
+              border: '1px solid #bbf7d0',
             }}
           >
             {quantity} ตัว
@@ -355,86 +358,133 @@ function TrackCounterItem({ label, checked, quantity, onToggle, onChangeQty }) {
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: 6,
+            flexDirection: 'column',
+            gap: 8,
+            paddingTop: 8,
             borderTop: '1px dashed #bbf7d0',
           }}
         >
-          {/* Quick buttons */}
-          <div style={{ display: 'flex', gap: 4 }}>
-            {[5, 10, 20].map((add) => (
+          {/* Preset Buttons: 50, 100, 150, 200, 250, 300 */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#15803d', marginBottom: 4 }}>
+              เลือกจำนวน (ครั้งละ 50):
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {PRESETS.map((val) => {
+                const isSelected = quantity === val
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => onChangeQty(val)}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      border: isSelected ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                      background: isSelected ? '#16a34a' : '#ffffff',
+                      color: isSelected ? '#ffffff' : '#334155',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {val}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Stepper & Custom Input: -50 / +50 / +100 and direct input */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 6,
+              background: '#ffffff',
+              padding: '6px 8px',
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <button
-                key={add}
                 type="button"
-                onClick={() => onChangeQty(quantity + add)}
+                onClick={() => onChangeQty(Math.max(1, quantity - 50))}
+                title="ลด 50 ตัว"
                 style={{
-                  padding: '3px 8px',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                -50
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeQty(quantity + 50)}
+                title="เพิ่ม 50 ตัว"
+                style={{
+                  padding: '4px 8px',
                   borderRadius: 6,
                   border: '1px solid #86efac',
-                  background: '#ffffff',
+                  background: '#f0fdf4',
                   color: '#15803d',
                   fontSize: 11,
                   fontWeight: 700,
                   cursor: 'pointer',
                 }}
               >
-                +{add}
+                +50
               </button>
-            ))}
-          </div>
+              <button
+                type="button"
+                onClick={() => onChangeQty(quantity + 100)}
+                title="เพิ่ม 100 ตัว"
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid #86efac',
+                  background: '#f0fdf4',
+                  color: '#15803d',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                +100
+              </button>
+            </div>
 
-          {/* Stepper */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button
-              type="button"
-              onClick={() => onChangeQty(Math.max(1, quantity - 1))}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-            >
-              <Minus size={14} />
-            </button>
-            <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => onChangeQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              style={{
-                width: 44,
-                height: 28,
-                textAlign: 'center',
-                borderRadius: 8,
-                border: '1px solid #86efac',
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => onChangeQty(quantity + 1)}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-            >
-              <Plus size={14} />
-            </button>
+            {/* Manual input */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>กรอกเอง:</span>
+              <input
+                type="number"
+                min="1"
+                step="50"
+                value={quantity}
+                onChange={(e) => onChangeQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                placeholder="ระบุ"
+                style={{
+                  width: 58,
+                  height: 30,
+                  textAlign: 'center',
+                  borderRadius: 6,
+                  border: '1px solid #86efac',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: '#15803d',
+                  background: '#f0fdf4',
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -455,18 +505,19 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  // Track selection state
+  // Track selection state - defaults to 50
   const [dialTracks, setDialTracks] = useState({
-    t1: { active: false, qty: 5 },
-    t2: { active: false, qty: 5 },
+    t1: { active: false, qty: 50 },
+    t2: { active: false, qty: 50 },
   })
 
   const [cylTracks, setCylTracks] = useState({
-    t1: { active: false, qty: 5 },
-    t2: { active: false, qty: 5 },
-    t3: { active: false, qty: 5 },
-    t4: { active: false, qty: 5 },
+    t1: { active: false, qty: 50 },
+    t2: { active: false, qty: 50 },
+    t3: { active: false, qty: 50 },
+    t4: { active: false, qty: 50 },
   })
+
 
   useEffect(() => {
     TechnicianAPI.list().then((list) => {

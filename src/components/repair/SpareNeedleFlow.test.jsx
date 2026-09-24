@@ -4,6 +4,7 @@ import React from 'react'
 import {
   ActionChoiceModal,
   StepAcknowledgeSpareNeedle,
+  StepSpareNeedleRequest,
 } from './SpareNeedleFlow'
 
 describe('SpareNeedleFlow Components', () => {
@@ -76,5 +77,60 @@ describe('SpareNeedleFlow Components', () => {
 
     const ackBtn = screen.getByText(/ได้รับเข็มเรียบร้อย/i)
     expect(ackBtn).toBeInTheDocument()
+  })
+
+  it('StepSpareNeedleRequest initializes tracks with 50 and allows quick presets and manual input', () => {
+    const onSubmitted = vi.fn()
+    const onBack = vi.fn()
+    const cylinder = {
+      Machine: 'DG-341M',
+      Gauge: '28G',
+      Serial_NOW: '63876',
+      Track_1: 'VO 104.41',
+      Track_2: 'VO 104.41',
+      Dial_1: 'WO 104.41',
+    }
+
+    render(
+      <StepSpareNeedleRequest
+        cylinder={cylinder}
+        serial="63876"
+        onSubmitted={onSubmitted}
+        onBack={onBack}
+      />
+    )
+
+    // Check header & machine info
+    expect(screen.getByText('ฟอร์มขอเบิกเข็ม Spare')).toBeInTheDocument()
+    expect(screen.getByText('DG-341M')).toBeInTheDocument()
+
+    // Find Track 1 and click it
+    const track1Label = screen.getAllByText('Track 1')[0]
+    fireEvent.click(track1Label)
+
+    // Default quantity should be 50
+    expect(screen.getByText('50 ตัว')).toBeInTheDocument()
+
+    // Presets should be rendered (50, 100, 150, 200, 250, 300)
+    expect(screen.getByText('เลือกจำนวน (ครั้งละ 50):')).toBeInTheDocument()
+    const preset150 = screen.getByRole('button', { name: '150' })
+    expect(preset150).toBeInTheDocument()
+
+    // Click preset 150
+    fireEvent.click(preset150)
+    expect(screen.getByText('150 ตัว')).toBeInTheDocument()
+
+    // Click +50 button
+    const plus50Btn = screen.getByRole('button', { name: '+50' })
+    fireEvent.click(plus50Btn)
+    expect(screen.getByText('200 ตัว')).toBeInTheDocument()
+
+    // Test manual input field
+    const manualInput = screen.getByPlaceholderText('ระบุ')
+    expect(manualInput).toBeInTheDocument()
+    expect(manualInput.value).toBe('200')
+
+    fireEvent.change(manualInput, { target: { value: '250' } })
+    expect(screen.getByText('250 ตัว')).toBeInTheDocument()
   })
 })
