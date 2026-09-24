@@ -75,6 +75,7 @@ export default function NeedleStock() {
   const [gallerySubtitle, setGallerySubtitle] = useState('')
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0)
   const [galleryZoom, setGalleryZoom] = useState(1)
+  const [currentGallerySet, setCurrentGallerySet] = useState(null)
 
   // Auto-learning combobox store
   const [comboboxStore, setComboboxStore] = useState({
@@ -357,8 +358,9 @@ export default function NeedleStock() {
   const openGallery = (set) => {
     const imgs = (set.images && set.images.length > 0)
       ? set.images.map(img => typeof img === 'string' ? { url: img, name: 'รูปภาพ' } : img)
-      : [{ url: `https://placehold.co/800x600/e2e8f0/64748b?text=ยังไม่มีรูปภาพ+${set.setId}`, name: 'ยังไม่มีรูปภาพ' }]
+      : []
 
+    setCurrentGallerySet(set)
     setGalleryImages(imgs)
     setGalleryTitle(`รูปภาพชุดเข็ม ${set.setId} (${set.machineId || 'ไม่ระบุ'})`)
     setGallerySubtitle(`${set.needleModel} • ${set.grade}`)
@@ -872,7 +874,7 @@ export default function NeedleStock() {
                                 alt={item.needleModel}
                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
                                 onError={(e) => {
-                                  e.target.src = `https://placehold.co/600x400/e2e8f0/64748b?text=เข็ม+${item.machineId || item.setId}`
+                                  e.target.style.display = 'none'
                                 }}
                               />
                               {isGoogleDriveUrl(mainImg) && (
@@ -1374,6 +1376,9 @@ export default function NeedleStock() {
           setActiveIndex={setActiveGalleryIndex}
           zoom={galleryZoom}
           setZoom={setGalleryZoom}
+          onOpenUpdate={() => {
+            if (currentGallerySet) openUpdate(currentGallerySet)
+          }}
         />
       )}
     </div>
@@ -2819,7 +2824,7 @@ function TimelineHistoryModal({ isOpen, onClose, currentSet, historyLogs, onView
 /**
  * 5. Image Gallery & Pan / Zoom Modal
  */
-function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeIndex, setActiveIndex, zoom, setZoom }) {
+function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeIndex, setActiveIndex, zoom, setZoom, onOpenUpdate }) {
   useEffect(() => {
     if (!isOpen) return
     const prevOverflow = document.body.style.overflow
@@ -2834,7 +2839,8 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
     }
   }, [isOpen, onClose])
 
-  const currentImg = images[activeIndex]?.url || images[activeIndex] || ''
+  const currentImg = images && images.length > 0 ? (images[activeIndex]?.url || images[activeIndex] || '') : ''
+  const hasPhotos = Boolean(currentImg)
 
   const handleZoom = (delta) => {
     setZoom(prev => Math.min(3, Math.max(0.5, prev + delta)))
@@ -2859,7 +2865,7 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
             <div>
               <div className="flex items-center space-x-2">
                 <h4 className="text-sm font-semibold">{title}</h4>
-                {isGoogleDriveUrl(currentImg) && (
+                {hasPhotos && isGoogleDriveUrl(currentImg) && (
                   <span className="inline-flex items-center space-x-1 text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">
                     <Cloud className="w-3 h-3 text-emerald-400" />
                     <span>Google Drive</span>
@@ -2871,7 +2877,7 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
           </div>
           {/* Controls */}
           <div className="flex items-center space-x-2">
-            {isGoogleDriveUrl(currentImg) && (
+            {hasPhotos && isGoogleDriveUrl(currentImg) && (
               <a
                 href={currentImg}
                 target="_blank"
@@ -2884,34 +2890,39 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
                 <ExternalLink className="w-3 h-3 opacity-70" />
               </a>
             )}
-            <button
-              type="button"
-              onClick={() => handleZoom(0.25)}
-              className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 transition"
-              title="ซูมเข้า"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleZoom(-0.25)}
-              className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 transition"
-              title="ซูมออก"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={resetZoom}
-              className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 transition"
-              title="รีเซ็ตขนาด"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
+            {hasPhotos && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleZoom(0.25)}
+                  className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 transition"
+                  title="ซูมเข้า"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleZoom(-0.25)}
+                  className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 transition"
+                  title="ซูมออก"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={resetZoom}
+                  className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 transition"
+                  title="รีเซ็ตขนาด"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 bg-rose-600/80 hover:bg-rose-600 rounded-lg text-white ml-2 transition"
+              className="p-1.5 bg-rose-600/80 hover:bg-rose-600 rounded-lg text-white ml-2 transition cursor-pointer"
+              title="ปิดหน้าต่าง"
             >
               <X className="w-5 h-5" />
             </button>
@@ -2919,13 +2930,38 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
         </div>
 
         {/* Viewport */}
-        <div className="flex-1 overflow-auto flex items-center justify-center p-4 min-h-[380px] bg-slate-950 select-none">
-          <img
-            src={getDirectImageUrl(currentImg, 'w1600')}
-            alt=""
-            style={{ transform: `scale(${zoom})`, transition: 'transform 0.15s ease-out' }}
-            className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-lg cursor-grab active:cursor-grabbing"
-          />
+        <div className="flex-1 overflow-auto flex items-center justify-center p-6 min-h-[380px] bg-slate-950 select-none">
+          {hasPhotos ? (
+            <img
+              src={getDirectImageUrl(currentImg, 'w1600')}
+              alt=""
+              style={{ transform: `scale(${zoom})`, transition: 'transform 0.15s ease-out' }}
+              className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-lg cursor-grab active:cursor-grabbing"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center max-w-md">
+              <div className="w-20 h-20 rounded-2xl bg-slate-800/90 border border-slate-700/80 flex items-center justify-center mb-4 text-slate-400 shadow-inner">
+                <ImageIcon className="w-10 h-10 text-slate-400" />
+              </div>
+              <h5 className="text-base font-bold text-slate-100 mb-1.5">ยังไม่มีรูปภาพสำหรับชุดเข็มนี้</h5>
+              <p className="text-xs text-slate-400 leading-relaxed mb-6">
+                ชุดเข็มนี้ยังไม่มีรูปถ่ายแนบไว้ในระบบ สามารถถ่ายรูปภาพสภาพเข็มหรือหลักฐานได้ที่เมนู <b>"อัปเดตเกรด/ตรวจสภาพ"</b> หรือเมื่อ <b>"ทำรายการสต็อก"</b>
+              </p>
+              {onOpenUpdate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose()
+                    onOpenUpdate()
+                  }}
+                  className="inline-flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-sky-600/25 transition cursor-pointer"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>ถ่ายภาพ / เพิ่มรูปผ่านการตรวจสภาพ</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Thumbnail Carousel */}
