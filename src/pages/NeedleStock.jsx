@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Layers, Package, ScrollText, AlertTriangle, Box, ShieldCheck, CheckCircle2, Clock,
   AlertOctagon, PackageCheck, ArrowDownLeft, ArrowUpRight, SlidersHorizontal, Trash2,
@@ -1403,6 +1404,20 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
   const [attachedFiles, setAttachedFiles] = useState([])
   const [submitting, setSubmitting] = useState(false)
 
+  useEffect(() => {
+    if (!isOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
+
   const activeSet = useMemo(() => {
     return needleSets.find(s => s.setId === selectedSetId) || currentSet
   }, [needleSets, selectedSetId, currentSet])
@@ -1560,8 +1575,13 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+  if (!isOpen) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
       <div className="relative max-w-xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className={`px-5 py-4 text-white flex justify-between items-center transition-colors duration-200 ${
@@ -1942,7 +1962,8 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -1963,6 +1984,20 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
   const [remarks, setRemarks] = useState('')
   const [attachedFiles, setAttachedFiles] = useState([])
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
 
   // Smart suggestions for needle models based on selected machine type and gauge
   const modelSuggestions = useMemo(() => {
@@ -2054,8 +2089,13 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+  if (!isOpen) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
       <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-5 py-4 bg-sky-700 text-white flex justify-between items-center">
@@ -2317,7 +2357,8 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -2334,6 +2375,20 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
   const [remarks, setRemarks] = useState('')
   const [attachedFiles, setAttachedFiles] = useState([])
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files || [])
@@ -2411,8 +2466,13 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+  if (!isOpen) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
       <div className="relative max-w-xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-5 py-4 bg-slate-800 text-white flex justify-between items-center">
@@ -2594,7 +2654,8 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -2602,8 +2663,27 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
  * 4. Timeline History Modal
  */
 function TimelineHistoryModal({ isOpen, onClose, currentSet, historyLogs, onViewImage }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+  useEffect(() => {
+    if (!isOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
+
+  if (!isOpen) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
       <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
@@ -2731,7 +2811,8 @@ function TimelineHistoryModal({ isOpen, onClose, currentSet, historyLogs, onView
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -2739,6 +2820,20 @@ function TimelineHistoryModal({ isOpen, onClose, currentSet, historyLogs, onView
  * 5. Image Gallery & Pan / Zoom Modal
  */
 function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeIndex, setActiveIndex, zoom, setZoom }) {
+  useEffect(() => {
+    if (!isOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
+
   const currentImg = images[activeIndex]?.url || images[activeIndex] || ''
 
   const handleZoom = (delta) => {
@@ -2749,8 +2844,13 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
     setZoom(1)
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+  if (!isOpen) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
       <div className="relative max-w-4xl w-full bg-slate-900 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-5 py-3.5 bg-slate-800/80 border-b border-slate-700 flex justify-between items-center text-white">
@@ -2854,6 +2954,7 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
