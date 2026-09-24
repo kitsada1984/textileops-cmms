@@ -993,4 +993,30 @@ export const SpareNeedleRequestAPI = {
     const list = await SpareNeedleRequestAPI.list()
     return list.find((r) => r.id === id) || null
   },
+  delete: async (id) => {
+    try {
+      const { error } = await supabase
+        .from('spare_needle_requests')
+        .delete()
+        .eq('id', id)
+      if (!error) {
+        try {
+          const raw = localStorage.getItem('txops_tbl_spare_needle_requests')
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            const filtered = parsed.filter((r) => r.id !== id)
+            localStorage.setItem('txops_tbl_spare_needle_requests', JSON.stringify(filtered))
+          }
+        } catch {}
+        return true
+      }
+    } catch (e) {
+      console.warn('spare_needle_requests delete error, falling back to sys config:', e)
+    }
+
+    const list = await SpareNeedleRequestAPI.list()
+    const updated = list.filter((r) => r.id !== id)
+    await SpareNeedleRequestAPI.saveAll(updated)
+    return true
+  },
 }

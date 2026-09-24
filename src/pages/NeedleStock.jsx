@@ -17,6 +17,8 @@ import {
   StepAcknowledgeSpareNeedle,
 } from '../components/repair/SpareNeedleFlow'
 import NeedleKeeperConfigModal from '../components/repair/NeedleKeeperConfigModal'
+import CreateSpareNeedleModal from '../components/repair/CreateSpareNeedleModal'
+import EditSpareNeedleModal from '../components/repair/EditSpareNeedleModal'
 import { uploadMedia } from '../modules/media/mediaUploader'
 import { getDirectImageUrl, isGoogleDriveUrl } from '../utils/imageUrlUtils'
 import { formatNeedleStockFileName } from '../utils/needleStockUtils'
@@ -59,6 +61,12 @@ export default function NeedleStock() {
   const [prepareModalOpen, setPrepareModalOpen] = useState(false)
   const [selectedSpareReq, setSelectedSpareReq] = useState(null)
   const [keeperConfigModalOpen, setKeeperConfigModalOpen] = useState(false)
+  const [createSpareModalOpen, setCreateSpareModalOpen] = useState(false)
+  const [editSpareModalOpen, setEditSpareModalOpen] = useState(false)
+  const [selectedEditReq, setSelectedEditReq] = useState(null)
+  const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false)
+  const [selectedDeleteReq, setSelectedDeleteReq] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Inventory Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -169,6 +177,79 @@ export default function NeedleStock() {
       if (obj.stockDetail && obj.stockDetail.trim()) next.stockDetail = new Set([...prev.stockDetail, obj.stockDetail.trim()])
       return next
     })
+  }
+
+  // Handle Delete Spare Needle Request (with Automatic Stock Refund)
+  const handleConfirmDeleteSpareRequest = async () => {
+    if (!selectedDeleteReq) return
+    setDeleteLoading(true)
+    try {
+      let returnedCount = 0
+      const req = selectedDeleteReq
+
+      // If items were issued/deducted from stock, restore them to store stock
+      if (Array.isArray(req.issued_items) && req.issued_items.length > 0) {
+        for (const item of req.issued_items) {
+          if (!item.setId) continue
+          let setRecord = needleSets.find((s) => s.id === item.setId)
+          if (!setRecord) {
+            try {
+              setRecord = await NeedleSetAPI.getById(item.setId)
+            } catch {}
+          }
+          if (setRecord) {
+            const currentBal = parseInt(setRecord.quantity, 10) || 0
+            const returnQty = parseInt(item.quantity, 10) || 0
+            const newBal = currentBal + returnQty
+            returnedCount += returnQty
+
+            // 1. Restore stock balance in store
+            await NeedleSetAPI.update(item.setId, {
+              ...setRecord,
+              quantity: newBal,
+              Quantity: newBal,
+            })
+
+            // 2. Create ledger history record (RETURN_SPARE)
+            await NeedleHistoryAPI.create({
+              id: `LOG-RETURN-SPARE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              setId: item.setId,
+              actionType: 'RETURN_SPARE',
+              oldGrade: setRecord.grade,
+              newGrade: setRecord.grade,
+              conditionDetail: setRecord.conditionDetail,
+              quantity: returnQty,
+              dateAction: new Date().toISOString().slice(0, 10),
+              technician: user?.name || user?.username || 'ผู้ดูแลระบบ',
+              remarks: `ยกเลิก/ลบใบเบิก ${req.request_no || req.id} คืนเข็ม Spare เข้าคลังสต็อกอัตโนมัติ`,
+              targetMachine: req.machine_mc,
+              qtyChange: `+${returnQty}`,
+              balanceAfter: newBal,
+              stockDetail: 'SPARE',
+            })
+          }
+        }
+      }
+
+      // 3. Delete the request
+      await SpareNeedleRequestAPI.delete(req.id)
+
+      setSpareRequests((prev) => prev.filter((r) => r.id !== req.id))
+      setDeleteConfirmModalOpen(false)
+      setSelectedDeleteReq(null)
+      loadData(true)
+
+      if (returnedCount > 0) {
+        toast.success(`ลบใบเบิก ${req.request_no || req.id} สำเร็จ พร้อมคืนเข็ม ${returnedCount} ตัวกลับเข้าคลังสต็อกเรียบร้อยแล้ว`)
+      } else {
+        toast.success(`ลบใบเบิก ${req.request_no || req.id} เรียบร้อยแล้ว`)
+      }
+    } catch (err) {
+      console.error('Delete spare needle request error:', err)
+      toast.error('ไม่สามารถลบใบเบิกได้: ' + (err.message || err))
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   // KPIs calculation
@@ -1384,6 +1465,14 @@ export default function NeedleStock() {
                   </div>
                   <button
                     type="button"
+                    onClick={() => setCreateSpareModalOpen(true)}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs whitespace-nowrap"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>+ ขอเบิกเข็ม Spare</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setKeeperConfigModalOpen(true)}
                     className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
                     title="ล็อค LINE USER ID คนคัดเข็มที่จะรับแจ้งเตือนเมื่อมีใบเบิกเข็ม Spare"
@@ -1509,31 +1598,61 @@ export default function NeedleStock() {
                                 )}
                               </td>
                               <td className="p-3.5 text-center whitespace-nowrap">
-                                {req.status === 'PENDING' ? (
+                                <div className="inline-flex items-center gap-1.5 justify-center">
+                                  {req.status === 'PENDING' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSpareReq(req)
+                                        setPrepareModalOpen(true)
+                                      }}
+                                      className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                                      title="จัดเตรียมเข็มและตัดสต็อกออกจากคลัง"
+                                    >
+                                      <PackageCheck className="w-3.5 h-3.5" />
+                                      <span>จัดเตรียม</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSpareReq(req)
+                                        setPrepareModalOpen(true)
+                                      }}
+                                      className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                                      title="ดูรายละเอียดการตัดสต็อก"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>ดูข้อมูล</span>
+                                    </button>
+                                  )}
+
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setSelectedSpareReq(req)
-                                      setPrepareModalOpen(true)
+                                      setSelectedEditReq(req)
+                                      setEditSpareModalOpen(true)
                                     }}
-                                    className="inline-flex items-center space-x-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                                    className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                                    title="แก้ไขข้อมูลใบเบิกเข็ม"
                                   >
-                                    <PackageCheck className="w-3.5 h-3.5" />
-                                    <span>จัดเตรียม & ตัดสต็อก</span>
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span>แก้ไข</span>
                                   </button>
-                                ) : (
+
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setSelectedSpareReq(req)
-                                      setPrepareModalOpen(true)
+                                      setSelectedDeleteReq(req)
+                                      setDeleteConfirmModalOpen(true)
                                     }}
-                                    className="inline-flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                                    className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                                    title={req.issued_items?.length > 0 ? "ลบใบเบิกและคืนเข็มเข้าคลังสต็อกอัตโนมัติ" : "ลบใบเบิก"}
                                   >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>ดูรายละเอียด</span>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>ลบ</span>
                                   </button>
-                                )}
+                                </div>
                               </td>
                             </tr>
                           )
@@ -1595,6 +1714,127 @@ export default function NeedleStock() {
         onClose={() => setKeeperConfigModalOpen(false)}
         onSuccess={() => toast.success('บันทึกการตั้งค่าผู้ดูแลเข็มเรียบร้อยแล้ว')}
       />
+
+      {/* 0.1 CREATE SPARE NEEDLE REQUEST MODAL */}
+      <CreateSpareNeedleModal
+        isOpen={createSpareModalOpen}
+        onClose={() => setCreateSpareModalOpen(false)}
+        currentUser={user}
+        onSuccess={(newReq) => {
+          setSpareRequests((prev) => [newReq, ...prev])
+          loadData(true)
+          toast.success(`สร้างใบขอเบิกเข็ม ${newReq.request_no || newReq.id} เรียบร้อยแล้ว`)
+        }}
+      />
+
+      {/* 0.2 EDIT SPARE NEEDLE REQUEST MODAL */}
+      <EditSpareNeedleModal
+        isOpen={editSpareModalOpen}
+        req={selectedEditReq}
+        onClose={() => {
+          setEditSpareModalOpen(false)
+          setSelectedEditReq(null)
+        }}
+        onSuccess={(updatedReq) => {
+          setSpareRequests((prev) => prev.map((r) => (r.id === updatedReq.id ? updatedReq : r)))
+          loadData(true)
+          toast.success(`อัปเดตใบเบิกเข็ม ${updatedReq.request_no || updatedReq.id} เรียบร้อยแล้ว`)
+        }}
+      />
+
+      {/* 0.3 DELETE CONFIRMATION MODAL WITH AUTO STOCK RETURN */}
+      {deleteConfirmModalOpen && selectedDeleteReq && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => !deleteLoading && setDeleteConfirmModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">ยืนยันการลบใบเบิกเข็ม Spare</h3>
+                <p className="text-xs text-slate-500 font-mono">{selectedDeleteReq.request_no || selectedDeleteReq.id}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-1.5 text-xs text-slate-700 mb-4">
+              <div className="flex justify-between">
+                <span className="text-slate-500">เครื่องจักร (MC):</span>
+                <span className="font-bold text-slate-800">{selectedDeleteReq.machine_mc || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">ช่างผู้ขอ:</span>
+                <span className="font-semibold">{selectedDeleteReq.technician_name} ({selectedDeleteReq.shift})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">สถานะ:</span>
+                <span className="font-bold">
+                  {selectedDeleteReq.status === 'PENDING' && '⏳ รอจัดเตรียม'}
+                  {selectedDeleteReq.status === 'PREPARED' && '📦 เตรียมแล้ว (รอรับ)'}
+                  {selectedDeleteReq.status === 'COMPLETED' && '✅ รับเข็มเรียบร้อย'}
+                </span>
+              </div>
+            </div>
+
+            {/* Auto Stock Return Alert */}
+            {selectedDeleteReq.issued_items && selectedDeleteReq.issued_items.length > 0 ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 space-y-2 mb-5">
+                <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                  <RotateCw className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>คืนสต็อกเข้าคลังอัตโนมัติ (Auto Stock Return)</span>
+                </div>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  ใบเบิกนี้ได้ตัดจ่ายเข็มออกจากคลังสต็อกไปแล้ว ระบบจะทำการ <strong>คืนยอดเข็มกลับเข้าคลังสต็อก</strong> และบันทึกประวัติการรับคืน (RETURN_SPARE) ให้ทันที:
+                </p>
+                <div className="bg-white/80 rounded-lg p-2 border border-amber-200/60 space-y-1">
+                  {selectedDeleteReq.issued_items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-[11px]">
+                      <span className="font-medium text-slate-800">{item.needleModel || item.setId} ({item.grade})</span>
+                      <span className="font-bold text-emerald-600">+{item.quantity} ตัว</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 mb-5">
+                ใบเบิกนี้ยังไม่ได้ตัดจ่ายสต็อกเข็ม การลบจะยกเลิกคำขอนี้โดยไม่มีผลกระทบต่อยอดสต็อก
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={() => setDeleteConfirmModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={handleConfirmDeleteSpareRequest}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                {deleteLoading ? (
+                  <span>กำลังลบ & คืนสต็อก...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>ยืนยันลบ {selectedDeleteReq.issued_items?.length > 0 ? '& คืนสต็อก' : ''}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 1. STOCK TRANSACTION MODAL */}
       {stockModalOpen && (

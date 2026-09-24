@@ -7,6 +7,7 @@ import {
   calculateSundayMinutes,
   countWorkingDaysExcludingSundays,
   normalizeSpareNeedleRequest,
+  SpareNeedleRequestAPI,
 } from './entities'
 
 describe('CenterCheck Entities & Helpers', () => {
@@ -100,6 +101,14 @@ describe('SpareNeedleRequest Entities & Normalizer', () => {
 
   it('identifies SYS_SPARE_NEEDLE_REQUESTS as a system work order', () => {
     expect(isSystemWorkOrder({ WO_ID: 'SYS_SPARE_NEEDLE_REQUESTS' })).toBe(true)
+  })
+
+  it('exposes list, create, update, getById, and delete on SpareNeedleRequestAPI', () => {
+    expect(typeof SpareNeedleRequestAPI.list).toBe('function')
+    expect(typeof SpareNeedleRequestAPI.create).toBe('function')
+    expect(typeof SpareNeedleRequestAPI.update).toBe('function')
+    expect(typeof SpareNeedleRequestAPI.getById).toBe('function')
+    expect(typeof SpareNeedleRequestAPI.delete).toBe('function')
   })
 })
 
