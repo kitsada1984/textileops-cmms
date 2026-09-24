@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Wrench,
   Layers,
@@ -932,6 +932,7 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
   const [loadingSets, setLoadingSets] = useState(true)
   const [issuerName, setIssuerName] = useState('')
   const [issuerComment, setIssuerComment] = useState('')
+  const [selectedMachine, setSelectedMachine] = useState('')
   const [selectedSetId, setSelectedSetId] = useState('')
   const [issueQty, setIssueQty] = useState(10)
   const [issuedItems, setIssuedItems] = useState(snr.issued_items || [])
@@ -944,19 +945,78 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
       setStockSets(available)
       setLoadingSets(false)
 
-      // Try auto-selecting matching machine or gauge
-      const match = available.find(
-        (s) => s.machineId === (snr.machine_mc || cylinder?.Machine) || s.gauge === snr.gauge
+      // Machine from request or cylinder
+      const requestedMc = (snr.machine_mc || cylinder?.Machine || '').trim()
+
+      // Check if any available sets match requestedMc
+      const mcMatches = available.filter(
+        (s) => (s.machineId || s.Machine_ID || '').trim().toLowerCase() === requestedMc.toLowerCase()
       )
-      if (match) {
-        setSelectedSetId(match.id)
-      } else if (available.length > 0) {
-        setSelectedSetId(available[0].id)
+
+      if (mcMatches.length > 0) {
+        setSelectedMachine(requestedMc)
+        const match = mcMatches.find((s) => s.gauge === snr.gauge) || mcMatches[0]
+        if (match) setSelectedSetId(match.id)
+      } else {
+        setSelectedMachine('ALL')
+        const match = available.find(
+          (s) => s.gauge === snr.gauge || (s.machineId || s.Machine_ID || '').trim().toLowerCase() === requestedMc.toLowerCase()
+        )
+        if (match) {
+          setSelectedSetId(match.id)
+        } else if (available.length > 0) {
+          setSelectedSetId(available[0].id)
+        }
       }
     })
-  }, [snr.machine_mc, snr.gauge])
+  }, [snr.machine_mc, snr.gauge, cylinder])
 
-  const selectedSet = stockSets.find((s) => s.id === selectedSetId)
+  // Extract unique machines from available stock
+  const availableMachines = useMemo(() => {
+    const mcs = new Set()
+    stockSets.forEach((s) => {
+      const mc = (s.machineId || s.Machine_ID || '').trim()
+      if (mc) mcs.add(mc)
+    })
+    return Array.from(mcs).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
+  }, [stockSets])
+
+  // Filter sets according to selected machine
+  const filteredSets = useMemo(() => {
+    if (!selectedMachine || selectedMachine === 'ALL') return stockSets
+    return stockSets.filter(
+      (s) => (s.machineId || s.Machine_ID || '').trim().toLowerCase() === selectedMachine.trim().toLowerCase()
+    )
+  }, [stockSets, selectedMachine])
+
+  // Keep selectedSetId synchronized when filteredSets changes
+  useEffect(() => {
+    if (filteredSets.length > 0) {
+      const stillInFiltered = filteredSets.some((s) => s.id === selectedSetId)
+      if (!stillInFiltered) {
+        const match = filteredSets.find((s) => s.gauge === snr.gauge) || filteredSets[0]
+        if (match) setSelectedSetId(match.id)
+      }
+    } else {
+      setSelectedSetId('')
+    }
+  }, [filteredSets, selectedSetId, snr.gauge])
+
+  const handleMachineChange = (newMachine) => {
+    setSelectedMachine(newMachine)
+    const nextFiltered = (!newMachine || newMachine === 'ALL')
+      ? stockSets
+      : stockSets.filter((s) => (s.machineId || s.Machine_ID || '').trim().toLowerCase() === newMachine.trim().toLowerCase())
+
+    const match = nextFiltered.find((s) => s.gauge === snr.gauge) || nextFiltered[0]
+    if (match) {
+      setSelectedSetId(match.id)
+    } else {
+      setSelectedSetId('')
+    }
+  }
+
+  const selectedSet = filteredSets.find((s) => s.id === selectedSetId) || (filteredSets.length > 0 ? filteredSets[0] : null)
 
   const handleAddIssuedItem = () => {
     if (!selectedSet) return
@@ -977,6 +1037,7 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
         needleModel: selectedSet.needleModel,
         gauge: selectedSet.gauge,
         grade: selectedSet.grade,
+        machineId: selectedSet.machineId || selectedSet.Machine_ID || '',
         quantity: qty,
       },
     ])
@@ -1149,13 +1210,78 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
           </div>
         ) : (
           <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px', border: '1px solid #e2e8f0' }}>
+            {/* 1. Machine MC Selector */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <label
+                  htmlFor="spare-machine-select"
+                  style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}
+                >
+                  <Cpu size={14} style={{ color: '#2563eb' }} />
+                  1. เลือกเบอร์เครื่องจักร (Machine MC) ก่อนเลือกรหัสเข็ม
+                </label>
+                {selectedMachine && selectedMachine !== 'ALL' && (
+                  <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 700 }}>
+                    พบ {filteredSets.length} รายการ
+                  </span>
+                )}
+              </div>
+              <select
+                id="spare-machine-select"
+                data-testid="spare-machine-select"
+                value={selectedMachine}
+                onChange={(e) => handleMachineChange(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1.5px solid #93c5fd',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: '#eff6ff',
+                  color: '#1e3a8a',
+                  outline: 'none',
+                }}
+              >
+                <option value="ALL">-- แสดงเข็มทุกเครื่อง (All Machines) ({stockSets.length} รายการ) --</option>
+                {availableMachines.map((mc) => {
+                  const reqMc = (snr.machine_mc || cylinder?.Machine || '').trim()
+                  const isReq = reqMc && mc.toLowerCase() === reqMc.toLowerCase()
+                  const count = stockSets.filter((s) => (s.machineId || s.Machine_ID || '').trim().toLowerCase() === mc.toLowerCase()).length
+                  return (
+                    <option key={mc} value={mc}>
+                      เครื่อง {mc} ({count} รายการ) {isReq ? '★ (เครื่องที่ขอเบิก)' : ''}
+                    </option>
+                  )
+                })}
+                {(snr.machine_mc || cylinder?.Machine) &&
+                  !availableMachines.some(
+                    (mc) => mc.toLowerCase() === (snr.machine_mc || cylinder?.Machine || '').trim().toLowerCase()
+                  ) && (
+                    <option value={(snr.machine_mc || cylinder?.Machine).trim()}>
+                      เครื่อง {(snr.machine_mc || cylinder?.Machine).trim()} (ไม่มีเข็มเฉพาะเครื่องในระบบ) ★ (เครื่องที่ขอเบิก)
+                    </option>
+                  )}
+              </select>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+                💡 เลือกรหัสเครื่อง เช่น <b>{snr.machine_mc || 'DG-341M'}</b> เพื่อกรองดูเฉพาะชุดเข็มของเครื่องนั้น หรือเลือก &quot;แสดงเข็มทุกเครื่อง&quot;
+              </div>
+            </div>
+
+            {/* 2. Needle Set Selector */}
             <div style={{ marginBottom: 10 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
-                เลือกชุดเข็มในสต็อก ({stockSets.length} รายการพร้อมจ่าย)
+              <label
+                htmlFor="spare-needle-set-select"
+                style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}
+              >
+                2. เลือกชุดเข็มในสต็อก ({filteredSets.length} รายการ {selectedMachine && selectedMachine !== 'ALL' ? `ของเครื่อง ${selectedMachine}` : 'พร้อมจ่ายทั้งหมด'})
               </label>
               <select
-                value={selectedSetId}
+                id="spare-needle-set-select"
+                data-testid="spare-needle-set-select"
+                value={selectedSet ? selectedSet.id : ''}
                 onChange={(e) => setSelectedSetId(e.target.value)}
+                disabled={filteredSets.length === 0}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -1163,14 +1289,18 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
                   border: '1px solid #cbd5e1',
                   fontSize: 13,
                   fontWeight: 600,
-                  background: '#ffffff',
+                  background: filteredSets.length === 0 ? '#f1f5f9' : '#ffffff',
                 }}
               >
-                {stockSets.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    [{s.setId}] {s.needleModel} ({s.gauge}) · {s.grade} · คงเหลือ {s.quantity} ตัว
-                  </option>
-                ))}
+                {filteredSets.length === 0 ? (
+                  <option value="">-- ไม่พบรายการเข็มในสต็อกสำหรับเครื่องนี้ (กรุณาเลือกเครื่องอื่นหรือ All) --</option>
+                ) : (
+                  filteredSets.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      [{s.setId}] {(s.machineId || s.Machine_ID) ? `(${s.machineId || s.Machine_ID}) ` : ''}{s.needleModel} ({s.gauge}) · {s.grade} · คงเหลือ {s.quantity} ตัว
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -1239,6 +1369,11 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
                     >
                       <div>
                         <b>{item.needleModel}</b> ({item.gauge}) · {item.grade}
+                        {item.machineId && (
+                          <span style={{ marginLeft: 6, fontSize: 11, background: '#eff6ff', color: '#2563eb', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                            {item.machineId}
+                          </span>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontWeight: 800, color: '#2563eb' }}>{item.quantity} ตัว</span>
