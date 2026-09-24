@@ -417,3 +417,176 @@ export async function testLineNotification() {
     })
   }
 }
+
+/**
+ * Sends Spare Needle Requested Notification to LINE
+ */
+export async function notifyLineSpareNeedleRequested(snr, cylinder) {
+  try {
+    const cfg = await loadLineSettingsDB()
+    if (!cfg.is_enabled) return { ok: false, skipped: true }
+
+    const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+    const serial = snr.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || ''
+    const reqId = snr.id || ''
+    const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?needle_req=${encodeURIComponent(reqId)}&step=prepare&openExternalBrowser=1`
+
+    const dial = snr.tracks_requested?.dial || {}
+    const cyl = snr.tracks_requested?.cylinder || {}
+    const trackLines = []
+    if (dial.t1 > 0 || dial.t2 > 0) {
+      const parts = []
+      if (dial.t1 > 0) parts.push(`T1: ${dial.t1} ตัว`)
+      if (dial.t2 > 0) parts.push(`T2: ${dial.t2} ตัว`)
+      trackLines.push(`• Dial: ${parts.join(', ')}`)
+    }
+    if (cyl.t1 > 0 || cyl.t2 > 0 || cyl.t3 > 0 || cyl.t4 > 0) {
+      const parts = []
+      if (cyl.t1 > 0) parts.push(`T1: ${cyl.t1} ตัว`)
+      if (cyl.t2 > 0) parts.push(`T2: ${cyl.t2} ตัว`)
+      if (cyl.t3 > 0) parts.push(`T3: ${cyl.t3} ตัว`)
+      if (cyl.t4 > 0) parts.push(`T4: ${cyl.t4} ตัว`)
+      trackLines.push(`• Cylinder: ${parts.join(', ')}`)
+    }
+
+    const textMessage = [
+      `\n🪡 [ขอเบิกเข็ม Spare ประจำเครื่อง]`,
+      `📋 เลขที่: ${snr.request_no || snr.id}`,
+      `🏭 เครื่อง: ${snr.machine_mc || cylinder?.Machine || '—'} (กระบอก: ${serial})`,
+      `📐 Gauge: ${snr.gauge || cylinder?.Gauge || '—'}`,
+      `👷 ผู้ขอเบิก: ${snr.technician_name} (${snr.shift || 'กะเช้า'})`,
+      `📌 รายการ Track ที่ต้องการ:`,
+      trackLines.join('\n') || '— ตามระบุ —',
+      snr.request_comment ? `💬 หมายเหตุ: ${snr.request_comment}` : '',
+      `👉 แตะเพื่อจัดเตรียมเข็ม: ${directUrl}`,
+    ].filter(Boolean).join('\n')
+
+    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+
+    if (effectiveProvider === 'line_oa' && cfg.channel_access_token) {
+      const targetIds = getSupervisorLineIds(cfg)
+      if (!targetIds.length) return { ok: false, skipped: true }
+      const results = await Promise.all(targetIds.map(targetId =>
+        sendLineNotification({
+          type: 'text',
+          token: cfg.channel_access_token,
+          targetId,
+          textMessage,
+        })
+      ))
+      return { ok: true, results }
+    } else if (cfg.notify_token) {
+      return await sendLineNotification({
+        type: 'notify',
+        notifyToken: cfg.notify_token,
+        textMessage,
+      })
+    }
+  } catch (err) {
+    console.warn('[LINE Spare Request Error]', err)
+    return { ok: false, error: err.message }
+  }
+}
+
+/**
+ * Sends Spare Needle Prepared Notification to LINE
+ */
+export async function notifyLineSpareNeedlePrepared(snr, cylinder) {
+  try {
+    const cfg = await loadLineSettingsDB()
+    if (!cfg.is_enabled) return { ok: false, skipped: true }
+
+    const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+    const serial = snr.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || ''
+    const reqId = snr.id || ''
+    const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?needle_req=${encodeURIComponent(reqId)}&step=ack&openExternalBrowser=1`
+
+    const issuedList = (snr.issued_items || []).map(item =>
+      `• ${item.needleModel || item.setId || 'เข็ม'}: ${item.quantity || 0} ตัว (${item.grade || 'เกรด B'})`
+    ).join('\n')
+
+    const textMessage = [
+      `\n📦 [เข็ม Spare จัดเตรียมเรียบร้อยแล้ว]`,
+      `📋 เลขที่: ${snr.request_no || snr.id}`,
+      `🏭 เครื่อง: ${snr.machine_mc || cylinder?.Machine || '—'}`,
+      `👷 ผู้ขอเบิก: ${snr.technician_name}`,
+      `👨‍💼 ผู้จ่ายเข็ม: ${snr.issuer_name || 'สโตร์เข็ม'}`,
+      `🎯 รายการเข็มที่จัดเตรียม:`,
+      issuedList || '— ตามรายการที่ขอ —',
+      snr.issuer_comment ? `💬 หมายเหตุ: ${snr.issuer_comment}` : '',
+      `👉 แตะเพื่อตรวจสอบและกดรับทราบ: ${directUrl}`,
+    ].filter(Boolean).join('\n')
+
+    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+
+    if (effectiveProvider === 'line_oa' && cfg.channel_access_token) {
+      const techTargetId = getTechnicianLineId(cfg, snr.technician_name)
+      const supervisorIds = getSupervisorLineIds(cfg)
+      const targetIds = Array.from(new Set([techTargetId, ...supervisorIds].filter(Boolean)))
+      if (!targetIds.length) return { ok: false, skipped: true }
+      const results = await Promise.all(targetIds.map(targetId =>
+        sendLineNotification({
+          type: 'text',
+          token: cfg.channel_access_token,
+          targetId,
+          textMessage,
+        })
+      ))
+      return { ok: true, results }
+    } else if (cfg.notify_token) {
+      return await sendLineNotification({
+        type: 'notify',
+        notifyToken: cfg.notify_token,
+        textMessage,
+      })
+    }
+  } catch (err) {
+    console.warn('[LINE Spare Prepared Error]', err)
+    return { ok: false, error: err.message }
+  }
+}
+
+/**
+ * Sends Spare Needle Received Notification to LINE
+ */
+export async function notifyLineSpareNeedleReceived(snr, cylinder) {
+  try {
+    const cfg = await loadLineSettingsDB()
+    if (!cfg.is_enabled) return { ok: false, skipped: true }
+
+    const textMessage = [
+      `\n🎉 [รับเข็ม Spare เรียบร้อย - ปิดงาน]`,
+      `📋 เลขที่: ${snr.request_no || snr.id}`,
+      `🏭 เครื่อง: ${snr.machine_mc || cylinder?.Machine || '—'}`,
+      `👷 ผู้รับเข็ม: ${snr.technician_name}`,
+      `⏰ เวลารับเข็ม: ${new Date(snr.acknowledged_at || Date.now()).toLocaleString('th-TH')}`,
+      `✅ สถานะ: ปิดงานเบิกเข็ม Spare สมบูรณ์`,
+    ].join('\n')
+
+    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+
+    if (effectiveProvider === 'line_oa' && cfg.channel_access_token) {
+      const targetIds = getSupervisorLineIds(cfg)
+      if (!targetIds.length) return { ok: false, skipped: true }
+      const results = await Promise.all(targetIds.map(targetId =>
+        sendLineNotification({
+          type: 'text',
+          token: cfg.channel_access_token,
+          targetId,
+          textMessage,
+        })
+      ))
+      return { ok: true, results }
+    } else if (cfg.notify_token) {
+      return await sendLineNotification({
+        type: 'notify',
+        notifyToken: cfg.notify_token,
+        textMessage,
+      })
+    }
+  } catch (err) {
+    console.warn('[LINE Spare Received Error]', err)
+    return { ok: false, error: err.message }
+  }
+}
+

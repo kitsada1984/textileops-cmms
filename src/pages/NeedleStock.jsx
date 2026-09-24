@@ -10,8 +10,12 @@ import {
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  NeedleSetAPI, NeedleHistoryAPI, normalizeNeedleSet, normalizeNeedleLog
+  NeedleSetAPI, NeedleHistoryAPI, SpareNeedleRequestAPI, normalizeNeedleSet, normalizeNeedleLog, normalizeSpareNeedleRequest
 } from '../api/entities'
+import {
+  StepPrepareSpareNeedle,
+  StepAcknowledgeSpareNeedle,
+} from '../components/repair/SpareNeedleFlow'
 import { uploadMedia } from '../modules/media/mediaUploader'
 import { getDirectImageUrl, isGoogleDriveUrl } from '../utils/imageUrlUtils'
 import { formatNeedleStockFileName } from '../utils/needleStockUtils'
@@ -44,8 +48,15 @@ export default function NeedleStock() {
   const [refreshing, setRefreshing] = useState(false)
 
   // Navigation & View state
-  const [activeTab, setActiveTab] = useState('inventory') // 'inventory' | 'ledger'
+  const [activeTab, setActiveTab] = useState('inventory') // 'inventory' | 'ledger' | 'spare_requests'
   const [viewMode, setViewMode] = useState('grid') // 'grid' | 'table'
+
+  // Spare Requests State
+  const [spareRequests, setSpareRequests] = useState([])
+  const [spareFilterStatus, setSpareFilterStatus] = useState('ALL') // 'ALL' | 'PENDING' | 'PREPARED' | 'COMPLETED'
+  const [spareSearchQuery, setSpareSearchQuery] = useState('')
+  const [prepareModalOpen, setPrepareModalOpen] = useState(false)
+  const [selectedSpareReq, setSelectedSpareReq] = useState(null)
 
   // Inventory Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -94,9 +105,10 @@ export default function NeedleStock() {
       if (isManual) setRefreshing(true)
       else setLoading(true)
 
-      const [setsData, logsData] = await Promise.all([
+      const [setsData, logsData, spareData] = await Promise.all([
         NeedleSetAPI.list(),
         NeedleHistoryAPI.list(),
+        SpareNeedleRequestAPI.list(),
       ])
 
       const validSets = Array.isArray(setsData) && setsData.length > 0
@@ -105,6 +117,7 @@ export default function NeedleStock() {
 
       setNeedleSets(validSets)
       setHistoryLogs(Array.isArray(logsData) ? logsData : [])
+      setSpareRequests(Array.isArray(spareData) ? spareData : [])
 
       // Seed combobox store from loaded sets
       setComboboxStore(prev => {
@@ -480,7 +493,30 @@ export default function NeedleStock() {
               {historyLogs.length}
             </span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('spare_requests')}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center space-x-2 transition cursor-pointer ${
+              activeTab === 'spare_requests'
+                ? 'bg-white text-slate-900 border border-slate-200 shadow-xs font-bold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-indigo-600" />
+            <span>รายการขอเบิกเข็ม Spare</span>
+            {spareRequests.filter(r => r.status === 'PENDING').length > 0 ? (
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-amber-500 text-white font-bold animate-pulse">
+                รอจ่าย {spareRequests.filter(r => r.status === 'PENDING').length}
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-600 font-semibold">
+                {spareRequests.length}
+              </span>
+            )}
+          </button>
         </div>
+
 
         {/* LOW STOCK ALERT BANNER */}
         {kpis.lowStockCount > 0 && (
@@ -1292,9 +1328,254 @@ export default function NeedleStock() {
             </div>
           </section>
         )}
+
+        {/* TAB 3: SPARE NEEDLE REQUESTS VIEW */}
+        {activeTab === 'spare_requests' && (
+          <section className="space-y-4">
+            {/* Toolbar */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                {/* Status Filter Pills */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { key: 'ALL', label: 'ทั้งหมด', count: spareRequests.length, activeClass: 'bg-slate-800 text-white' },
+                    { key: 'PENDING', label: '⏳ รอจัดเตรียม (รอจ่าย)', count: spareRequests.filter(r => r.status === 'PENDING').length, activeClass: 'bg-amber-600 text-white' },
+                    { key: 'PREPARED', label: '📦 จัดเตรียมแล้ว (รอรับ)', count: spareRequests.filter(r => r.status === 'PREPARED').length, activeClass: 'bg-blue-600 text-white' },
+                    { key: 'COMPLETED', label: '✅ รับเข็มเรียบร้อย', count: spareRequests.filter(r => r.status === 'COMPLETED').length, activeClass: 'bg-emerald-600 text-white' },
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setSpareFilterStatus(tab.key)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 ${
+                        spareFilterStatus === tab.key ? `${tab.activeClass} font-bold shadow-xs` : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/10 font-bold">
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search */}
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={spareSearchQuery}
+                    onChange={(e) => setSpareSearchQuery(e.target.value)}
+                    placeholder="ค้นหาเลขที่, เครื่อง, ช่าง..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:border-sky-500 focus:outline-none transition"
+                  />
+                  {spareSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSpareSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* List / Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="p-3.5">วันที่ / เวลา</th>
+                      <th className="p-3.5">เลขที่ใบเบิก</th>
+                      <th className="p-3.5">เครื่องจักร (MC)</th>
+                      <th className="p-3.5">ช่างผู้ขอ / กะ</th>
+                      <th className="p-3.5">Track ที่ต้องการ</th>
+                      <th className="p-3.5">หมายเหตุ</th>
+                      <th className="p-3.5">สถานะ</th>
+                      <th className="p-3.5 text-center">จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {spareRequests
+                      .filter(r => {
+                        if (spareFilterStatus !== 'ALL' && r.status !== spareFilterStatus) return false
+                        if (spareSearchQuery) {
+                          const q = spareSearchQuery.toLowerCase()
+                          const matchNo = (r.request_no || r.id || '').toLowerCase().includes(q)
+                          const matchMc = (r.machine_mc || '').toLowerCase().includes(q)
+                          const matchTech = (r.technician_name || '').toLowerCase().includes(q)
+                          const matchComment = (r.request_comment || '').toLowerCase().includes(q)
+                          if (!matchNo && !matchMc && !matchTech && !matchComment) return false
+                        }
+                        return true
+                      })
+                      .length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-12 text-center text-slate-400">
+                          <Layers className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                          <p className="font-semibold text-sm">ไม่พบรายการขอเบิกเข็ม Spare</p>
+                          <p className="text-xs text-slate-400 mt-1">ช่างสามารถสแกน QR Code ประจำเครื่องเพื่อส่งคำขอเบิกเข็มได้</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      spareRequests
+                        .filter(r => {
+                          if (spareFilterStatus !== 'ALL' && r.status !== spareFilterStatus) return false
+                          if (spareSearchQuery) {
+                            const q = spareSearchQuery.toLowerCase()
+                            const matchNo = (r.request_no || r.id || '').toLowerCase().includes(q)
+                            const matchMc = (r.machine_mc || '').toLowerCase().includes(q)
+                            const matchTech = (r.technician_name || '').toLowerCase().includes(q)
+                            const matchComment = (r.request_comment || '').toLowerCase().includes(q)
+                            if (!matchNo && !matchMc && !matchTech && !matchComment) return false
+                          }
+                          return true
+                        })
+                        .map((req) => {
+                          const dial = req.tracks_requested?.dial || {}
+                          const cyl = req.tracks_requested?.cylinder || {}
+
+                          return (
+                            <tr key={req.id} className="hover:bg-slate-50 transition">
+                              <td className="p-3.5 text-xs text-slate-500 whitespace-nowrap">
+                                {new Date(req.created_at).toLocaleString('th-TH', {
+                                  dateStyle: 'short',
+                                  timeStyle: 'short',
+                                })}
+                              </td>
+                              <td className="p-3.5 font-mono text-xs font-bold text-indigo-700">
+                                {req.request_no || req.id}
+                              </td>
+                              <td className="p-3.5">
+                                <div className="font-bold text-slate-800">{req.machine_mc || '—'}</div>
+                                <div className="text-[11px] text-slate-500">
+                                  {req.gauge && <span className="text-sky-600 font-semibold">{req.gauge}</span>}
+                                  {req.cylinder_serial && <span> · SN: {req.cylinder_serial}</span>}
+                                </div>
+                              </td>
+                              <td className="p-3.5 text-xs text-slate-700">
+                                <div className="font-semibold">{req.technician_name}</div>
+                                <span className="text-[11px] text-slate-500">{req.shift}</span>
+                              </td>
+                              <td className="p-3.5">
+                                <div className="flex flex-wrap gap-1 max-w-xs">
+                                  {dial.t1 > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial T1: {dial.t1}</span>}
+                                  {dial.t2 > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial T2: {dial.t2}</span>}
+                                  {cyl.t1 > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-bold">Cyl T1: {cyl.t1}</span>}
+                                  {cyl.t2 > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-bold">Cyl T2: {cyl.t2}</span>}
+                                  {cyl.t3 > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-bold">Cyl T3: {cyl.t3}</span>}
+                                  {cyl.t4 > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-bold">Cyl T4: {cyl.t4}</span>}
+                                </div>
+                              </td>
+                              <td className="p-3.5 text-xs text-slate-600 max-w-xs">
+                                {req.request_comment ? (
+                                  <p className="line-clamp-2 italic text-amber-800 bg-amber-50/60 p-1 rounded">
+                                    "{req.request_comment}"
+                                  </p>
+                                ) : (
+                                  <span className="text-slate-300">-</span>
+                                )}
+                              </td>
+                              <td className="p-3.5 whitespace-nowrap">
+                                {req.status === 'PENDING' && (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                    ⏳ รอจัดเตรียม
+                                  </span>
+                                )}
+                                {req.status === 'PREPARED' && (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                                    📦 เตรียมแล้ว (รอรับ)
+                                  </span>
+                                )}
+                                {req.status === 'COMPLETED' && (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    ✅ รับเข็มเรียบร้อย
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3.5 text-center whitespace-nowrap">
+                                {req.status === 'PENDING' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedSpareReq(req)
+                                      setPrepareModalOpen(true)
+                                    }}
+                                    className="inline-flex items-center space-x-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                                  >
+                                    <PackageCheck className="w-3.5 h-3.5" />
+                                    <span>จัดเตรียม & ตัดสต็อก</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedSpareReq(req)
+                                      setPrepareModalOpen(true)
+                                    }}
+                                    className="inline-flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>ดูรายละเอียด</span>
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
 
       {/* ================= MODALS ================= */}
+
+      {/* PREPARE / VIEW SPARE NEEDLE MODAL */}
+      {prepareModalOpen && selectedSpareReq && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setPrepareModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {selectedSpareReq.status === 'PENDING' ? (
+              <StepPrepareSpareNeedle
+                snr={selectedSpareReq}
+                cylinder={{ Machine: selectedSpareReq.machine_mc, Gauge: selectedSpareReq.gauge, Serial_NOW: selectedSpareReq.cylinder_serial }}
+                onPrepared={(updated) => {
+                  setSpareRequests(prev => prev.map(r => r.id === updated.id ? updated : r))
+                  loadData(true)
+                  setPrepareModalOpen(false)
+                  toast.success('จัดเตรียมเข็มและตัดสต็อกเรียบร้อยแล้ว!')
+                }}
+                onClose={() => setPrepareModalOpen(false)}
+              />
+            ) : (
+              <StepAcknowledgeSpareNeedle
+                snr={selectedSpareReq}
+                cylinder={{ Machine: selectedSpareReq.machine_mc, Gauge: selectedSpareReq.gauge, Serial_NOW: selectedSpareReq.cylinder_serial }}
+                onAcknowledged={(updated) => {
+                  setSpareRequests(prev => prev.map(r => r.id === updated.id ? updated : r))
+                  loadData(true)
+                  setPrepareModalOpen(false)
+                  toast.success('บันทึกการรับเข็ม Spare เรียบร้อย!')
+                }}
+                onHome={() => setPrepareModalOpen(false)}
+              />
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 1. STOCK TRANSACTION MODAL */}
       {stockModalOpen && (

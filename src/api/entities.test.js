@@ -6,6 +6,7 @@ import {
   isSystemWorkOrder,
   calculateSundayMinutes,
   countWorkingDaysExcludingSundays,
+  normalizeSpareNeedleRequest,
 } from './entities'
 
 describe('CenterCheck Entities & Helpers', () => {
@@ -68,6 +69,37 @@ describe('CenterCheckStandardsAPI', () => {
   it('identifies SYS_CENTER_CHECK_STANDARDS as a system work order', () => {
     expect(isSystemWorkOrder({ WO_ID: 'SYS_CENTER_CHECK_STANDARDS' })).toBe(true)
     expect(isSystemWorkOrder({ MC: '__SYSTEM__', WO_ID: 'SYS_CENTER_CHECK_STANDARDS', Problem: '__SYS_CONFIG__' })).toBe(true)
+  })
+})
+
+describe('SpareNeedleRequest Entities & Normalizer', () => {
+  it('correctly normalizes spare needle request with tracks and defaults', () => {
+    const raw = {
+      id: 'SNR-20260924-0001',
+      machine_mc: 'DG-341M',
+      gauge: '28G',
+      technician_name: 'ช่างหนึ่ง',
+      shift: 'กะเช้า',
+      tracks_requested: {
+        dial: { t1: 10, t2: 5 },
+        cylinder: { t1: 5, t2: 5, t3: 0, t4: 0 },
+      },
+      request_comment: 'เข็มหักจากลายริ้ว',
+    }
+    const norm = normalizeSpareNeedleRequest(raw)
+    expect(norm.id).toBe('SNR-20260924-0001')
+    expect(norm.request_no).toBe('SNR-20260924-0001')
+    expect(norm.machine_mc).toBe('DG-341M')
+    expect(norm.gauge).toBe('28G')
+    expect(norm.technician_name).toBe('ช่างหนึ่ง')
+    expect(norm.status).toBe('PENDING')
+    expect(norm.tracks_requested.dial.t1).toBe(10)
+    expect(norm.tracks_requested.cylinder.t2).toBe(5)
+    expect(norm.issued_items).toEqual([])
+  })
+
+  it('identifies SYS_SPARE_NEEDLE_REQUESTS as a system work order', () => {
+    expect(isSystemWorkOrder({ WO_ID: 'SYS_SPARE_NEEDLE_REQUESTS' })).toBe(true)
   })
 })
 

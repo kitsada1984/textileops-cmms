@@ -14,6 +14,7 @@ import {
   SparePartAPI,
   StockTxnAPI,
   WorkOrderAPI,
+  SpareNeedleRequestAPI,
   calculateDuration,
   formatMinutesToThai,
   calculateInterruptionTotal,
@@ -22,6 +23,12 @@ import { QUICK_INTERRUPTION_PRESETS } from './WorkOrders'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
 import { isItemInText, toggleItemInText } from '../utils/textToggle'
+import {
+  ActionChoiceModal,
+  StepSpareNeedleRequest,
+  StepPrepareSpareNeedle,
+  StepAcknowledgeSpareNeedle,
+} from '../components/repair/SpareNeedleFlow'
 import {
   CheckCircle,
   Clock,
@@ -51,6 +58,7 @@ import {
   RotateCcw,
   XCircle,
   UserCheck,
+  ArrowLeft,
 } from 'lucide-react'
 import gemmaLogo from '../assets/logo-gemma.png'
 
@@ -301,7 +309,7 @@ function StepHeader({ activeStep, title, subtitle }) {
 }
 
 /* ── Step 1: Report (แจ้งซ่อม) ────────────────────────────────────────────── */
-function StepReport({ serial, cylinder, onSubmitted }) {
+function StepReport({ serial, cylinder, onSubmitted, onBack }) {
   const [design, setDesign] = useState(cylinder?.Design || '')
   const [ki, setKi] = useState(cylinder?.KI !== undefined && cylinder?.KI !== null ? String(cylinder.KI) : '')
   const [rollNo, setRollNo] = useState('')
@@ -399,6 +407,27 @@ function StepReport({ serial, cylinder, onSubmitted }) {
 
   return (
     <div>
+      {onBack && (
+        <div style={{ padding: '14px 18px 0' }}>
+          <button
+            type="button"
+            onClick={onBack}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#64748b',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <ArrowLeft size={16} /> เปลี่ยนเมนู (แจ้งซ่อม / เบิกเข็ม Spare)
+          </button>
+        </div>
+      )}
       <StepHeader
         activeStep={1}
         title="📝 ใบแจ้งซ่อมเครื่องจักร / กระบอกสูบ"
@@ -2099,10 +2128,14 @@ export default function RepairPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const reqId = searchParams.get('req')
-  const step = searchParams.get('step') // approve | complete | view
+  const step = searchParams.get('step') // approve | complete | view | prepare | ack
+  const needleReqId = searchParams.get('needle_req')
 
   const [cylinder, setCylinder] = useState(null)
   const [request, setRequest] = useState(null)
+  const [needleRequest, setNeedleRequest] = useState(null)
+  const [needleDone, setNeedleDone] = useState(false)
+  const [activeAction, setActiveAction] = useState(null) // null | 'repair' | 'spare_needle'
   const [loading, setLoading] = useState(true)
   const [done, setDone] = useState(false)
   const [pdfItem, setPdfItem] = useState(null)
@@ -2143,6 +2176,11 @@ export default function RepairPage() {
             .maybeSingle()
           setRequest(req ? normalizeRepairRecord(req) : null)
         }
+
+        if (needleReqId) {
+          const snr = await SpareNeedleRequestAPI.getById(needleReqId)
+          setNeedleRequest(snr)
+        }
       } catch (e) {
         console.error('Error loading repair data:', e)
       } finally {
@@ -2150,7 +2188,7 @@ export default function RepairPage() {
       }
     }
     load()
-  }, [serial, reqId])
+  }, [serial, reqId, needleReqId])
 
   const handleDone = (updated) => {
     setRequest(updated ? normalizeRepairRecord(updated) : null)
@@ -2162,11 +2200,84 @@ export default function RepairPage() {
       return (
         <div style={{ padding: 48, textAlign: 'center' }}>
           <Loader size={32} style={{ color: '#2563eb', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
-          <div style={{ marginTop: 14, color: '#64748b', fontSize: 14, fontWeight: 700 }}>กำลังโหลดข้อมูลใบแจ้งซ่อม...</div>
+          <div style={{ marginTop: 14, color: '#64748b', fontSize: 14, fontWeight: 700 }}>กำลังโหลดข้อมูล...</div>
         </div>
       )
     }
 
+    {/* ── Spare Needle Deep Links (?needle_req=...) ─────────────── */}
+    if (needleReqId && needleRequest) {
+      if (step === 'prepare') {
+        return (
+          <StepPrepareSpareNeedle
+            snr={needleRequest}
+            cylinder={cylinder}
+            onPrepared={(updated) => {
+              setNeedleRequest(updated)
+              setNeedleDone(true)
+            }}
+            onClose={() => navigate('/')}
+          />
+        )
+      }
+      return (
+        <StepAcknowledgeSpareNeedle
+          snr={needleRequest}
+          cylinder={cylinder}
+          onAcknowledged={(updated) => {
+            setNeedleRequest(updated)
+            setNeedleDone(true)
+          }}
+          onHome={() => navigate('/')}
+        />
+      )
+    }
+
+    if (needleReqId && !needleRequest && !loading) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <XCircle size={52} style={{ color: '#ef4444', margin: '0 auto 12px' }} />
+          <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>❌ ไม่พบข้อมูลคำขอเบิกเข็ม Spare</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 6, fontWeight: 600 }}>
+            ใบเบิกนี้อาจถูกลบไปแล้ว หรือลิงก์ไม่ถูกต้อง
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <Btn onClick={() => navigate('/')} variant="primary">🏠 กลับหน้าหลัก</Btn>
+          </div>
+        </div>
+      )
+    }
+
+    if (needleDone && needleRequest) {
+      return (
+        <div style={{ padding: '24px 18px', textAlign: 'center' }}>
+          <CheckCircle2 size={54} style={{ color: '#10b981', margin: '0 auto 12px' }} />
+          <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>
+            {needleRequest.status === 'PREPARED'
+              ? 'จัดเตรียมเข็มและตัดสต็อกเรียบร้อยแล้ว'
+              : needleRequest.status === 'COMPLETED'
+              ? 'บันทึกการรับเข็ม Spare ปิดงานเรียบร้อย'
+              : 'ส่งคำขอเบิกเข็ม Spare เข้าสู่ระบบเรียบร้อย'}
+          </div>
+          <div style={{ fontSize: 13, color: '#64748b', marginBottom: 14, fontWeight: 600 }}>
+            ระบบส่งแจ้งเตือน Telegram & LINE เรียบร้อยแล้ว
+          </div>
+          <StepAcknowledgeSpareNeedle
+            snr={needleRequest}
+            cylinder={cylinder}
+            onAcknowledged={(updated) => setNeedleRequest(updated)}
+            onHome={() => navigate('/')}
+          />
+          <div style={{ marginTop: 16 }}>
+            <Btn onClick={() => navigate('/')} variant="outline">
+              🏠 กลับหน้าหลัก
+            </Btn>
+          </div>
+        </div>
+      )
+    }
+
+    {/* ── Repair Request Done ─────────────────────────────── */}
     if (done && request) {
       return (
         <div style={{ padding: '24px 18px', textAlign: 'center' }}>
@@ -2214,8 +2325,42 @@ export default function RepairPage() {
       )
     }
 
-    return <StepReport serial={serial} cylinder={cylinder} onSubmitted={handleDone} />
+    {/* ── Initial Scan Entry Point ─────────────────────────────── */}
+    if (!activeAction && !reqId && !step && !needleReqId) {
+      return (
+        <ActionChoiceModal
+          cylinder={cylinder}
+          serial={serial}
+          onSelectAction={(act) => setActiveAction(act)}
+          onCancel={() => navigate('/')}
+        />
+      )
+    }
+
+    if (activeAction === 'spare_needle') {
+      return (
+        <StepSpareNeedleRequest
+          cylinder={cylinder}
+          serial={serial}
+          onSubmitted={(newSnr) => {
+            setNeedleRequest(newSnr)
+            setNeedleDone(true)
+          }}
+          onBack={() => setActiveAction(null)}
+        />
+      )
+    }
+
+    return (
+      <StepReport
+        serial={serial}
+        cylinder={cylinder}
+        onSubmitted={handleDone}
+        onBack={() => setActiveAction(null)}
+      />
+    )
   }
+
 
   return (
     <div

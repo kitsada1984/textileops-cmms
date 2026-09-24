@@ -230,3 +230,108 @@ export async function testTelegram() {
   const results = await Promise.all(ids.map(id => sendMessage(cfg.bot_token, id, text)))
   return results[0]
 }
+
+/* ── Spare Needle Requisition Telegram Notifications ─────────── */
+function formatTracksSummary(tracks = {}) {
+  const dial = tracks.dial || {}
+  const cyl = tracks.cylinder || {}
+  const lines = []
+
+  const dialParts = []
+  if (dial.t1 > 0) dialParts.push(`T1: <b>${dial.t1}</b> ตัว`)
+  if (dial.t2 > 0) dialParts.push(`T2: <b>${dial.t2}</b> ตัว`)
+  if (dialParts.length > 0) lines.push(`🔘 <b>Dial:</b> ${dialParts.join(', ')}`)
+
+  const cylParts = []
+  if (cyl.t1 > 0) cylParts.push(`T1: <b>${cyl.t1}</b> ตัว`)
+  if (cyl.t2 > 0) cylParts.push(`T2: <b>${cyl.t2}</b> ตัว`)
+  if (cyl.t3 > 0) cylParts.push(`T3: <b>${cyl.t3}</b> ตัว`)
+  if (cyl.t4 > 0) cylParts.push(`T4: <b>${cyl.t4}</b> ตัว`)
+  if (cylParts.length > 0) lines.push(`⚙️ <b>Cylinder:</b> ${cylParts.join(', ')}`)
+
+  return lines.length > 0 ? lines.join('\n') : '— ไม่ได้ระบุ Track —'
+}
+
+export async function notifySpareNeedleRequested(snr, cylinder) {
+  const cfg = await loadTelegramSettingsDB()
+  const baseUrl = getAppBaseUrl()
+  const serial = encodeURIComponent(snr.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || '')
+  const reqId = encodeURIComponent(snr.id || '')
+  const prepareLink = `${baseUrl}/repair/${serial}?needle_req=${reqId}&step=prepare`
+
+  const text = [
+    `🪡 <b>[ขอเบิกเข็ม Spare] ประจำเครื่องจักร</b>`,
+    ``,
+    `📋 เลขที่ใบเบิก: <b>${escapeHtml(snr.request_no || snr.id)}</b>`,
+    `🏭 เครื่องจักร (MC): <b>${escapeHtml(snr.machine_mc || cylinder?.Machine || '—')}</b>`,
+    `🔩 กระบอก (Serial): <b>${escapeHtml(snr.cylinder_serial || cylinder?.Serial_NOW || '—')}</b>`,
+    `📐 Gauge: <b>${escapeHtml(snr.gauge || cylinder?.Gauge || '—')}</b>`,
+    `👷 ช่างผู้ขอเบิก: <b>${escapeHtml(snr.technician_name || 'ช่างประจำกะ')}</b> (${escapeHtml(snr.shift || 'กะเช้า')})`,
+    `⏰ เวลาที่ขอเบิก: ${new Date(snr.created_at || Date.now()).toLocaleString('th-TH')}`,
+    ``,
+    `📌 <b>รายการ Track ที่ต้องการ:</b>`,
+    formatTracksSummary(snr.tracks_requested),
+    snr.request_comment ? `💬 หมายเหตุ: <i>${escapeHtml(snr.request_comment)}</i>` : null,
+    ``,
+    `🔗 <a href="${prepareLink}">👉 คลิกที่นี่เพื่อจัดเตรียมเข็มและตัดสต็อก</a>`,
+  ].filter(l => l !== null).join('\n')
+
+  const ids = getSupervisorIds(cfg)
+  if (!ids.length) return { ok: false, error: 'ไม่มี Chat ID สำหรับผู้จ่ายเข็ม/หัวหน้างาน' }
+  const results = await Promise.all(ids.map(id => sendMessage(cfg.bot_token, id, text)))
+  return results[0]
+}
+
+export async function notifySpareNeedlePrepared(snr, cylinder) {
+  const cfg = await loadTelegramSettingsDB()
+  const baseUrl = getAppBaseUrl()
+  const serial = encodeURIComponent(snr.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || '')
+  const reqId = encodeURIComponent(snr.id || '')
+  const ackLink = `${baseUrl}/repair/${serial}?needle_req=${reqId}&step=ack`
+
+  const issuedList = (snr.issued_items || []).map(item => 
+    `• ${escapeHtml(item.needleModel || item.setId || 'เข็ม')}: <b>${item.quantity || 0}</b> ตัว (${escapeHtml(item.grade || 'เกรด B')})`
+  ).join('\n')
+
+  const text = [
+    `📦 <b>[เข็ม Spare จัดเตรียมเรียบร้อยแล้ว]</b>`,
+    ``,
+    `📋 เลขที่ใบเบิก: <b>${escapeHtml(snr.request_no || snr.id)}</b>`,
+    `🏭 เครื่องจักร: <b>${escapeHtml(snr.machine_mc || cylinder?.Machine || '—')}</b>`,
+    `👷 ช่างผู้ขอเบิก: <b>${escapeHtml(snr.technician_name)}</b>`,
+    `👨‍💼 ผู้จ่ายเข็ม/สโตร์: <b>${escapeHtml(snr.issuer_name || 'สโตร์เข็ม')}</b>`,
+    `⏰ เวลาที่จัดเตรียม: ${new Date(snr.prepared_at || Date.now()).toLocaleString('th-TH')}`,
+    ``,
+    `🎯 <b>รายการเข็มที่จัดเตรียมพร้อมจ่าย:</b>`,
+    issuedList || '— จัดเตรียมตามรายการที่ขอ —',
+    snr.issuer_comment ? `💬 หมายเหตุผู้จ่าย: <i>${escapeHtml(snr.issuer_comment)}</i>` : null,
+    ``,
+    `🔗 <a href="${ackLink}">👉 คลิกที่นี่เพื่อดูรายการและกดรับทราบ</a>`,
+  ].filter(l => l !== null).join('\n')
+
+  const techChatId = getTechnicianChatId(cfg, snr.technician_name)
+  const supervisorIds = getSupervisorIds(cfg)
+  const targetIds = Array.from(new Set([techChatId, ...supervisorIds].filter(Boolean)))
+
+  if (!targetIds.length) return { ok: false, error: 'ไม่มี Chat ID ปลายทาง' }
+  const results = await Promise.all(targetIds.map(id => sendMessage(cfg.bot_token, id, text)))
+  return results[0]
+}
+
+export async function notifySpareNeedleReceived(snr, cylinder) {
+  const cfg = await loadTelegramSettingsDB()
+  const text = [
+    `🎉 <b>[รับเข็ม Spare เรียบร้อย - ปิดงาน]</b>`,
+    ``,
+    `📋 เลขที่ใบเบิก: <b>${escapeHtml(snr.request_no || snr.id)}</b>`,
+    `🏭 เครื่องจักร: <b>${escapeHtml(snr.machine_mc || cylinder?.Machine || '—')}</b>`,
+    `👷 ผู้รับเข็ม: <b>${escapeHtml(snr.technician_name)}</b>`,
+    `⏰ เวลารับเข็ม: ${new Date(snr.acknowledged_at || Date.now()).toLocaleString('th-TH')}`,
+    `✅ สถานะ: <b>ปิดงานเบิกเข็ม Spare สมบูรณ์</b>`,
+  ].join('\n')
+
+  const ids = getSupervisorIds(cfg)
+  if (!ids.length) return { ok: false, error: 'ไม่มี Chat ID' }
+  const results = await Promise.all(ids.map(id => sendMessage(cfg.bot_token, id, text)))
+  return results[0]
+}

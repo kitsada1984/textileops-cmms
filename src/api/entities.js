@@ -872,3 +872,125 @@ export const CenterCheckStandardsAPI = {
     }
   },
 }
+
+/* ── Spare Needle Requests API (เบิกเข็ม Spare ประจำเครื่องจักร) ── */
+export function normalizeSpareNeedleRequest(item = {}) {
+  const id = item.id || item.request_no || `SNR-${Date.now()}`
+  return {
+    ...item,
+    id,
+    request_no: item.request_no || id,
+    machine_mc: item.machine_mc || item.Machine_MC || item.Machine || item.machineId || '',
+    cylinder_serial: item.cylinder_serial || item.Serial_NOW || item.serial || '',
+    gauge: item.gauge || item.Gauge || '',
+    technician_name: item.technician_name || item.technician || 'ช่างประจำกะ',
+    shift: item.shift || 'กะเช้า',
+    tracks_requested: item.tracks_requested || {
+      dial: { t1: 0, t2: 0 },
+      cylinder: { t1: 0, t2: 0, t3: 0, t4: 0 },
+    },
+    request_comment: item.request_comment || '',
+    status: item.status || 'PENDING', // PENDING | PREPARED | COMPLETED | CANCELLED
+    issued_items: Array.isArray(item.issued_items) ? item.issued_items : [],
+    issuer_name: item.issuer_name || '',
+    issuer_comment: item.issuer_comment || '',
+    prepared_at: item.prepared_at || null,
+    acknowledged_at: item.acknowledged_at || null,
+    created_at: item.created_at || new Date().toISOString(),
+    updated_at: item.updated_at || new Date().toISOString(),
+  }
+}
+
+export const SpareNeedleRequestAPI = {
+  list: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('spare_needle_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (!error && Array.isArray(data)) {
+        try { localStorage.setItem('txops_tbl_spare_needle_requests', JSON.stringify(data)) } catch {}
+        return data.map(normalizeSpareNeedleRequest)
+      }
+    } catch (e) {
+      console.warn('spare_needle_requests table load error, falling back to sys config:', e)
+    }
+
+    const fallbackList = await getSystemConfig('spare_needle_requests', {
+      legacyWorkOrderId: 'SYS_SPARE_NEEDLE_REQUESTS',
+      localCacheKey: 'txops_tbl_spare_needle_requests',
+      defaultValue: [],
+    })
+    return (fallbackList || []).map(normalizeSpareNeedleRequest)
+  },
+  saveAll: async (recordsList) => {
+    if (!recordsList || recordsList.length === 0) {
+      await deleteSystemConfig('spare_needle_requests', {
+        legacyWorkOrderId: 'SYS_SPARE_NEEDLE_REQUESTS',
+        localCacheKey: 'txops_tbl_spare_needle_requests',
+      })
+      return
+    }
+    await saveSystemConfig('spare_needle_requests', recordsList, {
+      legacyWorkOrderId: 'SYS_SPARE_NEEDLE_REQUESTS',
+      localCacheKey: 'txops_tbl_spare_needle_requests',
+    })
+  },
+  create: async (item) => {
+    const norm = normalizeSpareNeedleRequest(item)
+    try {
+      const { data, error } = await supabase
+        .from('spare_needle_requests')
+        .insert([norm])
+        .select()
+        .maybeSingle()
+      if (!error && data) {
+        return normalizeSpareNeedleRequest(data)
+      }
+    } catch (e) {
+      console.warn('spare_needle_requests create fallback:', e)
+    }
+
+    const list = await SpareNeedleRequestAPI.list()
+    const updated = [norm, ...list]
+    await SpareNeedleRequestAPI.saveAll(updated)
+    return norm
+  },
+  update: async (id, item) => {
+    const updatedFields = {
+      ...item,
+      updated_at: new Date().toISOString(),
+    }
+    try {
+      const { data, error } = await supabase
+        .from('spare_needle_requests')
+        .update(updatedFields)
+        .eq('id', id)
+        .select()
+        .maybeSingle()
+      if (!error && data) {
+        return normalizeSpareNeedleRequest(data)
+      }
+    } catch (e) {
+      console.warn('spare_needle_requests update fallback:', e)
+    }
+
+    const list = await SpareNeedleRequestAPI.list()
+    const updated = list.map((r) => (r.id === id ? normalizeSpareNeedleRequest({ ...r, ...updatedFields }) : r))
+    await SpareNeedleRequestAPI.saveAll(updated)
+    return normalizeSpareNeedleRequest({ ...item, id })
+  },
+  getById: async (id) => {
+    try {
+      const { data, error } = await supabase
+        .from('spare_needle_requests')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
+      if (!error && data) return normalizeSpareNeedleRequest(data)
+    } catch {}
+
+    const list = await SpareNeedleRequestAPI.list()
+    return list.find((r) => r.id === id) || null
+  },
+}
