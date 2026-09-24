@@ -46,13 +46,17 @@ export async function uploadMedia(file, options = {}) {
 
   // 2. Upload to Google Drive with automated fallback
   try {
-    const uploadRes = await uploadImageToGoogleDrive(fileToUpload, {
+    const driveOptions = {
       folderName,
       maxDimension,
       quality,
-    })
+    }
+    if (options.fileName || options.filename) {
+      driveOptions.fileName = options.fileName || options.filename
+    }
+    const uploadRes = await uploadImageToGoogleDrive(fileToUpload, driveOptions)
     const imageUrl = uploadRes.imageUrl || uploadRes.url || ''
-    return {
+    const returnVal = {
       imageUrl,
       url: imageUrl,
       fileId: uploadRes.fileId || '',
@@ -60,6 +64,10 @@ export async function uploadMedia(file, options = {}) {
       dataUrl: localDataUrl,
       source: 'drive',
     }
+    if (uploadRes.name || options.fileName || options.filename) {
+      returnVal.name = uploadRes.name || options.fileName || options.filename
+    }
+    return returnVal
   } catch (err) {
     if (fallbackToLocal && localDataUrl) {
       console.warn('[MediaUploader] Drive upload failed, activating local Base64 fallback:', err)

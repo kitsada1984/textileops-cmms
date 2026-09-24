@@ -14,6 +14,7 @@ import {
 } from '../api/entities'
 import { uploadMedia } from '../modules/media/mediaUploader'
 import { getDirectImageUrl, isGoogleDriveUrl } from '../utils/imageUrlUtils'
+import { formatNeedleStockFileName } from '../utils/needleStockUtils'
 import initialNeedleSetsData from '../data/initialNeedleSets.json'
 
 const NEEDLE_IMAGE_FOLDER = 'Stock-เข็ม'
@@ -1393,6 +1394,7 @@ export default function NeedleStock() {
  * 1. Stock Transaction Modal (IN, OUT, ADJUST, SCRAP)
  */
 function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, comboboxStore, onLearnValues, onSuccess }) {
+  const { toast } = useToast()
   const [selectedSetId, setSelectedSetId] = useState(currentSet?.setId || needleSets[0]?.setId || '')
   const [movementType, setMovementType] = useState('OUT') // 'IN' | 'OUT' | 'ADJUST' | 'SCRAP'
   const [quantity, setQuantity] = useState('')
@@ -1406,11 +1408,14 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
   const [technician, setTechnician] = useState('tuk')
   const [dateAction, setDateAction] = useState(new Date().toISOString().split('T')[0])
   const [remarks, setRemarks] = useState('')
-  const [attachedFiles, setAttachedFiles] = useState([])
+  const [uploadedImages, setUploadedImages] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
+    setUploadedImages([])
+    setUploadingImage(false)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const handleKeyDown = (e) => {
@@ -1478,11 +1483,41 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
     }
   }
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || [])
-    if (files.length > 0) {
-      setAttachedFiles(prev => [...prev, ...files])
+    if (e.target) e.target.value = ''
+    if (files.length === 0) return
+
+    setUploadingImage(true)
+    let successCount = 0
+    try {
+      for (const file of files) {
+        const customFileName = formatNeedleStockFileName(activeSet?.setId, movementType, file.name)
+        try {
+          const res = await uploadMedia(file, {
+            folderName: NEEDLE_IMAGE_FOLDER,
+            fileName: customFileName,
+            fallbackToLocal: false,
+          })
+          const url = res.imageUrl || res.url
+          if (!url) throw new Error('ไม่ได้รับ URL ตอบกลับจาก Google Drive')
+          setUploadedImages(prev => [...prev, { url, name: customFileName }])
+          successCount++
+        } catch (uploadErr) {
+          console.error('[NeedleStock] Upload failed for:', file.name, uploadErr)
+          toast.error('อัปโหลดรูปไม่สำเร็จ', `${file.name}: ${uploadErr.message || 'เชื่อมต่อ Google Drive ขัดข้อง'}`)
+        }
+      }
+      if (successCount > 0) {
+        toast.success('อัปโหลดรูปสำเร็จ', `บันทึกลง Google Drive (${NEEDLE_IMAGE_FOLDER}) เรียบร้อย ${successCount} รูป`)
+      }
+    } finally {
+      setUploadingImage(false)
     }
+  }
+
+  const handleRemoveImage = (idx) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== idx))
   }
 
   const handleSubmit = async (e) => {
@@ -1509,17 +1544,6 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
       setSubmitting(true)
       onLearnValues({ targetMachine, technician, stockDetail })
 
-      // Upload photos if any
-      const uploadedImages = []
-      for (const file of attachedFiles) {
-        try {
-          const res = await uploadMedia(file, { folderName: NEEDLE_IMAGE_FOLDER, fallbackToLocal: true })
-          uploadedImages.push({ url: res.imageUrl || res.url, name: file.name })
-        } catch (uploadErr) {
-          console.warn('Image upload error:', uploadErr)
-        }
-      }
-
       let actionLabel = ''
       let qtyChange = 0
       if (movementType === 'IN') {
@@ -1536,10 +1560,14 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
         qtyChange = -inputQtyNum
       }
 
+      // Merge newly uploaded images into activeSet.images so the card and gallery show them immediately!
+      const mergedImages = [...(activeSet.images || []), ...uploadedImages]
+
       const updatedSetData = {
         ...activeSet,
         quantity: Math.max(0, newBalance),
         status: newBalance === 0 ? 'หมดสต็อก' : newBalance <= 100 ? 'สต็อกเหลือน้อย' : 'พร้อมใช้งาน',
+        images: mergedImages,
       }
 
       const newLogData = {
@@ -1901,38 +1929,59 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
                     <span>Google Drive: {NEEDLE_IMAGE_FOLDER}</span>
                   </span>
                 </p>
-                <p className="text-[11px] text-slate-500">รูปเข็มชำรุด, สภาพเข็มที่รับเข้า/เบิกออก จัดเก็บลง Google Drive โฟลเดอร์: {NEEDLE_IMAGE_FOLDER}</p>
+                <p className="text-[11px] text-slate-500">อัปโหลดตรงลง Google Drive ทันทีที่เลือกรูป โฟลเดอร์: {NEEDLE_IMAGE_FOLDER}</p>
               </div>
-              <label className="cursor-pointer px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-medium inline-flex items-center space-x-1 shadow-xs transition">
-                <Upload className="w-3.5 h-3.5" />
-                <span>เลือกรูป</span>
-                <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
+              <label className={`cursor-pointer px-3 py-1.5 rounded-xl text-xs font-medium inline-flex items-center space-x-1 shadow-xs transition ${
+                uploadingImage ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-sky-600 hover:bg-sky-700 text-white'
+              }`}>
+                {uploadingImage ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span>กำลังอัปโหลด...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>เลือกรูป</span>
+                    <input type="file" accept="image/*" multiple onChange={handleFileUpload} disabled={uploadingImage} className="hidden" />
+                  </>
+                )}
               </label>
             </div>
-            {attachedFiles.length > 0 && (
+
+            {/* Uploading indicator or uploaded list */}
+            {(uploadedImages.length > 0 || uploadingImage) && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {attachedFiles.map((f, idx) => {
-                  const previewUrl = URL.createObjectURL(f)
+                {uploadedImages.map((img, idx) => {
+                  const directUrl = getDirectImageUrl(img.url)
                   return (
                     <div key={idx} className="relative w-16 h-16 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 group">
-                      <img src={previewUrl} alt={f.name} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
-                        <span className="text-[9px] text-white text-center truncate">{f.name}</span>
+                      <img src={directUrl} alt={img.name || `photo-${idx}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
+                        <span className="text-[9px] text-white text-center truncate">{img.name || 'รูปภาพ'}</span>
                       </div>
-                      <span className="absolute bottom-0.5 left-0.5 bg-blue-600/90 text-white rounded px-1 py-0.2 text-[8px] flex items-center space-x-0.5 shadow-xs">
+                      <span className="absolute bottom-0.5 left-0.5 bg-emerald-600/90 text-white rounded px-1 py-0.2 text-[8px] flex items-center space-x-0.5 shadow-xs font-semibold">
                         <Cloud className="w-2.5 h-2.5" />
                         <span>Drive</span>
                       </span>
                       <button
                         type="button"
-                        onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                        className="absolute top-0.5 right-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-0.5 right-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow cursor-pointer"
+                        title="ลบรูปนี้"
                       >
                         ×
                       </button>
                     </div>
                   )
                 })}
+
+                {uploadingImage && (
+                  <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
+                    <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
+                    <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1942,20 +1991,20 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
             <button
               type="button"
               onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition cursor-pointer"
+              disabled={submitting || uploadingImage}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition cursor-pointer disabled:opacity-50"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
-              disabled={submitting || isError}
+              disabled={submitting || isError || uploadingImage}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
             >
               {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>{attachedFiles.length > 0 ? 'กำลังบันทึกรูปภาพลง Google Drive...' : 'กำลังบันทึก...'}</span>
+                  <span>กำลังบันทึก...</span>
                 </>
               ) : (
                 <>
@@ -1976,6 +2025,7 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
  * 2. Add New Needle Set Modal
  */
 function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLearnValues, onSuccess }) {
+  const { toast } = useToast()
   const [machineType, setMachineType] = useState('Single')
   const [gauge, setGauge] = useState('28G')
   const [machineId, setMachineId] = useState('')
@@ -1987,11 +2037,14 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
   const [inspector, setInspector] = useState('tuk')
   const [location, setLocation] = useState('STORE')
   const [remarks, setRemarks] = useState('')
-  const [attachedFiles, setAttachedFiles] = useState([])
+  const [uploadedImages, setUploadedImages] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
+    setUploadedImages([])
+    setUploadingImage(false)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const handleKeyDown = (e) => {
@@ -2027,11 +2080,44 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
     }
   }
 
-  const handleFileUpload = (e) => {
+  const nextNum = String(needleSets.length + 1).padStart(4, '0')
+  const newSetId = `NS-${nextNum}`
+
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || [])
-    if (files.length > 0) {
-      setAttachedFiles(prev => [...prev, ...files])
+    if (e.target) e.target.value = ''
+    if (files.length === 0) return
+
+    setUploadingImage(true)
+    let successCount = 0
+    try {
+      for (const file of files) {
+        const customFileName = formatNeedleStockFileName(newSetId, 'NEW', file.name)
+        try {
+          const res = await uploadMedia(file, {
+            folderName: NEEDLE_IMAGE_FOLDER,
+            fileName: customFileName,
+            fallbackToLocal: false,
+          })
+          const url = res.imageUrl || res.url
+          if (!url) throw new Error('ไม่ได้รับ URL ตอบกลับจาก Google Drive')
+          setUploadedImages(prev => [...prev, { url, name: customFileName }])
+          successCount++
+        } catch (uploadErr) {
+          console.error('[NeedleStock] Upload failed for:', file.name, uploadErr)
+          toast.error('อัปโหลดรูปไม่สำเร็จ', `${file.name}: ${uploadErr.message || 'เชื่อมต่อ Google Drive ขัดข้อง'}`)
+        }
+      }
+      if (successCount > 0) {
+        toast.success('อัปโหลดรูปสำเร็จ', `บันทึกลง Google Drive (${NEEDLE_IMAGE_FOLDER}) เรียบร้อย ${successCount} รูป`)
+      }
+    } finally {
+      setUploadingImage(false)
     }
+  }
+
+  const handleRemoveImage = (idx) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== idx))
   }
 
   const handleSubmit = async (e) => {
@@ -2049,21 +2135,6 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
     try {
       setSubmitting(true)
       onLearnValues({ machineId, brand, needleModel, conditionDetail, inspector })
-
-      // Upload photos
-      const uploadedImages = []
-      for (const file of attachedFiles) {
-        try {
-          const res = await uploadMedia(file, { folderName: NEEDLE_IMAGE_FOLDER, fallbackToLocal: true })
-          uploadedImages.push({ url: res.imageUrl || res.url, name: file.name })
-        } catch (uploadErr) {
-          console.warn('Image upload error:', uploadErr)
-        }
-      }
-
-      // Generate Set ID: NS-0202...
-      const nextNum = String(needleSets.length + 1).padStart(4, '0')
-      const newSetId = `NS-${nextNum}`
 
       const newSetRecord = normalizeNeedleSet({
         id: newSetId,
@@ -2299,38 +2370,59 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
                     <span>Google Drive: {NEEDLE_IMAGE_FOLDER}</span>
                   </span>
                 </p>
-                <p className="text-[11px] text-slate-500">อัปโหลดได้หลายรูป จัดเก็บลง Google Drive โฟลเดอร์: {NEEDLE_IMAGE_FOLDER}</p>
+                <p className="text-[11px] text-slate-500">อัปโหลดตรงลง Google Drive ทันทีที่เลือกรูป โฟลเดอร์: {NEEDLE_IMAGE_FOLDER}</p>
               </div>
-              <label className="cursor-pointer px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-medium inline-flex items-center space-x-1 shadow-xs transition">
-                <Upload className="w-3.5 h-3.5" />
-                <span>เลือก/ถ่ายรูป</span>
-                <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
+              <label className={`cursor-pointer px-3 py-1.5 rounded-xl text-xs font-medium inline-flex items-center space-x-1 shadow-xs transition ${
+                uploadingImage ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-sky-600 hover:bg-sky-700 text-white'
+              }`}>
+                {uploadingImage ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span>กำลังอัปโหลด...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>เลือก/ถ่ายรูป</span>
+                    <input type="file" accept="image/*" multiple onChange={handleFileUpload} disabled={uploadingImage} className="hidden" />
+                  </>
+                )}
               </label>
             </div>
-            {attachedFiles.length > 0 && (
+
+            {/* Uploading indicator or uploaded list */}
+            {(uploadedImages.length > 0 || uploadingImage) && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {attachedFiles.map((f, idx) => {
-                  const previewUrl = URL.createObjectURL(f)
+                {uploadedImages.map((img, idx) => {
+                  const directUrl = getDirectImageUrl(img.url)
                   return (
                     <div key={idx} className="relative w-16 h-16 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 group">
-                      <img src={previewUrl} alt={f.name} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
-                        <span className="text-[9px] text-white text-center truncate">{f.name}</span>
+                      <img src={directUrl} alt={img.name || `photo-${idx}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
+                        <span className="text-[9px] text-white text-center truncate">{img.name || 'รูปภาพ'}</span>
                       </div>
-                      <span className="absolute bottom-0.5 left-0.5 bg-blue-600/90 text-white rounded px-1 py-0.2 text-[8px] flex items-center space-x-0.5 shadow-xs">
+                      <span className="absolute bottom-0.5 left-0.5 bg-emerald-600/90 text-white rounded px-1 py-0.2 text-[8px] flex items-center space-x-0.5 shadow-xs font-semibold">
                         <Cloud className="w-2.5 h-2.5" />
                         <span>Drive</span>
                       </span>
                       <button
                         type="button"
-                        onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                        className="absolute top-0.5 right-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-0.5 right-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow cursor-pointer"
+                        title="ลบรูปนี้"
                       >
                         ×
                       </button>
                     </div>
                   )
                 })}
+
+                {uploadingImage && (
+                  <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
+                    <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
+                    <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2340,20 +2432,20 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
             <button
               type="button"
               onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition cursor-pointer"
+              disabled={submitting || uploadingImage}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition cursor-pointer disabled:opacity-50"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || uploadingImage}
               className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
             >
               {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>{attachedFiles.length > 0 ? 'กำลังบันทึกรูปภาพลง Google Drive...' : 'กำลังบันทึก...'}</span>
+                  <span>กำลังบันทึก...</span>
                 </>
               ) : (
                 <span>บันทึกเข้าระบบ</span>
@@ -2371,6 +2463,7 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
  * 3. Update Grade / Inspect Modal
  */
 function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnValues, onSuccess }) {
+  const { toast } = useToast()
   const [actionType, setActionType] = useState('คัดแยก/เปลี่ยนเกรดเข็ม')
   const [grade, setGrade] = useState(currentSet?.grade || 'เกรด B')
   const [conditionDetail, setConditionDetail] = useState(currentSet?.conditionDetail || '')
@@ -2378,11 +2471,14 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
   const [technician, setTechnician] = useState('tuk')
   const [location, setLocation] = useState(currentSet?.location || 'STORE')
   const [remarks, setRemarks] = useState('')
-  const [attachedFiles, setAttachedFiles] = useState([])
+  const [uploadedImages, setUploadedImages] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
+    setUploadedImages([])
+    setUploadingImage(false)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const handleKeyDown = (e) => {
@@ -2395,11 +2491,41 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
     }
   }, [isOpen, onClose])
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || [])
-    if (files.length > 0) {
-      setAttachedFiles(prev => [...prev, ...files])
+    if (e.target) e.target.value = ''
+    if (files.length === 0) return
+
+    setUploadingImage(true)
+    let successCount = 0
+    try {
+      for (const file of files) {
+        const customFileName = formatNeedleStockFileName(currentSet?.setId, 'GRADE', file.name)
+        try {
+          const res = await uploadMedia(file, {
+            folderName: NEEDLE_IMAGE_FOLDER,
+            fileName: customFileName,
+            fallbackToLocal: false,
+          })
+          const url = res.imageUrl || res.url
+          if (!url) throw new Error('ไม่ได้รับ URL ตอบกลับจาก Google Drive')
+          setUploadedImages(prev => [...prev, { url, name: customFileName }])
+          successCount++
+        } catch (uploadErr) {
+          console.error('[NeedleStock] Upload failed for:', file.name, uploadErr)
+          toast.error('อัปโหลดรูปไม่สำเร็จ', `${file.name}: ${uploadErr.message || 'เชื่อมต่อ Google Drive ขัดข้อง'}`)
+        }
+      }
+      if (successCount > 0) {
+        toast.success('อัปโหลดรูปสำเร็จ', `บันทึกลง Google Drive (${NEEDLE_IMAGE_FOLDER}) เรียบร้อย ${successCount} รูป`)
+      }
+    } finally {
+      setUploadingImage(false)
     }
+  }
+
+  const handleRemoveImage = (idx) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== idx))
   }
 
   const handleSubmit = async (e) => {
@@ -2414,17 +2540,6 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
     try {
       setSubmitting(true)
       onLearnValues({ conditionDetail, technician })
-
-      // Upload photos
-      const uploadedImages = []
-      for (const file of attachedFiles) {
-        try {
-          const res = await uploadMedia(file, { folderName: NEEDLE_IMAGE_FOLDER, fallbackToLocal: true })
-          uploadedImages.push({ url: res.imageUrl || res.url, name: file.name })
-        } catch (uploadErr) {
-          console.warn('Image upload error:', uploadErr)
-        }
-      }
 
       const mergedImages = [...(currentSet.images || []), ...uploadedImages]
 
@@ -2596,38 +2711,59 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
                     <span>Google Drive: {NEEDLE_IMAGE_FOLDER}</span>
                   </span>
                 </p>
-                <p className="text-[11px] text-slate-500">รูปภาพใหม่จะถูกบันทึกลง Google Drive โฟลเดอร์: {NEEDLE_IMAGE_FOLDER} และแสดงใน Timeline ประวัติ</p>
+                <p className="text-[11px] text-slate-500">อัปโหลดตรงลง Google Drive ทันทีที่เลือกรูป โฟลเดอร์: {NEEDLE_IMAGE_FOLDER} และบันทึกลงใน Timeline</p>
               </div>
-              <label className="cursor-pointer px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-medium inline-flex items-center space-x-1 shadow-xs transition">
-                <Upload className="w-3.5 h-3.5" />
-                <span>เลือก/ถ่ายรูป</span>
-                <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
+              <label className={`cursor-pointer px-3 py-1.5 rounded-xl text-xs font-medium inline-flex items-center space-x-1 shadow-xs transition ${
+                uploadingImage ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-sky-600 hover:bg-sky-700 text-white'
+              }`}>
+                {uploadingImage ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span>กำลังอัปโหลด...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>เลือก/ถ่ายรูป</span>
+                    <input type="file" accept="image/*" multiple onChange={handleFileUpload} disabled={uploadingImage} className="hidden" />
+                  </>
+                )}
               </label>
             </div>
-            {attachedFiles.length > 0 && (
+
+            {/* Uploading indicator or uploaded list */}
+            {(uploadedImages.length > 0 || uploadingImage) && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {attachedFiles.map((f, idx) => {
-                  const previewUrl = URL.createObjectURL(f)
+                {uploadedImages.map((img, idx) => {
+                  const directUrl = getDirectImageUrl(img.url)
                   return (
                     <div key={idx} className="relative w-16 h-16 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 group">
-                      <img src={previewUrl} alt={f.name} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
-                        <span className="text-[9px] text-white text-center truncate">{f.name}</span>
+                      <img src={directUrl} alt={img.name || `photo-${idx}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
+                        <span className="text-[9px] text-white text-center truncate">{img.name || 'รูปภาพ'}</span>
                       </div>
-                      <span className="absolute bottom-0.5 left-0.5 bg-blue-600/90 text-white rounded px-1 py-0.2 text-[8px] flex items-center space-x-0.5 shadow-xs">
+                      <span className="absolute bottom-0.5 left-0.5 bg-emerald-600/90 text-white rounded px-1 py-0.2 text-[8px] flex items-center space-x-0.5 shadow-xs font-semibold">
                         <Cloud className="w-2.5 h-2.5" />
                         <span>Drive</span>
                       </span>
                       <button
                         type="button"
-                        onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                        className="absolute top-0.5 right-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-0.5 right-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow cursor-pointer"
+                        title="ลบรูปนี้"
                       >
                         ×
                       </button>
                     </div>
                   )
                 })}
+
+                {uploadingImage && (
+                  <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
+                    <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
+                    <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2637,20 +2773,20 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
             <button
               type="button"
               onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition cursor-pointer"
+              disabled={submitting || uploadingImage}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium transition cursor-pointer disabled:opacity-50"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || uploadingImage}
               className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
             >
               {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>{attachedFiles.length > 0 ? 'กำลังบันทึกรูปภาพลง Google Drive...' : 'กำลังบันทึก...'}</span>
+                  <span>กำลังบันทึก...</span>
                 </>
               ) : (
                 <span>บันทึกการเปลี่ยนแปลง</span>

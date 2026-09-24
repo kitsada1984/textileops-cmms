@@ -84,7 +84,7 @@ export async function uploadImageToGoogleDrive(file, options = {}) {
   }
 
   const payload = {
-    filename: processedFile.name || file.name,
+    filename: options.fileName || options.filename || processedFile.name || file.name,
     mimeType: processedFile.type || file.type || 'image/jpeg',
     base64,
     ...(folderName ? { folderName } : {}),
