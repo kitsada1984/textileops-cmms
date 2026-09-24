@@ -6,6 +6,7 @@ const DB_KEY      = 'telegram_settings'
 const DEFAULTS = {
   bot_token:   '',
   supervisors: [{ name: 'กฤษดา', chat_id: '6981653027' }],
+  needle_keepers: [],
   technicians: [{ name: 'หนึ่ง',  chat_id: '8207474130' }],
   app_base_url: 'https://textileops-cmms.vercel.app',
 }
@@ -86,6 +87,14 @@ function getSupervisorIds(cfg) {
   if (cfg.supervisors?.length) return cfg.supervisors.map(s => s.chat_id).filter(Boolean)
   if (cfg.supervisor_chat_id) return [cfg.supervisor_chat_id]
   return []
+}
+
+export function getNeedleKeeperIds(cfg) {
+  if (cfg?.needle_keepers?.length) {
+    const ids = cfg.needle_keepers.map(k => String(k.chat_id || '').trim()).filter(Boolean)
+    if (ids.length > 0) return ids
+  }
+  return getSupervisorIds(cfg)
 }
 
 export function getTechnicianChatId(cfg, technicianName) {
@@ -276,7 +285,7 @@ export async function notifySpareNeedleRequested(snr, cylinder) {
     `🔗 <a href="${prepareLink}">👉 คลิกที่นี่เพื่อจัดเตรียมเข็มและตัดสต็อก</a>`,
   ].filter(l => l !== null).join('\n')
 
-  const ids = getSupervisorIds(cfg)
+  const ids = getNeedleKeeperIds(cfg)
   if (!ids.length) return { ok: false, error: 'ไม่มี Chat ID สำหรับผู้จ่ายเข็ม/หัวหน้างาน' }
   const results = await Promise.all(ids.map(id => sendMessage(cfg.bot_token, id, text)))
   return results[0]
@@ -311,7 +320,8 @@ export async function notifySpareNeedlePrepared(snr, cylinder) {
 
   const techChatId = getTechnicianChatId(cfg, snr.technician_name)
   const supervisorIds = getSupervisorIds(cfg)
-  const targetIds = Array.from(new Set([techChatId, ...supervisorIds].filter(Boolean)))
+  const keeperIds = getNeedleKeeperIds(cfg)
+  const targetIds = Array.from(new Set([techChatId, ...supervisorIds, ...keeperIds].filter(Boolean)))
 
   if (!targetIds.length) return { ok: false, error: 'ไม่มี Chat ID ปลายทาง' }
   const results = await Promise.all(targetIds.map(id => sendMessage(cfg.bot_token, id, text)))
@@ -330,7 +340,7 @@ export async function notifySpareNeedleReceived(snr, cylinder) {
     `✅ สถานะ: <b>ปิดงานเบิกเข็ม Spare สมบูรณ์</b>`,
   ].join('\n')
 
-  const ids = getSupervisorIds(cfg)
+  const ids = Array.from(new Set([...getSupervisorIds(cfg), ...getNeedleKeeperIds(cfg)]))
   if (!ids.length) return { ok: false, error: 'ไม่มี Chat ID' }
   const results = await Promise.all(ids.map(id => sendMessage(cfg.bot_token, id, text)))
   return results[0]

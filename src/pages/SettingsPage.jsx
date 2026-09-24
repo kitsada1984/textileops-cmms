@@ -187,14 +187,22 @@ export default function SettingsPage() {
   }
 
   const addLineContact = (role, contact) => {
-    const key = role === 'supervisor' ? 'supervisors' : 'technicians'
+    let key = 'supervisors'
+    let label = 'หัวหน้างาน'
+    if (role === 'technician') {
+      key = 'technicians'
+      label = 'ช่างเทคนิค'
+    } else if (role === 'needle_keeper') {
+      key = 'needle_keepers'
+      label = 'ผู้ดูแลเข็ม'
+    }
     setLine((p) => {
       const current = p[key] || []
       if (current.some((item) => item.user_id === contact.user_id)) return p
       return { ...p, [key]: [...current, { name: contact.name, user_id: contact.user_id }] }
     })
     setLineIsOk(true)
-    setLineMsg(`เพิ่ม ${contact.name} ใน ${role === 'supervisor' ? 'หัวหน้างาน' : 'ช่างเทคนิค'} เรียบร้อยแล้ว (กดบันทึกเพื่อเริ่มใช้งาน)`)
+    setLineMsg(`เพิ่ม ${contact.name} ใน ${label} เรียบร้อยแล้ว (กดบันทึกเพื่อเริ่มใช้งาน)`)
   }
 
   const loadTgContacts = async () => {
@@ -216,13 +224,21 @@ export default function SettingsPage() {
   }
 
   const addTgContact = (role, contact) => {
-    const key = role === 'supervisor' ? 'supervisors' : 'technicians'
+    let key = 'supervisors'
+    let label = 'หัวหน้างาน'
+    if (role === 'technician') {
+      key = 'technicians'
+      label = 'ช่าง'
+    } else if (role === 'needle_keeper') {
+      key = 'needle_keepers'
+      label = 'ผู้ดูแลเข็ม'
+    }
     setTg(p => {
       const current = p[key] || []
       if (current.some(item => item.chat_id === contact.chat_id)) return p
       return { ...p, [key]: [...current, { name: contact.name, chat_id: contact.chat_id }] }
     })
-    setTgMsg(`เพิ่ม ${contact.name} แล้ว กดบันทึกเพื่อใช้งาน`)
+    setTgMsg(`เพิ่ม ${contact.name} ใน ${label} แล้ว กดบันทึกเพื่อใช้งาน`)
   }
 
   const tgIsOk = tgMsg.startsWith('✓') || tgMsg.includes('สำเร็จ') || tgMsg.includes('บันทึกแล้ว') || tgMsg.includes('พบรายชื่อ') || tgMsg.includes('เพิ่ม ')
@@ -354,6 +370,18 @@ export default function SettingsPage() {
                         }}>
                         <UserPlus size={12}/> หัวหน้างาน
                       </button>
+                      <button onClick={() => addTgContact('needle_keeper', contact)} disabled={(tg.needle_keepers || []).some(k => k.chat_id === contact.chat_id)}
+                        title="เพิ่มเป็น ผู้ดูแลเข็ม"
+                        style={{
+                          height: 28, padding: '0 9px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          border: '1px solid rgba(14,165,233,0.25)',
+                          background: (tg.needle_keepers || []).some(k => k.chat_id === contact.chat_id) ? 'var(--bg-thead)' : 'rgba(14,165,233,0.1)',
+                          color: (tg.needle_keepers || []).some(k => k.chat_id === contact.chat_id) ? 'var(--text-400)' : '#0ea5e9',
+                          cursor: (tg.needle_keepers || []).some(k => k.chat_id === contact.chat_id) ? 'default' : 'pointer',
+                        }}>
+                        <UserPlus size={12}/> ผู้ดูแลเข็ม
+                      </button>
                       <button onClick={() => addTgContact('technician', contact)} disabled={inTechnician}
                         title="เพิ่มเป็น Technician"
                         style={{
@@ -395,6 +423,41 @@ export default function SettingsPage() {
                     onChange={e => setTg(p => { const a=[...p.supervisors]; a[i]={...a[i],chat_id:e.target.value}; return {...p,supervisors:a} })}
                     placeholder="Chat ID เช่น -100…" style={{ flex: 1 }} />
                   <button onClick={() => setTg(p => ({ ...p, supervisors: p.supervisors.filter((_,j)=>j!==i) }))}
+                    style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-page)', color: 'var(--text-400)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Needle Keepers list */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <label className="label mb-0 text-sky-700 dark:text-sky-400 font-bold">🪡 ผู้ดูแลเข็ม / สโตร์เข็ม (Needle Keepers)</label>
+                <div style={{ fontSize: 11, color: 'var(--text-400)' }}>
+                  จะได้รับแจ้งเตือนทันทีเมื่อมีช่างสแกนขอเบิกเข็ม Spare
+                </div>
+              </div>
+              <button onClick={() => setTg(p => ({ ...p, needle_keepers: [...(p.needle_keepers||[]), { name: '', chat_id: '' }] }))}
+                style={{ fontSize: 11, fontWeight: 700, color: '#0ea5e9', background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.25)', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' }}>
+                + เพิ่มผู้ดูแลเข็ม
+              </button>
+            </div>
+            {(!tg.needle_keepers || tg.needle_keepers.length === 0) && (
+              <div style={{ fontSize: 12, color: 'var(--text-400)', padding: '8px 0' }}>ยังไม่ได้ระบุ — ระบบจะส่งแจ้งเตือนหาหัวหน้างานเป็นค่าเริ่มต้น</div>
+            )}
+            <div className="space-y-2">
+              {(tg.needle_keepers || []).map((k, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input className="input text-sm" value={k.name}
+                    onChange={e => setTg(p => { const a=[...(p.needle_keepers||[])]; a[i]={...a[i],name:e.target.value}; return {...p,needle_keepers:a} })}
+                    placeholder="ชื่อผู้ดูแลเข็ม" style={{ flex: '0 0 130px' }} />
+                  <input className="input font-mono text-xs" value={k.chat_id}
+                    onChange={e => setTg(p => { const a=[...(p.needle_keepers||[])]; a[i]={...a[i],chat_id:e.target.value}; return {...p,needle_keepers:a} })}
+                    placeholder="Chat ID เช่น 6981... หรือ -100..." style={{ flex: 1 }} />
+                  <button onClick={() => setTg(p => ({ ...p, needle_keepers: (p.needle_keepers||[]).filter((_,j)=>j!==i) }))}
                     style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-page)', color: 'var(--text-400)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
                     ×
                   </button>
@@ -648,6 +711,13 @@ export default function SettingsPage() {
                           </button>
                           <button
                             type="button"
+                            onClick={() => addLineContact('needle_keeper', c)}
+                            className="px-2.5 py-1 rounded bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-600 dark:text-sky-300 text-[11px] font-bold border border-sky-200 dark:border-sky-800 flex items-center gap-1"
+                          >
+                            <UserPlus size={11} /> + ผู้ดูแลเข็ม
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => addLineContact('technician', c)}
                             className="px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1"
                           >
@@ -730,6 +800,76 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Needle Keepers List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-sky-800 dark:text-sky-300">
+                      🪡 รายชื่อผู้ดูแลเข็ม / สโตร์เข็ม (Needle Keepers)
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      จะได้รับแจ้งเตือนทาง LINE ทันทีเมื่อมีช่างสแกนขอเบิกเข็ม Spare
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLine((p) => ({ ...p, needle_keepers: [...(p.needle_keepers || []), { name: '', user_id: '' }] }))}
+                    className="text-xs text-sky-600 hover:underline font-bold flex items-center gap-1"
+                  >
+                    <UserPlus size={12} /> <span>+ เพิ่มผู้ดูแลเข็ม</span>
+                  </button>
+                </div>
+
+                {(!line.needle_keepers || line.needle_keepers.length === 0) && (
+                  <div className="text-xs text-slate-400 py-1.5">ยังไม่ได้ระบุผู้ดูแลเข็ม — ระบบจะส่งหาหัวหน้างานเป็นค่าเริ่มต้น</div>
+                )}
+
+                <div className="space-y-2">
+                  {(line.needle_keepers || []).map((k, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        className="input text-xs"
+                        value={k.name || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.needle_keepers || [])]
+                            a[i] = { ...a[i], name: e.target.value }
+                            return { ...p, needle_keepers: a }
+                          })
+                        }
+                        placeholder="ชื่อผู้ดูแลเข็ม"
+                        style={{ flex: '0 0 130px' }}
+                      />
+                      <input
+                        className="input font-mono text-xs"
+                        value={k.user_id || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.needle_keepers || [])]
+                            a[i] = { ...a[i], user_id: e.target.value }
+                            return { ...p, needle_keepers: a }
+                          })
+                        }
+                        placeholder="User ID เช่น U66f... หรือ Group ID C..."
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLine((p) => ({
+                            ...p,
+                            needle_keepers: (p.needle_keepers || []).filter((_, j) => j !== i),
+                          }))
+                        }
+                        className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 hover:text-red-500 flex items-center justify-center flex-shrink-0 text-sm font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Technicians List */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -800,6 +940,20 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Optional Store Needle LINE Notify Token */}
+              <div>
+                <label className="label mb-1">
+                  LINE Notify Token กลุ่มสโตร์เข็ม <span style={{ fontSize: 10, color: 'var(--text-400)' }}>(ทางเลือก สำหรับส่งเข้ากลุ่ม LINE Notify ของสโตร์)</span>
+                </label>
+                <input
+                  className="input font-mono text-xs"
+                  type="password"
+                  value={line.needle_keeper_notify_token || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, needle_keeper_notify_token: e.target.value }))}
+                  placeholder="เช่น LINE Notify Token กลุ่มสโตร์เข็ม"
+                />
+              </div>
+
             </div>
           )}
 
@@ -807,13 +961,23 @@ export default function SettingsPage() {
           {line.provider === 'line_notify' && (
             <div className="space-y-4 pt-1">
               <div>
-                <label className="label">LINE Notify Token</label>
+                <label className="label">LINE Notify Token หลัก (ช่างและหัวหน้า)</label>
                 <input
                   className="input font-mono text-xs"
                   type="password"
                   value={line.notify_token || ''}
                   onChange={(e) => setLine((p) => ({ ...p, notify_token: e.target.value }))}
                   placeholder="กรอก Access Token จาก notify-bot.line.me"
+                />
+              </div>
+              <div>
+                <label className="label">LINE Notify Token กลุ่มสโตร์เข็ม (ทางเลือก)</label>
+                <input
+                  className="input font-mono text-xs"
+                  type="password"
+                  value={line.needle_keeper_notify_token || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, needle_keeper_notify_token: e.target.value }))}
+                  placeholder="กรอก Access Token กลุ่มสโตร์เข็ม"
                 />
               </div>
             </div>

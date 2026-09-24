@@ -31,11 +31,13 @@ import {
   notifySpareNeedleRequested,
   notifySpareNeedlePrepared,
   notifySpareNeedleReceived,
+  loadTelegramSettingsDB,
 } from '../../utils/telegram'
 import {
   notifyLineSpareNeedleRequested,
   notifyLineSpareNeedlePrepared,
   notifyLineSpareNeedleReceived,
+  loadLineSettingsDB,
 } from '../../utils/line'
 
 /* ── UI Helpers ──────────────────────────────────────────────────────────── */
@@ -58,7 +60,7 @@ function Card({ children, style, className = '' }) {
   )
 }
 
-function Btn({ onClick, disabled, loading, children, variant = 'primary', style }) {
+function Btn({ type = 'button', onClick, disabled, loading, children, variant = 'primary', style }) {
   const styles = {
     primary: {
       background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
@@ -87,7 +89,7 @@ function Btn({ onClick, disabled, loading, children, variant = 'primary', style 
 
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       disabled={disabled || loading}
       style={{
@@ -519,6 +521,21 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
   })
 
 
+  const [keeperSummary, setKeeperSummary] = useState('')
+
+  useEffect(() => {
+    Promise.all([loadTelegramSettingsDB(), loadLineSettingsDB()])
+      .then(([tg, line]) => {
+        const tgKeepers = (tg?.needle_keepers || []).map((k) => k.name).filter(Boolean)
+        const lineKeepers = (line?.needle_keepers || []).map((k) => k.name).filter(Boolean)
+        const names = Array.from(new Set([...tgKeepers, ...lineKeepers]))
+        if (names.length > 0) {
+          setKeeperSummary(names.join(', '))
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     TechnicianAPI.list().then((list) => {
       const active = (list || []).filter((t) => t.Active !== false && t.Active !== 'false')
@@ -589,7 +606,9 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
       if (onSubmitted) onSubmitted(newRequest)
     } catch (err) {
       console.error('Submit spare needle error:', err)
-      setErrorMsg('เกิดข้อผิดพลาดในการบันทึกคำขอ: ' + (err.message || err))
+      const msg = 'เกิดข้อผิดพลาดในการบันทึกคำขอ: ' + (err.message || err)
+      setErrorMsg(msg)
+      alert(msg)
     } finally {
       setSubmitting(false)
     }
@@ -846,6 +865,32 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
           />
         </div>
 
+        {/* Notification Recipient Badge */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            color: '#166534',
+            fontSize: 12,
+            fontWeight: 600,
+            marginBottom: 16,
+          }}
+        >
+          <Send size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
+          <span>
+            ยิงแจ้งเตือนอัตโนมัติไปยัง:{' '}
+            <strong style={{ color: '#15803d' }}>
+              {keeperSummary || 'ผู้ดูแลเข็ม / สโตร์เข็ม'}
+            </strong>{' '}
+            (Telegram & LINE)
+          </span>
+        </div>
+
         {errorMsg && (
           <div
             style={{
@@ -868,6 +913,7 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
 
         <Btn
           type="submit"
+          onClick={handleSubmit}
           loading={submitting}
           disabled={!hasAnySelection || submitting}
           variant="primary"

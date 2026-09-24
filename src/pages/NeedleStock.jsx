@@ -16,6 +16,7 @@ import {
   StepPrepareSpareNeedle,
   StepAcknowledgeSpareNeedle,
 } from '../components/repair/SpareNeedleFlow'
+import NeedleKeeperConfigModal from '../components/repair/NeedleKeeperConfigModal'
 import { uploadMedia } from '../modules/media/mediaUploader'
 import { getDirectImageUrl, isGoogleDriveUrl } from '../utils/imageUrlUtils'
 import { formatNeedleStockFileName } from '../utils/needleStockUtils'
@@ -57,6 +58,7 @@ export default function NeedleStock() {
   const [spareSearchQuery, setSpareSearchQuery] = useState('')
   const [prepareModalOpen, setPrepareModalOpen] = useState(false)
   const [selectedSpareReq, setSelectedSpareReq] = useState(null)
+  const [keeperConfigModalOpen, setKeeperConfigModalOpen] = useState(false)
 
   // Inventory Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -1359,25 +1361,35 @@ export default function NeedleStock() {
                   ))}
                 </div>
 
-                {/* Search */}
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={spareSearchQuery}
-                    onChange={(e) => setSpareSearchQuery(e.target.value)}
-                    placeholder="ค้นหาเลขที่, เครื่อง, ช่าง..."
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:border-sky-500 focus:outline-none transition"
-                  />
-                  {spareSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSpareSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                {/* Search & Keeper Config */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={spareSearchQuery}
+                      onChange={(e) => setSpareSearchQuery(e.target.value)}
+                      placeholder="ค้นหาเลขที่, เครื่อง, ช่าง..."
+                      className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:border-sky-500 focus:outline-none transition"
+                    />
+                    {spareSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSpareSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setKeeperConfigModalOpen(true)}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+                    title="ระบุ LINE & Telegram ผู้ดูแลเข็มที่จะรับแจ้งเตือนเบิกเข็ม"
+                  >
+                    <span>⚙️ ผู้ดูแลเข็ม (LINE / TG)</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1576,6 +1588,13 @@ export default function NeedleStock() {
         </div>,
         document.body
       )}
+
+      {/* 0. NEEDLE KEEPER CONFIG MODAL */}
+      <NeedleKeeperConfigModal
+        isOpen={keeperConfigModalOpen}
+        onClose={() => setKeeperConfigModalOpen(false)}
+        onSuccess={() => toast.success('บันทึกการตั้งค่าผู้ดูแลเข็มเรียบร้อยแล้ว')}
+      />
 
       {/* 1. STOCK TRANSACTION MODAL */}
       {stockModalOpen && (

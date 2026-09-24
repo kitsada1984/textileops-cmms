@@ -18,6 +18,8 @@ export const DEFAULT_LINE_SETTINGS = {
   channel_access_token: '',
   target_group_id: '',
   supervisors: [{ name: 'กฤษดา', user_id: 'U66f2b207af94e739c10a3cf937af2965' }],
+  needle_keepers: [],
+  needle_keeper_notify_token: '',
   technicians: [{ name: 'หนึ่ง', user_id: '' }],
   channel_secret: '',
   notify_token: '',
@@ -36,6 +38,8 @@ export const loadLineSettings = () => {
       ...DEFAULT_LINE_SETTINGS,
       ...saved,
       supervisors: saved.supervisors || (saved.target_group_id ? [{ name: 'หัวหน้างาน', user_id: saved.target_group_id }] : DEFAULT_LINE_SETTINGS.supervisors),
+      needle_keepers: saved.needle_keepers || [],
+      needle_keeper_notify_token: saved.needle_keeper_notify_token || '',
       technicians: saved.technicians || DEFAULT_LINE_SETTINGS.technicians,
     }
   } catch {
@@ -63,6 +67,8 @@ export const loadLineSettingsDB = async () => {
         ...DEFAULT_LINE_SETTINGS,
         ...parsed,
         supervisors: parsed.supervisors || (parsed.target_group_id ? [{ name: 'หัวหน้างาน', user_id: parsed.target_group_id }] : DEFAULT_LINE_SETTINGS.supervisors),
+        needle_keepers: parsed.needle_keepers || [],
+        needle_keeper_notify_token: parsed.needle_keeper_notify_token || '',
         technicians: parsed.technicians || DEFAULT_LINE_SETTINGS.technicians,
       }
       saveLineSettings(merged)
@@ -122,6 +128,14 @@ export function getSupervisorLineIds(cfg) {
     return [cfg.target_group_id.trim()]
   }
   return []
+}
+
+export function getNeedleKeeperLineIds(cfg) {
+  if (cfg?.needle_keepers?.length) {
+    const ids = cfg.needle_keepers.map(k => String(k.user_id || '').trim()).filter(Boolean)
+    if (ids.length > 0) return ids
+  }
+  return getSupervisorLineIds(cfg)
 }
 
 export function getTechnicianLineId(cfg, technicianName) {
@@ -461,12 +475,12 @@ export async function notifyLineSpareNeedleRequested(snr, cylinder) {
       `👉 แตะเพื่อจัดเตรียมเข็ม: ${directUrl}`,
     ].filter(Boolean).join('\n')
 
-    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+    const targetIds = getNeedleKeeperLineIds(cfg)
+    let sentOa = false
+    let oaResults = null
 
-    if (effectiveProvider === 'line_oa' && cfg.channel_access_token) {
-      const targetIds = getSupervisorLineIds(cfg)
-      if (!targetIds.length) return { ok: false, skipped: true }
-      const results = await Promise.all(targetIds.map(targetId =>
+    if (cfg.channel_access_token && targetIds.length > 0) {
+      oaResults = await Promise.all(targetIds.map(targetId =>
         sendLineNotification({
           type: 'text',
           token: cfg.channel_access_token,
@@ -474,14 +488,21 @@ export async function notifyLineSpareNeedleRequested(snr, cylinder) {
           textMessage,
         })
       ))
-      return { ok: true, results }
-    } else if (cfg.notify_token) {
-      return await sendLineNotification({
+      sentOa = true
+    }
+
+    const notifyToken = cfg.needle_keeper_notify_token || cfg.notify_token
+    if (notifyToken) {
+      await sendLineNotification({
         type: 'notify',
-        notifyToken: cfg.notify_token,
+        notifyToken,
         textMessage,
       })
     }
+
+    if (sentOa) return { ok: true, results: oaResults }
+    if (notifyToken) return { ok: true }
+    return { ok: false, skipped: true }
   } catch (err) {
     console.warn('[LINE Spare Request Error]', err)
     return { ok: false, error: err.message }
@@ -522,7 +543,8 @@ export async function notifyLineSpareNeedlePrepared(snr, cylinder) {
     if (effectiveProvider === 'line_oa' && cfg.channel_access_token) {
       const techTargetId = getTechnicianLineId(cfg, snr.technician_name)
       const supervisorIds = getSupervisorLineIds(cfg)
-      const targetIds = Array.from(new Set([techTargetId, ...supervisorIds].filter(Boolean)))
+      const keeperIds = getNeedleKeeperLineIds(cfg)
+      const targetIds = Array.from(new Set([techTargetId, ...supervisorIds, ...keeperIds].filter(Boolean)))
       if (!targetIds.length) return { ok: false, skipped: true }
       const results = await Promise.all(targetIds.map(targetId =>
         sendLineNotification({
@@ -533,10 +555,10 @@ export async function notifyLineSpareNeedlePrepared(snr, cylinder) {
         })
       ))
       return { ok: true, results }
-    } else if (cfg.notify_token) {
+    } else if (cfg.notify_token || cfg.needle_keeper_notify_token) {
       return await sendLineNotification({
         type: 'notify',
-        notifyToken: cfg.notify_token,
+        notifyToken: cfg.needle_keeper_notify_token || cfg.notify_token,
         textMessage,
       })
     }
@@ -563,10 +585,12 @@ export async function notifyLineSpareNeedleReceived(snr, cylinder) {
       `✅ สถานะ: ปิดงานเบิกเข็ม Spare สมบูรณ์`,
     ].join('\n')
 
-    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token && !cfg.needle_keeper_notify_token)) ? 'line_oa' : 'line_notify'
 
     if (effectiveProvider === 'line_oa' && cfg.channel_access_token) {
-      const targetIds = getSupervisorLineIds(cfg)
+      const supervisorIds = getSupervisorLineIds(cfg)
+      const keeperIds = getNeedleKeeperLineIds(cfg)
+      const targetIds = Array.from(new Set([...supervisorIds, ...keeperIds].filter(Boolean)))
       if (!targetIds.length) return { ok: false, skipped: true }
       const results = await Promise.all(targetIds.map(targetId =>
         sendLineNotification({
@@ -577,10 +601,10 @@ export async function notifyLineSpareNeedleReceived(snr, cylinder) {
         })
       ))
       return { ok: true, results }
-    } else if (cfg.notify_token) {
+    } else if (cfg.notify_token || cfg.needle_keeper_notify_token) {
       return await sendLineNotification({
         type: 'notify',
-        notifyToken: cfg.notify_token,
+        notifyToken: cfg.needle_keeper_notify_token || cfg.notify_token,
         textMessage,
       })
     }
