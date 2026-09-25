@@ -60,7 +60,7 @@ function Card({ children, style, className = '' }) {
   )
 }
 
-function Btn({ type = 'button', onClick, disabled, loading, children, variant = 'primary', style }) {
+function Btn({ type = 'button', onClick, disabled, loading, children, variant = 'primary', style, ...props }) {
   const styles = {
     primary: {
       background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
@@ -92,6 +92,7 @@ function Btn({ type = 'button', onClick, disabled, loading, children, variant = 
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
+      {...props}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -932,12 +933,20 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
   const [loadingSets, setLoadingSets] = useState(true)
   const [issuerName, setIssuerName] = useState('')
   const [issuerComment, setIssuerComment] = useState('')
+  const [sourceType, setSourceType] = useState('IN_SYSTEM') // 'IN_SYSTEM' | 'OFF_SYSTEM'
   const [selectedMachine, setSelectedMachine] = useState('')
   const [selectedSetId, setSelectedSetId] = useState('')
   const [issueQty, setIssueQty] = useState(10)
   const [issuedItems, setIssuedItems] = useState(snr.issued_items || [])
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  // Off-system needle state
+  const [offSystemModel, setOffSystemModel] = useState('')
+  const [offSystemGauge, setOffSystemGauge] = useState(snr.gauge || '28G')
+  const [offSystemGrade, setOffSystemGrade] = useState('เกรด B')
+  const [offSystemQty, setOffSystemQty] = useState(10)
+  const [offSystemNote, setOffSystemNote] = useState('')
 
   useEffect(() => {
     NeedleSetAPI.list().then((list) => {
@@ -1019,29 +1028,65 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
   const selectedSet = filteredSets.find((s) => s.id === selectedSetId) || (filteredSets.length > 0 ? filteredSets[0] : null)
 
   const handleAddIssuedItem = () => {
-    if (!selectedSet) return
-    const qty = parseInt(issueQty, 10) || 0
-    if (qty <= 0) {
-      setErrorMsg('กรุณาระบุจำนวนที่ต้องการตัดจ่ายมากกว่า 0')
-      return
-    }
-    if (qty > selectedSet.quantity) {
-      setErrorMsg(`จำนวนคงเหลือในสต็อกไม่เพียงพอ (มี ${selectedSet.quantity} ตัว)`)
-      return
-    }
-
-    setIssuedItems((prev) => [
-      ...prev,
-      {
-        setId: selectedSet.id,
-        needleModel: selectedSet.needleModel,
-        gauge: selectedSet.gauge,
-        grade: selectedSet.grade,
-        machineId: selectedSet.machineId || selectedSet.Machine_ID || '',
-        quantity: qty,
-      },
-    ])
     setErrorMsg('')
+    if (sourceType === 'IN_SYSTEM') {
+      if (!selectedSet) {
+        setErrorMsg('กรุณาเลือกรหัสเข็มในสต็อกที่ต้องการตัดจ่าย')
+        return
+      }
+      const qty = parseInt(issueQty, 10) || 0
+      if (qty <= 0) {
+        setErrorMsg('กรุณาระบุจำนวนที่ต้องการตัดจ่ายมากกว่า 0')
+        return
+      }
+      if (qty > selectedSet.quantity) {
+        setErrorMsg(`จำนวนคงเหลือในสต็อกไม่เพียงพอ (มี ${selectedSet.quantity} ตัว)`)
+        return
+      }
+
+      setIssuedItems((prev) => [
+        ...prev,
+        {
+          setId: selectedSet.id,
+          needleModel: selectedSet.needleModel,
+          gauge: selectedSet.gauge,
+          grade: selectedSet.grade,
+          machineId: selectedSet.machineId || selectedSet.Machine_ID || '',
+          quantity: qty,
+          sourceType: 'IN_SYSTEM',
+          isOffSystem: false,
+        },
+      ])
+    } else {
+      // OFF_SYSTEM
+      if (!offSystemModel.trim()) {
+        setErrorMsg('กรุณาระบุชื่อรุ่น/เบอร์เข็มนอกระบบ')
+        return
+      }
+      const qty = parseInt(offSystemQty, 10) || 0
+      if (qty <= 0) {
+        setErrorMsg('กรุณาระบุจำนวนเข็มที่ต้องการจ่ายมากกว่า 0')
+        return
+      }
+
+      setIssuedItems((prev) => [
+        ...prev,
+        {
+          setId: 'OFF_SYSTEM',
+          needleModel: offSystemModel.trim(),
+          gauge: offSystemGauge.trim() || snr.gauge || '28G',
+          grade: offSystemGrade || 'เกรด B',
+          machineId: snr.machine_mc || cylinder?.Machine || '',
+          quantity: qty,
+          sourceType: 'OFF_SYSTEM',
+          isOffSystem: true,
+          note: offSystemNote.trim(),
+        },
+      ])
+      // Reset text inputs for next addition
+      setOffSystemModel('')
+      setOffSystemNote('')
+    }
   }
 
   const handleRemoveIssuedItem = (index) => {
@@ -1061,38 +1106,63 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
 
     setSubmitting(true)
     try {
-      // 1. Deduct stock and log to history for each issued item
+      // 1. Process each issued item:
+      // - In-system items: deduct stock from needle_sets and log to needle_history_logs
+      // - Off-system items: do NOT deduct needle_sets, but log to needle_history_logs for audit
       for (const item of issuedItems) {
-        const setRecord = stockSets.find((s) => s.id === item.setId)
-        if (setRecord) {
-          const currentBal = parseInt(setRecord.quantity, 10) || 0
-          const deductQty = parseInt(item.quantity, 10) || 0
-          const newBal = Math.max(0, currentBal - deductQty)
+        const isOff = item.isOffSystem || item.sourceType === 'OFF_SYSTEM' || item.setId === 'OFF_SYSTEM'
+        const deductQty = parseInt(item.quantity, 10) || 0
 
-          // Update stock balance
-          await NeedleSetAPI.update(item.setId, {
-            ...setRecord,
-            quantity: newBal,
-            Quantity: newBal,
-          })
-
-          // Create history log
+        if (isOff) {
+          // Log off-system needle issuance for audit trail
           await NeedleHistoryAPI.create({
-            id: `LOG-SPARE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            setId: item.setId,
-            actionType: 'ISSUE_SPARE',
-            oldGrade: setRecord.grade,
-            newGrade: setRecord.grade,
-            conditionDetail: setRecord.conditionDetail,
+            id: `LOG-OFFSYS-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            setId: 'OFF_SYSTEM',
+            actionType: 'ISSUE_SPARE_OFF_SYSTEM',
+            oldGrade: item.grade || 'เกรด B',
+            newGrade: item.grade || 'เกรด B',
+            conditionDetail: 'เข็มนอกระบบ (ไม่ได้ตัดสต็อก)',
             quantity: deductQty,
             dateAction: new Date().toISOString().slice(0, 10),
             technician: snr.technician_name,
-            remarks: `เบิกเข็ม Spare สำหรับ ${snr.machine_mc} (${snr.request_no}) โดย ${issuerName}`,
+            remarks: `จ่ายเข็ม Spare นอกระบบ: ${item.needleModel} (${deductQty} ตัว) สำหรับ ${snr.machine_mc} โดย ${issuerName}${item.note ? ` [หมายเหตุ: ${item.note}]` : ''}`,
             targetMachine: snr.machine_mc,
             qtyChange: `-${deductQty}`,
-            balanceAfter: newBal,
-            stockDetail: 'SPARE',
+            balanceAfter: 0,
+            stockDetail: 'OFF_SYSTEM',
           })
+        } else {
+          // In-system item: deduct from needle_sets and record history
+          const setRecord = stockSets.find((s) => s.id === item.setId)
+          if (setRecord) {
+            const currentBal = parseInt(setRecord.quantity, 10) || 0
+            const newBal = Math.max(0, currentBal - deductQty)
+
+            // Update stock balance
+            await NeedleSetAPI.update(item.setId, {
+              ...setRecord,
+              quantity: newBal,
+              Quantity: newBal,
+            })
+
+            // Create history log
+            await NeedleHistoryAPI.create({
+              id: `LOG-SPARE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              setId: item.setId,
+              actionType: 'ISSUE_SPARE',
+              oldGrade: setRecord.grade,
+              newGrade: setRecord.grade,
+              conditionDetail: setRecord.conditionDetail,
+              quantity: deductQty,
+              dateAction: new Date().toISOString().slice(0, 10),
+              technician: snr.technician_name,
+              remarks: `เบิกเข็ม Spare สำหรับ ${snr.machine_mc} (${snr.request_no}) โดย ${issuerName}`,
+              targetMachine: snr.machine_mc,
+              qtyChange: `-${deductQty}`,
+              balanceAfter: newBal,
+              stockDetail: 'SPARE',
+            })
+          }
         }
       }
 
@@ -1201,202 +1271,421 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
           <Package size={18} style={{ color: '#2563eb' }} />
-          เลือกชุดเข็มจากสต็อกเพื่อตัดจ่ายจริง
+          เลือกการจ่ายเข็ม (ในระบบ หรือ นอกระบบ)
         </div>
 
-        {loadingSets ? (
-          <div style={{ textAlign: 'center', padding: 20 }}>
-            <Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />
-          </div>
-        ) : (
-          <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px', border: '1px solid #e2e8f0' }}>
-            {/* 1. Machine MC Selector */}
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <label
-                  htmlFor="spare-machine-select"
-                  style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}
-                >
-                  <Cpu size={14} style={{ color: '#2563eb' }} />
-                  1. เลือกเบอร์เครื่องจักร (Machine MC) ก่อนเลือกรหัสเข็ม
-                </label>
-                {selectedMachine && selectedMachine !== 'ALL' && (
-                  <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 700 }}>
-                    พบ {filteredSets.length} รายการ
-                  </span>
-                )}
-              </div>
-              <select
-                id="spare-machine-select"
-                data-testid="spare-machine-select"
-                value={selectedMachine}
-                onChange={(e) => handleMachineChange(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  border: '1.5px solid #93c5fd',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  background: '#eff6ff',
-                  color: '#1e3a8a',
-                  outline: 'none',
-                }}
-              >
-                <option value="ALL">-- แสดงเข็มทุกเครื่อง (All Machines) ({stockSets.length} รายการ) --</option>
-                {availableMachines.map((mc) => {
-                  const reqMc = (snr.machine_mc || cylinder?.Machine || '').trim()
-                  const isReq = reqMc && mc.toLowerCase() === reqMc.toLowerCase()
-                  const count = stockSets.filter((s) => (s.machineId || s.Machine_ID || '').trim().toLowerCase() === mc.toLowerCase()).length
-                  return (
-                    <option key={mc} value={mc}>
-                      เครื่อง {mc} ({count} รายการ) {isReq ? '★ (เครื่องที่ขอเบิก)' : ''}
-                    </option>
-                  )
-                })}
-                {(snr.machine_mc || cylinder?.Machine) &&
-                  !availableMachines.some(
-                    (mc) => mc.toLowerCase() === (snr.machine_mc || cylinder?.Machine || '').trim().toLowerCase()
-                  ) && (
-                    <option value={(snr.machine_mc || cylinder?.Machine).trim()}>
-                      เครื่อง {(snr.machine_mc || cylinder?.Machine).trim()} (ไม่มีเข็มเฉพาะเครื่องในระบบ) ★ (เครื่องที่ขอเบิก)
-                    </option>
+        {/* Segmented Control / Type Selector */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 8,
+            marginBottom: 12,
+            background: '#e2e8f0',
+            padding: 4,
+            borderRadius: 12,
+          }}
+        >
+          <button
+            type="button"
+            data-testid="tab-in-system"
+            onClick={() => { setSourceType('IN_SYSTEM'); setErrorMsg(''); }}
+            style={{
+              padding: '10px 8px',
+              borderRadius: 10,
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              background: sourceType === 'IN_SYSTEM' ? '#2563eb' : 'transparent',
+              color: sourceType === 'IN_SYSTEM' ? '#ffffff' : '#475569',
+              boxShadow: sourceType === 'IN_SYSTEM' ? '0 2px 6px rgba(37,99,235,0.3)' : 'none',
+              transition: 'all 0.2s',
+            }}
+          >
+            <Package size={15} /> เข็มในระบบ (ตัดสต็อก)
+          </button>
+          <button
+            type="button"
+            data-testid="tab-off-system"
+            onClick={() => { setSourceType('OFF_SYSTEM'); setErrorMsg(''); }}
+            style={{
+              padding: '10px 8px',
+              borderRadius: 10,
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              background: sourceType === 'OFF_SYSTEM' ? '#d97706' : 'transparent',
+              color: sourceType === 'OFF_SYSTEM' ? '#ffffff' : '#475569',
+              boxShadow: sourceType === 'OFF_SYSTEM' ? '0 2px 6px rgba(217,119,6,0.3)' : 'none',
+              transition: 'all 0.2s',
+            }}
+          >
+            <Tag size={15} /> เข็มนอกระบบ (ยังไม่บันทึก)
+          </button>
+        </div>
+
+        {sourceType === 'IN_SYSTEM' ? (
+          loadingSets ? (
+            <div style={{ textAlign: 'center', padding: 20 }}>
+              <Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />
+            </div>
+          ) : (
+            <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px', border: '1px solid #e2e8f0' }}>
+              {/* 1. Machine MC Selector */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label
+                    htmlFor="spare-machine-select"
+                    style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <Cpu size={14} style={{ color: '#2563eb' }} />
+                    1. เลือกเบอร์เครื่องจักร (Machine MC) ก่อนเลือกรหัสเข็ม
+                  </label>
+                  {selectedMachine && selectedMachine !== 'ALL' && (
+                    <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 700 }}>
+                      พบ {filteredSets.length} รายการ
+                    </span>
                   )}
-              </select>
-              <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
-                💡 เลือกรหัสเครื่อง เช่น <b>{snr.machine_mc || 'DG-341M'}</b> เพื่อกรองดูเฉพาะชุดเข็มของเครื่องนั้น หรือเลือก &quot;แสดงเข็มทุกเครื่อง&quot;
+                </div>
+                <select
+                  id="spare-machine-select"
+                  data-testid="spare-machine-select"
+                  value={selectedMachine}
+                  onChange={(e) => handleMachineChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1.5px solid #93c5fd',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    background: '#eff6ff',
+                    color: '#1e3a8a',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="ALL">-- แสดงเข็มทุกเครื่อง (All Machines) ({stockSets.length} รายการ) --</option>
+                  {availableMachines.map((mc) => {
+                    const reqMc = (snr.machine_mc || cylinder?.Machine || '').trim()
+                    const isReq = reqMc && mc.toLowerCase() === reqMc.toLowerCase()
+                    const count = stockSets.filter((s) => (s.machineId || s.Machine_ID || '').trim().toLowerCase() === mc.toLowerCase()).length
+                    return (
+                      <option key={mc} value={mc}>
+                        เครื่อง {mc} ({count} รายการ) {isReq ? '★ (เครื่องที่ขอเบิก)' : ''}
+                      </option>
+                    )
+                  })}
+                  {(snr.machine_mc || cylinder?.Machine) &&
+                    !availableMachines.some(
+                      (mc) => mc.toLowerCase() === (snr.machine_mc || cylinder?.Machine || '').trim().toLowerCase()
+                    ) && (
+                      <option value={(snr.machine_mc || cylinder?.Machine).trim()}>
+                        เครื่อง {(snr.machine_mc || cylinder?.Machine).trim()} (ไม่มีเข็มเฉพาะเครื่องในระบบ) ★ (เครื่องที่ขอเบิก)
+                      </option>
+                    )}
+                </select>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+                  💡 เลือกรหัสเครื่อง เช่น <b>{snr.machine_mc || 'DG-341M'}</b> เพื่อกรองดูเฉพาะชุดเข็มของเครื่องนั้น หรือเลือก &quot;แสดงเข็มทุกเครื่อง&quot;
+                </div>
               </div>
+
+              {/* 2. Needle Set Selector */}
+              <div style={{ marginBottom: 10 }}>
+                <label
+                  htmlFor="spare-needle-set-select"
+                  style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}
+                >
+                  2. เลือกชุดเข็มในสต็อก ({filteredSets.length} รายการ {selectedMachine && selectedMachine !== 'ALL' ? `ของเครื่อง ${selectedMachine}` : 'พร้อมจ่ายทั้งหมด'})
+                </label>
+                <select
+                  id="spare-needle-set-select"
+                  data-testid="spare-needle-set-select"
+                  value={selectedSet ? selectedSet.id : ''}
+                  onChange={(e) => setSelectedSetId(e.target.value)}
+                  disabled={filteredSets.length === 0}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    background: filteredSets.length === 0 ? '#f1f5f9' : '#ffffff',
+                  }}
+                >
+                  {filteredSets.length === 0 ? (
+                    <option value="">-- ไม่พบรายการเข็มในสต็อกสำหรับเครื่องนี้ (กรุณาเลือกเครื่องอื่นหรือ All) --</option>
+                  ) : (
+                    filteredSets.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        [{s.setId}] {(s.machineId || s.Machine_ID) ? `(${s.machineId || s.Machine_ID}) ` : ''}{s.needleModel} ({s.gauge}) · {s.grade} · คงเหลือ {s.quantity} ตัว
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {selectedSet && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    marginBottom: 10,
+                    padding: '8px 10px',
+                    background: '#ffffff',
+                    borderRadius: 8,
+                    border: '1px solid #e2e8f0',
+                    fontSize: 12,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    รุ่น: <b>{selectedSet.needleModel}</b> · เกรด: <b>{selectedSet.grade}</b>
+                    <div style={{ color: '#64748b' }}>คงเหลือปัจจุบัน: <span style={{ color: '#16a34a', fontWeight: 800 }}>{selectedSet.quantity} ตัว</span></div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="number"
+                      min="1"
+                      max={selectedSet.quantity}
+                      value={issueQty}
+                      onChange={(e) => setIssueQty(parseInt(e.target.value, 10) || 1)}
+                      style={{
+                        width: 60,
+                        padding: '6px',
+                        borderRadius: 8,
+                        border: '1px solid #cbd5e1',
+                        textAlign: 'center',
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    />
+                    <Btn onClick={handleAddIssuedItem} variant="primary" style={{ padding: '8px 12px', fontSize: 12 }}>
+                      <Plus size={14} /> เพิ่มรายการ
+                    </Btn>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        ) : (
+          /* Off-System Needle Form */
+          <div style={{ background: '#fffbeb', borderRadius: 14, padding: '14px', border: '1.5px solid #fde68a' }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#92400e', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Tag size={16} style={{ color: '#d97706' }} />
+              ระบุข้อมูลเข็มนอกระบบ (ไม่ตัดยอดสต็อกในระบบ)
             </div>
 
-            {/* 2. Needle Set Selector */}
             <div style={{ marginBottom: 10 }}>
-              <label
-                htmlFor="spare-needle-set-select"
-                style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}
-              >
-                2. เลือกชุดเข็มในสต็อก ({filteredSets.length} รายการ {selectedMachine && selectedMachine !== 'ALL' ? `ของเครื่อง ${selectedMachine}` : 'พร้อมจ่ายทั้งหมด'})
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#451a03', marginBottom: 4 }}>
+                ชื่อรุ่น / เบอร์เข็มที่จ่ายจริง *
               </label>
-              <select
-                id="spare-needle-set-select"
-                data-testid="spare-needle-set-select"
-                value={selectedSet ? selectedSet.id : ''}
-                onChange={(e) => setSelectedSetId(e.target.value)}
-                disabled={filteredSets.length === 0}
+              <input
+                type="text"
+                data-testid="off-system-model-input"
+                value={offSystemModel}
+                onChange={(e) => setOffSystemModel(e.target.value)}
+                placeholder="เช่น Vo- LS 105.55 G0017 หรือเบอร์เข็ม..."
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
+                  padding: '9px 12px',
                   borderRadius: 10,
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid #fcd34d',
                   fontSize: 13,
                   fontWeight: 600,
-                  background: filteredSets.length === 0 ? '#f1f5f9' : '#ffffff',
+                  background: '#ffffff',
+                  boxSizing: 'border-box',
                 }}
-              >
-                {filteredSets.length === 0 ? (
-                  <option value="">-- ไม่พบรายการเข็มในสต็อกสำหรับเครื่องนี้ (กรุณาเลือกเครื่องอื่นหรือ All) --</option>
-                ) : (
-                  filteredSets.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      [{s.setId}] {(s.machineId || s.Machine_ID) ? `(${s.machineId || s.Machine_ID}) ` : ''}{s.needleModel} ({s.gauge}) · {s.grade} · คงเหลือ {s.quantity} ตัว
-                    </option>
-                  ))
-                )}
-              </select>
+              />
             </div>
 
-            {selectedSet && (
-              <div
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#451a03', marginBottom: 4 }}>
+                  Gauge
+                </label>
+                <input
+                  type="text"
+                  data-testid="off-system-gauge-input"
+                  value={offSystemGauge}
+                  onChange={(e) => setOffSystemGauge(e.target.value)}
+                  placeholder="เช่น 28G, 18G"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #fcd34d',
+                    fontSize: 13,
+                    background: '#ffffff',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#451a03', marginBottom: 4 }}>
+                  เกรดเข็ม
+                </label>
+                <select
+                  data-testid="off-system-grade-select"
+                  value={offSystemGrade}
+                  onChange={(e) => setOffSystemGrade(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #fcd34d',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    background: '#ffffff',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value="เกรด A">เกรด A</option>
+                  <option value="เกรด B">เกรด B</option>
+                  <option value="เกรด C">เกรด C</option>
+                  <option value="ของใหม่">ของใหม่</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#451a03', marginBottom: 4 }}>
+                  จำนวน (ตัว) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  data-testid="off-system-qty-input"
+                  value={offSystemQty}
+                  onChange={(e) => setOffSystemQty(parseInt(e.target.value, 10) || 1)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #fcd34d',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    background: '#ffffff',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#451a03', marginBottom: 4 }}>
+                  หมายเหตุ / แหล่งที่มา
+                </label>
+                <input
+                  type="text"
+                  data-testid="off-system-note-input"
+                  value={offSystemNote}
+                  onChange={(e) => setOffSystemNote(e.target.value)}
+                  placeholder="เช่น สต็อกเก่ารอคัด, ยืมจากแผนกอื่น"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #fcd34d',
+                    fontSize: 13,
+                    background: '#ffffff',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <Btn
+                type="button"
+                onClick={handleAddIssuedItem}
+                data-testid="add-off-system-btn"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  marginBottom: 10,
-                  padding: '8px 10px',
-                  background: '#ffffff',
-                  borderRadius: 8,
-                  border: '1px solid #e2e8f0',
+                  padding: '9px 16px',
                   fontSize: 12,
+                  fontWeight: 800,
+                  background: '#d97706',
+                  color: '#ffffff',
+                  border: 'none',
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  รุ่น: <b>{selectedSet.needleModel}</b> · เกรด: <b>{selectedSet.grade}</b>
-                  <div style={{ color: '#64748b' }}>คงเหลือปัจจุบัน: <span style={{ color: '#16a34a', fontWeight: 800 }}>{selectedSet.quantity} ตัว</span></div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <input
-                    type="number"
-                    min="1"
-                    max={selectedSet.quantity}
-                    value={issueQty}
-                    onChange={(e) => setIssueQty(parseInt(e.target.value, 10) || 1)}
-                    style={{
-                      width: 60,
-                      padding: '6px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      textAlign: 'center',
-                      fontSize: 13,
-                      fontWeight: 700,
-                    }}
-                  />
-                  <Btn onClick={handleAddIssuedItem} variant="primary" style={{ padding: '8px 12px', fontSize: 12 }}>
-                    <Plus size={14} /> เพิ่มรายการ
-                  </Btn>
-                </div>
-              </div>
-            )}
+                <Plus size={14} /> เพิ่มรายการเข็มนอกระบบ
+              </Btn>
+            </div>
+          </div>
+        )}
 
-            {/* List of items queued to deduct */}
-            {issuedItems.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                  รายการเข็มที่เตรียมจ่าย ({issuedItems.length} รายการ):
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {issuedItems.map((item, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '8px 12px',
-                        borderRadius: 8,
-                        background: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        fontSize: 13,
-                      }}
-                    >
-                      <div>
-                        <b>{item.needleModel}</b> ({item.gauge}) · {item.grade}
-                        {item.machineId && (
-                          <span style={{ marginLeft: 6, fontSize: 11, background: '#eff6ff', color: '#2563eb', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
-                            {item.machineId}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 800, color: '#2563eb' }}>{item.quantity} ตัว</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveIssuedItem(idx)}
-                          style={{
-                            border: 'none',
-                            background: 'none',
-                            color: '#ef4444',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            fontWeight: 700,
-                          }}
-                        >
-                          ลบ
-                        </button>
-                      </div>
+        {/* List of items queued to deduct */}
+        {issuedItems.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+              รายการเข็มที่เตรียมจ่าย ({issuedItems.length} รายการ):
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {issuedItems.map((item, idx) => {
+                const isOff = item.isOffSystem || item.sourceType === 'OFF_SYSTEM' || item.setId === 'OFF_SYSTEM'
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      background: isOff ? '#fffbeb' : '#ffffff',
+                      border: `1px solid ${isOff ? '#fde68a' : '#cbd5e1'}`,
+                      fontSize: 13,
+                    }}
+                  >
+                    <div>
+                      <b>{item.needleModel}</b> ({item.gauge}) · {item.grade}
+                      {isOff ? (
+                        <span style={{ marginLeft: 6, fontSize: 11, background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: 4, fontWeight: 700, border: '1px solid #fde68a' }}>
+                          📝 เข็มนอกระบบ
+                        </span>
+                      ) : (
+                        <span style={{ marginLeft: 6, fontSize: 11, background: '#eff6ff', color: '#2563eb', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>
+                          📦 ในระบบ {item.machineId ? `[${item.machineId}]` : ''}
+                        </span>
+                      )}
+                      {item.note && (
+                        <div style={{ fontSize: 11, color: '#78350f', marginTop: 2 }}>
+                          💬 {item.note}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 800, color: isOff ? '#d97706' : '#2563eb' }}>{item.quantity} ตัว</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveIssuedItem(idx)}
+                        style={{
+                          border: 'none',
+                          background: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        ลบ
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -1561,6 +1850,16 @@ export function StepAcknowledgeSpareNeedle({ snr, cylinder, onAcknowledged, onHo
             >
               <div>
                 <b>{item.needleModel}</b> ({item.gauge}) · {item.grade}
+                {(item.isOffSystem || item.sourceType === 'OFF_SYSTEM' || item.setId === 'OFF_SYSTEM') && (
+                  <span style={{ marginLeft: 6, fontSize: 11, background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: 4, fontWeight: 700, border: '1px solid #fde68a' }}>
+                    เข็มนอกระบบ
+                  </span>
+                )}
+                {item.note && (
+                  <div style={{ fontSize: 11, color: '#78350f', marginTop: 2 }}>
+                    💬 {item.note}
+                  </div>
+                )}
               </div>
               <span style={{ fontWeight: 800, color: '#16a34a' }}>{item.quantity} ตัว</span>
             </div>

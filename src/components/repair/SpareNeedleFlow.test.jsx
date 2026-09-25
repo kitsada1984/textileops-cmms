@@ -7,7 +7,7 @@ import {
   StepSpareNeedleRequest,
   StepPrepareSpareNeedle,
 } from './SpareNeedleFlow'
-import { NeedleSetAPI } from '../../api/entities'
+import { NeedleSetAPI, SpareNeedleRequestAPI, NeedleHistoryAPI } from '../../api/entities'
 
 vi.mock('../../api/entities', async (importOriginal) => {
   const actual = await importOriginal()
@@ -213,5 +213,137 @@ describe('SpareNeedleFlow Components', () => {
     expect(within(needleSelect).getByText(/Model DG 1/)).toBeInTheDocument()
     expect(within(needleSelect).getByText(/Model SA 1/)).toBeInTheDocument()
   })
+
+  it('StepPrepareSpareNeedle supports off-system needle entry and logs without deducting needle_sets', async () => {
+    NeedleSetAPI.update.mockClear()
+    NeedleHistoryAPI.create.mockClear()
+    SpareNeedleRequestAPI.update.mockClear()
+
+    const mockStock = [
+      { id: '1', setId: 'NS-001', machineId: 'DG-341M', needleModel: 'Model InSys', gauge: '28G', grade: 'A', quantity: 100 },
+    ]
+    NeedleSetAPI.list.mockResolvedValue(mockStock)
+    SpareNeedleRequestAPI.update.mockResolvedValue({ id: 'SNR-001', status: 'PREPARED' })
+
+    const snr = {
+      id: 'SNR-001',
+      request_no: 'SNR-260924-001',
+      machine_mc: 'DG-341M',
+      gauge: '28G',
+      technician_name: 'ช่างหนึ่ง',
+      shift: 'กะเช้า',
+      created_at: new Date().toISOString(),
+      tracks_requested: { cylinder: { t1: 50 } },
+    }
+
+    render(
+      <StepPrepareSpareNeedle
+        snr={snr}
+        cylinder={{ Machine: 'DG-341M' }}
+        onPrepared={vi.fn()}
+        onClose={vi.fn()}
+      />
+    )
+
+    // Wait for in-system tab to be active
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-in-system')).toBeInTheDocument()
+    })
+
+    // 1. Add 1 in-system item
+    const addInSysBtn = screen.getByText('เพิ่มรายการ')
+    fireEvent.click(addInSysBtn)
+
+    // 2. Switch to off-system tab
+    const offSysTab = screen.getByTestId('tab-off-system')
+    fireEvent.click(offSysTab)
+
+    // Check off-system fields are visible
+    expect(screen.getByTestId('off-system-model-input')).toBeInTheDocument()
+    expect(screen.getByTestId('off-system-qty-input')).toBeInTheDocument()
+
+    // Fill off-system details
+    fireEvent.change(screen.getByTestId('off-system-model-input'), {
+      target: { value: 'Vo-LS 105.55 NonStock' },
+    })
+    fireEvent.change(screen.getByTestId('off-system-qty-input'), {
+      target: { value: '25' },
+    })
+    fireEvent.change(screen.getByTestId('off-system-note-input'), {
+      target: { value: 'ยืมจากช่างกะดึก' },
+    })
+
+    // Click add off-system item
+    const addOffSysBtn = screen.getByTestId('add-off-system-btn')
+    fireEvent.click(addOffSysBtn)
+
+    // Verify both items appear in the queued list with badges
+    expect(screen.getByText(/Model InSys/)).toBeInTheDocument()
+    expect(screen.getByText('📦 ในระบบ [DG-341M]')).toBeInTheDocument()
+    expect(screen.getByText(/Vo-LS 105.55 NonStock/)).toBeInTheDocument()
+    expect(screen.getByText('📝 เข็มนอกระบบ')).toBeInTheDocument()
+    expect(screen.getByText('💬 ยืมจากช่างกะดึก')).toBeInTheDocument()
+
+    // Fill issuer name
+    const issuerInput = screen.getByPlaceholderText(/พี่ตุ๊ก/)
+    fireEvent.change(issuerInput, { target: { value: 'พี่ตุ๊ก สโตร์' } })
+
+    // Click confirm prepare
+    const confirmBtn = screen.getByText(/ยืนยันการจัดเตรียมเข็ม/i)
+    fireEvent.click(confirmBtn)
+
+    await waitFor(() => {
+      expect(SpareNeedleRequestAPI.update).toHaveBeenCalled()
+    })
+
+    // In-system item should update needle sets
+    expect(NeedleSetAPI.update).toHaveBeenCalledTimes(1)
+    expect(NeedleSetAPI.update).toHaveBeenCalledWith('1', expect.objectContaining({
+      quantity: 90, // 100 - 10
+    }))
+
+    // Both items should log to history
+    expect(NeedleHistoryAPI.create).toHaveBeenCalledTimes(2)
+    // One log for in-system
+    expect(NeedleHistoryAPI.create).toHaveBeenCalledWith(expect.objectContaining({
+      setId: '1',
+      actionType: 'ISSUE_SPARE',
+    }))
+    // One log for off-system
+    expect(NeedleHistoryAPI.create).toHaveBeenCalledWith(expect.objectContaining({
+      setId: 'OFF_SYSTEM',
+      actionType: 'ISSUE_SPARE_OFF_SYSTEM',
+      remarks: expect.stringContaining('นอกระบบ'),
+    }))
+  })
+
+  it('StepAcknowledgeSpareNeedle displays off-system badge for off-system needle items', () => {
+    const snr = {
+      id: 'SNR-OFF-001',
+      request_no: 'SNR-OFF-001',
+      machine_mc: 'DG-341M',
+      technician_name: 'ช่างหนึ่ง',
+      status: 'PREPARED',
+      issued_items: [
+        { setId: 'NS-0001', needleModel: 'VO InSystem', gauge: '28G', grade: 'เกรด A', quantity: 10, isOffSystem: false },
+        { setId: 'OFF_SYSTEM', needleModel: 'VO OffSystem', gauge: '28G', grade: 'เกรด B', quantity: 20, isOffSystem: true, note: 'สต็อกเก่า' },
+      ],
+      issuer_name: 'พี่ตุ๊ก',
+    }
+
+    render(
+      <StepAcknowledgeSpareNeedle
+        snr={snr}
+        cylinder={{ Machine: 'DG-341M' }}
+        onAcknowledged={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('VO InSystem')).toBeInTheDocument()
+    expect(screen.getByText('VO OffSystem')).toBeInTheDocument()
+    expect(screen.getByText('เข็มนอกระบบ')).toBeInTheDocument()
+    expect(screen.getByText('💬 สต็อกเก่า')).toBeInTheDocument()
+  })
 })
+
 

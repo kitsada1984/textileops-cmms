@@ -600,9 +600,11 @@ export async function notifyLineSpareNeedlePrepared(snr, cylinder) {
     const reqId = snr.id || ''
     const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?needle_req=${encodeURIComponent(reqId)}&step=ack&openExternalBrowser=1`
 
-    const issuedList = (snr.issued_items || []).map(item =>
-      `• ${item.needleModel || item.setId || 'เข็ม'}: ${item.quantity || 0} ตัว (${item.grade || 'เกรด B'})`
-    ).join('\n')
+    const issuedList = (snr.issued_items || []).map(item => {
+      const isOff = item.isOffSystem || item.sourceType === 'OFF_SYSTEM' || item.setId === 'OFF_SYSTEM'
+      const offTag = isOff ? ' [เข็มนอกระบบ]' : ''
+      return `• ${item.needleModel || item.setId || 'เข็ม'}${offTag}: ${item.quantity || 0} ตัว (${item.grade || 'เกรด B'})`
+    }).join('\n')
 
     const textMessage = [
       `\n📦 [เข็ม Spare จัดเตรียมเรียบร้อยแล้ว]`,

@@ -190,7 +190,7 @@ export default function NeedleStock() {
       // If items were issued/deducted from stock, restore them to store stock
       if (Array.isArray(req.issued_items) && req.issued_items.length > 0) {
         for (const item of req.issued_items) {
-          if (!item.setId) continue
+          if (!item.setId || item.setId === 'OFF_SYSTEM' || item.isOffSystem || item.sourceType === 'OFF_SYSTEM') continue
           let setRecord = needleSets.find((s) => s.id === item.setId)
           if (!setRecord) {
             try {
