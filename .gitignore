@@ -11,6 +11,8 @@ dist-ssr/
 # Supabase / Local Tools
 .supabase-home/
 .tools/
+supabase/.temp/
+.wrangler/
 
 # Environment Variables
 .env.local
