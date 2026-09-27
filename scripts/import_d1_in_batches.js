@@ -62,7 +62,7 @@ for (let i = 0; i < batches.length; i++) {
   process.stdout.write(`Executing batch ${batchNum}/${batches.length} (${batch.length} stmts, ${fileSizeKB} KB)... `)
 
   try {
-    const cmd = `npx wrangler d1 execute textileops-db --remote --file="${tempFile}"`
+    const cmd = `npx wrangler d1 execute textileops-db --remote --file="${tempFile}" -y`
     execSync(cmd, {
       cwd: projectRoot,
       env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || '392e2aeb2648effccebd585e5c29611b' },

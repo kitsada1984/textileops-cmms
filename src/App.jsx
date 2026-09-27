@@ -8,10 +8,11 @@ import {
   LayoutDashboard, Cpu, Disc, ClipboardList, Calendar,
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
-  FileText, Monitor, Smartphone, Target, Download, RefreshCw, Database
+  FileText, Monitor, Tablet, Smartphone, Sparkles, Target, Download, RefreshCw, Database
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
+import { DeviceViewProvider, useDeviceView } from './contexts/DeviceViewContext'
 import { ToastProvider } from './components/ui/Toast'
 import { AuthProvider, useAuth, canAccess } from './contexts/AuthContext'
 import { WebBuilderConfigProvider } from './contexts/WebBuilderConfigContext'
@@ -117,7 +118,7 @@ function AppInner() {
   const { user, logout } = useAuth()
   const [sideOpen, setSideOpen] = useState(false)
   const [dark, setDark]         = useState(() => localStorage.getItem('theme') !== 'light')
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('app_view_mode') || 'web')
+  const { simulatorMode, setSimulatorMode, device, autoDevice } = useDeviceView()
   const [pwaModalOpen, setPwaModalOpen] = useState(false)
   const location = useLocation()
 
@@ -126,10 +127,6 @@ function AppInner() {
     if (dark) { html.classList.add('dark');    localStorage.setItem('theme', 'dark') }
     else       { html.classList.remove('dark'); localStorage.setItem('theme', 'light') }
   }, [dark])
-
-  useEffect(() => {
-    localStorage.setItem('app_view_mode', viewMode)
-  }, [viewMode])
 
   const handleForceUpdate = async () => {
     try {
@@ -428,7 +425,7 @@ function AppInner() {
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            {/* View mode toggle (Web / Mobile) */}
+            {/* Tri-View Device Simulator Toggle (Auto / PC / Tablet / Mobile - ADR-0002) */}
             <div
               style={{
                 display: 'flex',
@@ -442,53 +439,75 @@ function AppInner() {
             >
               <button
                 type="button"
-                onClick={() => setViewMode('web')}
-                title="แสดงผลแบบเว็บ (Web/Desktop Mode)"
-                className="px-2 sm:px-2.5 active:scale-95 transition-all"
+                onClick={() => setSimulatorMode('auto')}
+                title={`โหมดอัตโนมัติตามขนาดจอจริง (ปัจจุบัน: ${autoDevice === 'mobile' ? 'มือถือ' : autoDevice === 'tablet' ? 'แท็บเล็ต' : 'คอมพิวเตอร์'})`}
+                className="px-2 py-1 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold rounded-lg"
                 style={{
-                  height: 30,
-                  borderRadius: 10,
-                  background: viewMode === 'web' ? (dark ? '#3b82f6' : '#2563eb') : 'transparent',
-                  color: viewMode === 'web' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
-                  fontWeight: viewMode === 'web' ? 800 : 600,
-                  fontSize: 11.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
+                  height: 28,
+                  background: simulatorMode === 'auto' ? (dark ? '#6366f1' : '#4f46e5') : 'transparent',
+                  color: simulatorMode === 'auto' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
                   border: 'none',
                   cursor: 'pointer',
-                  boxShadow: viewMode === 'web' ? '0 2px 8px rgba(37,99,235,0.3)' : 'none',
+                  boxShadow: simulatorMode === 'auto' ? '0 2px 6px rgba(79,70,229,0.3)' : 'none',
                   whiteSpace: 'nowrap',
-                  flexShrink: 0,
                 }}
               >
-                <Monitor size={13} />
-                <span>เว็บ</span>
+                <Sparkles size={11} />
+                <span>Auto</span>
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode('mobile')}
-                title="แสดงผลแบบมือถือ (Mobile Mode)"
-                className="px-2 sm:px-2.5 active:scale-95 transition-all"
+                onClick={() => setSimulatorMode('desktop')}
+                title="จำลองมุมมองคอมพิวเตอร์ (PC / Desktop)"
+                className="px-2 py-1 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold rounded-lg"
                 style={{
-                  height: 30,
-                  borderRadius: 10,
-                  background: viewMode === 'mobile' ? (dark ? '#10b981' : '#059669') : 'transparent',
-                  color: viewMode === 'mobile' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
-                  fontWeight: viewMode === 'mobile' ? 800 : 600,
-                  fontSize: 11.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
+                  height: 28,
+                  background: simulatorMode === 'desktop' ? (dark ? '#3b82f6' : '#2563eb') : 'transparent',
+                  color: simulatorMode === 'desktop' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
                   border: 'none',
                   cursor: 'pointer',
-                  boxShadow: viewMode === 'mobile' ? '0 2px 8px rgba(16,185,129,0.3)' : 'none',
+                  boxShadow: simulatorMode === 'desktop' ? '0 2px 6px rgba(37,99,235,0.3)' : 'none',
                   whiteSpace: 'nowrap',
-                  flexShrink: 0,
                 }}
               >
-                <Smartphone size={13} />
-                <span>มือถือ</span>
+                <Monitor size={11} />
+                <span>PC</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimulatorMode('tablet')}
+                title="จำลองมุมมองแท็บเล็ต (Tablet)"
+                className="px-2 py-1 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold rounded-lg"
+                style={{
+                  height: 28,
+                  background: simulatorMode === 'tablet' ? (dark ? '#8b5cf6' : '#7c3aed') : 'transparent',
+                  color: simulatorMode === 'tablet' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: simulatorMode === 'tablet' ? '0 2px 6px rgba(124,58,237,0.3)' : 'none',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Tablet size={11} />
+                <span>Tablet</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimulatorMode('mobile')}
+                title="จำลองมุมมองมือถือ (Mobile)"
+                className="px-2 py-1 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold rounded-lg"
+                style={{
+                  height: 28,
+                  background: simulatorMode === 'mobile' ? (dark ? '#10b981' : '#059669') : 'transparent',
+                  color: simulatorMode === 'mobile' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: simulatorMode === 'mobile' ? '0 2px 6px rgba(16,185,129,0.3)' : 'none',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Smartphone size={11} />
+                <span>Mobile</span>
               </button>
             </div>
 
@@ -594,8 +613,8 @@ function AppInner() {
           </div>
         </header>
 
-        {/* Page content */}
-        {viewMode === 'mobile' ? (
+        {/* Page content - Device Adaptive Container (ADR-0002) */}
+        {device === 'mobile' && simulatorMode === 'mobile' ? (
           <div className="flex-1 overflow-y-auto p-0 sm:p-2 lg:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70 w-full overflow-x-hidden">
             <div
               className="w-full max-w-full lg:max-w-[460px] min-h-full lg:min-h-[calc(100vh-100px)] lg:rounded-3xl overflow-y-auto shadow-none lg:shadow-2xl border-0 lg:border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 is-mobile-view pb-24 lg:pb-6"
@@ -604,6 +623,19 @@ function AppInner() {
               }}
             >
               <div className="flex-1 p-3 sm:p-4 space-y-4 mobile-content-area overflow-x-hidden">
+                <PageRoutes />
+              </div>
+            </div>
+          </div>
+        ) : device === 'tablet' && simulatorMode === 'tablet' ? (
+          <div className="flex-1 overflow-y-auto p-0 sm:p-2 lg:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70 w-full overflow-x-hidden">
+            <div
+              className="w-full max-w-full lg:max-w-[840px] min-h-full lg:min-h-[calc(100vh-100px)] lg:rounded-3xl overflow-y-auto shadow-none lg:shadow-2xl border-0 lg:border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 is-tablet-view pb-24 lg:pb-6"
+              style={{
+                background: 'var(--bg-page)',
+              }}
+            >
+              <div className="flex-1 p-3 sm:p-4 space-y-4 tablet-content-area overflow-x-hidden">
                 <PageRoutes />
               </div>
             </div>
@@ -627,14 +659,16 @@ export default function App() {
   return (
     <AuthProvider>
       <LanguageProvider>
-        <ToastProvider>
-          <WebBuilderConfigProvider>
-            <Routes>
-              <Route path="/repair/:serial" element={<RepairPage />} />
-              <Route path="/*" element={<AppInner />} />
-            </Routes>
-          </WebBuilderConfigProvider>
-        </ToastProvider>
+        <DeviceViewProvider>
+          <ToastProvider>
+            <WebBuilderConfigProvider>
+              <Routes>
+                <Route path="/repair/:serial" element={<RepairPage />} />
+                <Route path="/*" element={<AppInner />} />
+              </Routes>
+            </WebBuilderConfigProvider>
+          </ToastProvider>
+        </DeviceViewProvider>
       </LanguageProvider>
     </AuthProvider>
   )

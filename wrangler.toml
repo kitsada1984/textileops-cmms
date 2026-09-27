@@ -5,7 +5,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "textileops-db"
-database_id = "d8dffcd2-231f-4adc-9bbc-a36b7ff7d697"
+database_id = "b54a2924-8238-408b-ab82-b329dcc6e16d"
 
 [vars]
 VITE_SUPABASE_URL = "https://fyulqejkzuhwppstezko.supabase.co"

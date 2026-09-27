@@ -29,7 +29,7 @@
 
 1. **Top KPI Summary Cards:** การ์ดสถิติสรุปตัวเลขสำคัญ 4 ช่องด้านบนสุด
 2. **Action Toolbar:** แถบเครื่องมือค้นหา (Search), ตัวกรองแบบไดนามิก (Multi-Filter/Sort), ปุ่มส่งออกข้อมูล (GoogleSheetSyncButton) และปุ่ม Action หลัก (เพิ่มข้อมูล / สแกน QR)
-3. **Data Table & Mobile Responsive View:** ตารางแสดงผลที่รองรับทั้งหน้าจอคอมพิวเตอร์และมือถือ พร้อมปุ่ม Action ประจำแถว (ดูรายละเอียด, ดูรูปพรีวิว, ดู PDF, แก้ไข, ลบ)
+3. **Data Table & Tri-View Presentation:** สถาปัตยกรรมแสดงผลแยกตามอุปกรณ์ (Mobile: Rich Card List + FAB, Tablet: 2-Column Grid, Desktop: Full High-Density Table) โดยใช้ Headless Logic Hook ร่วมกัน 100% (ตาม ADR-0002) พร้อมปุ่ม Action ประจำรายการ (ดูรายละเอียด, ดูรูปพรีวิว, ดู PDF, แก้ไข, ลบ)
 4. **Form Modal with Validation:** หน้าต่างฟอร์มบันทึกและแก้ไขข้อมูล พร้อมระบบตัวเลือกแบบ Preset และกล่องพิมพ์ "ระบุเอง" เมื่อเลือก Custom
 5. **Detail Drawer:** ลิ้นชักเปิดแสดงข้อมูลเชิงลึกเมื่อผู้ใช้คลิกเลือกแถวข้อมูล
 6. **Standard A4 PDF & Print Modal:** หน้าต่างพรีวิวและพิมพ์เอกสารมาตรฐาน A4 พร้อมหัวกระดาษบริษัท Gemma Knits, ตารางข้อมูล, ช่องลายเซ็น 4 ฝ่าย และ QR Code สำหรับสแกนตรวจสอบออนไลน์
@@ -58,3 +58,17 @@
 4. **Vercel Production Deploy:** รันคำสั่ง `npx vercel --prod --yes` เพื่อ Deploy ขึ้นระบบจริง (`https://textileops-cmms.vercel.app`)
 5. **Verify Live Chunk:** ตรวจสอบว่าหน้าเว็บจริงให้บริการ JavaScript Bundle ล่าสุด
 6. **Force Refresh:** ผู้ใช้สามารถกดปุ่มไอคอน `🔄` (ล้างแคช & รีเฟรช) ที่แถบด้านบนขวาของเว็บเพื่อโหลดเวอร์ชันล่าสุดทันที
+ 
+---
+
+## 📱 5. มาตรฐานการแสดงผลแบบแยกอุปกรณ์ (Device-Adaptive Tri-View Architecture)
+
+ตามข้อตกลงสถาปัตยกรรม **ADR-0002** ทุกหน้าที่นำร่องและพัฒนาใหม่จะต้องแยกการแสดงผลตามอุปกรณ์อย่างชัดเจน:
+
+| ระดับอุปกรณ์ | Breakpoint | รูปแบบการแสดงผลหลัก | ฟังก์ชันเด่นเฉพาะอุปกรณ์ |
+| :--- | :--- | :--- | :--- |
+| **Mobile** | `< 640px` | Rich Card List (Single Column) | Sticky Top Search + Floating Action Button (FAB) + Touch Actions (PDF/Edit/Delete) |
+| **Tablet** | `640px - 1024px` | 2-Column Responsive Cards Grid | สองคอลัมน์กะทัดรัด แตะการ์ดเพื่อเปิด Drawer ดูสเปกเต็ม |
+| **Desktop / PC** | `> 1024px` | Full High-Density Data Table | ตารางข้อมูลครบทุกคอลัมน์ แถบ Action Toolbar แนวนอน และ Quick Actions ประจำแถว |
+
+- **ศูนย์กลาง Logic:** ห้ามเขียน Logic ดัก Event, ฟอร์ม หรือ Query ฐานข้อมูลซ้ำใน View Components โดยเด็ดขาด ให้รวมศูนย์ใน `use*Logic.js` เสมอ
