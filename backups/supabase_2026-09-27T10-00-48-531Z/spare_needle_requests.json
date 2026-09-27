@@ -1,0 +1,131 @@
+[
+  {
+    "id": "SNR-260924-8396",
+    "request_no": "SNR-260924-8396",
+    "machine_mc": "SA-306W",
+    "cylinder_serial": "11574",
+    "gauge": "28",
+    "technician_name": "ช.ต๋อง",
+    "shift": "กะเช้า",
+    "tracks_requested": {
+      "dial": {
+        "t1": 0,
+        "t2": 0
+      },
+      "cylinder": {
+        "t1": 0,
+        "t2": 0,
+        "t3": 50,
+        "t4": 0
+      }
+    },
+    "request_comment": "",
+    "status": "PENDING",
+    "issued_items": [],
+    "issuer_name": "",
+    "issuer_comment": "",
+    "prepared_at": null,
+    "acknowledged_at": null,
+    "created_at": "2026-09-24T12:41:16.861+00:00",
+    "updated_at": "2026-09-24T12:41:16.861+00:00"
+  },
+  {
+    "id": "SNR-260924-6047",
+    "request_no": "SNR-260924-6047",
+    "machine_mc": "SA-365P",
+    "cylinder_serial": "A0901005",
+    "gauge": "28",
+    "technician_name": "ช.ต๋อง",
+    "shift": "กะเช้า",
+    "tracks_requested": {
+      "dial": {
+        "t1": 0,
+        "t2": 0
+      },
+      "cylinder": {
+        "t1": 0,
+        "t2": 0,
+        "t3": 50,
+        "t4": 0
+      }
+    },
+    "request_comment": "",
+    "status": "PENDING",
+    "issued_items": [],
+    "issuer_name": "",
+    "issuer_comment": "",
+    "prepared_at": null,
+    "acknowledged_at": null,
+    "created_at": "2026-09-24T12:43:25.494+00:00",
+    "updated_at": "2026-09-24T12:43:25.494+00:00"
+  },
+  {
+    "id": "SNR-260924-1853",
+    "request_no": "SNR-260924-1853",
+    "machine_mc": "DB-346M",
+    "cylinder_serial": "67871",
+    "gauge": "32",
+    "technician_name": "ช.ต๋อง",
+    "shift": "กะเช้า",
+    "tracks_requested": {
+      "dial": {
+        "t1": 0,
+        "t2": 0
+      },
+      "cylinder": {
+        "t1": 50,
+        "t2": 0,
+        "t3": 0,
+        "t4": 0
+      }
+    },
+    "request_comment": "",
+    "status": "PREPARED",
+    "issued_items": [
+      {
+        "gauge": "32G",
+        "grade": "เกรด B",
+        "setId": "NS-0044",
+        "quantity": 50,
+        "machineId": "DB305M",
+        "needleModel": "Cylinder Needle - VO-LS-LC 105.32 G 004"
+      }
+    ],
+    "issuer_name": "Tuk",
+    "issuer_comment": "",
+    "prepared_at": "2026-09-24T13:00:00.881+00:00",
+    "acknowledged_at": null,
+    "created_at": "2026-09-24T12:57:31.187+00:00",
+    "updated_at": "2026-09-24T13:00:00.881+00:00"
+  },
+  {
+    "id": "SNR-260925-1005",
+    "request_no": "SNR-260925-1005",
+    "machine_mc": "DB-346M",
+    "cylinder_serial": "67871",
+    "gauge": "32",
+    "technician_name": "ช.ต๋อง",
+    "shift": "กะเช้า",
+    "tracks_requested": {
+      "dial": {
+        "t1": 0,
+        "t2": 0
+      },
+      "cylinder": {
+        "t1": 50,
+        "t2": 0,
+        "t3": 0,
+        "t4": 0
+      }
+    },
+    "request_comment": "",
+    "status": "PENDING",
+    "issued_items": [],
+    "issuer_name": "",
+    "issuer_comment": "",
+    "prepared_at": null,
+    "acknowledged_at": null,
+    "created_at": "2026-09-25T02:17:24.834+00:00",
+    "updated_at": "2026-09-25T02:17:24.835+00:00"
+  }
+]

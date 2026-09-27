@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Cpu, Disc, ClipboardList, Calendar,
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
-  FileText, Monitor, Smartphone, Target, Download, RefreshCw,
+  FileText, Monitor, Smartphone, Target, Download, RefreshCw, Database
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
@@ -36,6 +36,7 @@ import WebBuilder       from './pages/WebBuilder'
 import RepairRequests  from './pages/RepairRequests'
 import DesignBom from './pages/DesignBom'
 import NeedleStock from './pages/NeedleStock'
+import D1TestPage from './pages/D1TestPage'
 
 const NAV_SECTIONS = [
   {
@@ -75,6 +76,7 @@ const NAV_SECTIONS = [
     items: [
       { to: '/users',      icon: Users,           key: 'nav_users',      permKey: 'users' },
       { to: '/settings',   icon: Settings,        key: 'nav_settings',   permKey: 'settings' },
+      { to: '/d1-test',    icon: Database,        key: 'nav_d1_test',    permKey: 'settings' },
     ]
   },
 ]
@@ -104,6 +106,7 @@ function PageRoutes() {
         <Route path="/users"      element={<UsersPage />} />
         <Route path="/webbuilder" element={<WebBuilder />} />
         <Route path="/settings"   element={<SettingsPage />} />
+        <Route path="/d1-test"    element={<D1TestPage />} />
       </Routes>
     </ErrorBoundary>
   )

@@ -2,6 +2,11 @@ name = "textileops-cmms"
 compatibility_date = "2026-09-26"
 pages_build_output_dir = "dist"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "textileops-db"
+database_id = "d8dffcd2-231f-4adc-9bbc-a36b7ff7d697"
+
 [vars]
 VITE_SUPABASE_URL = "https://fyulqejkzuhwppstezko.supabase.co"
 VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5dWxxZWprenVod3Bwc3RlemtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTY2MzYsImV4cCI6MjA5MzI5MjYzNn0.8dqXxqACiOEkjUevt_xFgIRPZ8CcMPgYZKBNM1THI4Y"

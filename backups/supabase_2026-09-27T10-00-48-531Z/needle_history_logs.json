@@ -1,0 +1,23 @@
+[
+  {
+    "id": "LOG-SPARE-1790254799705-779",
+    "Log_ID": "LOG-SPARE-1790254799705-779",
+    "Set_ID": "NS-0044",
+    "Action_Type": "ISSUE_SPARE",
+    "Old_Grade": "เกรด B",
+    "New_Grade": "เกรด B",
+    "Condition_Detail": "สึกปานกลาง",
+    "Quantity": 50,
+    "Date_Action": "2026-09-24",
+    "Technician": "ช.ต๋อง",
+    "Remarks": "เบิกเข็ม Spare สำหรับ DB-346M (SNR-260924-1853) โดย Tuk",
+    "Image_URLs": [],
+    "Target_Machine": "DB-346M",
+    "Source_From": "",
+    "Scrap_Reason": "",
+    "Qty_Change": "-50",
+    "Balance_After": 1450,
+    "Stock_Detail": "SPARE",
+    "created_at": "2026-09-24T12:59:59.986452+00:00"
+  }
+]

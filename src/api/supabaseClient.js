@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { db } from './dbClient'
 
 const TEMPORAL_FIELD_RE = /(date|time|updated|created|completed|approved)/i
 const MISSING_SCHEMA_COLUMN_RE = /Could not find the '([^']+)' column/i
@@ -171,7 +172,7 @@ export function createEntityClient(tableName) {
   return {
     list: async () => {
       try {
-        const { data, error } = await supabase.from(tableName).select('*')
+        const { data, error } = await db.from(tableName).select('*')
         if (error) {
           if (isMissingTableError(error)) {
             return getLocalTable(tableName)
@@ -195,7 +196,7 @@ export function createEntityClient(tableName) {
 
     get: async (id) => {
       try {
-        const { data, error } = await supabase.from(tableName).select('*').eq('id', id).single()
+        const { data, error } = await db.from(tableName).select('*').eq('id', id).single()
         if (error) {
           if (isMissingTableError(error)) {
             const list = getLocalTable(tableName)
@@ -218,7 +219,7 @@ export function createEntityClient(tableName) {
       const payload = sanitizeForSupabase(clean)
       try {
         const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
-          supabase.from(tableName).insert(nextPayload).select().single()
+          db.from(tableName).insert(nextPayload).select().single()
         )
         if (error) {
           if (isMissingTableError(error)) {
@@ -256,7 +257,7 @@ export function createEntityClient(tableName) {
       const payload = sanitizeForSupabase({ ...clean, updated_at: new Date().toISOString() })
       try {
         const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
-          supabase
+          db
             .from(tableName)
             .update(nextPayload)
             .eq('id', id)
@@ -291,7 +292,7 @@ export function createEntityClient(tableName) {
 
     delete: async (id) => {
       try {
-        const { error } = await supabase.from(tableName).delete().eq('id', id)
+        const { error } = await db.from(tableName).delete().eq('id', id)
         if (error) {
           if (isMissingTableError(error)) {
             const list = getLocalTable(tableName)
@@ -317,7 +318,7 @@ export function createEntityClient(tableName) {
       const payload = sanitizeForSupabase({ ...clean, updated_at: new Date().toISOString() })
       try {
         const { data, error } = await runWithMissingColumnRetry(payload, (nextPayload) =>
-          supabase
+          db
             .from(tableName)
             .upsert(nextPayload, { onConflict: conflictCol })
             .select()

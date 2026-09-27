@@ -21,6 +21,7 @@ const T = {
     nav_webbuilder:      'ตั้งค่าเว็บ',
     nav_settings:        'การตั้งค่า',
     nav_repair_requests: 'แจ้งซ่อม',
+    nav_d1_test:         'D1 Sandbox (ทดสอบ)',
 
     /* ── Common ── */
     add:          'เพิ่ม',
@@ -344,6 +345,7 @@ const T = {
     nav_webbuilder:      'Web Builder',
     nav_settings:        'Settings',
     nav_repair_requests: 'Repair Requests',
+    nav_d1_test:         'D1 Sandbox (Test)',
 
     /* ── Common ── */
     add:          'Add',

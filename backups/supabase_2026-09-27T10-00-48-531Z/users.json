@@ -1,0 +1,237 @@
+[
+  {
+    "id": "08631303-1457-49f5-b655-c235652145c2",
+    "email": null,
+    "full_name": "เริงชัย",
+    "role": "supervisor",
+    "created_at": "2026-05-16T07:06:00.122148+00:00",
+    "updated_at": "2026-05-16T08:13:40.32+00:00",
+    "username": "rougngchai309",
+    "password_hash": "95234f027b5da5a09928bde5fc432a8a1e525559cab08b830e8bdff74a9db93a",
+    "status": "active",
+    "permissions": {
+      "pm": [
+        "view"
+      ],
+      "logs": [
+        "view"
+      ],
+      "stock": [
+        "view"
+      ],
+      "users": [],
+      "reports": [
+        "view"
+      ],
+      "machines": [
+        "view"
+      ],
+      "settings": [],
+      "cylinders": [
+        "view"
+      ],
+      "dashboard": [
+        "view"
+      ],
+      "purchasing": [
+        "view"
+      ],
+      "spareparts": [
+        "view"
+      ],
+      "webbuilder": [
+        "view"
+      ],
+      "workorders": [
+        "view",
+        "add",
+        "edit",
+        "delete"
+      ]
+    },
+    "password_salt": null
+  },
+  {
+    "id": "7e2197e8-0905-4e7c-b117-577c1e8037d0",
+    "email": null,
+    "full_name": "phinyo",
+    "role": "viewer",
+    "created_at": "2026-06-01T02:20:56.045418+00:00",
+    "updated_at": "2026-06-01T02:21:23.686+00:00",
+    "username": "phinyo",
+    "password_hash": "95234f027b5da5a09928bde5fc432a8a1e525559cab08b830e8bdff74a9db93a",
+    "status": "active",
+    "permissions": {
+      "pm": [
+        "view"
+      ],
+      "logs": [
+        "view"
+      ],
+      "stock": [
+        "view"
+      ],
+      "users": [
+        "view"
+      ],
+      "reports": [
+        "view"
+      ],
+      "machines": [
+        "view"
+      ],
+      "settings": [
+        "view"
+      ],
+      "cylinders": [
+        "view"
+      ],
+      "dashboard": [
+        "view"
+      ],
+      "designbom": [
+        "view"
+      ],
+      "purchasing": [
+        "view"
+      ],
+      "spareparts": [
+        "view"
+      ],
+      "webbuilder": [
+        "view"
+      ],
+      "workorders": [
+        "view"
+      ]
+    },
+    "password_salt": null
+  },
+  {
+    "id": "57a7bb0f-2581-4bb5-82b0-fcb90222ad84",
+    "email": null,
+    "full_name": "tukky",
+    "role": "supervisor",
+    "created_at": "2026-06-12T02:58:15.317527+00:00",
+    "updated_at": "2026-06-12T02:58:15.317527+00:00",
+    "username": "tukky",
+    "password_hash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+    "status": "active",
+    "permissions": {
+      "pm": [
+        "view"
+      ],
+      "logs": [
+        "view"
+      ],
+      "stock": [
+        "view",
+        "add",
+        "edit"
+      ],
+      "users": [
+        "view"
+      ],
+      "reports": [
+        "view"
+      ],
+      "machines": [
+        "view"
+      ],
+      "settings": [
+        "view"
+      ],
+      "cylinders": [
+        "view"
+      ],
+      "dashboard": [
+        "view"
+      ],
+      "designbom": [
+        "view"
+      ],
+      "purchasing": [
+        "view"
+      ],
+      "spareparts": [
+        "view"
+      ],
+      "webbuilder": [
+        "view"
+      ],
+      "workorders": [
+        "view"
+      ]
+    },
+    "password_salt": null
+  },
+  {
+    "id": "60348671-662f-4f1f-bb0b-6aad1b0f1521",
+    "email": null,
+    "full_name": "Administrator",
+    "role": "admin",
+    "created_at": "2026-05-16T05:53:15.003759+00:00",
+    "updated_at": "2026-06-02T03:00:45.409+00:00",
+    "username": "admin",
+    "password_hash": "02fa19389922898c410271d38c75e34d6574b931def2d3be97d2bccda99edfce",
+    "status": "active",
+    "permissions": {},
+    "password_salt": "3340a10a28ac7f16448b941cc586b734"
+  },
+  {
+    "id": "1bce2427-03d1-4c1e-85db-7b443d0db744",
+    "email": null,
+    "full_name": "user",
+    "role": "user",
+    "created_at": "2026-06-01T02:04:32.922019+00:00",
+    "updated_at": "2026-08-19T04:38:21.056+00:00",
+    "username": "user",
+    "password_hash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+    "status": "active",
+    "permissions": {
+      "pm": [
+        "view"
+      ],
+      "logs": [
+        "view"
+      ],
+      "stock": [
+        "view"
+      ],
+      "users": [
+        "view"
+      ],
+      "reports": [
+        "view"
+      ],
+      "machines": [
+        "view"
+      ],
+      "settings": [
+        "view"
+      ],
+      "cylinders": [
+        "view"
+      ],
+      "dashboard": [
+        "view"
+      ],
+      "designbom": [
+        "view"
+      ],
+      "purchasing": [
+        "view"
+      ],
+      "spareparts": [
+        "view"
+      ],
+      "webbuilder": [
+        "view"
+      ],
+      "workorders": [
+        "view"
+      ]
+    },
+    "password_salt": null
+  }
+]

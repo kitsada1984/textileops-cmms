@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-09-27T10:00:48.535Z",
+  "supabaseUrl": "https://fyulqejkzuhwppstezko.supabase.co",
+  "tables": {
+    "machines": {
+      "status": "ok",
+      "count": 91,
+      "sizeBytes": 81481
+    },
+    "cylinders": {
+      "status": "ok",
+      "count": 122,
+      "sizeBytes": 73919
+    },
+    "workorders": {
+      "status": "ok",
+      "count": 16,
+      "sizeBytes": 530197
+    },
+    "repair_requests": {
+      "status": "ok",
+      "count": 7,
+      "sizeBytes": 8134
+    },
+    "pmplans": {
+      "status": "ok",
+      "count": 102,
+      "sizeBytes": 77746
+    },
+    "needle_sets": {
+      "status": "ok",
+      "count": 201,
+      "sizeBytes": 133720
+    },
+    "needle_history_logs": {
+      "status": "ok",
+      "count": 1,
+      "sizeBytes": 719
+    },
+    "needle_configs": {
+      "status": "ok",
+      "count": 0,
+      "sizeBytes": 2
+    },
+    "spare_needle_requests": {
+      "status": "ok",
+      "count": 4,
+      "sizeBytes": 3064
+    },
+    "spareparts": {
+      "status": "ok",
+      "count": 57,
+      "sizeBytes": 42393
+    },
+    "stocktransactions": {
+      "status": "ok",
+      "count": 47,
+      "sizeBytes": 34913
+    },
+    "purchaseorders": {
+      "status": "ok",
+      "count": 17,
+      "sizeBytes": 17625
+    },
+    "appconfigs": {
+      "status": "ok",
+      "count": 10,
+      "sizeBytes": 521460
+    },
+    "auditlogs": {
+      "status": "ok",
+      "count": 56,
+      "sizeBytes": 38477
+    },
+    "design_bom": {
+      "status": "ok",
+      "count": 0,
+      "sizeBytes": 2
+    },
+    "users": {
+      "status": "ok",
+      "count": 5,
+      "sizeBytes": 4608
+    }
+  }
+}
