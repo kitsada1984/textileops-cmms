@@ -33,6 +33,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem('app_user')
+      // Stale session from the pre-D1 version: has user profile but no auth
+      // token — every API call would silently 401 and show empty pages.
+      if (stored && getActiveDbProvider() === 'd1' && !localStorage.getItem('textileops_auth_token')) {
+        localStorage.removeItem('app_user')
+        setUser(null)
+        return
+      }
       setUser(stored ? JSON.parse(stored) : null)
     } catch {
       setUser(null)
