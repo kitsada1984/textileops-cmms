@@ -48,13 +48,14 @@ import Modal from '../components/ui/Modal'
 import SearchInput from '../components/ui/SearchInput'
 import { useT } from '../contexts/LanguageContext'
 import usePagePerms from '../hooks/usePagePerms'
+import useDeviceView from '../hooks/useDeviceView'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
 import RepairRequests from './RepairRequests'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
-import { supabase } from '../supabase'
+import { db } from '../api/dbClient'
 import { generateWorkOrderPdfProps } from '../utils/pdfDocGenerators'
 
 const DEFAULT_KPI_TARGETS = {
@@ -187,10 +188,206 @@ export function TechSkillBar({ skillLevel = 'Senior' }) {
   )
 }
 
+function WorkOrderCard({
+  job,
+  kpiTargets,
+  canEdit,
+  canDelete,
+  onInterruption,
+  onComplete,
+  onPrint,
+  onEdit,
+  onDelete,
+}) {
+  const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
+  const sla = calculateSlaPerformance(job, kpiTargets)
+  const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
+  const detailsDisplay = getWorkOrderDetails(job)
+
+  return (
+    <div
+      className={`card p-3.5 border transition-all active:scale-[0.99] cursor-pointer shadow-xs hover:shadow-md ${
+        isCompleted
+          ? 'border-emerald-500/30 bg-white dark:bg-slate-900/90'
+          : sla.activeInterruption
+          ? 'border-amber-500/50 bg-amber-50/20 dark:bg-slate-900/90'
+          : 'border-blue-500/30 bg-white dark:bg-slate-900/90'
+      }`}
+    >
+      {/* Header: Job ID + Type Badge + Status Badge */}
+      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-sm font-black text-blue-600 dark:text-blue-400 tracking-tight truncate">
+            {jobIdDisplay}
+          </span>
+          <span
+            className={`badge text-[10px] ${
+              job.JobType === 'DESIGN'
+                ? 'badge-purple'
+                : job.JobType === 'PM'
+                ? 'badge-yellow'
+                : 'badge-blue'
+            }`}
+          >
+            {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : '🛠️ แก้ไข'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className={`badge text-[10px] ${isCompleted ? 'badge-green' : 'badge-orange'}`}>
+            {isCompleted ? 'เสร็จสิ้น' : 'กำลังทำ'}
+          </span>
+        </div>
+      </div>
+
+      {/* Machine & Production Info */}
+      <div className="flex items-center justify-between gap-2 py-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-black text-slate-800 dark:text-slate-100 font-mono">
+            {job.MC || '—'}
+          </span>
+          <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            KI: {job.KI || '—'}
+          </span>
+        </div>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+          {job.RollNo ? `ม้วน #${job.RollNo}` : ''}
+        </div>
+      </div>
+
+      {/* Design and Details */}
+      {(job.Design || detailsDisplay !== '—') && (
+        <div className="text-xs space-y-1 py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 mb-2">
+          {job.Design && (
+            <div className="font-semibold text-slate-700 dark:text-slate-200 truncate">
+              {job.Design}
+            </div>
+          )}
+          {detailsDisplay !== '—' && (
+            <div className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">
+              {detailsDisplay}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Technicians, Time & SLA */}
+      <div className="grid grid-cols-2 gap-2 text-xs py-1.5 text-slate-600 dark:text-slate-400">
+        <div className="min-w-0">
+          <div className="text-[10px] text-slate-400 font-medium">ช่างผู้ปฏิบัติงาน:</div>
+          <div className="font-semibold truncate text-slate-700 dark:text-slate-300">
+            {job.Technicians || '—'}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] text-slate-400 font-medium">ระยะเวลา & SLA:</div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+              {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังทำ...')}
+            </span>
+            <span className={`badge text-[9px] px-1.5 py-0 ${sla.badgeClass}`}>
+              {sla.label}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Interruption banner if active */}
+      {sla.activeInterruption && (
+        <div className="mt-1 p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-xs text-amber-700 dark:text-amber-300">
+          <div className="flex items-center gap-1.5 font-bold">
+            <Pause size={12} className="animate-pulse" />
+            <span>พักงาน: {sla.activeInterruption.task_name}</span>
+          </div>
+          <span className="text-[10px] font-mono">กำลังจับเวลาแทรก</span>
+        </div>
+      )}
+
+      {/* Footer: Quick Action Buttons (min 40-44px touch target) */}
+      <div
+        className="pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="text-[10px] font-mono text-slate-400">
+          {job.StartDate ? `${job.StartDate} ${job.StartTime || ''}` : ''}
+        </span>
+
+        <div className="flex items-center gap-1">
+          {/* Interruption / Lost Time */}
+          {!job.IsDeleted && (
+            <button
+              type="button"
+              onClick={() => onInterruption(job)}
+              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[36px] ${
+                sla.activeInterruption
+                  ? 'bg-amber-500 text-white animate-pulse shadow-md shadow-amber-500/30'
+                  : sla.lostHoursDecimal > 0
+                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-amber-600'
+              }`}
+              title={sla.activeInterruption ? 'คลิกเพื่อจบงานแทรก' : 'บันทึกงานแทรก'}
+            >
+              {sla.activeInterruption ? <Pause size={14} /> : <Clock size={14} />}
+              {sla.activeInterruption && <span className="text-[11px]">พักงาน</span>}
+            </button>
+          )}
+
+          {/* Complete Job */}
+          {!isCompleted && !job.IsDeleted && canEdit && (
+            <button
+              type="button"
+              onClick={() => onComplete(job)}
+              className="btn-success px-3 py-1.5 text-xs font-bold flex items-center gap-1 rounded-xl min-h-[36px]"
+              title="บันทึกจบงาน"
+            >
+              <CheckCircle2 size={14} />
+              <span>จบงาน</span>
+            </button>
+          )}
+
+          {/* Print PDF */}
+          <button
+            type="button"
+            onClick={() => onPrint(job)}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 min-h-[36px]"
+            title="พิมพ์ใบสั่งงาน A4"
+          >
+            <Printer size={15} />
+          </button>
+
+          {/* Edit */}
+          {!job.IsDeleted && canEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(job)}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-600 min-h-[36px]"
+              title="แก้ไข"
+            >
+              <Pencil size={15} />
+            </button>
+          )}
+
+          {/* Delete */}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(job)}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-600 min-h-[36px]"
+              title="ลบ"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const DEFAULT_TECHS = []
 
 export default function WorkOrders({ defaultTab = 'records' }) {
   const { t } = useT()
+  const { isMobile, isTablet, isDesktop } = useDeviceView()
   const { user } = useAuth()
   const toast = useToast()
   const pagePerms = usePagePerms('workorders')
@@ -878,7 +1075,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       if (typeof window !== 'undefined') {
         try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(techList)) } catch {}
       }
-      const { data: lineData } = await supabase.from('appconfigs').select('value').eq('key', 'line_settings').maybeSingle()
+      const { data: lineData } = await db.from('appconfigs').select('value').eq('key', 'line_settings').maybeSingle()
       let lineCfg = {}
       if (lineData?.value) {
         try { lineCfg = JSON.parse(lineData.value) } catch {}
@@ -886,10 +1083,10 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         try { lineCfg = JSON.parse(localStorage.getItem('txops_tbl_line_settings') || '{}') } catch {}
       }
       lineCfg.technicians = techList.map((t) => ({ name: t.Name, user_id: (t.Line_ID || t.line_id || '').trim() }))
-      await supabase.from('appconfigs').upsert({ key: 'line_settings', value: JSON.stringify(lineCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      await db.from('appconfigs').upsert({ key: 'line_settings', value: JSON.stringify(lineCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
       try { localStorage.setItem('txops_tbl_line_settings', JSON.stringify(lineCfg)) } catch {}
 
-      const { data: tgData } = await supabase.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
+      const { data: tgData } = await db.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
       let tgCfg = {}
       if (tgData?.value) {
         try { tgCfg = JSON.parse(tgData.value) } catch {}
@@ -897,7 +1094,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         try { tgCfg = JSON.parse(localStorage.getItem('txops_tbl_telegram_settings') || '{}') } catch {}
       }
       tgCfg.technicians = techList.map((t) => ({ name: t.Name, chat_id: (t.Telegram_ID || t.telegram_id || '').trim() }))
-      await supabase.from('appconfigs').upsert({ key: 'telegram_settings', value: JSON.stringify(tgCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      await db.from('appconfigs').upsert({ key: 'telegram_settings', value: JSON.stringify(tgCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
       try { localStorage.setItem('txops_tbl_telegram_settings', JSON.stringify(tgCfg)) } catch {}
     } catch (e) {
       console.warn('Sync tech to notifications error:', e)
@@ -1622,224 +1819,302 @@ export default function WorkOrders({ defaultTab = 'records' }) {
             </div>
           </div>
 
-          {/* WORK ORDERS TABLE */}
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Job ID</th>
-                  <th>M/C</th>
-                  <th>KI</th>
-                  <th>Design</th>
-                  <th>เลขม้วน</th>
-                  <th>ประเภท</th>
-                  <th>รายละเอียด</th>
-                  <th>สถานะ</th>
-                  <th>ช่างผู้ปฏิบัติงาน</th>
-                  <th>เวลาเริ่ม</th>
-                  <th>ระยะเวลา</th>
-                  <th>SLA Performance</th>
-                  <th>ผู้บันทึก</th>
-                  <th className="text-right">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredJobs.map((job, idx) => {
-                  const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
-                  const sla = calculateSlaPerformance(job, kpiTargets)
-                  const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
-                  const detailsDisplay = getWorkOrderDetails(job)
+          {/* ── WORK ORDERS PRESENTATION (Tri-View ADR-0002) ─────────── */}
+          {/* 1. Mobile View: Single-Column Work Order Cards */}
+          {isMobile && (
+            <div className="space-y-3 pb-24">
+              {filteredJobs.map((job, idx) => (
+                <WorkOrderCard
+                  key={job.id || idx}
+                  job={job}
+                  kpiTargets={kpiTargets}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  onInterruption={openInterruptionModal}
+                  onComplete={openCompleteModal}
+                  onPrint={openPrintModal}
+                  onEdit={openEditModal}
+                  onDelete={handleDeleteJob}
+                />
+              ))}
 
-                  return (
-                    <tr key={job.id || idx}>
-                      {/* Job ID */}
-                      <td className="font-mono text-xs font-extrabold text-blue-600 dark:text-blue-400">
-                        {jobIdDisplay}
-                      </td>
+              {filteredJobs.length === 0 && (
+                <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+                  <ClipboardList size={32} className="mx-auto mb-2 opacity-40 text-blue-500" />
+                  <p className="font-semibold text-xs text-slate-600 dark:text-slate-400">
+                    {jobsLoading ? 'กำลังโหลดข้อมูล...' : 'ไม่พบรายการใบสั่งงาน'}
+                  </p>
+                </div>
+              )}
 
-                      {/* M/C */}
-                      <td className="font-bold" style={{ color: 'var(--text-900)' }}>
-                        {job.MC || '—'}
-                      </td>
+              {/* Floating Action Button (FAB) for Mobile Work Order Creation */}
+              {canAdd && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+                  title="สร้างใบสั่งงานใหม่"
+                  aria-label="สร้างใบสั่งงานใหม่"
+                >
+                  <Plus size={26} strokeWidth={2.5} />
+                </button>
+              )}
+            </div>
+          )}
 
-                      {/* KI */}
-                      <td className="font-mono font-semibold" style={{ color: 'var(--text-700)' }}>
-                        {job.KI || '—'}
-                      </td>
+          {/* 2. Tablet View: 2-Column Responsive Card Grid */}
+          {isTablet && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {filteredJobs.map((job, idx) => (
+                  <WorkOrderCard
+                    key={job.id || idx}
+                    job={job}
+                    kpiTargets={kpiTargets}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onInterruption={openInterruptionModal}
+                    onComplete={openCompleteModal}
+                    onPrint={openPrintModal}
+                    onEdit={openEditModal}
+                    onDelete={handleDeleteJob}
+                  />
+                ))}
+              </div>
 
-                      {/* Design */}
-                      <td className="max-w-[140px] truncate" style={{ color: 'var(--text-600)' }}>
-                        {job.Design || '—'}
-                      </td>
+              {filteredJobs.length === 0 && (
+                <div className="card p-12 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+                  <ClipboardList size={36} className="mx-auto mb-2 opacity-40 text-blue-500" />
+                  <p className="font-semibold text-slate-600 dark:text-slate-400">
+                    {jobsLoading ? 'กำลังโหลดข้อมูล...' : 'ไม่พบรายการใบสั่งงาน'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
-                      {/* Roll No */}
-                      <td className="font-mono" style={{ color: 'var(--text-700)' }}>
-                        {job.RollNo || job.roll_no || '—'}
-                      </td>
+          {/* 3. Desktop View: Full High-Density Data Table */}
+          {isDesktop && (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Job ID</th>
+                    <th>M/C</th>
+                    <th>KI</th>
+                    <th>Design</th>
+                    <th>เลขม้วน</th>
+                    <th>ประเภท</th>
+                    <th>รายละเอียด</th>
+                    <th>สถานะ</th>
+                    <th>ช่างผู้ปฏิบัติงาน</th>
+                    <th>เวลาเริ่ม</th>
+                    <th>ระยะเวลา</th>
+                    <th>SLA Performance</th>
+                    <th>ผู้บันทึก</th>
+                    <th className="text-right">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredJobs.map((job, idx) => {
+                    const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
+                    const sla = calculateSlaPerformance(job, kpiTargets)
+                    const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
+                    const detailsDisplay = getWorkOrderDetails(job)
 
-                      {/* Job Type */}
-                      <td>
-                        <span
-                          className={`badge ${
-                            job.JobType === 'DESIGN'
-                              ? 'badge-purple'
-                              : job.JobType === 'PM'
-                              ? 'badge-yellow'
-                              : 'badge-blue'
-                          }`}
-                        >
-                          {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : '🛠️ แก้ไข'}
-                        </span>
-                      </td>
+                    return (
+                      <tr key={job.id || idx}>
+                        {/* Job ID */}
+                        <td className="font-mono text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                          {jobIdDisplay}
+                        </td>
 
-                      {/* รายละเอียด */}
-                      <td className="max-w-[220px] min-w-[130px]" style={{ color: 'var(--text-700)' }}>
-                        <div className="truncate text-xs font-medium" title={detailsDisplay}>
-                          {detailsDisplay}
-                        </div>
-                      </td>
+                        {/* M/C */}
+                        <td className="font-bold" style={{ color: 'var(--text-900)' }}>
+                          {job.MC || '—'}
+                        </td>
 
-                      {/* สถานะ */}
-                      <td>
-                        <span className={`badge ${isCompleted ? 'badge-green' : 'badge-orange'}`}>
-                          {isCompleted ? 'เสร็จสิ้น' : 'กำลังทำ'}
-                        </span>
-                      </td>
+                        {/* KI */}
+                        <td className="font-mono font-semibold" style={{ color: 'var(--text-700)' }}>
+                          {job.KI || '—'}
+                        </td>
 
-                      {/* Technicians */}
-                      <td className="max-w-[180px] truncate" style={{ color: 'var(--text-700)' }}>
-                        {job.Technicians || '—'}
-                      </td>
+                        {/* Design */}
+                        <td className="max-w-[140px] truncate" style={{ color: 'var(--text-600)' }}>
+                          {job.Design || '—'}
+                        </td>
 
-                      {/* Start Time */}
-                      <td className="text-xs font-mono" style={{ color: 'var(--text-500)' }}>
-                        {job.StartDate ? `${job.StartDate} ${job.StartTime || ''}` : '—'}
-                      </td>
+                        {/* Roll No */}
+                        <td className="font-mono" style={{ color: 'var(--text-700)' }}>
+                          {job.RollNo || job.roll_no || '—'}
+                        </td>
 
-                      {/* Duration */}
-                      <td className="font-mono" style={{ color: isCompleted ? 'var(--text-900)' : 'var(--text-400)' }}>
-                        <div className="font-bold text-xs">
-                          {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังจับเวลา...')}
-                        </div>
-                        {sla.sundayHoursDecimal > 0 && (
-                          <div className="text-[10px] text-sky-600 dark:text-sky-400 flex items-center gap-0.5 mt-0.5 font-semibold">
-                            <span>🏖️ หักวันอาทิตย์ {sla.sundayDurationText}</span>
-                          </div>
-                        )}
-                        {sla.lostHoursDecimal > 0 && (
-                          <div className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
-                            <Clock size={10} />
-                            <span>หักงานแทรก {sla.lostDurationText}</span>
-                          </div>
-                        )}
-                        {sla.activeInterruption && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 animate-pulse mt-0.5">
-                            ⏸️ กำลังพักงาน
-                          </span>
-                        )}
-                      </td>
-
-                      {/* SLA Performance */}
-                      <td>
-                        <span className={`badge ${sla.badgeClass}`}>
-                          {sla.label}
-                        </span>
-                      </td>
-
-                      {/* Created By */}
-                      <td className="text-xs" style={{ color: 'var(--text-500)' }}>
-                        {job.CreatedBy || '—'}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Interruption / Lost Time Button */}
-                          {!job.IsDeleted && (
-                            <button
-                              type="button"
-                              onClick={() => openInterruptionModal(job)}
-                              className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
-                                sla.activeInterruption
-                                  ? 'bg-amber-500 text-white animate-pulse shadow-md shadow-amber-500/30'
-                                  : sla.lostHoursDecimal > 0
-                                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
-                                  : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-amber-600'
-                              }`}
-                              title={sla.activeInterruption ? `กำลังทำงานแทรก: ${sla.activeInterruption.task_name} (คลิกเพื่อจบงานแทรก)` : 'บันทึกงานแทรก / เวลาที่สูญเสียไป'}
-                            >
-                              {sla.activeInterruption ? (
-                                <>
-                                  <Pause size={13} />
-                                  <span className="hidden sm:inline">พักงานอยู่</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Clock size={13} />
-                                  {sla.lostHoursDecimal > 0 && <span className="text-[10px]">({sla.lostHoursDecimal}ช.)</span>}
-                                </>
-                              )}
-                            </button>
-                          )}
-
-                          {/* Complete Job Button (if in progress) */}
-                          {!isCompleted && !job.IsDeleted && canEdit && (
-                            <button
-                              onClick={() => openCompleteModal(job)}
-                              className="btn-success px-2.5 py-1 text-xs"
-                              title="บันทึกจบงาน"
-                            >
-                              <CheckCircle2 size={13} />
-                              <span>จบงาน</span>
-                            </button>
-                          )}
-
-                          {/* Print A4 Report */}
-                          <button
-                            onClick={() => openPrintModal(job)}
-                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-blue-600 transition-colors"
-                            title="พิมพ์ใบสั่งงาน A4"
+                        {/* Job Type */}
+                        <td>
+                          <span
+                            className={`badge ${
+                              job.JobType === 'DESIGN'
+                                ? 'badge-purple'
+                                : job.JobType === 'PM'
+                                ? 'badge-yellow'
+                                : 'badge-blue'
+                            }`}
                           >
-                            <Printer size={15} />
-                          </button>
+                            {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : '🛠️ แก้ไข'}
+                          </span>
+                        </td>
 
-                          {/* Edit Job */}
-                          {!job.IsDeleted && canEdit && (
-                            <button
-                              onClick={() => openEditModal(job)}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-amber-600 transition-colors"
-                              title="แก้ไขใบสั่งงาน"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                          )}
+                        {/* รายละเอียด */}
+                        <td className="max-w-[220px] min-w-[130px]" style={{ color: 'var(--text-700)' }}>
+                          <div className="truncate text-xs font-medium" title={detailsDisplay}>
+                            {detailsDisplay}
+                          </div>
+                        </td>
 
-                          {/* Delete Job */}
-                          {canDelete && (
-                            <button
-                              onClick={() => handleDeleteJob(job)}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 transition-colors"
-                              title="ลบใบสั่งงาน"
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                        {/* สถานะ */}
+                        <td>
+                          <span className={`badge ${isCompleted ? 'badge-green' : 'badge-orange'}`}>
+                            {isCompleted ? 'เสร็จสิ้น' : 'กำลังทำ'}
+                          </span>
+                        </td>
+
+                        {/* Technicians */}
+                        <td className="max-w-[180px] truncate" style={{ color: 'var(--text-700)' }}>
+                          {job.Technicians || '—'}
+                        </td>
+
+                        {/* Start Time */}
+                        <td className="text-xs font-mono" style={{ color: 'var(--text-500)' }}>
+                          {job.StartDate ? `${job.StartDate} ${job.StartTime || ''}` : '—'}
+                        </td>
+
+                        {/* Duration */}
+                        <td className="font-mono" style={{ color: isCompleted ? 'var(--text-900)' : 'var(--text-400)' }}>
+                          <div className="font-bold text-xs">
+                            {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังจับเวลา...')}
+                          </div>
+                          {sla.sundayHoursDecimal > 0 && (
+                            <div className="text-[10px] text-sky-600 dark:text-sky-400 flex items-center gap-0.5 mt-0.5 font-semibold">
+                              <span>🏖️ หักวันอาทิตย์ {sla.sundayDurationText}</span>
+                            </div>
                           )}
-                        </div>
+                          {sla.lostHoursDecimal > 0 && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
+                              <Clock size={10} />
+                              <span>หักงานแทรก {sla.lostDurationText}</span>
+                            </div>
+                          )}
+                          {sla.activeInterruption && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 animate-pulse mt-0.5">
+                              ⏸️ กำลังพักงาน
+                            </span>
+                          )}
+                        </td>
+
+                        {/* SLA Performance */}
+                        <td>
+                          <span className={`badge ${sla.badgeClass}`}>
+                            {sla.label}
+                          </span>
+                        </td>
+
+                        {/* Created By */}
+                        <td className="text-xs" style={{ color: 'var(--text-500)' }}>
+                          {job.CreatedBy || '—'}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Interruption / Lost Time Button */}
+                            {!job.IsDeleted && (
+                              <button
+                                type="button"
+                                onClick={() => openInterruptionModal(job)}
+                                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                                  sla.activeInterruption
+                                    ? 'bg-amber-500 text-white animate-pulse shadow-md shadow-amber-500/30'
+                                    : sla.lostHoursDecimal > 0
+                                    ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-amber-600'
+                                }`}
+                                title={sla.activeInterruption ? `กำลังทำงานแทรก: ${sla.activeInterruption.task_name} (คลิกเพื่อจบงานแทรก)` : 'บันทึกงานแทรก / เวลาที่สูญเสียไป'}
+                              >
+                                {sla.activeInterruption ? (
+                                  <>
+                                    <Pause size={13} />
+                                    <span className="hidden sm:inline">พักงานอยู่</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Clock size={13} />
+                                    {sla.lostHoursDecimal > 0 && <span className="text-[10px]">({sla.lostHoursDecimal}ช.)</span>}
+                                  </>
+                                )}
+                              </button>
+                            )}
+
+                            {/* Complete Job Button (if in progress) */}
+                            {!isCompleted && !job.IsDeleted && canEdit && (
+                              <button
+                                onClick={() => openCompleteModal(job)}
+                                className="btn-success px-2.5 py-1 text-xs"
+                                title="บันทึกจบงาน"
+                              >
+                                <CheckCircle2 size={13} />
+                                <span>จบงาน</span>
+                              </button>
+                            )}
+
+                            {/* Print A4 Report */}
+                            <button
+                              onClick={() => openPrintModal(job)}
+                              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-blue-600 transition-colors"
+                              title="พิมพ์ใบสั่งงาน A4"
+                            >
+                              <Printer size={15} />
+                            </button>
+
+                            {/* Edit Job */}
+                            {!job.IsDeleted && canEdit && (
+                              <button
+                                onClick={() => openEditModal(job)}
+                                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-amber-600 transition-colors"
+                                title="แก้ไขใบสั่งงาน"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            )}
+
+                            {/* Delete Job */}
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDeleteJob(job)}
+                                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 transition-colors"
+                                title="ลบใบสั่งงาน"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+
+                  {filteredJobs.length === 0 && (
+                    <tr>
+                      <td colSpan={14} className="text-center py-12 text-slate-400">
+                        {jobsLoading ? 'กำลังโหลดข้อมูล...' : 'ไม่พบรายการใบสั่งงาน'}
                       </td>
                     </tr>
-                  )
-                })}
-
-                {filteredJobs.length === 0 && (
-                  <tr>
-                    <td colSpan={14} className="text-center py-12 text-slate-400">
-                      {jobsLoading ? 'กำลังโหลดข้อมูล...' : 'ไม่พบรายการใบสั่งงาน'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

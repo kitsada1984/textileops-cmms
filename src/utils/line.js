@@ -2,7 +2,7 @@
  * src/utils/line.js
  * LINE Messaging API & LINE Notify Integration for TextileOps CMMS
  */
-import { supabase } from '../supabase'
+import { db } from '../api/dbClient'
 import {
   buildRepairRequestFlexMessage,
   buildTechnicianAssignedFlexMessage,
@@ -58,7 +58,7 @@ export const saveLineSettings = (cfg) => {
 
 export const loadLineSettingsDB = async () => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('appconfigs')
       .select('value')
       .eq('key', DB_KEY)
@@ -87,7 +87,7 @@ export const saveLineSettingsDB = async (cfg) => {
   const merged = { ...DEFAULT_LINE_SETTINGS, ...cfg }
   saveLineSettings(merged)
   try {
-    await supabase
+    await db
       .from('appconfigs')
       .upsert(
         {
@@ -107,7 +107,7 @@ export const saveLineSettingsDB = async (cfg) => {
  */
 export async function fetchLineContacts() {
   try {
-    const { data } = await supabase
+    const { data } = await db
       .from('appconfigs')
       .select('value')
       .eq('key', 'line_contacts')

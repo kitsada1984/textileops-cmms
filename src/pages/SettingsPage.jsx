@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../supabase'
+import { db } from '../api/dbClient'
 import { Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw, UserPlus, Smartphone, Download, MessageSquare, Bell, Eye, EyeOff, Copy } from 'lucide-react'
 import { useT } from '../contexts/LanguageContext'
 import { useAuth, hashPassword } from '../contexts/AuthContext'
@@ -59,7 +59,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     ;(async () => {
-      const { data } = await supabase.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
+      const { data } = await db.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
       if (data?.value) {
         // DB has data — load it
         const cfg = JSON.parse(data.value)
@@ -83,7 +83,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     Promise.allSettled(
-      TABLES.map(([tb]) => supabase.from(tb).select('id', { count: 'exact', head: true }))
+      TABLES.map(([tb]) => db.from(tb).select('id', { count: 'exact', head: true }))
     ).then(results => {
       const c = {}
       results.forEach((r, i) => {
@@ -102,7 +102,7 @@ export default function SettingsPage() {
     setPwdLoading(true)
     try {
       const hash = await hashPassword(newPwd)
-      const { error } = await supabase
+      const { error } = await db
         .from('users')
         .update({ password_hash: hash })
         .eq('id', user.id)

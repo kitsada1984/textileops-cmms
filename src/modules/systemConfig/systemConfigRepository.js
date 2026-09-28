@@ -12,11 +12,11 @@
  * TextileOps Architecture: Deep Module / System Configuration Seam
  */
 
-import { supabase } from '../../supabase'
+import { db } from '../../api/dbClient'
 
 /**
  * Loads a system configuration item with automated fallbacks:
- * 1. Supabase `appconfigs` table (clean dedicated key-value store)
+ * 1. `appconfigs` table (clean dedicated key-value store)
  * 2. Legacy `workorders` table (`WO_ID = legacyWorkOrderId`) with auto-migration forward
  * 3. Browser `localStorage` cache
  * 4. Default fallback value
@@ -33,7 +33,7 @@ export async function getSystemConfig(configKey, options = {}) {
 
   // 1. Primary: Load from dedicated `appconfigs` table
   try {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('appconfigs')
       .select('value')
       .eq('key', configKey)
@@ -64,7 +64,7 @@ export async function getSystemConfig(configKey, options = {}) {
   // 2. Legacy Fallback: Load from `workorders.Comment` if available
   if (legacyWorkOrderId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('workorders')
         .select('Comment')
         .eq('WO_ID', legacyWorkOrderId)
@@ -79,7 +79,7 @@ export async function getSystemConfig(configKey, options = {}) {
         if (parsed !== null && parsed !== undefined) {
           // Self-healing migration: copy forward to appconfigs in background
           try {
-            supabase
+            db
               .from('appconfigs')
               .upsert(
                 {
@@ -155,9 +155,9 @@ export async function saveSystemConfig(configKey, value, options = {}) {
   // 2. Primary Cloud Save: `appconfigs` table
   try {
     if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
-      await supabase.from('appconfigs').delete().eq('key', configKey)
+      await db.from('appconfigs').delete().eq('key', configKey)
     } else {
-      await supabase.from('appconfigs').upsert(
+      await db.from('appconfigs').upsert(
         {
           key: configKey,
           value: serialized,
@@ -174,16 +174,16 @@ export async function saveSystemConfig(configKey, value, options = {}) {
   if (legacyWorkOrderId) {
     try {
       if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
-        await supabase.from('workorders').delete().eq('WO_ID', legacyWorkOrderId)
+        await db.from('workorders').delete().eq('WO_ID', legacyWorkOrderId)
       } else {
-        const { data: existing } = await supabase
+        const { data: existing } = await db
           .from('workorders')
           .select('id')
           .eq('WO_ID', legacyWorkOrderId)
           .limit(1)
 
         if (existing && existing.length > 0) {
-          await supabase
+          await db
             .from('workorders')
             .update({
               Comment: serialized,
@@ -191,7 +191,7 @@ export async function saveSystemConfig(configKey, value, options = {}) {
             })
             .eq('id', existing[0].id)
         } else {
-          await supabase.from('workorders').insert({
+          await db.from('workorders').insert({
             MC: '__SYSTEM__',
             Problem: '__SYS_CONFIG__',
             WO_ID: legacyWorkOrderId,
@@ -223,14 +223,14 @@ export async function deleteSystemConfig(configKey, options = {}) {
   }
 
   try {
-    await supabase.from('appconfigs').delete().eq('key', configKey)
+    await db.from('appconfigs').delete().eq('key', configKey)
   } catch (err) {
     console.warn(`[SystemConfig] Error deleting from appconfigs (${configKey}):`, err)
   }
 
   if (legacyWorkOrderId) {
     try {
-      await supabase.from('workorders').delete().eq('WO_ID', legacyWorkOrderId)
+      await db.from('workorders').delete().eq('WO_ID', legacyWorkOrderId)
     } catch (legacyErr) {
       console.warn(`[SystemConfig] Error deleting legacy ${legacyWorkOrderId}:`, legacyErr)
     }

@@ -6,7 +6,7 @@
  * - Decoupled multi-channel notification dispatching
  */
 
-import { supabase } from '../../supabase'
+import { db } from '../../api/dbClient'
 import { normalizeRepairRecord } from './repairNormalizer'
 import {
   dispatchNewRepairNotification,
@@ -59,7 +59,7 @@ export async function createRepairRequest(rawPayload, options = {}) {
   const isEasy = rawPayload.repair_type === 'EASY' || rawPayload.status === 'APPROVED'
 
   const { data: insertedData, effectivePayload } = await runWithSchemaRetry(rawPayload, (payload) =>
-    supabase.from('repair_requests').insert(payload).select().single()
+    db.from('repair_requests').insert(payload).select().single()
   )
 
   const normalized = normalizeRepairRecord({
@@ -105,7 +105,7 @@ export async function approveRepairRequest(id, approvalPayload, options = {}) {
   }
 
   const { data: updatedData } = await runWithSchemaRetry(payload, (p) =>
-    supabase.from('repair_requests').update(p).eq('id', id).select().single()
+    db.from('repair_requests').update(p).eq('id', id).select().single()
   )
 
   const normalized = normalizeRepairRecord({
@@ -149,7 +149,7 @@ export async function completeRepairRequest(id, completionPayload, options = {})
   }
 
   const { data: updatedData } = await runWithSchemaRetry(payload, (p) =>
-    supabase.from('repair_requests').update(p).eq('id', id).select().single()
+    db.from('repair_requests').update(p).eq('id', id).select().single()
   )
 
   const normalized = normalizeRepairRecord({
@@ -174,7 +174,7 @@ export async function completeRepairRequest(id, completionPayload, options = {})
  */
 export async function updateRepairRequest(id, updatePayload) {
   const { data: updatedData } = await runWithSchemaRetry(updatePayload, (p) =>
-    supabase.from('repair_requests').update(p).eq('id', id).select().single()
+    db.from('repair_requests').update(p).eq('id', id).select().single()
   )
 
   const normalized = normalizeRepairRecord({

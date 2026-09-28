@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { d1, setAuthToken } from '../api/d1Client'
+import { getActiveDbProvider } from '../api/dbClient'
 
 const AuthContext = createContext(null)
 
@@ -38,6 +40,24 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = useCallback(async (username, password) => {
+    if (getActiveDbProvider() === 'd1') {
+      // D1-native auth via Pages Function
+      const res = await fetch('/api/d1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const result = await res.json().catch(() => ({}))
+      if (!res.ok || !result.ok) {
+        throw new Error(result.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+      }
+      setAuthToken(result.token)
+      localStorage.setItem('app_user', JSON.stringify(result.user))
+      setUser(result.user)
+      return result.user
+    }
+
+    // Supabase fallback path
     const hash = await hashPassword(password)
     const { data, error } = await supabase
       .from('users')
@@ -63,6 +83,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem('app_user')
+    setAuthToken('')
     setUser(null)
   }, [])
 
@@ -70,6 +91,24 @@ export function AuthProvider({ children }) {
     const stored = localStorage.getItem('app_user')
     if (!stored) return
     const { id } = JSON.parse(stored)
+
+    if (getActiveDbProvider() === 'd1') {
+      try {
+        const res = await fetch('/api/d1/auth/me', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('textileops_auth_token') || ''}` },
+        })
+        if (res.ok) {
+          const result = await res.json()
+          if (result.ok && result.user) {
+            localStorage.setItem('app_user', JSON.stringify(result.user))
+            setUser(result.user)
+            return
+          }
+        }
+      } catch {}
+      return
+    }
+
     const { data } = await supabase
       .from('users')
       .select('id, username, full_name, role, status, permissions')

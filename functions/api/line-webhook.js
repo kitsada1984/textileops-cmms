@@ -1,11 +1,6 @@
 // functions/api/line-webhook.js
 // Cloudflare Pages Function: LINE Webhook to automatically capture Users/Contacts and Group IDs
-
-import { createClient } from '@supabase/supabase-js'
-
-const DEFAULT_SUPABASE_URL = 'https://fyulqejkzuhwppstezko.supabase.co'
-const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5dWxxZWprenVod3Bwc3RlemtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTY2MzYsImV4cCI6MjA5MzI5MjYzNn0.8dqXxqACiOEkjUevt_xFgIRPZ8CcMPgYZKBNM1THI4Y'
+// Storage: Cloudflare D1 (appconfigs table)
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -13,10 +8,28 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-line-signature',
 }
 
-function getSupabase(env) {
-  const url = env?.VITE_SUPABASE_URL || env?.SUPABASE_URL || DEFAULT_SUPABASE_URL
-  const key = env?.VITE_SUPABASE_ANON_KEY || env?.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY
-  return createClient(url, key)
+function getDb(env) {
+  return env?.DB || env?.textileops_db
+}
+
+async function getConfigValue(db, key) {
+  try {
+    const row = await db.prepare('SELECT value FROM appconfigs WHERE key = ? LIMIT 1').bind(key).first()
+    if (!row?.value) return null
+    try { return JSON.parse(row.value) } catch { return row.value }
+  } catch {
+    return null
+  }
+}
+
+async function saveConfigValue(db, key, value) {
+  await db
+    .prepare(
+      'INSERT INTO appconfigs (id, key, value, updated_at) VALUES (?, ?, ?, ?) ' +
+      'ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at'
+    )
+    .bind(`cfg_${key}`, key, JSON.stringify(value), new Date().toISOString())
+    .run()
 }
 
 export async function onRequestOptions() {
@@ -27,10 +40,16 @@ export async function onRequestOptions() {
 }
 
 export async function onRequestGet({ env }) {
+  const db = getDb(env)
+  if (!db) {
+    return new Response(JSON.stringify({ ok: true, contacts: [] }), {
+      status: 200,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    })
+  }
+
   try {
-    const supabase = getSupabase(env)
-    const { data } = await supabase.from('appconfigs').select('value').eq('key', 'line_contacts').maybeSingle()
-    const contacts = data?.value ? JSON.parse(data.value) : []
+    const contacts = (await getConfigValue(db, 'line_contacts')) || []
     return new Response(JSON.stringify({ ok: true, contacts }), {
       status: 200,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
@@ -45,7 +64,14 @@ export async function onRequestGet({ env }) {
 
 export async function onRequestPost({ request, env }) {
   const jsonHeaders = { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-  const supabase = getSupabase(env)
+  const db = getDb(env)
+
+  if (!db) {
+    return new Response(JSON.stringify({ ok: false, error: 'D1 Database binding not configured' }), {
+      status: 500,
+      headers: jsonHeaders,
+    })
+  }
 
   try {
     let body = {}
@@ -66,18 +92,14 @@ export async function onRequestPost({ request, env }) {
     // Load active token from line_settings
     let channelToken = env?.LINE_CHANNEL_ACCESS_TOKEN || ''
     try {
-      const { data: settingData } = await supabase.from('appconfigs').select('value').eq('key', 'line_settings').maybeSingle()
-      if (settingData?.value) {
-        const parsed = JSON.parse(settingData.value)
-        if (parsed.channel_access_token) channelToken = parsed.channel_access_token
-      }
+      const settings = await getConfigValue(db, 'line_settings')
+      if (settings?.channel_access_token) channelToken = settings.channel_access_token
     } catch {}
 
     // Load existing contacts
     let contacts = []
     try {
-      const { data: contactData } = await supabase.from('appconfigs').select('value').eq('key', 'line_contacts').maybeSingle()
-      if (contactData?.value) contacts = JSON.parse(contactData.value)
+      contacts = (await getConfigValue(db, 'line_contacts')) || []
     } catch {}
 
     let contactsUpdated = false
@@ -163,14 +185,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     if (contactsUpdated) {
-      await supabase.from('appconfigs').upsert(
-        {
-          key: 'line_contacts',
-          value: JSON.stringify(contacts),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'key' }
-      )
+      await saveConfigValue(db, 'line_contacts', contacts)
     }
 
     return new Response(JSON.stringify({ ok: true, processed: events.length }), {

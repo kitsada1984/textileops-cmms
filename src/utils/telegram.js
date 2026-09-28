@@ -1,4 +1,4 @@
-import { supabase } from '../supabase'
+import { db } from '../api/dbClient'
 
 const STORAGE_KEY = 'telegram_settings'
 const DB_KEY      = 'telegram_settings'
@@ -24,7 +24,7 @@ export const saveTelegramSettings = (cfg) => {
 
 export const loadTelegramSettingsDB = async () => {
   try {
-    const { data } = await supabase
+    const { data } = await db
       .from('appconfigs').select('value').eq('key', DB_KEY).maybeSingle()
     if (data?.value) {
       const parsed = JSON.parse(data.value)
@@ -37,7 +37,7 @@ export const loadTelegramSettingsDB = async () => {
 
 export const saveTelegramSettingsDB = async (cfg) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg))
-  await supabase.from('appconfigs')
+  await db.from('appconfigs')
     .upsert({ key: DB_KEY, value: JSON.stringify(cfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
 }
 

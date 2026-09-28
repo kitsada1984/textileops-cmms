@@ -1,11 +1,8 @@
 // functions/api/d1/realtime.js
 // Cloudflare Pages Function: Realtime Event Stream via Server-Sent Events (SSE) & Event Polling
+// SECURITY: requires token (Bearer header or ?token= for EventSource)
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Last-Event-ID',
-}
+import { CORS_HEADERS, verifyAuthToken, getBearerToken } from '../_auth.js'
 
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
@@ -18,6 +15,14 @@ export async function onRequestGet(context) {
   if (!db) {
     return new Response(JSON.stringify({ error: 'DB binding not configured' }), {
       status: 500,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
+    })
+  }
+
+  const auth = await verifyAuthToken(env, getBearerToken(request))
+  if (!auth) {
+    return new Response(JSON.stringify({ error: 'Unauthorized: missing or invalid token' }), {
+      status: 401,
       headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
     })
   }
@@ -35,10 +40,22 @@ export async function onRequestGet(context) {
 
     let currentSinceId = lastEventId
 
-    // Write initial connected event
-    writer.write(encoder.encode(`event: connected\ndata: ${JSON.stringify({ status: 'connected', time: new Date().toISOString() })}\n\n`))
+    // If client connects fresh (since_id=0), start from the current max id
+    // so it only receives NEW events instead of replaying the whole log.
+    if (currentSinceId <= 0) {
+      try {
+        const maxRow = await db
+          .prepare(filterTable ? 'SELECT MAX(id) AS max_id FROM _d1_change_log WHERE table_name = ?' : 'SELECT MAX(id) AS max_id FROM _d1_change_log')
+          .bind(...(filterTable ? [filterTable] : []))
+          .first()
+        currentSinceId = maxRow?.max_id || 0
+      } catch {}
+    }
 
-    // Stream loop using setTimeout/keepalive
+    // Write initial connected event with current max_id
+    writer.write(encoder.encode(`event: connected\ndata: ${JSON.stringify({ status: 'connected', max_id: currentSinceId, time: new Date().toISOString() })}\n\n`))
+
+    // Stream loop using setInterval
     const interval = setInterval(async () => {
       try {
         let sql = 'SELECT * FROM _d1_change_log WHERE id > ?'

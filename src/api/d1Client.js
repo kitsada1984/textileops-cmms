@@ -1,12 +1,35 @@
 // src/api/d1Client.js
 // Supabase-compatible client adapter for Cloudflare D1 + Realtime SSE
 
+const AUTH_TOKEN_KEY = 'textileops_auth_token'
+
+export function getAuthToken() {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+export function setAuthToken(token) {
+  try {
+    if (token) localStorage.setItem(AUTH_TOKEN_KEY, token)
+    else localStorage.removeItem(AUTH_TOKEN_KEY)
+  } catch {}
+}
+
+function authHeaders(extra = {}) {
+  const token = getAuthToken()
+  return token ? { Authorization: `Bearer ${token}`, ...extra } : { ...extra }
+}
+
 class D1QueryBuilder {
   constructor(table, client) {
     this.table = table
     this.client = client
     this.action = 'select'
     this.selectColumns = '*'
+    this.selectOptions = {}
     this.filters = []
     this.orderClause = null
     this.limitCount = null
@@ -14,11 +37,15 @@ class D1QueryBuilder {
     this.mutationData = null
     this.onConflictCol = null
     this.isSingle = false
+    this.emptyResult = false
   }
 
-  select(columns = '*') {
-    this.action = 'select'
-    this.selectColumns = columns
+  select(columns = '*', options = {}) {
+    // .select() after a mutation keeps the mutation action (server uses RETURNING *)
+    if (this.action === 'select') {
+      this.selectColumns = columns
+      this.selectOptions = options || {}
+    }
     return this
   }
 
@@ -87,12 +114,23 @@ class D1QueryBuilder {
   }
 
   in(column, values) {
+    if (Array.isArray(values) && values.length === 0) {
+      // Empty IN() matches nothing
+      this.emptyResult = true
+    }
     this.filters.push({ column, op: 'in', value: values })
     return this
   }
 
   is(column, value) {
     this.filters.push({ column, op: 'is', value })
+    return this
+  }
+
+  match(obj = {}) {
+    for (const [k, v] of Object.entries(obj)) {
+      this.filters.push({ column: k, op: 'eq', value: v })
+    }
     return this
   }
 
@@ -123,6 +161,10 @@ class D1QueryBuilder {
   }
 
   async execute() {
+    if (this.emptyResult && this.action === 'select') {
+      return { data: this.selectOptions?.count ? null : [], count: this.selectOptions?.count === 'exact' ? 0 : null, error: null }
+    }
+
     try {
       const payload = {
         table: this.table,
@@ -136,15 +178,34 @@ class D1QueryBuilder {
         onConflict: this.onConflictCol
       }
 
+      // Supabase-style head count: only the number of rows is needed
+      if (this.action === 'select' && this.selectOptions?.count === 'exact') {
+        payload.action = 'count'
+        const res = await fetch(this.client.apiUrl, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(payload)
+        })
+        const result = await res.json()
+        if (!res.ok || result.error) {
+          return { data: null, count: null, error: { message: result.error || `${res.status} ${res.statusText}` } }
+        }
+        return { data: null, count: result.count ?? 0, error: null }
+      }
+
       const res = await fetch(this.client.apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload)
       })
 
       if (!res.ok) {
-        const errText = await res.text()
-        return { data: null, error: { message: `${res.status} ${res.statusText}: ${errText}` } }
+        let errMsg = `${res.status} ${res.statusText}`
+        try {
+          const errJson = await res.json()
+          if (errJson?.error) errMsg = errJson.error
+        } catch {}
+        return { data: null, error: { message: errMsg } }
       }
 
       const result = await res.json()
@@ -153,8 +214,11 @@ class D1QueryBuilder {
       }
 
       let data = result.data
-      if (this.isSingle && Array.isArray(data)) {
-        data = data.length > 0 ? data[0] : null
+      if (this.isSingle) {
+        if (Array.isArray(data)) {
+          data = data.length > 0 ? data[0] : null
+        }
+        // Non-array mutation result (object) passes through unchanged
       }
 
       return { data, error: null }
@@ -191,13 +255,23 @@ class D1RealtimeChannel {
     const isBrowser = typeof window !== 'undefined'
     if (!isBrowser) return this
 
-    const streamUrl = `${this.client.realtimeUrl}?stream=true&since_id=${this.lastEventId}`
+    const token = getAuthToken()
+    const streamUrl = `${this.client.realtimeUrl}?stream=true&since_id=${this.lastEventId}${token ? `&token=${encodeURIComponent(token)}` : ''}`
 
     if (typeof EventSource !== 'undefined') {
       try {
         this.eventSource = new EventSource(streamUrl)
 
-        this.eventSource.addEventListener('connected', () => {
+        this.eventSource.addEventListener('connected', (e) => {
+          // Stop any polling fallback once SSE is (re)established
+          this._stopPolling()
+          // Start from the server's current max_id on a fresh connection
+          try {
+            const info = JSON.parse(e.data)
+            if (info?.max_id && this.lastEventId <= 0) {
+              this.lastEventId = info.max_id
+            }
+          } catch {}
           if (statusCallback) statusCallback('SUBSCRIBED')
         })
 
@@ -212,8 +286,11 @@ class D1RealtimeChannel {
         })
 
         this.eventSource.onerror = () => {
-          // Fall back to polling if EventSource fails
-          this._startPolling()
+          // EventSource auto-reconnects; only fall back to polling when it gives up
+          if (this.eventSource && this.eventSource.readyState === EventSource.CLOSED) {
+            this.eventSource = null
+            this._startPolling()
+          }
         }
       } catch {
         this._startPolling()
@@ -229,7 +306,9 @@ class D1RealtimeChannel {
     if (this.pollInterval) return
     this.pollInterval = setInterval(async () => {
       try {
-        const res = await fetch(`${this.client.realtimeUrl}?since_id=${this.lastEventId}`)
+        const res = await fetch(`${this.client.realtimeUrl}?since_id=${this.lastEventId}`, {
+          headers: authHeaders()
+        })
         if (res.ok) {
           const json = await res.json()
           if (Array.isArray(json.events) && json.events.length > 0) {
@@ -241,6 +320,13 @@ class D1RealtimeChannel {
         }
       } catch {}
     }, 2000)
+  }
+
+  _stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval)
+      this.pollInterval = null
+    }
   }
 
   _notifyListeners(payload) {
@@ -263,10 +349,7 @@ class D1RealtimeChannel {
       this.eventSource.close()
       this.eventSource = null
     }
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval)
-      this.pollInterval = null
-    }
+    this._stopPolling()
   }
 }
 

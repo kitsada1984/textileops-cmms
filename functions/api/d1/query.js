@@ -1,24 +1,92 @@
 // functions/api/d1/query.js
 // Cloudflare Pages Function: Universal Query API for D1 with Realtime Change Logging
+// SECURITY: requires Bearer token (see functions/api/_auth.js), no raw SQL,
+// identifier sanitization, mandatory filters for update/delete.
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-}
+import { CORS_HEADERS, jsonResponse, verifyAuthToken, getBearerToken } from '../_auth.js'
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...CORS_HEADERS
-    }
-  })
-}
+const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
+const BLOCKED_TABLES = new Set(['_d1_change_log'])
 
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
+}
+
+function assertIdent(name, label = 'identifier') {
+  if (!IDENT_RE.test(String(name))) {
+    throw new Error(`Invalid ${label}: ${name}`)
+  }
+  return String(name)
+}
+
+function quoteIdent(name, label) {
+  return `"${assertIdent(name, label)}"`
+}
+
+function buildSelectColumns(select) {
+  const raw = String(select || '*').trim()
+  if (raw === '*') return '*'
+  return raw
+    .split(',')
+    .map((c) => c.trim())
+    .map((c) => (c === '*' ? '*' : quoteIdent(c, 'column name')))
+    .join(', ')
+}
+
+function buildWhere(filters) {
+  const whereClauses = []
+  const whereParams = []
+
+  if (Array.isArray(filters) && filters.length > 0) {
+    for (const f of filters) {
+      const col = quoteIdent(f.column, 'filter column')
+      const op = (f.op || 'eq').toLowerCase()
+      const val = f.value
+
+      if (op === 'eq') {
+        whereClauses.push(`${col} = ?`)
+        whereParams.push(val)
+      } else if (op === 'neq') {
+        whereClauses.push(`${col} != ?`)
+        whereParams.push(val)
+      } else if (op === 'gt') {
+        whereClauses.push(`${col} > ?`)
+        whereParams.push(val)
+      } else if (op === 'gte') {
+        whereClauses.push(`${col} >= ?`)
+        whereParams.push(val)
+      } else if (op === 'lt') {
+        whereClauses.push(`${col} < ?`)
+        whereParams.push(val)
+      } else if (op === 'lte') {
+        whereClauses.push(`${col} <= ?`)
+        whereParams.push(val)
+      } else if (op === 'like' || op === 'ilike') {
+        whereClauses.push(`${col} LIKE ?`)
+        whereParams.push(val)
+      } else if (op === 'in') {
+        if (Array.isArray(val) && val.length > 0) {
+          const placeholders = val.map(() => '?').join(', ')
+          whereClauses.push(`${col} IN (${placeholders})`)
+          whereParams.push(...val)
+        } else {
+          // Empty IN() matches nothing (same as Supabase)
+          whereClauses.push('1 = 0')
+        }
+      } else if (op === 'is') {
+        if (val === null) {
+          whereClauses.push(`${col} IS NULL`)
+        } else {
+          whereClauses.push(`${col} = ?`)
+          whereParams.push(val)
+        }
+      } else {
+        throw new Error(`Unsupported filter operator: ${op}`)
+      }
+    }
+  }
+
+  return { whereSql: whereClauses.length > 0 ? ` WHERE ${whereClauses.join(' AND ')}` : '', whereParams }
 }
 
 export async function onRequestPost(context) {
@@ -29,6 +97,12 @@ export async function onRequestPost(context) {
     return jsonResponse({ data: null, error: 'D1 Database binding (DB) not configured' }, 500)
   }
 
+  // Auth: every request must carry a valid token
+  const auth = await verifyAuthToken(env, getBearerToken(request))
+  if (!auth) {
+    return jsonResponse({ data: null, error: 'Unauthorized: missing or invalid token' }, 401)
+  }
+
   let body
   try {
     body = await request.json()
@@ -36,76 +110,42 @@ export async function onRequestPost(context) {
     return jsonResponse({ data: null, error: 'Invalid JSON body: ' + err.message }, 400)
   }
 
-  const { table, action = 'select', select = '*', filters = [], order, limit, offset, data, onConflict, sql, params = [] } = body
+  const { table, action = 'select', select = '*', filters = [], order, limit, offset, data, onConflict } = body
 
   try {
-    // 1. Raw SQL execution (if specified)
-    if (sql) {
-      const stmt = db.prepare(sql).bind(...params)
-      const res = await stmt.all()
-      return jsonResponse({ data: res.results || [], error: null })
-    }
-
     if (!table) {
       return jsonResponse({ data: null, error: 'Table name is required' }, 400)
     }
+    assertIdent(table, 'table name')
+    if (BLOCKED_TABLES.has(table)) {
+      return jsonResponse({ data: null, error: 'Table not accessible' }, 403)
+    }
 
-    // 2. Build WHERE clause from filters
-    const whereClauses = []
-    const whereParams = []
+    const { whereSql, whereParams } = buildWhere(filters)
 
-    if (Array.isArray(filters) && filters.length > 0) {
-      for (const f of filters) {
-        const col = `"${f.column}"`
-        const op = (f.op || 'eq').toLowerCase()
-        const val = f.value
+    // Helper: Log mutation to _d1_change_log for Realtime SSE streaming
+    async function logRealtimeEvent(act, recId, recordData) {
+      try {
+        const payloadStr = typeof recordData === 'object' ? JSON.stringify(recordData) : String(recordData || '')
+        await db.prepare(
+          'INSERT INTO _d1_change_log (table_name, action, record_id, data, created_at) VALUES (?, ?, ?, ?, datetime(\'now\'))'
+        ).bind(table, act.toUpperCase(), String(recId || ''), payloadStr).run()
 
-        if (op === 'eq') {
-          whereClauses.push(`${col} = ?`)
-          whereParams.push(val)
-        } else if (op === 'neq') {
-          whereClauses.push(`${col} != ?`)
-          whereParams.push(val)
-        } else if (op === 'gt') {
-          whereClauses.push(`${col} > ?`)
-          whereParams.push(val)
-        } else if (op === 'gte') {
-          whereClauses.push(`${col} >= ?`)
-          whereParams.push(val)
-        } else if (op === 'lt') {
-          whereClauses.push(`${col} < ?`)
-          whereParams.push(val)
-        } else if (op === 'lte') {
-          whereClauses.push(`${col} <= ?`)
-          whereParams.push(val)
-        } else if (op === 'like' || op === 'ilike') {
-          whereClauses.push(`${col} LIKE ?`)
-          whereParams.push(val)
-        } else if (op === 'in') {
-          if (Array.isArray(val) && val.length > 0) {
-            const placeholders = val.map(() => '?').join(', ')
-            whereClauses.push(`${col} IN (${placeholders})`)
-            whereParams.push(...val)
-          }
-        } else if (op === 'is') {
-          if (val === null) {
-            whereClauses.push(`${col} IS NULL`)
-          } else {
-            whereClauses.push(`${col} IS ?`)
-            whereParams.push(val)
-          }
+        // Probabilistic prune: keep change log at ~7 days
+        if (Math.random() < 0.02) {
+          await db.prepare("DELETE FROM _d1_change_log WHERE created_at < datetime('now', '-7 days')").run()
         }
+      } catch (logErr) {
+        console.warn('Change log write failed:', logErr.message)
       }
     }
 
-    const whereSql = whereClauses.length > 0 ? ` WHERE ${whereClauses.join(' AND ')}` : ''
-
-    // 3. Handle Actions
     // A) SELECT
     if (action === 'select') {
-      let query = `SELECT ${select || '*'} FROM "${table}"${whereSql}`
+      const cols = buildSelectColumns(select)
+      let query = `SELECT ${cols} FROM "${table}"${whereSql}`
       if (order && order.column) {
-        query += ` ORDER BY "${order.column}" ${order.ascending === false ? 'DESC' : 'ASC'}`
+        query += ` ORDER BY ${quoteIdent(order.column, 'order column')} ${order.ascending === false ? 'DESC' : 'ASC'}`
       }
       if (typeof limit === 'number') {
         query += ` LIMIT ${limit}`
@@ -119,17 +159,15 @@ export async function onRequestPost(context) {
       return jsonResponse({ data: res.results || [], error: null })
     }
 
-    // Helper: Log mutation to _d1_change_log for Realtime SSE streaming
-    async function logRealtimeEvent(act, recId, recordData) {
-      try {
-        const payloadStr = typeof recordData === 'object' ? JSON.stringify(recordData) : String(recordData || '')
-        await db.prepare(
-          'INSERT INTO _d1_change_log (table_name, action, record_id, data, created_at) VALUES (?, ?, ?, ?, datetime(\'now\'))'
-        ).bind(table, act.toUpperCase(), String(recId || ''), payloadStr).run()
-      } catch (logErr) {
-        console.warn('Change log write failed:', logErr.message)
-      }
+    // A2) COUNT (for SettingsPage record counts)
+    if (action === 'count') {
+      const query = `SELECT COUNT(*) AS count FROM "${table}"${whereSql}`
+      const res = await db.prepare(query).bind(...whereParams).first()
+      return jsonResponse({ data: null, count: res?.count ?? 0, error: null })
     }
+
+    // Helper: value serialization (objects/arrays -> JSON string)
+    const serialize = (v) => (typeof v === 'object' && v !== null ? JSON.stringify(v) : v)
 
     // B) INSERT
     if (action === 'insert') {
@@ -137,13 +175,11 @@ export async function onRequestPost(context) {
       const inserted = []
 
       for (const rec of records) {
-        const keys = Object.keys(rec).filter(k => k !== '_id')
-        const cols = keys.map(k => `"${k}"`).join(', ')
+        const keys = Object.keys(rec).filter((k) => k !== '_id')
+        keys.forEach((k) => assertIdent(k, 'column name'))
+        const cols = keys.map((k) => `"${k}"`).join(', ')
         const placeholders = keys.map(() => '?').join(', ')
-        const values = keys.map(k => {
-          const v = rec[k]
-          return (typeof v === 'object' && v !== null) ? JSON.stringify(v) : v
-        })
+        const values = keys.map((k) => serialize(rec[k]))
 
         const insertSql = `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) RETURNING *`
         const res = await db.prepare(insertSql).bind(...values).first()
@@ -157,20 +193,21 @@ export async function onRequestPost(context) {
       return jsonResponse({ data: Array.isArray(data) ? inserted : inserted[0], error: null })
     }
 
-    // C) UPDATE
+    // C) UPDATE — filters are mandatory to prevent mass overwrite
     if (action === 'update') {
+      if (!Array.isArray(filters) || filters.length === 0) {
+        return jsonResponse({ data: null, error: 'Update requires at least one filter' }, 400)
+      }
       const updateData = { ...data }
       delete updateData._id
       const keys = Object.keys(updateData)
       if (keys.length === 0) {
         return jsonResponse({ data: null, error: 'No data to update' }, 400)
       }
+      keys.forEach((k) => assertIdent(k, 'column name'))
 
-      const setClauses = keys.map(k => `"${k}" = ?`).join(', ')
-      const setValues = keys.map(k => {
-        const v = updateData[k]
-        return (typeof v === 'object' && v !== null) ? JSON.stringify(v) : v
-      })
+      const setClauses = keys.map((k) => `"${k}" = ?`).join(', ')
+      const setValues = keys.map((k) => serialize(updateData[k]))
 
       const updateSql = `UPDATE "${table}" SET ${setClauses}${whereSql} RETURNING *`
       const stmt = db.prepare(updateSql).bind(...setValues, ...whereParams)
@@ -185,9 +222,12 @@ export async function onRequestPost(context) {
       return jsonResponse({ data: updatedRows.length === 1 ? updatedRows[0] : updatedRows, error: null })
     }
 
-    // D) DELETE
+    // D) DELETE — filters are mandatory
     if (action === 'delete') {
-      // First select records to know what's deleted for event bus
+      if (!Array.isArray(filters) || filters.length === 0) {
+        return jsonResponse({ data: null, error: 'Delete requires at least one filter' }, 400)
+      }
+
       let deletedRecs = []
       try {
         const findSql = `SELECT id FROM "${table}"${whereSql}`
@@ -205,30 +245,34 @@ export async function onRequestPost(context) {
       return jsonResponse({ data: null, error: null })
     }
 
-    // E) UPSERT
+    // E) UPSERT — supports single record or array
     if (action === 'upsert') {
-      const conflictCol = onConflict || 'id'
-      const rec = { ...data }
-      delete rec._id
+      const conflictCol = assertIdent(onConflict || 'id', 'conflict column')
+      const records = Array.isArray(data) ? data : [data]
+      const savedRows = []
 
-      const keys = Object.keys(rec)
-      const cols = keys.map(k => `"${k}"`).join(', ')
-      const placeholders = keys.map(() => '?').join(', ')
-      const updateSets = keys.filter(k => k !== conflictCol).map(k => `"${k}" = excluded."${k}"`).join(', ')
+      for (const source of records) {
+        const rec = { ...source }
+        delete rec._id
+        const keys = Object.keys(rec)
+        keys.forEach((k) => assertIdent(k, 'column name'))
+        const cols = keys.map((k) => `"${k}"`).join(', ')
+        const placeholders = keys.map(() => '?').join(', ')
+        const updateSets = keys.filter((k) => k !== conflictCol).map((k) => `"${k}" = excluded."${k}"`).join(', ')
+        const values = keys.map((k) => serialize(rec[k]))
 
-      const values = keys.map(k => {
-        const v = rec[k]
-        return (typeof v === 'object' && v !== null) ? JSON.stringify(v) : v
-      })
+        const upsertSql = updateSets
+          ? `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) ON CONFLICT ("${conflictCol}") DO UPDATE SET ${updateSets} RETURNING *`
+          : `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) ON CONFLICT ("${conflictCol}") DO NOTHING RETURNING *`
+        const res = await db.prepare(upsertSql).bind(...values).first()
+        const saved = res || rec
+        savedRows.push(saved)
 
-      const upsertSql = `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) ON CONFLICT ("${conflictCol}") DO UPDATE SET ${updateSets} RETURNING *`
-      const res = await db.prepare(upsertSql).bind(...values).first()
-      const saved = res || rec
+        const recId = saved.id || saved[conflictCol] || ''
+        await logRealtimeEvent('UPSERT', recId, saved)
+      }
 
-      const recId = saved.id || saved[conflictCol] || ''
-      await logRealtimeEvent('UPSERT', recId, saved)
-
-      return jsonResponse({ data: saved, error: null })
+      return jsonResponse({ data: Array.isArray(data) ? savedRows : savedRows[0], error: null })
     }
 
     return jsonResponse({ data: null, error: `Unsupported action: ${action}` }, 400)

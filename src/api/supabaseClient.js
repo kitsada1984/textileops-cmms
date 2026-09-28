@@ -3,11 +3,12 @@ import { db } from './dbClient'
 
 const TEMPORAL_FIELD_RE = /(date|time|updated|created|completed|approved)/i
 const MISSING_SCHEMA_COLUMN_RE = /Could not find the '([^']+)' column/i
+const D1_MISSING_COLUMN_RE = /has no column named ["']?([^"',\s)]+)/i
 const TIMESTAMP_SYNTAX_ERROR_RE = /invalid input syntax for type timestamp.*?[:"]([^"]+)["\s]?/i
 
 function getMissingSchemaColumn(error) {
   const message = String(error?.message || '')
-  return message.match(MISSING_SCHEMA_COLUMN_RE)?.[1] || null
+  return message.match(MISSING_SCHEMA_COLUMN_RE)?.[1] || message.match(D1_MISSING_COLUMN_RE)?.[1] || null
 }
 
 const KNOWN_NUMERIC_FIELDS = new Set([
@@ -134,7 +135,7 @@ async function runWithMissingColumnRetry(payload, request) {
   return request(nextPayload)
 }
 
-const MISSING_TABLE_RE = /Could not find the table|schema cache|relation.*does not exist/i
+const MISSING_TABLE_RE = /Could not find the table|schema cache|relation.*does not exist|no such table/i
 
 function isMissingTableError(error) {
   const msg = String(error?.message || error || '')

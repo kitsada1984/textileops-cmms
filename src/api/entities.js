@@ -1,5 +1,5 @@
 import { createEntityClient } from './supabaseClient'
-import { supabase } from '../supabase'
+import { db } from './dbClient'
 import initialCenterChecks from '../data/initialCenterChecks.json'
 import initialNeedleSets from '../data/initialNeedleSets.json'
 import { getSystemConfig, saveSystemConfig, deleteSystemConfig } from '../modules/systemConfig'
@@ -86,8 +86,17 @@ export const TechnicianAPI = {
 export const KpiSettingsAPI     = createEntityClient('kpi_settings')
 export const PMPlanAPI          = createEntityClient('pmplans')
 
+const rawCenterCheckClient = createEntityClient('center_checks')
 export const CenterCheckAPI = {
+  ...rawCenterCheckClient,
   list: async () => {
+    // Primary: dedicated center_checks table (migrated from legacy appconfigs blob)
+    try {
+      const data = await rawCenterCheckClient.list()
+      if (Array.isArray(data) && data.length > 0) return data
+    } catch {}
+
+    // Fallback: legacy appconfigs blob
     return getSystemConfig('center_checks', {
       legacyWorkOrderId: 'SYS_CENTER_CHECKS',
       localCacheKey: 'txops_tbl_center_checks',
@@ -95,6 +104,23 @@ export const CenterCheckAPI = {
     })
   },
   saveAll: async (checksList) => {
+    // Replace all rows in the dedicated table
+    if (!Array.isArray(checksList)) return
+    try {
+      const existing = await rawCenterCheckClient.list()
+      for (const row of Array.isArray(existing) ? existing : []) {
+        if (row?.id) await rawCenterCheckClient.delete(row.id)
+        else if (row?.doc_no) await rawCenterCheckClient.delete(row.doc_no)
+      }
+      for (const item of checksList) {
+        await rawCenterCheckClient.create(item)
+      }
+      return
+    } catch (e) {
+      console.warn('CenterCheck saveAll table write failed, falling back to sys config:', e)
+    }
+
+    // Legacy fallback: appconfigs blob
     if (!checksList || checksList.length === 0) {
       await deleteSystemConfig('center_checks', {
         legacyWorkOrderId: 'SYS_CENTER_CHECKS',
@@ -108,22 +134,36 @@ export const CenterCheckAPI = {
     })
   },
   create: async (item) => {
-    const list = await CenterCheckAPI.list()
     const newItem = { ...item, id: item.id || `cc_${Date.now()}` }
+    try {
+      return await rawCenterCheckClient.create(newItem)
+    } catch {}
+
+    const list = await CenterCheckAPI.list()
     const updated = [newItem, ...list]
     await CenterCheckAPI.saveAll(updated)
     return newItem
   },
   update: async (id, item) => {
+    try {
+      return await rawCenterCheckClient.update(id, item)
+    } catch {}
+
     const list = await CenterCheckAPI.list()
     const updated = list.map((c) => (c.id === id || c.doc_no === id ? { ...c, ...item, id } : c))
     await CenterCheckAPI.saveAll(updated)
     return { ...item, id }
   },
   delete: async (id) => {
+    try {
+      await rawCenterCheckClient.delete(id)
+      return true
+    } catch {}
+
     const list = await CenterCheckAPI.list()
     const updated = list.filter((c) => c.id !== id && c.doc_no !== id)
     await CenterCheckAPI.saveAll(updated)
+    return true
   },
 }
 
@@ -138,7 +178,7 @@ export const NEEDLE_STATUSES = [
 export const NeedleConditionAPI = {
   list: async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('needle_conditions')
         .select('*')
         .order('created_at', { ascending: false })
@@ -301,7 +341,7 @@ export const NeedleSetAPI = {
   list: async () => {
     // 1. Try dedicated table needle_sets in Supabase
     try {
-      const { data, error } = await supabase.from('needle_sets').select('*')
+      const { data, error } = await db.from('needle_sets').select('*')
       if (!error && Array.isArray(data) && data.length > 0) {
         try { localStorage.setItem('textileops_tbl_needle_sets', JSON.stringify(data)) } catch {}
         return data.map(normalizeNeedleSet)
@@ -330,7 +370,7 @@ export const NeedleSetAPI = {
   },
   getById: async (id) => {
     try {
-      const { data, error } = await supabase.from('needle_sets').select('*').eq('id', id).maybeSingle()
+      const { data, error } = await db.from('needle_sets').select('*').eq('id', id).maybeSingle()
       if (!error && data) return normalizeNeedleSet(data)
     } catch {}
 
@@ -359,7 +399,7 @@ export const NeedleSetAPI = {
     }
 
     try {
-      await supabase.from('needle_sets').insert([payload])
+      await db.from('needle_sets').insert([payload])
     } catch {}
 
     const list = await NeedleSetAPI.list()
@@ -392,7 +432,7 @@ export const NeedleSetAPI = {
     }
 
     try {
-      await supabase.from('needle_sets').update(payload).eq('id', id)
+      await db.from('needle_sets').update(payload).eq('id', id)
     } catch {}
 
     const list = await NeedleSetAPI.list()
@@ -405,7 +445,7 @@ export const NeedleSetAPI = {
   },
   delete: async (id) => {
     try {
-      await supabase.from('needle_sets').delete().eq('id', id)
+      await db.from('needle_sets').delete().eq('id', id)
     } catch {}
 
     const list = await NeedleSetAPI.list()
@@ -422,7 +462,7 @@ export const NeedleHistoryAPI = {
   ...rawNeedleHistoryClient,
   list: async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('needle_history_logs')
         .select('*')
         .order('created_at', { ascending: false })
@@ -464,7 +504,7 @@ export const NeedleHistoryAPI = {
     }
 
     try {
-      await supabase.from('needle_history_logs').insert([payload])
+      await db.from('needle_history_logs').insert([payload])
     } catch {}
 
     const currentLogs = await NeedleHistoryAPI.list()
@@ -986,7 +1026,7 @@ export function normalizeSpareNeedleRequest(item = {}) {
 export const SpareNeedleRequestAPI = {
   list: async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('spare_needle_requests')
         .select('*')
         .order('created_at', { ascending: false })
@@ -1021,7 +1061,7 @@ export const SpareNeedleRequestAPI = {
   create: async (item) => {
     const norm = normalizeSpareNeedleRequest(item)
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('spare_needle_requests')
         .insert([norm])
         .select()
@@ -1044,7 +1084,7 @@ export const SpareNeedleRequestAPI = {
       updated_at: new Date().toISOString(),
     }
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('spare_needle_requests')
         .update(updatedFields)
         .eq('id', id)
@@ -1064,7 +1104,7 @@ export const SpareNeedleRequestAPI = {
   },
   getById: async (id) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('spare_needle_requests')
         .select('*')
         .eq('id', id)
@@ -1077,7 +1117,7 @@ export const SpareNeedleRequestAPI = {
   },
   delete: async (id) => {
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from('spare_needle_requests')
         .delete()
         .eq('id', id)
