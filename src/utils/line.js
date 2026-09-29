@@ -3,6 +3,7 @@
  * LINE Messaging API & LINE Notify Integration for TextileOps CMMS
  */
 import { db } from '../api/dbClient'
+import { resolveAppBaseUrl } from './telegram'
 import {
   buildRepairRequestFlexMessage,
   buildTechnicianAssignedFlexMessage,
@@ -26,7 +27,7 @@ export const DEFAULT_LINE_SETTINGS = {
   channel_secret: '',
   notify_token: '',
   is_enabled: true,
-  app_base_url: 'https://textileops-cmms.vercel.app',
+  app_base_url: '',
   notify_on_new_request: true,
   notify_on_approve: true,
   notify_on_complete: true,
@@ -250,7 +251,7 @@ export async function notifyLineNewRepair(request, cylinder, isEasyRepair = fals
       const rollNo = request.roll_no || request.RollNo || request.roll_number
       const problem = request.problem_description || 'ไม่มีรายละเอียด'
       const reporter = request.reported_by || 'เจ้าหน้าที่'
-      const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+      const appUrl = resolveAppBaseUrl(cfg.app_base_url)
       const stepTarget = easy ? 'view' : 'approve'
       const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?req=${encodeURIComponent(request.id || '')}&step=${stepTarget}&openExternalBrowser=1`
 
@@ -314,7 +315,7 @@ export async function notifyLineTechnician(request) {
       const machine = request.machine_mc || '—'
       const tech = request.technician_name || 'ช่างเทคนิค'
       const notes = request.approval_notes ? ` (หมายเหตุ: ${request.approval_notes})` : ''
-      const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+      const appUrl = resolveAppBaseUrl(cfg.app_base_url)
       const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?req=${encodeURIComponent(request.id || '')}&step=complete&openExternalBrowser=1`
 
       const textMessage = `\n✅ [มอบหมายช่างแล้ว]\nเครื่อง: ${machine}\nกระบอก: ${serial}\nช่างผู้รับผิดชอบ: ${tech}${notes}\n👉 แตะบันทึกผลการซ่อม: ${directUrl}`
@@ -377,7 +378,7 @@ export async function notifyLineCompleted(request) {
       const details = request.repair_details || 'ซ่อมบำรุงเรียบร้อย'
       const parts = request.parts_used ? ` (อะไหล่: ${request.parts_used})` : ''
       const tech = request.completed_by || request.technician_name || 'ช่างเทคนิค'
-      const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+      const appUrl = resolveAppBaseUrl(cfg.app_base_url)
       const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?req=${encodeURIComponent(request.id || '')}&openExternalBrowser=1`
 
       const textMessage = `\n🎉 [ซ่อมเสร็จเรียบร้อย]\nเครื่อง: ${machine}\nกระบอก: ${serial}\nวิธีแก้ไข: ${details}${parts}\nช่างผู้ซ่อม: ${tech}\n👉 ดูประวัติงานซ่อม: ${directUrl}`
@@ -435,7 +436,7 @@ export async function testLineNotification() {
       return { ok: false, error: 'กรุณากรอก LINE Notify Token ก่อนทดสอบ' }
     }
 
-    const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+    const appUrl = resolveAppBaseUrl(cfg.app_base_url)
     return await sendLineNotification({
       type: 'notify',
       notifyToken: cfg.notify_token.trim(),
@@ -461,7 +462,7 @@ export async function testNeedleKeeperLineNotification(customTargetId) {
       return { ok: false, error: 'กรุณากรอก LINE Channel Access Token ในการตั้งค่า LINE ก่อน' }
     }
 
-    const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+    const appUrl = resolveAppBaseUrl(cfg.app_base_url)
     const testFlex = buildSpareNeedleRequestFlexMessage({
       id: 'SNR-TEST-DEMO',
       request_no: 'SNR-TEST-8888',
@@ -508,7 +509,7 @@ export async function notifyLineSpareNeedleRequested(snr, cylinder) {
     const cfg = await loadLineSettingsDB()
     if (!cfg.is_enabled) return { ok: false, skipped: true }
 
-    const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+    const appUrl = resolveAppBaseUrl(cfg.app_base_url)
     const serial = snr.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || ''
     const reqId = snr.id || ''
     const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?needle_req=${encodeURIComponent(reqId)}&step=prepare&openExternalBrowser=1`
@@ -595,7 +596,7 @@ export async function notifyLineSpareNeedlePrepared(snr, cylinder) {
     const cfg = await loadLineSettingsDB()
     if (!cfg.is_enabled) return { ok: false, skipped: true }
 
-    const appUrl = (cfg.app_base_url || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+    const appUrl = resolveAppBaseUrl(cfg.app_base_url)
     const serial = snr.cylinder_serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || ''
     const reqId = snr.id || ''
     const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?needle_req=${encodeURIComponent(reqId)}&step=ack&openExternalBrowser=1`

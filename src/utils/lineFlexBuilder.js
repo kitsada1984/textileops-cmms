@@ -4,7 +4,7 @@
  */
 
 export function buildPWALineUrl(baseUrl, path, queryParams = {}) {
-  const cleanBase = (baseUrl || 'https://textileops-cmms.vercel.app').replace(/\/$/, '')
+  const cleanBase = resolveAppBaseUrl(baseUrl)
   const cleanPath = path.startsWith('/') ? path : `/${path}`
   const params = new URLSearchParams(queryParams)
   // Force external browser intent so Android / iOS launches standalone PWA directly

@@ -8,7 +8,7 @@ const DEFAULTS = {
   supervisors: [{ name: 'กฤษดา', chat_id: '6981653027' }],
   needle_keepers: [],
   technicians: [{ name: 'หนึ่ง',  chat_id: '8207474130' }],
-  app_base_url: 'https://textileops-cmms.vercel.app',
+  app_base_url: '',
 }
 
 export const loadTelegramSettings = () => {
@@ -41,9 +41,20 @@ export const saveTelegramSettingsDB = async (cfg) => {
     .upsert({ key: DB_KEY, value: JSON.stringify(cfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
 }
 
+// The old deployment host (Vercel + Supabase era). QR codes and notification
+// links must never point there — always resolve to the current origin instead.
+const LEGACY_APP_HOST_RE = /textileops-cmms\.vercel\.app/i
+
+export const resolveAppBaseUrl = (configured) => {
+  const origin = (typeof window !== 'undefined' && window.location.origin) || 'https://textileops-cmms.pages.dev'
+  const clean = String(configured || '').trim().replace(/\/$/, '')
+  if (!clean || LEGACY_APP_HOST_RE.test(clean)) return origin.replace(/\/$/, '')
+  return clean
+}
+
 export const getAppBaseUrl = () => {
   const cfg = loadTelegramSettings()
-  return (cfg.app_base_url || window.location.origin).replace(/\/$/, '')
+  return resolveAppBaseUrl(cfg.app_base_url)
 }
 
 function formatTelegramName(from, chat) {

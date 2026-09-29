@@ -11,7 +11,7 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
   const [isIOS, setIsIOS] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
   const [activeTab, setActiveTab] = useState('pc') // 'pc' | 'android' | 'ios'
-  const appUrl = 'https://textileops-cmms.vercel.app'
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://textileops-cmms.pages.dev'
 
   const isModalOpen = controlledOpen !== undefined ? controlledOpen : internalModalOpen
   const closeModal = () => {
@@ -284,7 +284,7 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
                       <span>ขั้นตอนการติดตั้งบนมือถือ Android (Google Chrome):</span>
                     </div>
                     <ol className="text-xs text-slate-300 space-y-2 pl-5 list-decimal leading-relaxed">
-                      <li>เปิดเว็บ <b>https://textileops-cmms.vercel.app</b> บนมือถือด้วย Google Chrome</li>
+                      <li>เปิดเว็บ <b>{appUrl}</b> บนมือถือด้วย Google Chrome</li>
                       <li>แตะปุ่ม <b>3 จุด (⋮)</b> ที่มุมขวาบนของเบราว์เซอร์</li>
                       <li>เลือกเมนู <b>"ติดตั้งแอป (Install app)"</b> หรือ <b>"เพิ่มลงในหน้าจอหลัก (Add to Home Screen)"</b></li>
                       <li>กด <b>"ติดตั้ง"</b> เพื่อสร้างไอคอนลงบนหน้าจอมือถือ</li>
@@ -302,7 +302,7 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
                       <span>ขั้นตอนการติดตั้งบน iPhone / iPad (Safari):</span>
                     </div>
                     <ol className="text-xs text-slate-300 space-y-2.5 pl-5 list-decimal leading-relaxed">
-                      <li>เปิดเว็บ <b>https://textileops-cmms.vercel.app</b> ด้วยเบราว์เซอร์ <b>Safari</b></li>
+                      <li>เปิดเว็บ <b>{appUrl}</b> ด้วยเบราว์เซอร์ <b>Safari</b></li>
                       <li>แตะปุ่ม <b>แชร์ (Share 📤)</b> ที่แถบเมนูด้านล่างสุดของหน้าจอ</li>
                       <li>เลื่อนลงมาแล้วเลือก <b>"เพิ่มไปยังหน้าจอโฮม (Add to Home Screen ➕)"</b></li>
                       <li>แตะปุ่ม <b>"เพิ่ม (Add)"</b> ที่มุมขวาบน เพื่อเสร็จสิ้น</li>
