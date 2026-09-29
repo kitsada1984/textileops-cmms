@@ -13,3 +13,7 @@ SET type = CASE
   ELSE type
 END
 WHERE type IS NULL OR type = '' OR type = 'Single' AND doc_no LIKE 'CS-D-%';
+
+-- 3. cylinders.Last_Check_Date: written by CenterCheck auto-sync but missing from
+--    the D1 schema (it silently failed on Supabase too). Add it so the sync works.
+ALTER TABLE cylinders ADD COLUMN Last_Check_Date TEXT;
