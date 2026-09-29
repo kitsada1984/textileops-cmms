@@ -1676,8 +1676,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
                 title="ดึงวันที่เช็คศูนย์ล่าสุดของแต่ละเครื่องมาอัปเดตแผน PM อัตโนมัติ"
               >
                 <Zap size={14} className={syncingPM ? 'animate-bounce text-amber-500' : 'text-amber-500'} />
-                <span className="sm:hidden">{syncingPM ? 'กำลังซิงค์...' : '⚡ ซิงค์วันที่เช็คศูนย์'}</span>
-                <span className="hidden sm:inline">{syncingPM ? 'กำลังซิงค์...' : '⚡ ซิงค์วันที่จากประวัติเช็คศูนย์'}</span>
+                <span>{syncingPM ? 'กำลังซิงค์...' : '⚡ ซิงค์วันที่เช็คศูนย์'}</span>
               </button>
 
               <button
