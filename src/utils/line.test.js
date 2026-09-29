@@ -10,11 +10,11 @@ import { loadLineSettings, saveLineSettings, DEFAULT_LINE_SETTINGS } from './lin
 
 describe('LINE Flex Builder & Deep Linking', () => {
   it('builds PWA deep link with openExternalBrowser=1', () => {
-    const url = buildPWALineUrl('https://textileops-cmms.vercel.app', '/repair/63876', {
+    const url = buildPWALineUrl('https://cmms.gemmaknits.com', '/repair/63876', {
       req: '12345',
       step: 'approve',
     })
-    expect(url).toContain('https://textileops-cmms.vercel.app/repair/63876')
+    expect(url).toContain('https://cmms.gemmaknits.com/repair/63876')
     expect(url).toContain('openExternalBrowser=1')
     expect(url).toContain('req=12345')
     expect(url).toContain('step=approve')
@@ -32,7 +32,7 @@ describe('LINE Flex Builder & Deep Linking', () => {
       created_at: '2026-08-26T10:00:00.000Z',
     }
 
-    const flex = buildRepairRequestFlexMessage(request, null, 'https://textileops-cmms.vercel.app')
+    const flex = buildRepairRequestFlexMessage(request, null, 'https://cmms.gemmaknits.com')
     expect(flex.type).toBe('flex')
     expect(flex.altText).toContain('MC-301M')
     expect(flex.contents.type).toBe('bubble')
@@ -61,7 +61,7 @@ describe('LINE Flex Builder & Deep Linking', () => {
       status: 'APPROVED',
     }
 
-    const flex = buildRepairRequestFlexMessage(request, null, 'https://textileops-cmms.vercel.app', true)
+    const flex = buildRepairRequestFlexMessage(request, null, 'https://cmms.gemmaknits.com', true)
     expect(flex.altText).toContain('เลือกช่างตรง')
     expect(flex.contents.header.contents[0].contents[1].text).toContain('งานง่าย')
     const ctaButton = flex.contents.footer.contents[0]
@@ -79,7 +79,7 @@ describe('LINE Flex Builder & Deep Linking', () => {
       technician_name: 'ช่างหนึ่ง',
       approval_notes: 'รีบดำเนินการก่อนเที่ยง',
     }
-    const flex = buildTechnicianAssignedFlexMessage(request, 'https://textileops-cmms.vercel.app')
+    const flex = buildTechnicianAssignedFlexMessage(request, 'https://cmms.gemmaknits.com')
     expect(flex.type).toBe('flex')
     expect(flex.altText).toContain('ช่างหนึ่ง')
     expect(flex.contents.body).toBeDefined()
@@ -97,14 +97,14 @@ describe('LINE Flex Builder & Deep Linking', () => {
       completed_by: 'ช่างหนึ่ง',
       completed_at: '2026-08-26T12:00:00.000Z',
     }
-    const flex = buildRepairCompletedFlexMessage(request, 'https://textileops-cmms.vercel.app')
+    const flex = buildRepairCompletedFlexMessage(request, 'https://cmms.gemmaknits.com')
     expect(flex.type).toBe('flex')
     expect(flex.altText).toContain('ซ่อมเสร็จแล้ว')
     expect(flex.contents.body).toBeDefined()
   })
 
   it('generates valid Test Flex Message payload', () => {
-    const testFlex = buildTestFlexMessage('https://textileops-cmms.vercel.app')
+    const testFlex = buildTestFlexMessage('https://cmms.gemmaknits.com')
     expect(testFlex.type).toBe('flex')
     expect(testFlex.contents.type).toBe('bubble')
     expect(testFlex.altText).toContain('MC-TEST')

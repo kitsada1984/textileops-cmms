@@ -12,7 +12,7 @@ const DEFAULTS = {
   bot_token:   '',
   supervisors: [{ name: 'กฤษดา', chat_id: '6981653027' }],
   technicians: [{ name: 'หนึ่ง',  chat_id: '8207474130' }],
-  app_base_url: 'https://textileops-cmms.vercel.app',
+  app_base_url: '',
 }
 
 beforeEach(() => {
@@ -96,9 +96,9 @@ describe('getAppBaseUrl', () => {
     expect(url.endsWith('/')).toBe(false)
   })
 
-  it('uses default Vercel URL when localStorage is empty', () => {
+  it('falls back to the current origin when localStorage is empty', () => {
     const url = getAppBaseUrl()
-    expect(url).toBe('https://textileops-cmms.vercel.app')
+    expect(url).toBe(window.location.origin)
   })
 
   it('returns window.location.origin fallback when app_base_url is empty string', () => {

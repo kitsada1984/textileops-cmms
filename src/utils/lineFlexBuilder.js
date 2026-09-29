@@ -3,6 +3,8 @@
  * Builds LINE Flex Message JSON payloads with PWA Deep Linking (?openExternalBrowser=1)
  */
 
+import { resolveAppBaseUrl } from './telegram'
+
 export function buildPWALineUrl(baseUrl, path, queryParams = {}) {
   const cleanBase = resolveAppBaseUrl(baseUrl)
   const cleanPath = path.startsWith('/') ? path : `/${path}`
