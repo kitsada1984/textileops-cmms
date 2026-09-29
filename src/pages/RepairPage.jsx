@@ -2140,6 +2140,29 @@ function StatusView({ request, onOpenPdf }) {
   )
 }
 
+/* ── Session required screen (deep link opened without a valid login) ─────── */
+function SessionRequiredScreen({ navigate }) {
+  const rememberAndGoLogin = () => {
+    try { sessionStorage.setItem('textileops_return_to', window.location.href) } catch {}
+    navigate('/')
+  }
+  return (
+    <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+      <div style={{ fontSize: 44, marginBottom: 10 }}>🔐</div>
+      <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>ต้องเข้าสู่ระบบก่อน</div>
+      <div style={{ fontSize: 13, color: '#64748b', marginTop: 6, fontWeight: 600 }}>
+        ลิงก์นี้ยังใช้งานได้ — กรุณาเข้าสู่ระบบด้วยบัญชีของคุณ
+        <br />ระบบจะพากลับมาที่หน้านี้อัตโนมัติ
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <Btn onClick={rememberAndGoLogin} variant="primary" style={{ padding: '14px 28px', fontSize: 15 }}>
+          🔐 เข้าสู่ระบบ
+        </Btn>
+      </div>
+    </div>
+  )
+}
+
 /* ── Main RepairPage Component ───────────────────────────────────────────── */
 export default function RepairPage() {
   const { serial } = useParams()
@@ -2153,6 +2176,7 @@ export default function RepairPage() {
   const [request, setRequest] = useState(null)
   const [needleRequest, setNeedleRequest] = useState(null)
   const [needleDone, setNeedleDone] = useState(false)
+  const [authMissing, setAuthMissing] = useState(false)
   const [activeAction, setActiveAction] = useState(null) // null | 'repair' | 'spare_needle'
   const [loading, setLoading] = useState(true)
   const [done, setDone] = useState(false)
@@ -2168,37 +2192,49 @@ export default function RepairPage() {
         } catch {}
 
         let cyl = null
+        let authFailed = false
+        const noteError = (error) => {
+          if (error && /unauthor|401/i.test(String(error.message || ''))) authFailed = true
+        }
         if (decodedSerial) {
-          const { data: foundNow } = await db
+          const { data: foundNow, error: errNow } = await db
             .from('cylinders')
             .select('*')
             .eq('Serial_NOW', decodedSerial)
             .maybeSingle()
+          noteError(errNow)
           cyl = foundNow
           if (!cyl) {
-            const { data: foundOld } = await db
+            const { data: foundOld, error: errOld } = await db
               .from('cylinders')
               .select('*')
               .eq('Serial_OLD', decodedSerial)
               .maybeSingle()
+            noteError(errOld)
             cyl = foundOld
           }
         }
         setCylinder(cyl)
 
         if (reqId) {
-          const { data: req } = await db
+          const { data: req, error: reqErr } = await db
             .from('repair_requests')
             .select('*')
             .eq('id', reqId)
             .maybeSingle()
+          noteError(reqErr)
           setRequest(req ? normalizeRepairRecord(req) : null)
         }
 
         if (needleReqId) {
-          const snr = await SpareNeedleRequestAPI.getById(needleReqId)
-          setNeedleRequest(snr)
+          try {
+            const snr = await SpareNeedleRequestAPI.getById(needleReqId)
+            setNeedleRequest(snr)
+          } catch (err) {
+            noteError(err)
+          }
         }
+        setAuthMissing(authFailed)
       } catch (e) {
         console.error('Error loading repair data:', e)
       } finally {
@@ -2272,6 +2308,7 @@ export default function RepairPage() {
     }
 
     if (needleReqId && !needleRequest && !loading) {
+      if (authMissing) return <SessionRequiredScreen navigate={navigate} />
       return (
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
           <XCircle size={52} style={{ color: '#ef4444', margin: '0 auto 12px' }} />
@@ -2367,6 +2404,7 @@ export default function RepairPage() {
 
     {/* M6 Fix: If reqId was given but request is null, show error instead of blank form */}
     if (reqId && !request && !loading) {
+      if (authMissing) return <SessionRequiredScreen navigate={navigate} />
       return (
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
           <XCircle size={52} style={{ color: '#ef4444', margin: '0 auto 12px' }} />

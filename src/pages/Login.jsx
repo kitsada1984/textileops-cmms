@@ -20,6 +20,15 @@ export default function Login() {
     setLoading(true); setError('')
     try {
       await login(username, password)
+      // Return to a deep link (QR / LINE) the user was blocked from by the login gate
+      try {
+        const returnTo = sessionStorage.getItem('textileops_return_to')
+        if (returnTo) {
+          sessionStorage.removeItem('textileops_return_to')
+          window.location.replace(returnTo)
+          return
+        }
+      } catch {}
     } catch(err) {
       setError(err.message)
     } finally {
