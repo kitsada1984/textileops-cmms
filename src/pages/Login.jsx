@@ -3,6 +3,7 @@ import { APP_VERSION } from '../version'
 import { Lock, User } from 'lucide-react'
 import { useT } from '../contexts/LanguageContext'
 import { useAuth } from '../contexts/AuthContext'
+import { getActiveDbProvider } from '../api/dbClient'
 import gemmaLogo from '../assets/logo-gemma.png'
 
 export default function Login() {
@@ -158,7 +159,7 @@ export default function Login() {
             Gemma Knits CMMS {APP_VERSION}
           </div>
           <div className="text-[11px] font-semibold" style={{color:'#60a5fa'}}>
-            Supabase DB
+            {getActiveDbProvider() === 'd1' ? 'Cloudflare D1' : 'Supabase DB'}
           </div>
         </div>
       </div>

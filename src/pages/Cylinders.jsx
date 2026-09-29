@@ -32,6 +32,7 @@ import SearchInput from '../components/ui/SearchInput'
 import { useT } from '../contexts/LanguageContext'
 import SwapCylinderModal, { buildCylinderSwapPayload, SwapSettingsModal } from '../components/SwapCylinder'
 import usePagePerms from '../hooks/usePagePerms'
+import useDeviceView from '../hooks/useDeviceView'
 import { useToast } from '../components/ui/Toast'
 import DetailDrawer from '../components/ui/DetailDrawer'
 import CylinderQRModal from '../components/CylinderQR'
@@ -182,7 +183,7 @@ function normalizeOptions(opts = []) {
   )).filter((o) => o.value !== undefined && o.value !== null)
 }
 
-function FormField({ label, id, type = 'text', opts, form, onChange }) {
+function FormField({ label, id, type = 'text', opts, form, onChange, placeholder }) {
   const wbCol = useWebBuilderColumn('/cylinders', id)
   const forcedOptions = id === 'Machine_Ref' ? MACHINE_REF_OPTIONS : opts
   const effectiveType = id === 'Machine_Ref' ? 'select' : (wbCol?.type || (forcedOptions ? 'select' : type))
@@ -193,6 +194,7 @@ function FormField({ label, id, type = 'text', opts, form, onChange }) {
   const effectiveLabel = wbCol?.label
     ? `${wbCol.label}${wbCol.required ? ' *' : ''}`
     : label
+  const fieldId = `cyl-field-${id}`
   const val = form[id] ?? ''
   const currentOptionExists = effectiveOptions.some((o) => String(o.value) === String(val))
   const handleChange = (e) => onChange(id, e.target.value)
@@ -213,10 +215,10 @@ function FormField({ label, id, type = 'text', opts, form, onChange }) {
 
   return (
     <div>
-      <label className="label">{effectiveLabel}</label>
+      <label className="label" htmlFor={fieldId}>{effectiveLabel}</label>
       {effectiveType === 'select'
         ? (
-          <select className="select" value={val} onChange={handleChange}>
+          <select id={fieldId} className="select" value={val} onChange={handleChange}>
             <option value="">—</option>
             {val !== '' && !currentOptionExists && <option value={val}>{val}</option>}
             {effectiveOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -225,8 +227,10 @@ function FormField({ label, id, type = 'text', opts, form, onChange }) {
         : effectiveType === 'textarea'
           ? (
             <textarea
+              id={fieldId}
               className="input"
               rows={effectiveRows}
+              placeholder={placeholder}
               value={val}
               onChange={handleChange}
               onPaste={handlePaste}
@@ -246,8 +250,10 @@ function FormField({ label, id, type = 'text', opts, form, onChange }) {
             )
             : (
               <input
+                id={fieldId}
                 className="input"
                 type={effectiveType}
+                placeholder={placeholder}
                 value={val}
                 onChange={(e) => onChange(id, effectiveType === 'number'
                   ? (e.target.value === '' ? '' : +e.target.value)
@@ -260,8 +266,141 @@ function FormField({ label, id, type = 'text', opts, form, onChange }) {
   )
 }
 
+function CylinderCard({
+  c,
+  canEdit,
+  canDelete,
+  onDetail,
+  onPdf,
+  onQr,
+  onEdit,
+  onDelete,
+  onPreviewImage,
+}) {
+  const imageUrl = getCylinderImageUrl(c)
+  const display = (c.Serial_OLD && c.Serial_NOW && c.Serial_OLD === c.Serial_NOW)
+    ? 'STANDARD'
+    : (c.Serial_NOW || '—')
+  const clean = ['STANDARD', 'SCRAP', 'REPAIR', 'RESERVE'].includes(display)
+  const isInUse = c.Machine_Ref && String(c.Machine_Ref).startsWith('In-use')
+
+  return (
+    <div
+      onClick={() => onDetail(c)}
+      className="card p-3 border-l-4 border-l-blue-500 border-slate-200 dark:border-slate-800 transition-all active:scale-[0.99] cursor-pointer shadow-xs hover:shadow-md"
+    >
+      {/* Top Header: Serial_NOW, Machine_Ref, Status */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-base font-black text-blue-600 dark:text-blue-400 tracking-tight truncate">
+            {c.Serial_NOW || '—'}
+          </span>
+          {c.Location && (
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold flex-shrink-0">
+              {c.Location}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {c.Machine_Ref && (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+              isInUse
+                ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20'
+                : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20'
+            }`}>
+              {c.Machine_Ref}
+            </span>
+          )}
+          {clean ? <StatusBadge value={display} /> : <span className="font-mono text-xs text-slate-500">{display}</span>}
+        </div>
+      </div>
+
+      {/* Body: Thumbnail & Specs */}
+      <div className="flex items-start gap-2.5 my-2">
+        {imageUrl && (
+          <div className="flex-shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+            <ImageThumbnail
+              url={imageUrl}
+              alt={c.Serial_NOW || 'กระบอก'}
+              size={48}
+              onClick={() => onPreviewImage({ url: imageUrl, title: `กระบอก ${c.Serial_NOW || ''}` })}
+            />
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0 text-xs space-y-1">
+          <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+            <span className="font-bold">{formatCylType(c.Type)}</span>
+            <span className="text-slate-400">·</span>
+            <span className="text-slate-500 truncate">{c.Manufacturer || c.Standard || '—'}</span>
+          </div>
+
+          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
+            <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold text-slate-700 dark:text-slate-300">
+              {c.Diameter ? `${c.Diameter}"` : '—'} · {c.Gauge ? `${c.Gauge}G` : '—'}
+            </span>
+            {c.Needle && <span>เข็ม: {c.Needle}</span>}
+            {c.Feeder && <span>Feeder: {c.Feeder}</span>}
+            {c.NewMC && <span className="text-slate-400">Mc: {c.NewMC}</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer: Serial OLD + Action Buttons */}
+      <div
+        className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="text-[10px] font-mono text-slate-400 truncate max-w-[150px]">
+          {c.Serial_OLD ? `OLD: ${c.Serial_OLD}` : ''}
+        </span>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onPdf(c)}
+            className="p-1.5 rounded-lg text-rose-600 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 transition-colors border border-rose-200 dark:border-rose-900/50"
+            title="พิมพ์ PDF"
+          >
+            <FileText size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => onQr(c, e)}
+            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 transition-colors"
+            title="QR Code"
+          >
+            <QrCode size={14} />
+          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(c)}
+              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 transition-colors"
+              title="แก้ไข"
+            >
+              <Pencil size={14} />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(c._id || c.id)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 bg-slate-100 dark:bg-slate-800 transition-colors"
+              title="ลบ"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Cylinders() {
   const { t } = useT()
+  const { isMobile, isTablet, isDesktop } = useDeviceView()
   const { canAdd, canEdit, canDelete } = usePagePerms('cylinders')
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(CylinderAPI)
@@ -649,19 +788,24 @@ export default function Cylinders() {
   return (
     <div className="space-y-5">
       {/* ── TOOLBAR ───────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={`flex flex-wrap items-center justify-between gap-2 ${
+        isMobile
+          ? 'sticky top-0 z-20 -mx-3 px-3 py-2 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80'
+          : ''
+      }`}>
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder={t('cyl_search')}
-            className="w-full sm:w-80"
+            className={isMobile ? 'flex-1' : 'w-full sm:w-80'}
           />
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
           <GoogleSheetSyncButton
             sheetName="กระบอก"
             columns={cols}
             rows={displayRows}
+            totalCount={data.length}
             valueGetters={{
               ImageUrl: getCylinderImageUrl,
               ImagePreview: getCylinderImageUrl,
@@ -818,95 +962,180 @@ export default function Cylinders() {
         </div>
       )}
 
-      {/* ── DATA TABLE ────────────────────────────────────────── */}
-      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="table w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                {cols.map((c) => (
-                  <th key={c.key} className="py-3 px-3 text-left whitespace-nowrap">
-                    {c.label}
-                  </th>
-                ))}
-                <th className="py-3 px-3 text-center w-28">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {loading && (
-                <tr>
-                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
-                    <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
-                    <span>{t('loading')}</span>
-                  </td>
-                </tr>
-              )}
-              {!loading && displayRows.map((c, i) => (
-                <tr
-                  key={c._id || c.id || i}
-                  onClick={() => setDetailRec(c)}
-                  className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
-                >
-                  {cols.map((col) => (
-                    <td key={col.key} className="py-2.5 px-3 whitespace-nowrap">
-                      {col.render(c, i)}
-                    </td>
-                  ))}
-                  <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPdfItem(c)}
-                        className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
-                        title="ดูเอกสาร PDF และพิมพ์"
-                      >
-                        <FileText size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => openQR(c, e)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                        title="QR Code"
-                      >
-                        <QrCode size={13} />
-                      </button>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={() => openEdit(c)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                          title="แก้ไขข้อมูลกระบอก"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => del(c._id || c.id)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                          title="ลบข้อมูล"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && !displayRows.length && (
-                <tr>
-                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
-                    <Disc size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
-                    <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
-                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่ม Cylinder" เพื่อเริ่มต้นบันทึก</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* ── DATA PRESENTATION (Tri-View ADR-0002) ────────────────── */}
+      {/* 1. Mobile View: Single Column Rich Card List + FAB */}
+      {isMobile && (
+        <div className="space-y-2.5 pb-20">
+          {loading && (
+            <div className="text-center py-16 text-slate-400">
+              <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50 text-blue-500" />
+              <span>{t('loading')}</span>
+            </div>
+          )}
+          {!loading && displayRows.map((c, i) => (
+            <CylinderCard
+              key={c._id || c.id || i}
+              c={c}
+              canEdit={canEdit}
+              canDelete={canDelete}
+              onDetail={setDetailRec}
+              onPdf={setPdfItem}
+              onQr={openQR}
+              onEdit={openEdit}
+              onDelete={(id) => del(id)}
+              onPreviewImage={setPreviewImageModal}
+            />
+          ))}
+          {!loading && !displayRows.length && (
+            <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+              <Disc size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+              <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+              <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่ม Cylinder" เพื่อเริ่มต้นบันทึก</p>
+            </div>
+          )}
+
+          {/* Floating Action Button (FAB) for Mobile */}
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+              title="เพิ่ม Cylinder"
+              aria-label="เพิ่ม Cylinder"
+            >
+              <Plus size={26} strokeWidth={2.5} />
+            </button>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* 2. Tablet View: 2-Column Responsive Card Grid */}
+      {isTablet && (
+        <div className="space-y-3">
+          {loading && (
+            <div className="text-center py-16 text-slate-400">
+              <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50 text-blue-500" />
+              <span>{t('loading')}</span>
+            </div>
+          )}
+          {!loading && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {displayRows.map((c, i) => (
+                <CylinderCard
+                  key={c._id || c.id || i}
+                  c={c}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  onDetail={setDetailRec}
+                  onPdf={setPdfItem}
+                  onQr={openQR}
+                  onEdit={openEdit}
+                  onDelete={(id) => del(id)}
+                  onPreviewImage={setPreviewImageModal}
+                />
+              ))}
+            </div>
+          )}
+          {!loading && !displayRows.length && (
+            <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+              <Disc size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+              <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Desktop View: Full Data Table */}
+      {isDesktop && (
+        <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="table w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                  {cols.map((c) => (
+                    <th key={c.key} className="py-3 px-3 text-left whitespace-nowrap">
+                      {c.label}
+                    </th>
+                  ))}
+                  <th className="py-3 px-3 text-center w-28">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {loading && (
+                  <tr>
+                    <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                      <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
+                      <span>{t('loading')}</span>
+                    </td>
+                  </tr>
+                )}
+                {!loading && displayRows.map((c, i) => (
+                  <tr
+                    key={c._id || c.id || i}
+                    onClick={() => setDetailRec(c)}
+                    className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                  >
+                    {cols.map((col) => (
+                      <td key={col.key} className="py-2.5 px-3 whitespace-nowrap">
+                        {col.render(c, i)}
+                      </td>
+                    ))}
+                    <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setPdfItem(c)}
+                          className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
+                          title="ดูเอกสาร PDF และพิมพ์"
+                        >
+                          <FileText size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => openQR(c, e)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                          title="QR Code"
+                        >
+                          <QrCode size={13} />
+                        </button>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(c)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                            title="แก้ไขข้อมูลกระบอก"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => del(c._id || c.id)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                            title="ลบข้อมูล"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!loading && !displayRows.length && (
+                  <tr>
+                    <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                      <Disc size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                      <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+                      <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่ม Cylinder" เพื่อเริ่มต้นบันทึก</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
       <DetailDrawer

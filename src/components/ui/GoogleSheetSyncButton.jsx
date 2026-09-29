@@ -8,12 +8,22 @@ export default function GoogleSheetSyncButton({
   columns,
   rows,
   valueGetters,
+  totalCount,
   className = 'btn-outline',
 }) {
   const toast = useToast()
   const [syncing, setSyncing] = useState(false)
 
   const onClick = async () => {
+    // The sheet is fully replaced by the rows we send — warn before pushing a
+    // filtered/searched subset over the complete data set.
+    if (Number.isFinite(totalCount) && rows.length < totalCount) {
+      const ok = window.confirm(
+        `กำลังอัปเดตชีท "${sheetName}" ด้วยข้อมูลที่แสดงอยู่ ${rows.length} จาก ${totalCount} รายการ\n` +
+        '(มีคำค้นหรือตัวกรองทำงานอยู่ — ชีทจะถูกเขียนทับด้วยเฉพาะรายการที่แสดง)\n\nต้องการดำเนินการต่อหรือไม่?'
+      )
+      if (!ok) return
+    }
     setSyncing(true)
     try {
       const result = await syncRowsToGoogleSheet({ sheetName, columns, rows, valueGetters })

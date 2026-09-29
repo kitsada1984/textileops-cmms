@@ -546,6 +546,7 @@ export default function DesignBom() {
             sheetName="Design BOM"
             columns={cols}
             rows={displayRows}
+            totalCount={data.length}
             valueGetters={{
               CoverImage: getDesignCoverImageUrl,
               AppImage: getDesignAppImageUrl,

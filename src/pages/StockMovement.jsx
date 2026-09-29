@@ -764,6 +764,7 @@ export default function StockMovement() {
             sheetName="เคลื่อนไหวสต๊อก"
             columns={cols}
             rows={displayRows}
+            totalCount={data.length}
             valueGetters={{
               created_date: (row) => formatStockTxnDate(getStockTxnDate(row)),
               Category: getStockCategory,

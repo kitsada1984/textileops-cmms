@@ -236,7 +236,7 @@ export const NeedleConditionAPI = {
 
 export const ChecklistConfigAPI = createEntityClient('checklist_configs')
 export const SparePartAPI       = createEntityClient('spareparts')
-export const AuditLogAPI        = createEntityClient('audit_logs')
+export const AuditLogAPI        = createEntityClient('auditlogs')
 export const PurchaseOrderAPI   = createEntityClient('purchaseorders')
 export const StockTxnAPI        = createEntityClient('stocktransactions')
 export const AppConfigAPI       = createEntityClient('appconfigs')

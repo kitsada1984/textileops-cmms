@@ -410,6 +410,7 @@ export default function RepairRequests() {
             sheetName="แจ้งซ่อม"
             columns={cols}
             rows={displayRows}
+            totalCount={data.length}
             className="btn-outline text-xs flex items-center gap-1.5 active:scale-95 transition-all duration-150 py-2 px-3 rounded-xl whitespace-nowrap min-h-[36px]"
           />
           <div className="flex items-center gap-2 flex-shrink-0">

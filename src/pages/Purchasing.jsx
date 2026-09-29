@@ -764,6 +764,7 @@ export default function Purchasing() {
             sheetName="จัดซื้อ"
             columns={cols}
             rows={displayRows}
+            totalCount={data.length}
             valueGetters={{
               Part_Code: getPOPartCode,
               Part_Name_EN: getPOPartName,

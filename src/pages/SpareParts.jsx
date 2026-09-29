@@ -793,6 +793,7 @@ export default function SpareParts() {
             sheetName="อะไหล่"
             columns={cols}
             rows={displayRows}
+            totalCount={data.length}
             valueGetters={{
               Part_Name_EN: getSparePartName,
               ImageUrl: getSparePartImageUrl,

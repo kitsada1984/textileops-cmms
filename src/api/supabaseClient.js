@@ -182,19 +182,18 @@ export function createEntityClient(tableName) {
         const { data, error } = await db.from(tableName).select('*')
         if (error) {
           if (isMissingTableError(error)) {
+            console.warn(`[db] ตาราง "${tableName}" ไม่อยู่ในฐานข้อมูล — แสดงข้อมูลสำรองในเครื่องแทน`)
             return getLocalTable(tableName)
           }
           throw new Error(error.message)
         }
-        if (Array.isArray(data) && data.length > 0) {
-          setLocalTable(tableName, data)
-        } else {
-          const local = getLocalTable(tableName)
-          if (local.length > 0) return local
-        }
+        // Successful read = source of truth. Always refresh the local mirror
+        // (including an empty result) so deleted rows never reappear from cache.
+        if (Array.isArray(data)) setLocalTable(tableName, data)
         return data || []
       } catch (err) {
         if (isMissingTableError(err)) {
+          console.warn(`[db] ตาราง "${tableName}" ไม่อยู่ในฐานข้อมูล — แสดงข้อมูลสำรองในเครื่องแทน`)
           return getLocalTable(tableName)
         }
         throw err
@@ -230,6 +229,7 @@ export function createEntityClient(tableName) {
         )
         if (error) {
           if (isMissingTableError(error)) {
+            console.warn(`[db] ตาราง "${tableName}" ไม่อยู่ในฐานข้อมูล — บันทึกสำรองไว้ในเครื่องชั่วคราว`)
             const newItem = {
               ...payload,
               id: id || payload.Technician_ID || `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -245,6 +245,7 @@ export function createEntityClient(tableName) {
         return data
       } catch (err) {
         if (isMissingTableError(err)) {
+          console.warn(`[db] ตาราง "${tableName}" ไม่อยู่ในฐานข้อมูล — บันทึกสำรองไว้ในเครื่องชั่วคราว`)
           const newItem = {
             ...payload,
             id: id || payload.Technician_ID || `local_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
