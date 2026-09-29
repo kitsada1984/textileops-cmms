@@ -1648,7 +1648,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
               <SearchInput
                 value={search}
                 onChange={setSearch}
-                placeholder="ค้นหา Machine, Type, ช่าง, Location..."
+                placeholder="ค้นหา Machine, ช่าง..."
                 className="w-full sm:w-80"
               />
               <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
