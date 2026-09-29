@@ -244,6 +244,16 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
   // Normalized list of records
   const records = useMemo(() => {
     const list = rawRecords && rawRecords.length > 0 ? rawRecords : initialCenterChecks
+    const parseJsonArray = (val) => {
+      if (Array.isArray(val)) return val
+      if (typeof val === 'string' && val.trim()) {
+        try {
+          const parsed = JSON.parse(val)
+          if (Array.isArray(parsed)) return parsed
+        } catch {}
+      }
+      return []
+    }
     return list.map((r) => ({
       ...r,
       type: r.type || 'Single',
@@ -253,8 +263,8 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       mechanic: r.mechanic || r.Mechanic || r.sign_name || '—',
       status: r.status || r.Status || 'ผ่าน',
       counter_total: Number(r.counter_total || 0),
-      items: Array.isArray(r.items) ? r.items : [],
-      needle_images: Array.isArray(r.needle_images) ? r.needle_images : [],
+      items: parseJsonArray(r.items),
+      needle_images: parseJsonArray(r.needle_images),
       greasing: !!r.greasing,
       oil_change: !!r.oil_change,
       belt_tape1: !!r.belt_tape1,
