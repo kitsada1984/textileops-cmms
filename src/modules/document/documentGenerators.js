@@ -556,7 +556,14 @@ export function generatePMPlanPdfProps(pm, context = {}) {
 /* ── 6. CENTER CHECK REPORT ──────────────────────────────────────────────── */
 export function generateCenterCheckPdfProps(chk, context = {}) {
   if (!chk) return null
-  const items = Array.isArray(chk.items) ? chk.items : []
+  // D1 stores `items` as a JSON string — parse before using (Supabase rows came back as arrays)
+  let items = Array.isArray(chk.items) ? chk.items : []
+  if (items.length === 0 && typeof chk.items === 'string' && chk.items.trim()) {
+    try {
+      const parsed = JSON.parse(chk.items)
+      if (Array.isArray(parsed)) items = parsed
+    } catch {}
+  }
   const tableRows = items.map((it, idx) => [
     it?.no || idx + 1,
     it?.item || '',
