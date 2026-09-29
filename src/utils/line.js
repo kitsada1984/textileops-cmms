@@ -4,6 +4,7 @@
  */
 import { db } from '../api/dbClient'
 import { resolveAppBaseUrl } from './telegram'
+import { buildSpareNeedlePreparedFlexMessage, buildSpareNeedleReceivedFlexMessage } from './lineSpareCards'
 import {
   buildRepairRequestFlexMessage,
   buildTechnicianAssignedFlexMessage,
@@ -627,14 +628,25 @@ export async function notifyLineSpareNeedlePrepared(snr, cylinder) {
       const keeperIds = getNeedleKeeperLineIds(cfg)
       const targetIds = Array.from(new Set([techTargetId, ...supervisorIds, ...keeperIds].filter(Boolean)))
       if (!targetIds.length) return { ok: false, skipped: true }
-      const results = await Promise.all(targetIds.map(targetId =>
-        sendLineNotification({
-          type: 'text',
+      const flexMsg = buildSpareNeedlePreparedFlexMessage(snr, cylinder, cfg.app_base_url)
+      const results = await Promise.all(targetIds.map(async targetId => {
+        const res = await sendLineNotification({
+          type: 'flex',
           token: cfg.channel_access_token,
           targetId,
-          textMessage,
+          messages: [flexMsg],
         })
-      ))
+        if (!res.ok) {
+          // LINE Notify cannot render flex — fall back to plain text
+          return await sendLineNotification({
+            type: 'text',
+            token: cfg.channel_access_token,
+            targetId,
+            textMessage,
+          })
+        }
+        return res
+      }))
       return { ok: true, results }
     } else if (cfg.notify_token || cfg.needle_keeper_notify_token) {
       return await sendLineNotification({
@@ -673,14 +685,24 @@ export async function notifyLineSpareNeedleReceived(snr, cylinder) {
       const keeperIds = getNeedleKeeperLineIds(cfg)
       const targetIds = Array.from(new Set([...supervisorIds, ...keeperIds].filter(Boolean)))
       if (!targetIds.length) return { ok: false, skipped: true }
-      const results = await Promise.all(targetIds.map(targetId =>
-        sendLineNotification({
-          type: 'text',
+      const flexMsg = buildSpareNeedleReceivedFlexMessage(snr, cylinder, cfg.app_base_url)
+      const results = await Promise.all(targetIds.map(async targetId => {
+        const res = await sendLineNotification({
+          type: 'flex',
           token: cfg.channel_access_token,
           targetId,
-          textMessage,
+          messages: [flexMsg],
         })
-      ))
+        if (!res.ok) {
+          return await sendLineNotification({
+            type: 'text',
+            token: cfg.channel_access_token,
+            targetId,
+            textMessage,
+          })
+        }
+        return res
+      }))
       return { ok: true, results }
     } else if (cfg.notify_token || cfg.needle_keeper_notify_token) {
       return await sendLineNotification({
