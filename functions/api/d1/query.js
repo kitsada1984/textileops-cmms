@@ -175,7 +175,16 @@ export async function onRequestPost(context) {
       const inserted = []
 
       for (const source of records) {
+        if (!source || typeof source !== 'object') {
+          return jsonResponse({ data: null, error: 'Insert requires a record object' }, 400)
+        }
         const rec = { ...source }
+        // A record with no real columns would silently insert an all-NULL row
+        // (the id below is generated, so it must not count as a column value).
+        const sourceKeys = Object.keys(rec).filter((k) => k !== '_id' && k !== 'id')
+        if (sourceKeys.length === 0) {
+          return jsonResponse({ data: null, error: 'Insert requires at least one column value' }, 400)
+        }
         // TEXT PRIMARY KEY accepts NULL in SQLite — always provide an id so
         // later update/delete by id can find the row.
         if (!rec.id) rec.id = crypto.randomUUID()
