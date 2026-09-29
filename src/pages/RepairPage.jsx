@@ -2238,6 +2238,26 @@ export default function RepairPage() {
           />
         )
       }
+      if (needleRequest.status !== 'PREPARED' && needleRequest.status !== 'COMPLETED') {
+        // Not prepared by the stock keeper yet — the technician can only close.
+        return (
+          <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: 44, marginBottom: 10 }}>⏳</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>
+              รอสโตร์เข็มจัดเตรียม
+            </div>
+            <div style={{ fontSize: 13, color: '#64748b', marginTop: 6, fontWeight: 600 }}>
+              ใบเบิก {needleRequest.request_no} (เครื่อง {needleRequest.machine_mc}) —
+              ระบบจะแจ้งเตือนเมื่อจัดเตรียมเรียบร้อยแล้ว
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <Btn onClick={() => navigate('/')} variant="success" style={{ padding: '14px 28px', fontSize: 15 }}>
+                ✅ แจ้งเบิกเข็มแล้ว
+              </Btn>
+            </div>
+          </div>
+        )
+      }
       return (
         <StepAcknowledgeSpareNeedle
           snr={needleRequest}
@@ -2267,6 +2287,7 @@ export default function RepairPage() {
     }
 
     if (needleDone && needleRequest) {
+      const snrReady = needleRequest.status === 'PREPARED' || needleRequest.status === 'COMPLETED'
       return (
         <div style={{ padding: '24px 18px', textAlign: 'center' }}>
           <CheckCircle2 size={54} style={{ color: '#10b981', margin: '0 auto 12px' }} />
@@ -2278,19 +2299,36 @@ export default function RepairPage() {
               : 'ส่งคำขอเบิกเข็ม Spare เข้าสู่ระบบเรียบร้อย'}
           </div>
           <div style={{ fontSize: 13, color: '#64748b', marginBottom: 14, fontWeight: 600 }}>
-            ระบบส่งแจ้งเตือน Telegram & LINE เรียบร้อยแล้ว
+            ระบบส่งแจ้งเตือนเข้า Telegram & LINE เรียบร้อยแล้ว
           </div>
-          <StepAcknowledgeSpareNeedle
-            snr={needleRequest}
-            cylinder={cylinder}
-            onAcknowledged={(updated) => setNeedleRequest(updated)}
-            onHome={() => navigate('/')}
-          />
-          <div style={{ marginTop: 16 }}>
-            <Btn onClick={() => navigate('/')} variant="outline">
-              🏠 กลับหน้าหลัก
-            </Btn>
-          </div>
+          {snrReady ? (
+            <>
+              <StepAcknowledgeSpareNeedle
+                snr={needleRequest}
+                cylinder={cylinder}
+                onAcknowledged={(updated) => setNeedleRequest(updated)}
+                onHome={() => navigate('/')}
+              />
+              <div style={{ marginTop: 16 }}>
+                <Btn onClick={() => navigate('/')} variant="outline">
+                  🏠 กลับหน้าหลัก
+                </Btn>
+              </div>
+            </>
+          ) : (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 13, color: '#64748b', marginBottom: 14, fontWeight: 600 }}>
+                ⏳ รอสโตร์เข็มจัดเตรียม — ระบบจะแจ้งเตือนอีกครั้งเมื่อพร้อมรับ
+              </div>
+              <Btn
+                onClick={() => navigate('/')}
+                variant="success"
+                style={{ width: '100%', padding: '16px', fontSize: 16 }}
+              >
+                <CheckCircle2 size={20} /> ✅ แจ้งเบิกเข็มแล้ว
+              </Btn>
+            </div>
+          )}
         </div>
       )
     }
