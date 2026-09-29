@@ -2108,7 +2108,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
                   ? printRecord.location
                   : getLatestLocation(printRecord.mc, printRecord.serial, 'โรงทอ'),
             },
-            { cylinders: rawCylinders }
+            { cylinders: rawCylinders, centerChecks: rawRecords }
           )}
         />
       )}

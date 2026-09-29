@@ -575,6 +575,30 @@ export function generateCenterCheckPdfProps(chk, context = {}) {
 
   const locationVal = (chk.location && chk.location !== '—') ? chk.location : (matchedCyl?.Location || matchedMc?.Location || 'โรงทอ')
 
+  // Center check history for this machine/cylinder (excluding the current doc),
+  // newest first — mirrors the needle inspection report's history table.
+  const allChecks = resolveCenterChecks(context)
+  const historyRows = (Array.isArray(allChecks) ? allChecks : [])
+    .filter((c) => c && c.doc_no !== chk.doc_no && (
+      (chk.serial && (c.serial === chk.serial || c.Serial === chk.serial)) ||
+      (chk.mc && c.mc === chk.mc)
+    ))
+    .filter((c) => {
+      const t = String(c.type || '').trim()
+      return !t || t === chk.type || (chk.type === 'Double' && String(c.doc_no || '').startsWith('CS-D-')) || (chk.type === 'Single' && String(c.doc_no || '').startsWith('CS-S-'))
+    })
+    .sort((a, b) => new Date(b.doc_date || 0) - new Date(a.doc_date || 0))
+    .slice(0, 10)
+    .map((c, idx) => [
+      idx + 1,
+      c.doc_no || '—',
+      safeFormatDate(c.doc_date, 'dd/MM/yyyy'),
+      c.counter_latest ? Number(c.counter_latest).toLocaleString() : '—',
+      c.needle_cond || '—',
+      c.status || 'ผ่าน',
+      c.mechanic || c.sign_name || '—',
+    ])
+
   const images = normalizeImagesList(chk.needle_images || chk.images, `รูปถ่ายการตรวจศูนย์เข็ม ${chk.mc || ''}`.trim())
 
   return {
@@ -634,6 +658,11 @@ export function generateCenterCheckPdfProps(chk, context = {}) {
       headers: ['ลำดับ', 'รายการตรวจเช็ค', 'ค่ามาตรฐาน', 'ก่อนปรับ', 'หลังปรับ', 'ผลลัพธ์', 'หมายเหตุ'],
       rows: tableRows,
     },
+    historyTable: historyRows.length > 0 ? {
+      title: 'ประวัติการเช็คศูนย์ย้อนหลัง (Center Check History)',
+      headers: ['ครั้งที่', 'เลขที่เอกสาร', 'วันที่เช็ค', 'มิเตอร์ล่าสุด', 'สภาพเข็ม', 'ผล', 'ช่างผู้ตรวจ'],
+      rows: historyRows,
+    } : null,
     images,
     signatories: [
       { title: 'ช่างผู้ตรวจเช็ค', name: chk.mechanic || chk.sign_name || '', date: safeFormatDate(chk.sign_date || chk.doc_date, 'dd/MM/yyyy') },
