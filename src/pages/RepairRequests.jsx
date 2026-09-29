@@ -19,6 +19,11 @@ import {
   updateRepairRequest,
   normalizeRepairRecord,
   encodeRepairProblemDescription,
+  buildMonthlyRequestNo,
+  dispatchRepairCompletedNotification,
+  priorityToWorkOrder,
+  REPAIR_PRIORITY_OPTIONS,
+  REPAIR_TYPE_OPTIONS,
 } from '../modules/repair'
 import CylinderQRModal from '../components/CylinderQR'
 import { useT } from '../contexts/LanguageContext'
@@ -29,7 +34,7 @@ import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
 const EMPTY = {
   request_no: '', status: 'PENDING',
   cylinder_serial: '', cylinder_location: '', cylinder_standard: '', machine_mc: '',
-  KI: '', Design: '', roll_no: '',
+  KI: '', Design: '', roll_no: '', priority: 'ปกติ', repair_type: 'COMPLEX',
   problem_description: '', reported_by: '',
   technician_name: '', approved_by: '', approved_at: '', approval_notes: '',
   repair_details: '', parts_used: '', completed_by: '', completed_at: '',
@@ -120,14 +125,27 @@ export default function RepairRequests() {
     if (!serialForSave) return toast.warning('กรุณากรอกข้อมูล', 'ไม่พบซีเรียลกระบอกสำหรับบันทึกรายการนี้')
     setSaving(true)
     try {
+      // New records get a running monthly number automatically (the field
+      // placeholder promises this); an explicit value typed by the user wins.
+      let requestNo = String(form.request_no || '').trim()
+      if (!requestNo && !isEdit) {
+        try {
+          requestNo = buildMonthlyRequestNo(data)
+        } catch (e) {
+          console.warn('Repair request_no generation warning:', e)
+        }
+      }
+
       let payload = {
         ...form,
+        ...(requestNo ? { request_no: requestNo } : {}),
         cylinder_serial: serialForSave,
         problem_description: encodeRepairProblemDescription(form.problem_description, {
           Design: form.Design,
           KI: form.KI,
           roll_no: form.roll_no || form.RollNo,
           priority: form.priority || 'ปกติ',
+          repair_type: form.repair_type || (form.status === 'APPROVED' ? 'EASY' : 'COMPLEX'),
         }),
       }
       let savedRecord = null
@@ -142,6 +160,15 @@ export default function RepairRequests() {
         await load()
       }
 
+      // Notify LINE/Telegram when a request is closed from this form
+      // (the QR flow already notifies on completion — keep both in sync).
+      const wasCompleted = existing?.status === 'COMPLETED'
+      if (savedRecord && savedRecord.status === 'COMPLETED' && !wasCompleted) {
+        dispatchRepairCompletedNotification(savedRecord).catch((err) => {
+          console.warn('[RepairRequests] Completion notify warning:', err)
+        })
+      }
+
       // Auto-Sync Q1: If status is COMPLETED, sync to Work Orders & Tech KPI
       if (savedRecord && savedRecord.status === 'COMPLETED') {
         try {
@@ -152,35 +179,46 @@ export default function RepairRequests() {
           const diffMs = Math.max(0, new Date(endTimeStr) - new Date(startTimeStr))
           const durationHours = Math.max(0.25, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100)
 
-          await WorkOrderAPI.create({
-            Job_ID: `WO-${reqNo}`,
-            WONumber: `WO-${reqNo}`,
-            OrderDate: savedRecord.created_at || startTimeStr,
-            StartDate: startTimeStr,
-            EndDate: endTimeStr,
-            Duration: durationHours,
-            WorkingDurationText: `${durationHours} ชม.`,
-            MC: savedRecord.machine_mc || form.machine_mc || '',
-            MachineID: savedRecord.machine_mc || form.machine_mc || '',
-            KI: (savedRecord.KI !== undefined && savedRecord.KI !== null) ? String(savedRecord.KI) : (form.KI ? String(form.KI) : ''),
-            Design: savedRecord.Design || form.Design || '',
-            RollNo: savedRecord.roll_no || form.roll_no || '',
-            JobType: 'REPAIR',
-            Technicians: techName,
-            AssignedTo: techName,
-            Status: 'COMPLETED',
-            Problem: savedRecord.problem_description || form.problem_description || '',
-            Solution: savedRecord.repair_details || form.repair_details || 'ซ่อมแซมและแก้ไขตามมาตรฐาน',
-            Title: (savedRecord.Design || form.Design) ? `ซ่อมเครื่อง ${savedRecord.machine_mc || form.machine_mc || ''} (ลาย ${savedRecord.Design || form.Design})` : `งานแจ้งซ่อม ${reqNo}`,
-            CreatedBy: savedRecord.reported_by || form.reported_by || 'Operator',
-            RequestNo: reqNo,
-            req_id: savedRecord.id || form.id,
-            Comment: JSON.stringify({
-              synced_from_repair: true,
-              request_no: reqNo,
-              parts_used: savedRecord.parts_used || form.parts_used || '',
-            }),
-          })
+          // Only real DB columns + duplicate guard (saving a completed record
+          // twice must not create a second work order).
+          const woId = `WO-${reqNo}`
+          const existingWOs = await WorkOrderAPI.list().catch(() => [])
+          const alreadySynced = (Array.isArray(existingWOs) ? existingWOs : []).some(
+            (w) => String(w.WO_ID || '') === woId
+          )
+          if (!alreadySynced) {
+            await WorkOrderAPI.create({
+              WO_ID: woId,
+              MC: savedRecord.machine_mc || form.machine_mc || '',
+              KI: (savedRecord.KI !== undefined && savedRecord.KI !== null) ? String(savedRecord.KI) : (form.KI ? String(form.KI) : ''),
+              Design: savedRecord.Design || form.Design || '',
+              Problem: savedRecord.problem_description || form.problem_description || '',
+              Detail: savedRecord.repair_details || form.repair_details || 'ซ่อมแซมและแก้ไขตามมาตรฐาน',
+              Priority: priorityToWorkOrder(savedRecord.priority || form.priority),
+              JobType: 'REPAIR',
+              Tech: techName,
+              Requester: savedRecord.reported_by || form.reported_by || '',
+              ApprovedBy: savedRecord.approved_by || form.approved_by || '',
+              DateStart: startTimeStr,
+              DateEnd: endTimeStr,
+              StartTime: startTimeStr,
+              EndTime: endTimeStr,
+              Duration: durationHours,
+              Status: 'COMPLETED',
+              LastUpdated: new Date().toISOString(),
+              Comment: JSON.stringify({
+                synced_from_repair: true,
+                request_no: reqNo,
+                req_id: savedRecord.id || form.id,
+                roll_no: savedRecord.roll_no || form.roll_no || '',
+                title: (savedRecord.Design || form.Design)
+                  ? `ซ่อมเครื่อง ${savedRecord.machine_mc || form.machine_mc || ''} (ลาย ${savedRecord.Design || form.Design})`
+                  : `งานแจ้งซ่อม ${reqNo}`,
+                parts_used: savedRecord.parts_used || form.parts_used || '',
+                working_duration_hours: durationHours,
+              }),
+            })
+          }
         } catch (woSyncErr) {
           console.warn('Work order auto-sync from RepairRequests warning:', woSyncErr)
         }
@@ -199,11 +237,6 @@ export default function RepairRequests() {
       toast.success('ลบข้อมูลสำเร็จ')
     } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
   }
-
-  const REPAIR_TYPE_OPTIONS = [
-    { value: 'EASY', label: '⚡ งานทั่วไป (ช่างตรง)' },
-    { value: 'COMPLEX', label: '🛡️ งานยาก (รออนุมัติ)' },
-  ]
 
   const STATUS_TH = Object.fromEntries(REPAIR_STATUS.map(s => [s.value, s.label]))
 
@@ -752,6 +785,10 @@ export default function RepairRequests() {
               <F form={form} setForm={setForm} label={t('cyl_th_loc')} id="cylinder_location" />
             </div>
             <F form={form} setForm={setForm} label="🎨 Design (ลายผ้า)" id="Design" placeholder="ระบุลายผ้า / Design..." />
+            <div className="grid grid-cols-2 gap-2">
+              <F form={form} setForm={setForm} label="ประเภทงาน" id="repair_type" opts={REPAIR_TYPE_OPTIONS} useBuilder={false} />
+              <F form={form} setForm={setForm} label="ความสำคัญ" id="priority" opts={REPAIR_PRIORITY_OPTIONS} useBuilder={false} />
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <F form={form} setForm={setForm} label="🧾 KI" id="KI" type="number" placeholder="ตัวเลข KI..." />
               <F form={form} setForm={setForm} label="📦 เลขม้วน" id="roll_no" type="number" placeholder="เลขม้วน..." />

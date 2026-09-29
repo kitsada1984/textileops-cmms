@@ -8,6 +8,8 @@ import {
   completeRepairRequest,
   normalizeRepairRecord,
   encodeRepairProblemDescription,
+  buildMonthlyRequestNo,
+  priorityToWorkOrder,
 } from '../modules/repair'
 import {
   TechnicianAPI,
@@ -369,15 +371,8 @@ function StepReport({ serial, cylinder, onSubmitted, onBack }) {
       // Monthly running number, same pattern as existing records (RR202609-0056)
       let requestNo = null
       try {
-        const now = new Date()
-        const monthPrefix = `RR${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`
         const existing = await RepairRequestAPI.list()
-        const maxSeq = (Array.isArray(existing) ? existing : [])
-          .map((r) => String(r.request_no || ''))
-          .filter((no) => no.startsWith(monthPrefix))
-          .map((no) => parseInt(no.slice(monthPrefix.length), 10) || 0)
-          .reduce((a, b) => Math.max(a, b), 0)
-        requestNo = `${monthPrefix}${String(maxSeq + 1).padStart(4, '0')}`
+        requestNo = buildMonthlyRequestNo(existing)
       } catch (e) {
         console.warn('Repair request_no generation warning:', e)
       }
@@ -1357,52 +1352,52 @@ function StepComplete({ request, onUpdated }) {
         cylinder_serial: request.cylinder_serial,
       })
 
-      // 4. Auto-Sync Q1: Create or Upsert into workorders table
+      // 4. Auto-Sync Q1: Create the workorder row (only real DB columns —
+      //    unknown column names are stripped by the schema-retry loop, which
+      //    used to leave work orders without WO_ID / technician / dates).
       try {
-        await WorkOrderAPI.create({
-          Job_ID: `WO-${request.request_no}`,
-          WONumber: `WO-${request.request_no}`,
-          OrderDate: request.created_at || now.toISOString(),
-          StartDate: startTimeStr,
-          EndDate: now.toISOString(),
-          Duration: netHours,
-          WorkingDurationText: durationRes.netDurationText,
-          WorkingHoursDecimal: netHours,
-          GrossDurationHours: grossHours,
-          GrossDurationText: durationRes.grossDurationText,
-          SundayDurationHours: durationRes.sundayHoursDecimal,
-          SundayDurationText: durationRes.sundayDurationText,
-          LostDurationHours: lostHours,
-          LostDurationText: durationRes.lostDurationText,
-          Interruption_Logs: interruptionLogs,
-          MC: request.machine_mc || '',
-          MachineID: request.machine_mc || '',
-          KI: request.KI ? String(request.KI) : '',
-          Design: request.Design || '',
-          RollNo: request.roll_no || request.RollNo || '',
-          JobType: 'REPAIR',
-          Technicians: tech.trim(),
-          AssignedTo: tech.trim(),
-          Status: 'COMPLETED',
-          Problem: request.problem_description || '',
-          Details: request.problem_description || '',
-          details: request.problem_description || '',
-          Solution: details.trim(),
-          Title: request.Design ? `ซ่อมเครื่อง ${request.machine_mc || ''} (ลาย ${request.Design})` : `งานแจ้งซ่อม ${request.request_no} (เครื่อง ${request.machine_mc || ''})`,
-          CreatedBy: request.reported_by || 'Operator',
-          RequestNo: request.request_no,
-          req_id: request.id,
-          Comment: JSON.stringify({
-            synced_from_repair: true,
-            request_no: request.request_no,
-            parts_used: partsSummary,
-            gross_duration_hours: grossHours,
-            sunday_duration_hours: durationRes.sundayHoursDecimal,
-            lost_duration_hours: lostHours,
-            net_working_hours: netHours,
-            interruption_logs: interruptionLogs,
-          }),
-        })
+        const woId = `WO-${request.request_no || request.id}`
+        const existingWOs = await WorkOrderAPI.list().catch(() => [])
+        const alreadySynced = (Array.isArray(existingWOs) ? existingWOs : []).some(
+          (w) => String(w.WO_ID || '') === woId
+        )
+        if (!alreadySynced) {
+          await WorkOrderAPI.create({
+            WO_ID: woId,
+            MC: request.machine_mc || '',
+            KI: request.KI ? String(request.KI) : '',
+            Design: request.Design || '',
+            Problem: request.problem_description || '',
+            Detail: details.trim() || 'ซ่อมแซมและแก้ไขตามมาตรฐาน',
+            Priority: priorityToWorkOrder(request.priority),
+            JobType: 'REPAIR',
+            Tech: tech.trim(),
+            Requester: request.reported_by || '',
+            ApprovedBy: request.approved_by || '',
+            DateStart: startTimeStr,
+            DateEnd: now.toISOString(),
+            StartTime: startTimeStr,
+            EndTime: now.toISOString(),
+            Duration: netHours,
+            Status: 'COMPLETED',
+            LastUpdated: now.toISOString(),
+            Comment: JSON.stringify({
+              synced_from_repair: true,
+              request_no: request.request_no,
+              req_id: request.id,
+              roll_no: request.roll_no || request.RollNo || '',
+              title: request.Design
+                ? `ซ่อมเครื่อง ${request.machine_mc || ''} (ลาย ${request.Design})`
+                : `งานแจ้งซ่อม ${request.request_no || ''} (เครื่อง ${request.machine_mc || ''})`,
+              parts_used: partsSummary,
+              gross_duration_hours: grossHours,
+              sunday_duration_hours: durationRes.sundayHoursDecimal,
+              lost_duration_hours: lostHours,
+              net_working_hours: netHours,
+              interruption_logs: interruptionLogs,
+            }),
+          })
+        }
       } catch (woErr) {
         console.warn('Work order auto-sync warning (will continue):', woErr)
       }

@@ -9,6 +9,13 @@ export {
 } from './repairNormalizer'
 
 export {
+  buildMonthlyRequestNo,
+  REPAIR_PRIORITY_OPTIONS,
+  REPAIR_TYPE_OPTIONS,
+  priorityToWorkOrder,
+} from './repairNumbers'
+
+export {
   dispatchNewRepairNotification,
   dispatchTechnicianAssignedNotification,
   dispatchRepairCompletedNotification,
