@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../supabase'
+import { db } from '../api/dbClient'
 import { loadTelegramSettingsDB } from '../utils/telegram'
 import {
   createRepairRequest,
@@ -2169,14 +2169,14 @@ export default function RepairPage() {
 
         let cyl = null
         if (decodedSerial) {
-          const { data: foundNow } = await supabase
+          const { data: foundNow } = await db
             .from('cylinders')
             .select('*')
             .eq('Serial_NOW', decodedSerial)
             .maybeSingle()
           cyl = foundNow
           if (!cyl) {
-            const { data: foundOld } = await supabase
+            const { data: foundOld } = await db
               .from('cylinders')
               .select('*')
               .eq('Serial_OLD', decodedSerial)
@@ -2187,7 +2187,7 @@ export default function RepairPage() {
         setCylinder(cyl)
 
         if (reqId) {
-          const { data: req } = await supabase
+          const { data: req } = await db
             .from('repair_requests')
             .select('*')
             .eq('id', reqId)
