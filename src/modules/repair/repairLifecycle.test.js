@@ -134,6 +134,38 @@ describe('Repair Lifecycle DB Operations & Schema Resilience', () => {
     })
   })
 
+  it('createRepairRequest strips unknown columns for D1 error format too', async () => {
+    let callCount = 0
+    const mockSingle = vi.fn().mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.resolve({
+          data: null,
+          error: { message: 'D1_ERROR: table repair_requests has no column named Design: SQLITE_ERROR' },
+        })
+      }
+      return Promise.resolve({
+        data: { id: 203, problem_description: 'ผ้าแตก', status: 'PENDING' },
+        error: null,
+      })
+    })
+
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockInsert = vi.fn().mockReturnValue({ select: mockSelect })
+    supabase.from.mockReturnValue({ insert: mockInsert })
+
+    const res = await createRepairRequest(
+      { Design: 'SAP-654AA', problem_description: 'ผ้าแตก', repair_type: 'COMPLEX' },
+      { skipNotification: true }
+    )
+    expect(res.ok).toBe(true)
+    expect(callCount).toBe(2)
+    expect(mockInsert).toHaveBeenLastCalledWith({
+      problem_description: 'ผ้าแตก',
+      repair_type: 'COMPLEX',
+    })
+  })
+
   it('createRepairRequest triggers non-blocking notifications and survives notification error', async () => {
     telegramUtils.notifySupervisor.mockRejectedValueOnce(new Error('Network offline'))
     lineUtils.notifyLineNewRepair.mockRejectedValueOnce(new Error('LINE timeout'))

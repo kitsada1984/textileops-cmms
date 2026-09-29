@@ -14,14 +14,30 @@ import {
   dispatchRepairCompletedNotification,
 } from './repairDispatcher'
 
-const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'repair_requests'/i
+// Missing-column error patterns from both database backends:
+// - Supabase: "Could not find the 'Design' column of 'repair_requests' in the schema cache"
+// - Cloudflare D1: "table repair_requests has no column named Design" / "no such column: Design"
+const MISSING_COLUMN_RES = [
+  /Could not find the '([^']+)' column/i,
+  /has no column named ["']?([^"',\s:)]+)/i,
+  /no such column: ["']?([^"',\s:]+)/i,
+]
+
+function findMissingColumn(message) {
+  const msg = String(message || '')
+  for (const re of MISSING_COLUMN_RES) {
+    const m = msg.match(re)
+    if (m) return m[1]
+  }
+  return null
+}
 
 /**
- * Executes a Supabase query with automated missing-column retry loop.
- * If Supabase schema has not migrated certain columns, removes the offending
+ * Executes a database query with automated missing-column retry loop.
+ * If the schema has not migrated certain columns, removes the offending
  * column from payload and retries seamlessly up to 10 times.
  * @param {object} payload Mutation payload
- * @param {Function} executeQuery Function that executes the Supabase request
+ * @param {Function} executeQuery Function that executes the database request
  */
 async function runWithSchemaRetry(payload, executeQuery) {
   const currentPayload = { ...payload }
@@ -31,7 +47,7 @@ async function runWithSchemaRetry(payload, executeQuery) {
   while (lastResult.error && retryCount < 10) {
     retryCount++
     const errMsg = String(lastResult.error.message || '')
-    const missingCol = errMsg.match(MISSING_COLUMN_RE)?.[1]
+    const missingCol = findMissingColumn(errMsg)
     if (missingCol && missingCol in currentPayload) {
       console.warn(`[RepairLifecycle] Column '${missingCol}' not found in DB schema — removing and retrying (attempt ${retryCount})`)
       delete currentPayload[missingCol]

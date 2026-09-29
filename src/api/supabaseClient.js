@@ -3,7 +3,7 @@ import { db } from './dbClient'
 
 const TEMPORAL_FIELD_RE = /(date|time|updated|created|completed|approved)/i
 const MISSING_SCHEMA_COLUMN_RE = /Could not find the '([^']+)' column/i
-const D1_MISSING_COLUMN_RE = /has no column named ["']?([^"',\s)]+)/i
+const D1_MISSING_COLUMN_RE = /has no column named ["']?([^"',\s:)]+)/i
 const D1_NO_SUCH_COLUMN_RE = /no such column: ["']?([^"',\s:]+)/i
 const TIMESTAMP_SYNTAX_ERROR_RE = /invalid input syntax for type timestamp.*?[:"]([^"]+)["\s]?/i
 
