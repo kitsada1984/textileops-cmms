@@ -1644,7 +1644,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
           {/* ── TOOLBAR ───────────────────────────────────────────── */}
           <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-            <div className="flex flex-wrap items-center gap-2 flex-1 w-full [&>*]:flex-1 [&>*]:min-w-[calc(50%-0.25rem)] sm:[&>*]:min-w-0 [&>*:first-child]:min-w-full">
+            <div className="flex flex-wrap items-center gap-2 flex-1 w-full [&>*]:flex-1 [&>*]:min-w-[calc(50%-0.25rem)] sm:[&>*]:flex-none sm:[&>*]:min-w-0 [&>*:first-child]:min-w-full">
               <SearchInput
                 value={search}
                 onChange={setSearch}
