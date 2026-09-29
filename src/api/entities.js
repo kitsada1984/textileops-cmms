@@ -175,62 +175,113 @@ export const NEEDLE_STATUSES = [
   { value: 'ระบุเอง', label: 'ระบุเอง', color: 'blue', bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
 ]
 
+const rawNeedleConditionClient = createEntityClient('needle_conditions')
+
+// The dedicated needle_conditions table exists in the Cloudflare D1 schema.
+// On the Supabase fallback (table absent) the legacy appconfigs / SYS blob is
+// used instead — probing first avoids the silent localStorage write path.
+async function needleConditionTableReady() {
+  try {
+    const { error } = await db.from('needle_conditions').select('id').limit(1)
+    return !error
+  } catch {
+    return false
+  }
+}
+
+const needleConditionBlob = () =>
+  getSystemConfig('needle_conditions', {
+    legacyWorkOrderId: 'SYS_NEEDLE_CONDITIONS',
+    localCacheKey: 'txops_tbl_needle_conditions',
+    defaultValue: [],
+  })
+
 export const NeedleConditionAPI = {
   list: async () => {
+    // Primary: dedicated needle_conditions table
     try {
-      const { data, error } = await db
-        .from('needle_conditions')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (!error && Array.isArray(data)) {
-        try { localStorage.setItem('txops_tbl_needle_conditions', JSON.stringify(data)) } catch {}
-        return data
-      }
+      const data = await rawNeedleConditionClient.list()
+      if (Array.isArray(data) && data.length > 0) return data
     } catch (e) {
       console.warn('NeedleCondition direct table load error, falling back to sys config:', e)
     }
 
-    return getSystemConfig('needle_conditions', {
-      legacyWorkOrderId: 'SYS_NEEDLE_CONDITIONS',
-      localCacheKey: 'txops_tbl_needle_conditions',
-      defaultValue: [],
-    })
+    // Fallback: legacy blob (records written before the table existed)
+    return needleConditionBlob()
   },
   saveAll: async (recordsList) => {
-    if (!recordsList || recordsList.length === 0) {
+    const list = Array.isArray(recordsList) ? recordsList : []
+    if (await needleConditionTableReady()) {
+      try {
+        const existing = await rawNeedleConditionClient.list()
+        for (const row of Array.isArray(existing) ? existing : []) {
+          if (row?.id) await rawNeedleConditionClient.delete(row.id)
+        }
+        for (const item of list) {
+          await rawNeedleConditionClient.create(item)
+        }
+        return
+      } catch (e) {
+        console.warn('NeedleCondition saveAll table write failed, falling back to sys config:', e)
+      }
+    }
+
+    if (list.length === 0) {
       await deleteSystemConfig('needle_conditions', {
         legacyWorkOrderId: 'SYS_NEEDLE_CONDITIONS',
         localCacheKey: 'txops_tbl_needle_conditions',
       })
       return
     }
-    await saveSystemConfig('needle_conditions', recordsList, {
+    await saveSystemConfig('needle_conditions', list, {
       legacyWorkOrderId: 'SYS_NEEDLE_CONDITIONS',
       localCacheKey: 'txops_tbl_needle_conditions',
     })
   },
   create: async (item) => {
-    const list = await NeedleConditionAPI.list()
     const newItem = {
       ...item,
-      id: item.id || `nc_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      id: item.id || `nc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       created_at: item.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
-    const updated = [newItem, ...list]
-    await NeedleConditionAPI.saveAll(updated)
+    if (await needleConditionTableReady()) {
+      try {
+        return await rawNeedleConditionClient.create(newItem)
+      } catch (e) {
+        console.warn('NeedleCondition row insert failed, falling back to sys config:', e)
+      }
+    }
+    const list = await NeedleConditionAPI.list()
+    await NeedleConditionAPI.saveAll([newItem, ...list])
     return newItem
   },
   update: async (id, item) => {
+    const payload = { ...item, updated_at: new Date().toISOString() }
+    if (await needleConditionTableReady()) {
+      try {
+        return await rawNeedleConditionClient.update(id, payload)
+      } catch (e) {
+        console.warn('NeedleCondition row update failed, falling back to sys config:', e)
+      }
+    }
     const list = await NeedleConditionAPI.list()
-    const updated = list.map((r) => (r.id === id ? { ...r, ...item, updated_at: new Date().toISOString() } : r))
+    const updated = list.map((r) => (r.id === id ? { ...r, ...payload } : r))
     await NeedleConditionAPI.saveAll(updated)
     return { ...item, id }
   },
   delete: async (id) => {
+    if (await needleConditionTableReady()) {
+      try {
+        await rawNeedleConditionClient.delete(id)
+        return true
+      } catch (e) {
+        console.warn('NeedleCondition row delete failed, falling back to sys config:', e)
+      }
+    }
     const list = await NeedleConditionAPI.list()
-    const updated = list.filter((r) => r.id !== id)
-    await NeedleConditionAPI.saveAll(updated)
+    await NeedleConditionAPI.saveAll(list.filter((r) => r.id !== id))
+    return true
   },
 }
 
@@ -532,6 +583,7 @@ export const CYL_STATUS = [
   { value: 'SPARE', label: 'สำรอง' },
   { value: 'REPAIR', label: 'ซ่อม' },
   { value: 'RESERVE', label: 'สำรอง' },
+  { value: 'WAIT_SERVICE', label: 'รอซ่อม (เข็มสึก)' },
   { value: 'SCRAP', label: 'ตัดทิ้ง' },
 ]
 

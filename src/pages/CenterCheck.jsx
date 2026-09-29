@@ -52,6 +52,7 @@ import initialCenterChecks from '../data/initialCenterChecks.json'
 import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
 import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../modules/media'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
+import { buildCylinderInspectionSync } from '../utils/needleConditionSync'
 
 const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 
@@ -804,13 +805,12 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
           )
           if (matchingCyl) {
             const cylId = matchingCyl.id || matchingCyl._id
-            const isNeedleWorn = payload.needle_cond === 'สึกมาก(ควรเปลี่ยน)' || payload.status === 'FAILED'
-            const updateFields = {
-              Last_Check_Date: payload.doc_date || new Date().toISOString().slice(0, 10),
-            }
-            if (isNeedleWorn) {
-              updateFields.Status_Now = 'WAIT_SERVICE'
-            }
+            const updateFields = buildCylinderInspectionSync({
+              docDate: payload.doc_date || new Date().toISOString().slice(0, 10),
+              inspectionStatus: payload.needle_cond,
+              forceWorn: payload.status === 'FAILED',
+              currentStatus: matchingCyl.Status_Now,
+            })
             await CylinderAPI.update(cylId, updateFields)
           }
         } catch (cylSyncErr) {

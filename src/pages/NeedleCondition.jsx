@@ -56,6 +56,7 @@ import { generateNeedleConditionPdfProps } from '../utils/pdfDocGenerators'
 import { applyFilterSort } from '../utils/filterSort'
 import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
 import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../modules/media'
+import { buildCylinderInspectionSync } from '../utils/needleConditionSync'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
 
@@ -575,13 +576,11 @@ export default function NeedleCondition() {
           )
           if (matchingCyl) {
             const cylId = matchingCyl.id || matchingCyl._id
-            const isNeedleWorn = payload.status === 'สึกมาก(ควรเปลี่ยน)' || payload.status === 'BROKEN' || payload.status === 'สึกมาก'
-            const updateFields = {
-              Last_Check_Date: payload.doc_date || new Date().toISOString().slice(0, 10),
-            }
-            if (isNeedleWorn) {
-              updateFields.Status_Now = 'WAIT_SERVICE'
-            }
+            const updateFields = buildCylinderInspectionSync({
+              docDate: payload.doc_date || new Date().toISOString().slice(0, 10),
+              inspectionStatus: payload.status,
+              currentStatus: matchingCyl.Status_Now,
+            })
             await CylinderAPI.update(cylId, updateFields)
           }
         } catch (cylSyncErr) {

@@ -81,7 +81,7 @@ const DEFAULT_APP_MENUS = [
       col('ITEM','ลำดับ','number','70px'), col('Location','ตำแหน่ง','text','120px'),
       col('Standard','มาตรฐาน','text','120px'), col('NewMC','เครื่องปัจจุบัน','text','130px'),
       col('Serial_OLD','ซีเรียลเดิม','text','130px'), col('Serial_NOW','ซีเรียลปัจจุบัน','text','130px',{required:true}),
-      sel('Status_Now','สถานะ',['STANDARD','SWAPPED','SPARE','REPAIR','RESERVE','SCRAP'],'130px'),
+      sel('Status_Now','สถานะ',['STANDARD','SWAPPED','SPARE','REPAIR','RESERVE','WAIT_SERVICE','SCRAP'],'130px'),
       col('Feeder','ฟีดเดอร์','text','100px'), col('Manufacturer','ยี่ห้อ','text','130px'),
       col('Type','ประเภท','text','100px'), col('Diameter','เส้นผ่านศูนย์กลาง','text','100px'),
       col('Gauge','เกจ','text','80px'), col('Needle','เข็ม','number','80px'),
