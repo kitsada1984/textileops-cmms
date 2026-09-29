@@ -20,8 +20,8 @@ import {
   normalizeRepairRecord,
   encodeRepairProblemDescription,
   buildMonthlyRequestNo,
+  buildRepairWorkOrderPayload,
   dispatchRepairCompletedNotification,
-  priorityToWorkOrder,
   REPAIR_PRIORITY_OPTIONS,
   REPAIR_TYPE_OPTIONS,
 } from '../modules/repair'
@@ -187,37 +187,15 @@ export default function RepairRequests() {
             (w) => String(w.WO_ID || '') === woId
           )
           if (!alreadySynced) {
-            await WorkOrderAPI.create({
-              WO_ID: woId,
-              MC: savedRecord.machine_mc || form.machine_mc || '',
-              KI: (savedRecord.KI !== undefined && savedRecord.KI !== null) ? String(savedRecord.KI) : (form.KI ? String(form.KI) : ''),
-              Design: savedRecord.Design || form.Design || '',
-              Problem: savedRecord.problem_description || form.problem_description || '',
-              Detail: savedRecord.repair_details || form.repair_details || 'ซ่อมแซมและแก้ไขตามมาตรฐาน',
-              Priority: priorityToWorkOrder(savedRecord.priority || form.priority),
-              JobType: 'REPAIR',
-              Tech: techName,
-              Requester: savedRecord.reported_by || form.reported_by || '',
-              ApprovedBy: savedRecord.approved_by || form.approved_by || '',
-              DateStart: startTimeStr,
-              DateEnd: endTimeStr,
-              StartTime: startTimeStr,
-              EndTime: endTimeStr,
-              Duration: durationHours,
-              Status: 'COMPLETED',
-              LastUpdated: new Date().toISOString(),
-              Comment: JSON.stringify({
-                synced_from_repair: true,
-                request_no: reqNo,
-                req_id: savedRecord.id || form.id,
-                roll_no: savedRecord.roll_no || form.roll_no || '',
-                title: (savedRecord.Design || form.Design)
-                  ? `ซ่อมเครื่อง ${savedRecord.machine_mc || form.machine_mc || ''} (ลาย ${savedRecord.Design || form.Design})`
-                  : `งานแจ้งซ่อม ${reqNo}`,
-                parts_used: savedRecord.parts_used || form.parts_used || '',
-                working_duration_hours: durationHours,
-              }),
-            })
+            await WorkOrderAPI.create(buildRepairWorkOrderPayload({
+              woId,
+              record: { ...savedRecord, repair_details: savedRecord.repair_details || form.repair_details },
+              techName,
+              startIso: startTimeStr,
+              endIso: endTimeStr,
+              durationHours,
+              detail: savedRecord.repair_details || form.repair_details || '',
+            }))
           }
         } catch (woSyncErr) {
           console.warn('Work order auto-sync from RepairRequests warning:', woSyncErr)

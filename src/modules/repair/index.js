@@ -16,6 +16,12 @@ export {
 } from './repairNumbers'
 
 export {
+  buildRepairWorkOrderPayload,
+  durationHoursBetween,
+  WORKORDER_COLUMNS,
+} from './repairWorkOrderSync'
+
+export {
   dispatchNewRepairNotification,
   dispatchTechnicianAssignedNotification,
   dispatchRepairCompletedNotification,

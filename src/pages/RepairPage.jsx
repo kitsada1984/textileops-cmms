@@ -9,7 +9,7 @@ import {
   normalizeRepairRecord,
   encodeRepairProblemDescription,
   buildMonthlyRequestNo,
-  priorityToWorkOrder,
+  buildRepairWorkOrderPayload,
 } from '../modules/repair'
 import {
   TechnicianAPI,
@@ -1362,41 +1362,22 @@ function StepComplete({ request, onUpdated }) {
           (w) => String(w.WO_ID || '') === woId
         )
         if (!alreadySynced) {
-          await WorkOrderAPI.create({
-            WO_ID: woId,
-            MC: request.machine_mc || '',
-            KI: request.KI ? String(request.KI) : '',
-            Design: request.Design || '',
-            Problem: request.problem_description || '',
-            Detail: details.trim() || 'ซ่อมแซมและแก้ไขตามมาตรฐาน',
-            Priority: priorityToWorkOrder(request.priority),
-            JobType: 'REPAIR',
-            Tech: tech.trim(),
-            Requester: request.reported_by || '',
-            ApprovedBy: request.approved_by || '',
-            DateStart: startTimeStr,
-            DateEnd: now.toISOString(),
-            StartTime: startTimeStr,
-            EndTime: now.toISOString(),
-            Duration: netHours,
-            Status: 'COMPLETED',
-            LastUpdated: now.toISOString(),
-            Comment: JSON.stringify({
-              synced_from_repair: true,
-              request_no: request.request_no,
-              req_id: request.id,
-              roll_no: request.roll_no || request.RollNo || '',
-              title: request.Design
-                ? `ซ่อมเครื่อง ${request.machine_mc || ''} (ลาย ${request.Design})`
-                : `งานแจ้งซ่อม ${request.request_no || ''} (เครื่อง ${request.machine_mc || ''})`,
-              parts_used: partsSummary,
+          await WorkOrderAPI.create(buildRepairWorkOrderPayload({
+            woId,
+            record: request,
+            techName: tech.trim(),
+            startIso: startTimeStr,
+            endIso: now.toISOString(),
+            durationHours: netHours,
+            detail: details.trim(),
+            extraComment: {
               gross_duration_hours: grossHours,
               sunday_duration_hours: durationRes.sundayHoursDecimal,
               lost_duration_hours: lostHours,
               net_working_hours: netHours,
               interruption_logs: interruptionLogs,
-            }),
-          })
+            },
+          }))
         }
       } catch (woErr) {
         console.warn('Work order auto-sync warning (will continue):', woErr)
