@@ -174,7 +174,11 @@ export async function onRequestPost(context) {
       const records = Array.isArray(data) ? data : [data]
       const inserted = []
 
-      for (const rec of records) {
+      for (const source of records) {
+        const rec = { ...source }
+        // TEXT PRIMARY KEY accepts NULL in SQLite — always provide an id so
+        // later update/delete by id can find the row.
+        if (!rec.id) rec.id = crypto.randomUUID()
         const keys = Object.keys(rec).filter((k) => k !== '_id')
         keys.forEach((k) => assertIdent(k, 'column name'))
         const cols = keys.map((k) => `"${k}"`).join(', ')

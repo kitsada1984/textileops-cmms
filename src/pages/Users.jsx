@@ -6,7 +6,7 @@ import Modal from '../components/ui/Modal'
 import SearchInput from '../components/ui/SearchInput'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import { useT } from '../contexts/LanguageContext'
-import { hashPassword, PERM_ACTIONS } from '../contexts/AuthContext'
+import { hashPassword, PERM_ACTIONS, parsePermissions } from '../contexts/AuthContext'
 import { useToast } from '../components/ui/Toast'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 
@@ -333,7 +333,13 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false)
   const [filterSort, setFilterSort] = useState(INIT_FS)
 
-  const filtered = data.filter(u =>
+  // D1 คืน permissions เป็น JSON string — parse ให้เป็น object ก่อนแสดงผล/แก้ไข
+  const users = useMemo(
+    () => data.map(u => ({ ...u, permissions: parsePermissions(u.permissions) })),
+    [data]
+  )
+
+  const filtered = users.filter(u =>
     [u.username, u.full_name, u.role].some(v =>
       String(v || '').toLowerCase().includes(search.toLowerCase())
     )
@@ -364,6 +370,9 @@ export default function UsersPage() {
       const payload = { ...form, username: form.username.trim().toLowerCase() }
       if (form.password) payload.password_hash = await hashPassword(form.password)
       delete payload.password
+      // Guard: permissions must always be a plain object — if it ever arrives
+      // as a JSON string, spreading/stringifying garbage keys breaks the save.
+      payload.permissions = parsePermissions(payload.permissions)
       await save(payload)
       toast.success(isEdit ? 'แก้ไขผู้ใช้สำเร็จ' : 'เพิ่มผู้ใช้สำเร็จ', form.username)
       setModal(false)

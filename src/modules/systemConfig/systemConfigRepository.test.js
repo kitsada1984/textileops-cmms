@@ -6,6 +6,9 @@ describe('System Configuration Repository & Seam', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    // Pin the db proxy to the supabase adapter so the supabase mocks below apply
+    localStorage.setItem('textileops_db_provider', 'supabase')
+    sessionStorage.setItem('textileops_db_provider', 'supabase')
   })
 
   it('reads configuration from appconfigs table first', async () => {

@@ -13,17 +13,31 @@ export async function hashPassword(password) {
 // permissions = { menuKey: ["view","add","edit","delete"] }
 export const PERM_ACTIONS = ['view', 'add', 'edit', 'delete']
 
+// D1 เก็บ permissions เป็น TEXT (JSON string) — parse ให้เป็น object ทุกครั้งที่อ่านจาก DB
+export function parsePermissions(p) {
+  if (typeof p === 'string') {
+    try { p = JSON.parse(p) } catch { p = {} }
+  }
+  return p && typeof p === 'object' ? p : {}
+}
+
+// คืน user ที่ permissions เป็น object พร้อมใช้เสมอ
+export function normalizeUser(u) {
+  if (!u) return u
+  return { ...u, permissions: parsePermissions(u.permissions) }
+}
+
 export function canAccess(user, menuKey) {
   if (!user) return false
   if (user.role === 'admin') return true
-  const perms = user.permissions?.[menuKey]
+  const perms = parsePermissions(user.permissions)?.[menuKey]
   return Array.isArray(perms) && perms.length > 0
 }
 
 export function hasPerm(user, menuKey, action = 'view') {
   if (!user) return false
   if (user.role === 'admin') return true
-  const perms = user.permissions?.[menuKey]
+  const perms = parsePermissions(user.permissions)?.[menuKey]
   return Array.isArray(perms) && perms.includes(action)
 }
 
@@ -40,7 +54,7 @@ export function AuthProvider({ children }) {
         setUser(null)
         return
       }
-      setUser(stored ? JSON.parse(stored) : null)
+      setUser(stored ? normalizeUser(JSON.parse(stored)) : null)
     } catch {
       setUser(null)
     }
@@ -59,8 +73,8 @@ export function AuthProvider({ children }) {
         throw new Error(result.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
       }
       setAuthToken(result.token)
-      localStorage.setItem('app_user', JSON.stringify(result.user))
-      setUser(result.user)
+      localStorage.setItem('app_user', JSON.stringify(normalizeUser(result.user)))
+      setUser(normalizeUser(result.user))
       return result.user
     }
 
@@ -76,13 +90,13 @@ export function AuthProvider({ children }) {
     if (error || !data) throw new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
     if (data.status === 'inactive') throw new Error('บัญชีนี้ถูกปิดใช้งาน')
 
-    const info = {
+    const info = normalizeUser({
       id: data.id,
       username: data.username,
       full_name: data.full_name || data.username,
       role: data.role,
-      permissions: data.permissions || {},
-    }
+      permissions: data.permissions,
+    })
     localStorage.setItem('app_user', JSON.stringify(info))
     setUser(info)
     return info
@@ -107,8 +121,9 @@ export function AuthProvider({ children }) {
         if (res.ok) {
           const result = await res.json()
           if (result.ok && result.user) {
-            localStorage.setItem('app_user', JSON.stringify(result.user))
-            setUser(result.user)
+            const info = normalizeUser(result.user)
+            localStorage.setItem('app_user', JSON.stringify(info))
+            setUser(info)
             return
           }
         }
@@ -122,13 +137,13 @@ export function AuthProvider({ children }) {
       .eq('id', id)
       .single()
     if (data) {
-      const info = {
+      const info = normalizeUser({
         id: data.id,
         username: data.username,
         full_name: data.full_name || data.username,
         role: data.role,
-        permissions: data.permissions || {},
-      }
+        permissions: data.permissions,
+      })
       localStorage.setItem('app_user', JSON.stringify(info))
       setUser(info)
     }
