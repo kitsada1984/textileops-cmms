@@ -811,14 +811,36 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         const targetMc = (payload.mc || formData.mc || '').trim()
         const targetSerialClean = (payload.serial || formData.serial || '').trim()
 
+        // Machine type: derive from the doc number prefix first (CS-S-* / CS-D-*),
+        // then fall back to the form selection — keeps Single and Double plans separate.
+        const machineType = String(payload.doc_no || '').startsWith('CS-D-')
+          ? 'Double'
+          : String(payload.doc_no || '').startsWith('CS-S-')
+            ? 'Single'
+            : (payload.type || formType || 'Single')
+
         const normalizeCode = (val) => String(val || '').toUpperCase().replace(/\s+/g, '').replace(/-/g, '').trim()
         const normalizeS = (val) => String(val || '').toUpperCase().replace(/\s+/g, '').trim()
+        const normalizePlanType = (val) => {
+          const t = String(val || '').trim().toLowerCase()
+          if (t.startsWith('d') || t === 'double jersey') return 'Double'
+          if (t.startsWith('s') || t === 'single jersey') return 'Single'
+          return '' // legacy plan without a type — still matchable
+        }
 
-        const matchingPlan = (Array.isArray(pmPlansList) ? pmPlansList : []).find((p) => {
-          const mcMatch = targetMc && normalizeCode(p.Machine_MC) === normalizeCode(targetMc)
-          const serialMatch = targetSerialClean && normalizeS(p.Machine_KI) === normalizeS(targetSerialClean)
-          return mcMatch || serialMatch
-        })
+        const matchingPlan = (Array.isArray(pmPlansList) ? pmPlansList : [])
+          .filter((p) => {
+            const mcMatch = targetMc && normalizeCode(p.Machine_MC) === normalizeCode(targetMc)
+            const serialMatch = targetSerialClean && normalizeS(p.Machine_KI) === normalizeS(targetSerialClean)
+            return mcMatch || serialMatch
+          })
+          .filter((p) => {
+            const planType = normalizePlanType(p.Type)
+            return !planType || planType === machineType
+          })
+          // prefer plans whose type already matches exactly over legacy untyped ones
+          .sort((a, b) => (normalizePlanType(b.Type) === machineType ? 1 : 0) - (normalizePlanType(a.Type) === machineType ? 1 : 0))
+          [0]
 
         const lastPmDate = payload.doc_date || format(new Date(), 'yyyy-MM-dd')
         const cycleDays = matchingPlan ? (Number(matchingPlan.Frequency_Value) || Number(matchingPlan.PM_Type) || 30) : 30
@@ -842,6 +864,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
             Next_PM_Date: nextPmDate,
             Assigned_Tech: techName,
             Status: 'COMPLETED',
+            Type: machineType,
             Remark: updatedRemark,
             Location: payload.location || matchingPlan.Location || '',
             updated_at: new Date().toISOString(),
@@ -852,7 +875,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
             Machine_MC: targetMc,
             Machine_KI: targetSerialClean,
             Location: payload.location || '',
-            Type: payload.type || formType || 'Single',
+            Type: machineType,
             PM_Type: '30',
             Frequency_Type: 'CALENDAR',
             Frequency_Value: 30,

@@ -411,9 +411,30 @@ export default function PMPlan({ defaultTab = 'plan' }) {
     )
   ), [cylCurrentMachineField, cylinderPMSource, syncForm.Location, syncForm.Machine_KI, syncForm.Machine_MC])
 
+  // Machine type normalization shared by center-check ↔ PM-plan matching.
+  // Center check type: prefer the stored type, else derive from doc number prefix.
+  const normalizeCcType = (val, docNo) => {
+    const t = String(val || '').trim().toLowerCase()
+    if (t.startsWith('d')) return 'Double'
+    if (t.startsWith('s')) return 'Single'
+    const doc = String(docNo || '')
+    if (doc.startsWith('CS-D-')) return 'Double'
+    if (doc.startsWith('CS-S-')) return 'Single'
+    return ''
+  }
+  // Cylinder Type ('S'/'D'/'Single'/'Double'/...) → center check type vocabulary
+  const cylTypeToCcType = (raw) => {
+    const s = String(raw || '').trim().toUpperCase()
+    if (s === 'S' || s.includes('SINGLE')) return 'Single'
+    if (s === 'D' || s.includes('DOUBLE')) return 'Double'
+    return ''
+  }
+
   const latestCenterCheckMap = useMemo(() => {
     const bySerial = new Map()
     const byMachine = new Map()
+    const bySerialTyped = new Map()
+    const byMachineTyped = new Map()
     if (Array.isArray(centerChecksList)) {
       centerChecksList.forEach((cc) => {
         const mcKey = normalizeMachineCode(cc.mc || cc.MC)
@@ -421,6 +442,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
         const docDate = cc.doc_date || cc.timestamp?.slice(0, 10)
         if (!docDate) return
 
+        const ccType = normalizeCcType(cc.type, cc.doc_no)
         const item = {
           doc_no: cc.doc_no || 'CC-CHECK',
           doc_date: docDate,
@@ -429,7 +451,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
           mc: cc.mc || '',
           serial: cc.serial || '',
           location: cc.location || '',
-          type: cc.type || 'Single',
+          type: ccType || 'Single',
         }
 
         if (mcKey) {
@@ -437,16 +459,30 @@ export default function PMPlan({ defaultTab = 'plan' }) {
           if (!prev || new Date(docDate) > new Date(prev.doc_date)) {
             byMachine.set(mcKey, item)
           }
+          if (ccType) {
+            const typedKey = `${mcKey}__${ccType}`
+            const prevTyped = byMachineTyped.get(typedKey)
+            if (!prevTyped || new Date(docDate) > new Date(prevTyped.doc_date)) {
+              byMachineTyped.set(typedKey, item)
+            }
+          }
         }
         if (serialKey) {
           const prev = bySerial.get(serialKey)
           if (!prev || new Date(docDate) > new Date(prev.doc_date)) {
             bySerial.set(serialKey, item)
           }
+          if (ccType) {
+            const typedKey = `${serialKey}__${ccType}`
+            const prevTyped = bySerialTyped.get(typedKey)
+            if (!prevTyped || new Date(docDate) > new Date(prevTyped.doc_date)) {
+              bySerialTyped.set(typedKey, item)
+            }
+          }
         }
       })
     }
-    return { bySerial, byMachine }
+    return { bySerial, byMachine, bySerialTyped, byMachineTyped }
   }, [centerChecksList])
 
   const cylinderDrivenPMRows = useMemo(() => {
@@ -457,9 +493,18 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       const type = String(cyl?.Type || '').trim()
       const existing = pmBySerial.get(normalizeSerial(serialOld))?.keeper
 
-      // Auto-resolve latest Center Check inspection date
-      const latestCC = (serialOld && latestCenterCheckMap.bySerial.get(normalizeSerial(serialOld))) ||
-                       (machine && latestCenterCheckMap.byMachine.get(normalizeMachineCode(machine))) ||
+      // Auto-resolve latest Center Check inspection date — matched per machine type
+      // (Single checks feed Single plans, Double checks feed Double plans). When the
+      // cylinder's own type is unknown, fall back to the legacy untyped lookup.
+      const rowCcType = cylTypeToCcType(cyl?.Type)
+      const serialLookup = normalizeSerial(serialOld)
+      const machineLookup = normalizeMachineCode(machine)
+      const latestCC = (serialOld && (rowCcType
+        ? latestCenterCheckMap.bySerialTyped.get(`${serialLookup}__${rowCcType}`)
+        : latestCenterCheckMap.bySerial.get(serialLookup))) ||
+                       (machine && (rowCcType
+        ? latestCenterCheckMap.byMachineTyped.get(`${machineLookup}__${rowCcType}`)
+        : latestCenterCheckMap.byMachine.get(machineLookup))) ||
                        null
 
       const rawFrequency = Number(existing?.Frequency_Value) || Number(existing?.PM_Type) || 90

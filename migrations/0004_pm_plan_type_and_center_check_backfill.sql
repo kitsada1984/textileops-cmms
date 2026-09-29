@@ -1,0 +1,15 @@
+-- 0004: PM plan machine type (Single/Double) + backfill center_checks type
+-- Part of CenterCheck -> PM Plan auto-sync by machine type.
+
+-- 1. pmplans needs a Type column to distinguish Single/Double Jersey plans
+ALTER TABLE pmplans ADD COLUMN Type TEXT;
+
+-- 2. Backfill: derive center check machine type from document number prefix
+--    (CS-S-* = Single Jersey, CS-D-* = Double Jersey) — system-generated prefixes
+UPDATE center_checks
+SET type = CASE
+  WHEN doc_no LIKE 'CS-D-%' THEN 'Double'
+  WHEN doc_no LIKE 'CS-S-%' THEN 'Single'
+  ELSE type
+END
+WHERE type IS NULL OR type = '' OR type = 'Single' AND doc_no LIKE 'CS-D-%';
