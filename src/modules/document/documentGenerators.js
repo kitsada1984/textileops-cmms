@@ -606,6 +606,9 @@ export function generateCenterCheckPdfProps(chk, context = {}) {
       c.mechanic || c.sign_name || '—',
     ])
 
+  // D1 returns booleans as strings "1"/"0"/"1.0"/"0.0" — coerce properly
+  const toBool = (val) => val === true || val === 1 || String(val).trim() === '1' || String(val).trim() === '1.0' || String(val).trim().toLowerCase() === 'true'
+
   const images = normalizeImagesList(chk.needle_images || chk.images, `รูปถ่ายการตรวจศูนย์เข็ม ${chk.mc || ''}`.trim())
 
   return {
@@ -644,17 +647,17 @@ export function generateCenterCheckPdfProps(chk, context = {}) {
       {
         title: 'รายการตรวจเช็คบำรุงรักษาเพิ่มเติม (Maintenance Checklist)',
         fields: [
-          { label: 'อัดจารบี (Greasing)', value: chk.greasing ? '✅ ดำเนินการแล้ว' : '—' },
-          { label: 'ถ่ายน้ำมันเกียร์ (Gear Oil Change)', value: chk.oil_change ? '✅ ดำเนินการแล้ว' : '—' },
+          { label: 'อัดจารบี (Greasing)', value: toBool(chk.greasing) ? '✅ ดำเนินการแล้ว' : '—' },
+          { label: 'ถ่ายน้ำมันเกียร์ (Gear Oil Change)', value: toBool(chk.oil_change) ? '✅ ดำเนินการแล้ว' : '—' },
           {
             label: 'สายพานส่งด้าย (Quality Feed Belts)',
             full: true,
             belts: [1, 2, 3, 4, 5].map((n) => ({
               tape: n,
-              checked: !!chk[`belt_tape${n}`],
+              checked: toBool(chk[`belt_tape${n}`]),
             })),
             value: [1, 2, 3, 4, 5]
-              .map((n) => `เทป ${n}: ${chk[`belt_tape${n}`] ? '☑ ผ่าน' : '☐'}`)
+              .map((n) => `เทป ${n}: ${toBool(chk[`belt_tape${n}`]) ? '☑ ผ่าน' : '☐'}`)
               .join('   |   '),
           },
         ],

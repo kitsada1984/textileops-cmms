@@ -244,6 +244,9 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
   // Normalized list of records
   const records = useMemo(() => {
     const list = rawRecords && rawRecords.length > 0 ? rawRecords : initialCenterChecks
+    // D1 returns booleans as strings "1"/"0"/"1.0"/"0.0" — coerce properly
+    // ("0" is truthy as a string, so !!val would wrongly show ✅ everywhere)
+    const toBool = (val) => val === true || val === 1 || String(val).trim() === '1' || String(val).trim() === '1.0' || String(val).trim().toLowerCase() === 'true'
     const parseJsonArray = (val) => {
       if (Array.isArray(val)) return val
       if (typeof val === 'string' && val.trim()) {
@@ -265,13 +268,13 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       counter_total: Number(r.counter_total || 0),
       items: parseJsonArray(r.items),
       needle_images: parseJsonArray(r.needle_images),
-      greasing: !!r.greasing,
-      oil_change: !!r.oil_change,
-      belt_tape1: !!r.belt_tape1,
-      belt_tape2: !!r.belt_tape2,
-      belt_tape3: !!r.belt_tape3,
-      belt_tape4: !!r.belt_tape4,
-      belt_tape5: !!r.belt_tape5,
+      greasing: toBool(r.greasing),
+      oil_change: toBool(r.oil_change),
+      belt_tape1: toBool(r.belt_tape1),
+      belt_tape2: toBool(r.belt_tape2),
+      belt_tape3: toBool(r.belt_tape3),
+      belt_tape4: toBool(r.belt_tape4),
+      belt_tape5: toBool(r.belt_tape5),
       greasing_text: r.greasing ? 'ดำเนินการแล้ว' : '—',
       oil_change_text: r.oil_change ? 'ดำเนินการแล้ว' : '—',
       yarn_belts_text: [1, 2, 3, 4, 5].filter((n) => r[`belt_tape${n}`]).map((n) => `เทป ${n}`).join(', ') || '—',
