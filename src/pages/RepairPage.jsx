@@ -15,6 +15,7 @@ import {
   StockTxnAPI,
   WorkOrderAPI,
   SpareNeedleRequestAPI,
+  RepairRequestAPI,
   calculateDuration,
   formatMinutesToThai,
   calculateInterruptionTotal,
@@ -365,7 +366,24 @@ function StepReport({ serial, cylinder, onSubmitted, onBack }) {
         repair_type: repairType,
       })
 
+      // Monthly running number, same pattern as existing records (RR202609-0056)
+      let requestNo = null
+      try {
+        const now = new Date()
+        const monthPrefix = `RR${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`
+        const existing = await RepairRequestAPI.list()
+        const maxSeq = (Array.isArray(existing) ? existing : [])
+          .map((r) => String(r.request_no || ''))
+          .filter((no) => no.startsWith(monthPrefix))
+          .map((no) => parseInt(no.slice(monthPrefix.length), 10) || 0)
+          .reduce((a, b) => Math.max(a, b), 0)
+        requestNo = `${monthPrefix}${String(maxSeq + 1).padStart(4, '0')}`
+      } catch (e) {
+        console.warn('Repair request_no generation warning:', e)
+      }
+
       let insertPayload = {
+        request_no: requestNo,
         cylinder_serial: serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || null,
         cylinder_location: cylinder?.Location || null,
         cylinder_standard: cylinder?.Standard || null,
