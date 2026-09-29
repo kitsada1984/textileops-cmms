@@ -310,6 +310,39 @@ export default function PdfPreviewModal({
 }) {
   const printRef = useRef(null)
 
+  // ── PRINT SECTION SELECTION ──
+  // null = print everything (default behavior, unchanged). Otherwise a Set of
+  // excluded section keys chosen from the picker bar (screen-only, never printed).
+  const [excludedKeys, setExcludedKeys] = useState(null)
+
+  const selectableItems = useMemo(() => {
+    const items = []
+    sections.forEach((s, i) => {
+      if (s?.title) items.push({ key: `sec-${i}`, label: s.title })
+    })
+    if (tableData?.title && tableData?.rows?.length) items.push({ key: 'table', label: tableData.title })
+    if (historyTable?.title && historyTable?.rows?.length) items.push({ key: 'history', label: historyTable.title })
+    if (images?.length) items.push({ key: 'images', label: 'รูปถ่ายประกอบ' })
+    if (remarks) items.push({ key: 'remarks', label: 'หมายเหตุและบันทึกเพิ่มเติม' })
+    if (signatories?.length) items.push({ key: 'sign', label: 'ลายเซ็นผู้เกี่ยวข้อง' })
+    return items
+  }, [sections, tableData, historyTable, images, remarks, signatories])
+
+  const isExcluded = (key) => excludedKeys instanceof Set && excludedKeys.has(key)
+  const toggleSectionKey = (key) =>
+    setExcludedKeys((prev) => {
+      const next = prev instanceof Set ? new Set(prev) : new Set()
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  const selectAllSections = () => setExcludedKeys(null)
+
+  // reset to "print everything" whenever a new document is opened
+  useEffect(() => {
+    if (open) setExcludedKeys(null)
+  }, [open, docNo])
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape' && open) onClose()
@@ -391,6 +424,42 @@ export default function PdfPreviewModal({
         </div>
       </div>
 
+      {/* ── SECTION PICKER BAR (screen-only, never printed) ── */}
+      {selectableItems.length > 1 && (
+        <div className="print:hidden bg-slate-800/90 border-b border-slate-700/80 px-4 py-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-slate-300 text-[11px] font-bold mr-1">พิมพ์หัวข้อ:</span>
+          <button
+            type="button"
+            onClick={selectAllSections}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+              excludedKeys === null || excludedKeys.size === 0
+                ? 'bg-blue-600 text-white border-blue-500'
+                : 'bg-slate-900 text-slate-300 border-slate-600 hover:border-slate-400'
+            }`}
+          >
+            พิมพ์ทั้งหมด
+          </button>
+          {selectableItems.map((item) => {
+            const active = !isExcluded(item.key)
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => toggleSectionKey(item.key)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer max-w-[240px] truncate ${
+                  active
+                    ? 'bg-emerald-600/90 text-white border-emerald-500'
+                    : 'bg-slate-900 text-slate-500 border-slate-700 line-through hover:border-slate-500'
+                }`}
+                title={item.label}
+              >
+                {active ? '✓ ' : ''}{item.label.length > 34 ? item.label.slice(0, 34) + '…' : item.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* ── PRINT STYLES ── */}
       <style>{`
         @media print {
@@ -401,9 +470,10 @@ export default function PdfPreviewModal({
             visibility: visible;
           }
           #printable-pdf-document {
-            position: absolute;
-            left: 0;
-            top: 0;
+            position: static !important;
+            overflow: visible !important;
+            height: auto !important;
+            min-height: auto !important;
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
@@ -414,6 +484,13 @@ export default function PdfPreviewModal({
             color: #000000 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+          }
+          #printable-pdf-document table {
+            page-break-inside: auto;
+          }
+          #printable-pdf-document tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
           }
           @page {
             size: A4 portrait;
@@ -525,7 +602,7 @@ export default function PdfPreviewModal({
 
             {/* ── SECTION GROUPS ── */}
             <div className="space-y-4">
-              {sections.map((sec, idx) => (
+              {sections.map((sec, idx) => isExcluded(`sec-${idx}`) ? null : (
                 <div key={idx} className="space-y-1.5">
                   {sec.title && (
                     <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
@@ -573,7 +650,7 @@ export default function PdfPreviewModal({
               ))}
 
               {/* ── DETAIL TABLE (IF PROVIDED) ── */}
-              {tableData && tableData.rows && tableData.rows.length > 0 && (
+              {!isExcluded('table') && tableData && tableData.rows && tableData.rows.length > 0 && (
                 <div className="space-y-1.5 mt-4">
                   {tableData.title && (
                     <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
@@ -610,7 +687,7 @@ export default function PdfPreviewModal({
               )}
 
               {/* ── HISTORY TABLE (IF PROVIDED) ── */}
-              {historyTable && historyTable.rows && historyTable.rows.length > 0 && (
+              {!isExcluded('history') && historyTable && historyTable.rows && historyTable.rows.length > 0 && (
                 <div className="space-y-1.5 mt-4">
                   {historyTable.title && (
                     <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
@@ -647,10 +724,10 @@ export default function PdfPreviewModal({
               )}
 
               {/* ── ATTACHED PHOTO GALLERY (STANDARDIZED PHOTO SHOWCASE) ── */}
-              <PdfPhotoGallery images={images} docAccent={theme.accent} />
+              {!isExcluded('images') && <PdfPhotoGallery images={images} docAccent={theme.accent} />}
 
               {/* ── REMARKS / NOTES ── */}
-              {remarks && (
+              {!isExcluded('remarks') && remarks && (
                 <div className="space-y-1 mt-4">
                   <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
                     <span className="w-2 h-3.5 bg-slate-600 rounded-xs" />
@@ -665,7 +742,7 @@ export default function PdfPreviewModal({
           </div>
 
           {/* ── BOTTOM SECTION: SIGNATURES & VERIFICATION ── */}
-          <div className="mt-8 pt-4 border-t-2 border-slate-900 space-y-5">
+          <div className={`mt-8 pt-4 border-t-2 border-slate-900 space-y-5 ${isExcluded('sign') ? 'hidden' : ''}`}>
             {/* 4 Standard Signatures */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
               {signatories.map((sig, sIdx) => (
