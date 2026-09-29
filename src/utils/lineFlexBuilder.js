@@ -5,6 +5,20 @@
 
 import { resolveAppBaseUrl } from './telegram'
 
+// D1 stores JSON columns as strings — normalize before reading nested fields.
+export function ensureJson(val, fallback) {
+  if (val === null || val === undefined) return fallback
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      return parsed === null || parsed === undefined ? fallback : parsed
+    } catch {
+      return fallback
+    }
+  }
+  return val
+}
+
 export function buildPWALineUrl(baseUrl, path, queryParams = {}) {
   const cleanBase = resolveAppBaseUrl(baseUrl)
   const cleanPath = path.startsWith('/') ? path : `/${path}`
@@ -672,8 +686,9 @@ export function buildSpareNeedleRequestFlexMessage(snr = {}, cylinder = {}, appB
   const shift = snr.shift || 'กะเช้า'
   const comment = snr.request_comment || ''
 
-  const dial = snr.tracks_requested?.dial || {}
-  const cyl = snr.tracks_requested?.cylinder || {}
+  const tracks = ensureJson(snr.tracks_requested, {})
+  const dial = tracks.dial || {}
+  const cyl = tracks.cylinder || {}
   const trackItems = []
   if (dial.t1 > 0) trackItems.push(`Dial Track 1: ${dial.t1} เล่ม`)
   if (dial.t2 > 0) trackItems.push(`Dial Track 2: ${dial.t2} เล่ม`)

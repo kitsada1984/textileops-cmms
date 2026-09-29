@@ -5,6 +5,7 @@
 import { db } from '../api/dbClient'
 import { resolveAppBaseUrl } from './telegram'
 import { buildSpareNeedlePreparedFlexMessage, buildSpareNeedleReceivedFlexMessage } from './lineSpareCards'
+import { ensureJson } from './lineFlexBuilder'
 import {
   buildRepairRequestFlexMessage,
   buildTechnicianAssignedFlexMessage,
@@ -602,7 +603,8 @@ export async function notifyLineSpareNeedlePrepared(snr, cylinder) {
     const reqId = snr.id || ''
     const directUrl = `${appUrl}/repair/${encodeURIComponent(serial)}?needle_req=${encodeURIComponent(reqId)}&step=ack&openExternalBrowser=1`
 
-    const issuedList = (snr.issued_items || []).map(item => {
+    const issuedRaw = ensureJson(snr.issued_items, [])
+    const issuedList = (Array.isArray(issuedRaw) ? issuedRaw : []).map(item => {
       const isOff = item.isOffSystem || item.sourceType === 'OFF_SYSTEM' || item.setId === 'OFF_SYSTEM'
       const offTag = isOff ? ' [เข็มนอกระบบ]' : ''
       return `• ${item.needleModel || item.setId || 'เข็ม'}${offTag}: ${item.quantity || 0} ตัว (${item.grade || 'เกรด B'})`

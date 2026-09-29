@@ -1007,13 +1007,24 @@ export function normalizeSpareNeedleRequest(item = {}) {
     gauge: item.gauge || item.Gauge || '',
     technician_name: item.technician_name || item.technician || 'ช่างประจำกะ',
     shift: item.shift || 'กะเช้า',
-    tracks_requested: item.tracks_requested || {
-      dial: { t1: 0, t2: 0 },
-      cylinder: { t1: 0, t2: 0, t3: 0, t4: 0 },
-    },
+    tracks_requested: (() => {
+      let t = item.tracks_requested
+      if (typeof t === 'string') {
+        try { t = JSON.parse(t) } catch { t = null }
+      }
+      return t && typeof t === 'object'
+        ? t
+        : { dial: { t1: 0, t2: 0 }, cylinder: { t1: 0, t2: 0, t3: 0, t4: 0 } }
+    })(),
     request_comment: item.request_comment || '',
     status: item.status || 'PENDING', // PENDING | PREPARED | COMPLETED | CANCELLED
-    issued_items: Array.isArray(item.issued_items) ? item.issued_items : [],
+    issued_items: (() => {
+      let v = item.issued_items
+      if (typeof v === 'string') {
+        try { v = JSON.parse(v) } catch { v = [] }
+      }
+      return Array.isArray(v) ? v : []
+    })(),
     issuer_name: item.issuer_name || '',
     issuer_comment: item.issuer_comment || '',
     prepared_at: item.prepared_at || null,

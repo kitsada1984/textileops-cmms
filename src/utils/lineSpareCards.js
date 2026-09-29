@@ -3,7 +3,7 @@
  * LINE Flex Message cards for the Spare Needle flow (prepared / received),
  * matching the visual language of lineFlexBuilder cards.
  */
-import { buildPWALineUrl } from './lineFlexBuilder'
+import { buildPWALineUrl, ensureJson } from './lineFlexBuilder'
 
 /**
  * Card: Spare needle PREPARED (stock keeper finished preparing) — green theme,
@@ -17,7 +17,8 @@ export function buildSpareNeedlePreparedFlexMessage(snr = {}, cylinder = {}, app
   const issuer = snr.issuer_name || 'สโตร์เข็ม'
   const comment = snr.issuer_comment || ''
 
-  const issuedItems = Array.isArray(snr.issued_items) ? snr.issued_items : []
+  const issuedRaw = ensureJson(snr.issued_items, [])
+  const issuedItems = Array.isArray(issuedRaw) ? issuedRaw : []
   const issuedLines = issuedItems.map((item) => {
     const isOff = item.isOffSystem || item.sourceType === 'OFF_SYSTEM' || item.setId === 'OFF_SYSTEM'
     const offTag = isOff ? ' [เข็มนอกระบบ]' : ''

@@ -3,6 +3,7 @@ import {
   buildSpareNeedlePreparedFlexMessage,
   buildSpareNeedleReceivedFlexMessage,
 } from './lineSpareCards'
+import { buildSpareNeedleRequestFlexMessage } from './lineFlexBuilder'
 
 const BASE = 'https://cmms.gemmaknits.com'
 
@@ -64,5 +65,44 @@ describe('Spare Needle LINE cards (prepared / received)', () => {
     const received = buildSpareNeedleReceivedFlexMessage(snr, null, 'https://textileops-cmms.vercel.app')
     expect(JSON.stringify(prepared)).not.toContain('vercel.app')
     expect(JSON.stringify(received)).not.toContain('vercel.app')
+  })
+})
+describe('D1 JSON-string fields (regression)', () => {
+  it('request card renders track details when tracks_requested arrives as a JSON string', () => {
+    // exact shape D1 returns for SNR-260929-5935
+    const snrFromD1 = {
+      id: 'SNR-260929-5935',
+      request_no: 'SNR-260929-5935',
+      machine_mc: 'LA341M',
+      cylinder_serial: '54123',
+      gauge: '28',
+      technician_name: 'ช.ต๋อง',
+      shift: 'กะเช้า',
+      tracks_requested: '{"dial":{"t1":100,"t2":0},"cylinder":{"t1":200,"t2":0,"t3":0,"t4":0}}',
+      status: 'PENDING',
+    }
+    const card = buildSpareNeedleRequestFlexMessage(snrFromD1, null, BASE)
+    const text = JSON.stringify(card)
+    expect(text).toContain('Dial Track 1: 100')
+    expect(text).toContain('Cylinder Track 1: 200')
+    expect(text).not.toContain('ระบุตามหน้างาน')
+  })
+
+  it('prepared card renders issued items when issued_items arrives as a JSON string', () => {
+    const snrFromD1 = {
+      id: 'SNR-260929-1342',
+      request_no: 'SNR-260929-1342',
+      machine_mc: 'LA341M',
+      cylinder_serial: '54123',
+      technician_name: 'ช.ต๋อง',
+      issuer_name: 'Tuk',
+      issued_items: '[{"setId":"NS-0096","needleModel":"WO 121.41 G 0013","gauge":"28G","grade":"เกรด B","quantity":10,"sourceType":"IN_SYSTEM","isOffSystem":false}]',
+      status: 'PREPARED',
+    }
+    const card = buildSpareNeedlePreparedFlexMessage(snrFromD1, null, BASE)
+    const text = JSON.stringify(card)
+    expect(text).toContain('WO 121.41 G 0013')
+    expect(text).toContain('× 10 ตัว')
+    expect(text).not.toContain('ตามรายการที่ขอ')
   })
 })
