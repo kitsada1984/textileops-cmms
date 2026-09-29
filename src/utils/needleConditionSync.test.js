@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCylinderInspectionSync,
+  sortInspectionsNewestFirst,
   CYLINDER_NEEDS_SERVICE,
   CYLINDER_STANDARD,
   WORN_NEEDLE_STATUSES,
@@ -49,5 +50,32 @@ describe('buildCylinderInspectionSync', () => {
   it('ignores a missing date but still applies the status rule', () => {
     expect(buildCylinderInspectionSync({ inspectionStatus: 'สึกมาก(ควรเปลี่ยน)' }))
       .toEqual({ Status_Now: CYLINDER_NEEDS_SERVICE })
+  })
+})
+
+describe('sortInspectionsNewestFirst', () => {
+  it('puts the newest inspection of the same day first (save-time tiebreak)', () => {
+    const rows = [
+      { id: 'a', doc_date: '2026-09-29', created_at: '2026-09-29T14:16:04.414Z', status: 'สึกมาก(ควรเปลี่ยน)' },
+      { id: 'b', doc_date: '2026-09-29', created_at: '2026-09-29T14:16:29.445Z', status: 'สึกเล็กน้อย' },
+    ]
+    expect(sortInspectionsNewestFirst(rows).map((r) => r.id)).toEqual(['b', 'a'])
+  })
+
+  it('sorts by inspection date first, then by time', () => {
+    const rows = [
+      { id: 'old', doc_date: '2026-09-01', created_at: '2026-09-28T10:00:00Z' },
+      { id: 'new', doc_date: '2026-09-20', created_at: '2026-09-20T01:00:00Z' },
+      { id: 'mid', doc_date: '2026-09-10', created_at: '2026-09-11T10:00:00Z' },
+    ]
+    expect(sortInspectionsNewestFirst(rows).map((r) => r.id)).toEqual(['new', 'mid', 'old'])
+  })
+
+  it('handles missing or invalid dates without throwing', () => {
+    const rows = [{ id: 'x' }, { id: 'y', doc_date: 'not-a-date' }, { id: 'z', doc_date: '2026-09-29' }]
+    const out = sortInspectionsNewestFirst(rows).map((r) => r.id)
+    expect(out[0]).toBe('z')
+    expect(out).toHaveLength(3)
+    expect(sortInspectionsNewestFirst(undefined)).toEqual([])
   })
 })

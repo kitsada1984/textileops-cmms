@@ -43,3 +43,21 @@ export function buildCylinderInspectionSync({
 
   return fields
 }
+
+const toTime = (value) => {
+  const t = new Date(value || 0).getTime()
+  return Number.isFinite(t) ? t : 0
+}
+
+/**
+ * Newest inspection first: by inspection date, then by save time. Without the
+ * save-time tiebreak two inspections on the same day kept their insertion
+ * order, so the older (worse) result stayed on screen as "the latest".
+ */
+export function sortInspectionsNewestFirst(records = []) {
+  return [...(Array.isArray(records) ? records : [])].sort((a, b) => {
+    const dateDiff = toTime(b?.doc_date) - toTime(a?.doc_date)
+    if (dateDiff !== 0) return dateDiff
+    return toTime(b?.created_at || b?.updated_at) - toTime(a?.created_at || a?.updated_at)
+  })
+}

@@ -56,7 +56,7 @@ import { generateNeedleConditionPdfProps } from '../utils/pdfDocGenerators'
 import { applyFilterSort } from '../utils/filterSort'
 import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
 import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../modules/media'
-import { buildCylinderInspectionSync } from '../utils/needleConditionSync'
+import { buildCylinderInspectionSync, sortInspectionsNewestFirst } from '../utils/needleConditionSync'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
 
@@ -247,12 +247,9 @@ export default function NeedleCondition() {
     const history = new Map()
     const latest = new Map()
 
-    // Sort all records by doc_date / created_at descending
-    const sorted = [...records].sort((a, b) => {
-      const dateA = new Date(a.doc_date || a.created_at || 0).getTime()
-      const dateB = new Date(b.doc_date || b.created_at || 0).getTime()
-      return dateB - dateA
-    })
+    // Newest first: inspection date, then save time — two inspections on the
+    // same day must not fall back to insertion order (the older one used to win).
+    const sorted = sortInspectionsNewestFirst(records)
 
     sorted.forEach((rec) => {
       const key = normalizeSerial(rec.serial) || normalizeMachine(rec.machine_mc) || rec.id
