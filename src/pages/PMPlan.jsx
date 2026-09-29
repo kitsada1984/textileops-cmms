@@ -1432,18 +1432,19 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   return (
     <div className="space-y-4">
       {/* ── SUB-TAB SWITCHER ─────────────────────────────────── */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap pb-2 sm:pb-1.5">
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 w-full sm:w-fit">
         <button
           type="button"
           onClick={() => setActiveTab('plan')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'plan'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Calendar size={15} />
-          <span>แผน PM (PM Plan)</span>
+          <span className="sm:hidden">แผน PM</span>
+          <span className="hidden sm:inline">แผน PM (PM Plan)</span>
           <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
             activeTab === 'plan' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
           }`}>
@@ -1454,40 +1455,43 @@ export default function PMPlan({ defaultTab = 'plan' }) {
         <button
           type="button"
           onClick={() => setActiveTab('center_check')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'center_check'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Target size={15} />
-          <span>ประวัติเช็คศูนย์ (Center Checks)</span>
+          <span className="sm:hidden">ประวัติเช็คศูนย์</span>
+          <span className="hidden sm:inline">ประวัติเช็คศูนย์ (Center Checks)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('needle')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'needle'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Sparkles size={15} />
-          <span>สภาพเข็ม (Needle Inspection)</span>
+          <span className="sm:hidden">สภาพเข็ม</span>
+          <span className="hidden sm:inline">สภาพเข็ม (Needle Inspection)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('log')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'log'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <ScrollText size={15} />
-          <span>ประวัติ Log PM (PM Log)</span>
+          <span className="sm:hidden">Log PM</span>
+          <span className="hidden sm:inline">ประวัติ Log PM (PM Log)</span>
         </button>
       </div>
 
@@ -1663,21 +1667,22 @@ export default function PMPlan({ defaultTab = 'plan' }) {
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <button
                 type="button"
-                className="btn-outline text-xs px-3.5 py-2 flex items-center gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shadow-sm font-bold"
+                className="btn-outline text-xs px-3 sm:px-3.5 py-2 flex items-center justify-center gap-1.5 flex-1 sm:flex-none border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shadow-sm font-bold"
                 onClick={syncLatestFromCenterCheck}
                 disabled={syncingPM}
                 title="ดึงวันที่เช็คศูนย์ล่าสุดของแต่ละเครื่องมาอัปเดตแผน PM อัตโนมัติ"
               >
                 <Zap size={14} className={syncingPM ? 'animate-bounce text-amber-500' : 'text-amber-500'} />
-                <span>{syncingPM ? 'กำลังซิงค์...' : '⚡ ซิงค์วันที่จากประวัติเช็คศูนย์'}</span>
+                <span className="sm:hidden">{syncingPM ? 'กำลังซิงค์...' : '⚡ ซิงค์วันที่เช็คศูนย์'}</span>
+                <span className="hidden sm:inline">{syncingPM ? 'กำลังซิงค์...' : '⚡ ซิงค์วันที่จากประวัติเช็คศูนย์'}</span>
               </button>
 
               <button
                 type="button"
-                className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+                className="btn-primary text-xs px-3 sm:px-4 py-2 flex items-center justify-center gap-1.5 flex-1 sm:flex-none shadow-md shadow-blue-500/20"
                 onClick={openSyncPMModal}
                 disabled={syncingPM || !canAdd || !cylinderPMSource.length}
               >
@@ -1694,11 +1699,11 @@ export default function PMPlan({ defaultTab = 'plan' }) {
                 <thead>
                   <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                     {cols.map((c) => (
-                      <th key={c.field || c.id} style={c.width ? { width: c.width, minWidth: c.width } : undefined} className="py-3 px-3 text-left whitespace-nowrap">
+                      <th key={c.field || c.id} style={c.width ? { width: c.width, minWidth: c.width } : undefined} className="py-2 px-2 sm:py-3 sm:px-3 text-left whitespace-nowrap">
                         {pmColumnLabel(c, t)}
                       </th>
                     ))}
-                    <th className="py-3 px-3 text-center w-20">จัดการ</th>
+                    <th className="py-2 px-2 sm:py-3 sm:px-3 text-center w-20">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -1717,11 +1722,11 @@ export default function PMPlan({ defaultTab = 'plan' }) {
                       className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
                     >
                       {cols.map((c) => (
-                        <td key={c.field || c.id} style={c.width ? { width: c.width, minWidth: c.width } : undefined} className="py-2.5 px-3 whitespace-nowrap">
+                        <td key={c.field || c.id} style={c.width ? { width: c.width, minWidth: c.width } : undefined} className="py-2 px-2 sm:py-2.5 sm:px-3 whitespace-nowrap">
                           {renderPMCell(p, c)}
                         </td>
                       ))}
-                      <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <td onClick={(e) => e.stopPropagation()} className="py-2 px-2 sm:py-2.5 sm:px-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
