@@ -3,13 +3,24 @@ import { createPortal } from 'react-dom'
 import {
   Layers, Package, ScrollText, AlertTriangle, Box, ShieldCheck, CheckCircle2, Clock,
   AlertOctagon, PackageCheck, ArrowDownLeft, ArrowUpRight, SlidersHorizontal, Trash2,
-  Search, ChevronRight, X, LayoutGrid, Table, RotateCw, Download, PlusCircle, ArrowLeftRight,
+  Search, ChevronRight, X, LayoutGrid, Table, RotateCw, RotateCcw, Download, PlusCircle, ArrowLeftRight,
   Edit3, History, Camera, Upload, ZoomIn, ZoomOut, RefreshCw, Check, Sparkles, MapPin,
   ChevronDown, Image as ImageIcon, Eye, Cloud, ExternalLink, CheckCircle
 } from 'lucide-react'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
-import { classifyNeedleAction, needleActionLabel, needleActionBadgeClass, sumNeedleLedger } from '../utils/needleLedger'
+import {
+  classifyNeedleAction,
+  needleActionLabel,
+  needleActionBadgeClass,
+  sumNeedleLedger,
+  VOID_ACTION_LABEL,
+  isReversibleLedgerAction,
+  findVoidEntry,
+  buildVoidLedgerEntry,
+  needleStatusForQuantity,
+  formatSignedQty,
+} from '../utils/needleLedger'
 import {
   NeedleSetAPI, NeedleHistoryAPI, SpareNeedleRequestAPI, normalizeNeedleSet, normalizeNeedleLog, normalizeSpareNeedleRequest
 } from '../api/entities'
@@ -67,6 +78,11 @@ export default function NeedleStock() {
   const [selectedEditReq, setSelectedEditReq] = useState(null)
   const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false)
   const [deleteAckReturned, setDeleteAckReturned] = useState(false)
+
+  // Ledger reversal (ยกเลิกรายการ + คืนยอด)
+  const [voidTarget, setVoidTarget] = useState(null)
+  const [voidReason, setVoidReason] = useState('')
+  const [voidSaving, setVoidSaving] = useState(false)
   const [selectedDeleteReq, setSelectedDeleteReq] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -179,6 +195,67 @@ export default function NeedleStock() {
       if (obj.stockDetail && obj.stockDetail.trim()) next.stockDetail = new Set([...prev.stockDetail, obj.stockDetail.trim()])
       return next
     })
+  }
+
+  // Reverse a manual stock movement from the ledger (คืนยอด + เก็บบันทึกเดิมไว้)
+  const handleConfirmVoidLedger = async () => {
+    const log = voidTarget
+    if (!log) return
+    if (!voidReason.trim()) {
+      toast.warning('กรุณาระบุเหตุผล', 'ต้องระบุเหตุผลในการยกเลิกรายการ เพื่อให้ตรวจสอบย้อนหลังได้')
+      return
+    }
+    if (!isReversibleLedgerAction(log.actionType)) {
+      toast.warning('ยกเลิกไม่ได้', 'รายการนี้ต้องยกเลิกผ่านใบเบิก (ลบใบเบิกเพื่อคืนสต็อกอัตโนมัติ)')
+      return
+    }
+    if (findVoidEntry(historyLogs, log.logId || log.id)) {
+      toast.warning('รายการนี้ถูกยกเลิกไปแล้ว', 'ไม่สามารถยกเลิกซ้ำได้')
+      return
+    }
+
+    setVoidSaving(true)
+    try {
+      let setRecord = needleSets.find((x) => x.id === log.setId || x.setId === log.setId)
+      if (!setRecord) {
+        try { setRecord = await NeedleSetAPI.getById(log.setId) } catch {}
+      }
+      if (!setRecord) {
+        toast.error('ไม่พบชุดเข็ม', `ไม่พบชุด ${log.setId} ในคลัง — ยกเลิกรายการไม่ได้`)
+        return
+      }
+
+      const entry = buildVoidLedgerEntry({
+        log,
+        set: setRecord,
+        technician: user?.full_name || user?.username || 'ผู้ดูแลสต็อก',
+        reason: voidReason.trim(),
+      })
+
+      await NeedleSetAPI.update(setRecord.id || setRecord.setId, {
+        ...setRecord,
+        quantity: entry.balanceAfter,
+        Quantity: entry.balanceAfter,
+        status: needleStatusForQuantity(entry.balanceAfter),
+      })
+      await NeedleHistoryAPI.create(entry)
+
+      setNeedleSets((prev) => prev.map((x) => (
+        (x.id === setRecord.id || x.setId === setRecord.setId)
+          ? { ...x, quantity: entry.balanceAfter, Quantity: entry.balanceAfter, status: needleStatusForQuantity(entry.balanceAfter) }
+          : x
+      )))
+      setHistoryLogs((prev) => [entry, ...prev])
+      setVoidTarget(null)
+      setVoidReason('')
+      toast.success('ยกเลิกรายการสำเร็จ', `คืนยอด ${Math.abs(entry.qtyChange).toLocaleString()} เล่ม → คงเหลือ ${entry.balanceAfter.toLocaleString()} เล่ม`)
+      loadData(true)
+    } catch (err) {
+      console.error('Void ledger entry error:', err)
+      toast.error('ยกเลิกรายการไม่สำเร็จ', err.message || String(err))
+    } finally {
+      setVoidSaving(false)
+    }
   }
 
   // Handle Delete Spare Needle Request (with Automatic Stock Refund)
@@ -1323,6 +1400,7 @@ export default function NeedleStock() {
                       <th className="p-3.5">ปลายทาง / ที่มา / สาเหตุ</th>
                       <th className="p-3.5">ผู้ทำรายการ</th>
                       <th className="p-3.5 text-center">รูปถ่ายหลักฐาน</th>
+                      <th className="p-3.5 text-center">ยกเลิกรายการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1397,6 +1475,34 @@ export default function NeedleStock() {
                               ) : (
                                 <span className="text-slate-300 text-xs">-</span>
                               )}
+                            </td>
+                            <td className="p-3.5 text-center">
+                              {(() => {
+                                if (!isReversibleLedgerAction(act)) {
+                                  return <span className="text-slate-300 text-xs">-</span>
+                                }
+                                const voided = findVoidEntry(historyLogs, log.logId || log.id)
+                                if (voided) {
+                                  return (
+                                    <span
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200"
+                                      title={`ยกเลิกแล้วเมื่อ ${voided.dateAction || ''} โดย ${voided.technician || ''}`}
+                                    >
+                                      <RotateCcw className="w-3 h-3" /> ยกเลิกแล้ว
+                                    </span>
+                                  )
+                                }
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setVoidTarget(log); setVoidReason('') }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition cursor-pointer"
+                                    title="ยกเลิกรายการนี้ และคืนยอดกลับเข้าชุดเข็ม"
+                                  >
+                                    <RotateCcw className="w-3 h-3" /> ยกเลิก + คืนยอด
+                                  </button>
+                                )
+                              })()}
                             </td>
                           </tr>
                         )
@@ -1739,6 +1845,91 @@ export default function NeedleStock() {
           toast.success(`อัปเดตใบเบิกเข็ม ${updatedReq.request_no || updatedReq.id} เรียบร้อยแล้ว`)
         }}
       />
+
+      {/* 0.2b LEDGER VOID CONFIRMATION (ยกเลิกรายการ + คืนยอด) */}
+      {voidTarget && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => !voidSaving && setVoidTarget(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">ยกเลิกรายการสต็อก &amp; คืนยอด</h3>
+                <p className="text-xs text-slate-500 font-mono">{voidTarget.setId} · {voidTarget.logId || voidTarget.id}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-1.5 text-xs text-slate-700 mb-4">
+              <div className="flex justify-between">
+                <span className="text-slate-500">ประเภทรายการ:</span>
+                <span className="font-bold">{needleActionLabel(voidTarget.actionType)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">จำนวนที่เปลี่ยน:</span>
+                <span className={`font-bold ${(parseInt(voidTarget.qtyChange, 10) || 0) > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {formatSignedQty(voidTarget.qtyChange)} เล่ม
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">ผู้ทำรายการ:</span>
+                <span className="font-semibold">{voidTarget.technician || '—'}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1.5">
+                <span className="text-slate-500">ยอดคงเหลือหลังคืน:</span>
+                <span className="font-bold text-amber-700">
+                  {Math.max(0, (parseInt(needleSets.find((x) => x.id === voidTarget.setId || x.setId === voidTarget.setId)?.quantity, 10) || 0) - (parseInt(voidTarget.qtyChange, 10) || 0)).toLocaleString()} เล่ม
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-[11px] text-amber-800 leading-relaxed mb-4">
+              ระบบจะ <strong>คืนยอดกลับเข้าชุดเข็ม</strong> และบันทึกประวัติการยกเลิกรายการใหม่ (รายการเดิมยังอยู่เพื่อตรวจสอบย้อนหลัง)
+            </div>
+
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">เหตุผลในการยกเลิก *</label>
+            <input
+              className="input w-full mb-5"
+              placeholder="เช่น บันทึกจำนวนผิด, เบิกซ้ำ"
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+            />
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={voidSaving}
+                onClick={() => setVoidTarget(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={voidSaving || !voidReason.trim()}
+                onClick={handleConfirmVoidLedger}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                {voidSaving ? (
+                  <span>กำลังคืนยอด...</span>
+                ) : (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>ยืนยันยกเลิก &amp; คืนยอด</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 0.3 DELETE CONFIRMATION MODAL WITH AUTO STOCK RETURN */}
       {deleteConfirmModalOpen && selectedDeleteReq && createPortal(

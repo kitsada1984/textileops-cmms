@@ -19,7 +19,7 @@ export function classifyNeedleAction(actionType) {
 
   if (act.includes('รับเข้า') || act.includes('Stock In') || act.includes('RETURN_SPARE')) return 'in'
   if (act.includes('เบิกออก') || act.includes('Stock Out') || act.startsWith('ISSUE_SPARE')) return 'out'
-  if (act.includes('ตัดยอด') || act.includes('Adjustment') || act.includes('เปลี่ยนเกรด') || act.includes('คัดแยก')) return 'adjust'
+  if (act.includes('ตัดยอด') || act.includes('Adjustment') || act.includes('เปลี่ยนเกรด') || act.includes('คัดแยก') || act.includes('ยกเลิกรายการ')) return 'adjust'
   if (act.includes('ตัดทิ้ง') || act.includes('Scrap') || act.includes('ปลดระวาง')) return 'scrap'
   return 'other'
 }
@@ -103,4 +103,83 @@ export function sumNeedleLedger(logs = []) {
   }
 
   return { received, issued, scrapped, returned }
+}
+
+/* ── Reversal (ยกเลิกรายการ + คืนยอด) ────────────────────────────────────── */
+
+export const VOID_ACTION_LABEL = 'ยกเลิกรายการ (Void)'
+
+// Only the four manual movements written by the stock screen can be reversed
+// from the ledger; spare-needle entries are reversed by deleting the request
+// (which restores stock through its own verified path).
+/** The four manual movements written by the stock screen (exact labels). */
+export const MANUAL_MOVEMENT_ACTIONS = [
+  'รับเข้า (Stock In)',
+  'เบิกออก (Stock Out)',
+  'ตัดยอด (Adjustment)',
+  'ตัดทิ้ง (Scrap)',
+]
+
+export function isReversibleLedgerAction(actionType) {
+  return MANUAL_MOVEMENT_ACTIONS.includes(String(actionType || '').trim())
+}
+
+export function formatSignedQty(n) {
+  const v = parseInt(n, 10) || 0
+  return v > 0 ? `+${v.toLocaleString()}` : v.toLocaleString()
+}
+
+/** Has this ledger entry already been reversed? */
+export function findVoidEntry(logs = [], logId) {
+  if (!logId) return null
+  const needle = String(logId)
+  return (Array.isArray(logs) ? logs : []).find(
+    (l) => l?.actionType === VOID_ACTION_LABEL && String(l?.remarks || '').includes(needle)
+  ) || null
+}
+
+/**
+ * Builds the reversal entry for a manual movement: it applies the opposite
+ * quantity to the set and documents the original entry (audit trail is kept —
+ * the original row is never deleted).
+ */
+export function buildVoidLedgerEntry({ log = {}, set = {}, technician = '', reason = '', now = new Date() } = {}) {
+  const original = parseInt(log.qtyChange, 10) || 0
+  const currentBal = parseInt(set.quantity, 10) || 0
+  const reverseQty = -original
+  const balanceAfter = Math.max(0, currentBal + reverseQty)
+  const originalId = log.logId || log.id || ''
+  const stamp = now.getTime()
+
+  return {
+    id: `LOG-VOID-${stamp}-${Math.floor(Math.random() * 1000)}`,
+    logId: `LOG-VOID-${stamp}-${Math.floor(Math.random() * 1000)}`,
+    setId: log.setId,
+    actionType: VOID_ACTION_LABEL,
+    movementType: 'VOID',
+    oldGrade: set.grade || log.oldGrade || '',
+    newGrade: set.grade || log.newGrade || '',
+    conditionDetail: set.conditionDetail || log.conditionDetail || '',
+    quantity: Math.abs(reverseQty),
+    qtyChange: reverseQty,
+    balanceAfter,
+    dateAction: now.toISOString().slice(0, 10),
+    technician,
+    remarks: `ยกเลิกรายการ "${log.actionType}" (${formatSignedQty(original)}) เหตุผล: ${reason || '-'} [อ้างอิง ${originalId}]`,
+    images: [],
+    stockDetail: log.stockDetail || 'PM',
+    targetMachine: log.targetMachine || '',
+    sourceFrom: '',
+    scrapReason: '',
+    createdAt: now.toISOString(),
+    _void: { originalId, originalAction: log.actionType, originalQty: original, balanceAfter },
+  }
+}
+
+/** Stock-status label for a balance (same thresholds as the rest of the module). */
+export function needleStatusForQuantity(qty) {
+  const n = parseInt(qty, 10) || 0
+  if (n <= 0) return 'หมดสต็อก'
+  if (n <= 100) return 'สต็อกเหลือน้อย'
+  return 'พร้อมใช้งาน'
 }
