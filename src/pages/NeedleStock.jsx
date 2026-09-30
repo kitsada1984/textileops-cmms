@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
+import { classifyNeedleAction, needleActionLabel, needleActionBadgeClass, sumNeedleLedger } from '../utils/needleLedger'
 import {
   NeedleSetAPI, NeedleHistoryAPI, SpareNeedleRequestAPI, normalizeNeedleSet, normalizeNeedleLog, normalizeSpareNeedleRequest
 } from '../api/entities'
@@ -284,22 +285,11 @@ export default function NeedleStock() {
       if (qty <= 100) lowStockCount++
     })
 
-    // Ledger movements KPI
-    let totalReceived = 0
-    let totalIssued = 0
-    let totalScrappedAccum = 0
-
-    historyLogs.forEach(l => {
-      const act = l.actionType || ''
-      const change = Math.abs(parseInt(l.qtyChange, 10) || 0)
-      if (act.includes('รับเข้า') || act.includes('Stock In')) {
-        totalReceived += change
-      } else if (act.includes('เบิกออก') || act.includes('Stock Out')) {
-        totalIssued += change
-      } else if (act.includes('ตัดทิ้ง') || act.includes('Scrap') || act.includes('ปลดระวาง')) {
-        totalScrappedAccum += change
-      }
-    })
+    // Ledger movements KPI (shared classifier covers the spare-needle codes too)
+    const ledgerTotals = sumNeedleLedger(historyLogs)
+    const totalReceived = ledgerTotals.received
+    const totalIssued = ledgerTotals.issued
+    const totalScrappedAccum = ledgerTotals.scrapped
 
     return {
       totalNeedles,
@@ -343,10 +333,7 @@ export default function NeedleStock() {
     const q = ledgerSearchQuery.toLowerCase().trim()
     return historyLogs.filter(log => {
       const act = log.actionType || ''
-      if (ledgerTypeFilter === 'in' && !act.includes('รับเข้า') && !act.includes('Stock In')) return false
-      if (ledgerTypeFilter === 'out' && !act.includes('เบิกออก') && !act.includes('Stock Out')) return false
-      if (ledgerTypeFilter === 'adjust' && !act.includes('ตัดยอด') && !act.includes('Adjustment')) return false
-      if (ledgerTypeFilter === 'scrap' && !act.includes('ตัดทิ้ง') && !act.includes('Scrap')) return false
+      if (ledgerTypeFilter !== 'all' && classifyNeedleAction(act) !== ledgerTypeFilter) return false
 
       if (q) {
         const text = `${log.setId} ${log.targetMachine} ${log.technician} ${log.actionType} ${log.remarks} ${log.scrapReason} ${log.sourceFrom}`.toLowerCase()
@@ -1336,16 +1323,7 @@ export default function NeedleStock() {
                         const hasImages = log.images && log.images.length > 0
                         const firstImg = hasImages ? (typeof log.images[0] === 'string' ? log.images[0] : log.images[0].url) : ''
 
-                        let typeBadgeClass = 'bg-slate-100 text-slate-700 border-slate-200'
-                        if (act.includes('รับเข้า') || act.includes('Stock In')) {
-                          typeBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold'
-                        } else if (act.includes('เบิกออก') || act.includes('Stock Out')) {
-                          typeBadgeClass = 'bg-blue-100 text-blue-800 border-blue-200 font-bold'
-                        } else if (act.includes('ตัดยอด') || act.includes('Adjustment')) {
-                          typeBadgeClass = 'bg-amber-100 text-amber-800 border-amber-200 font-bold'
-                        } else if (act.includes('ตัดทิ้ง') || act.includes('Scrap')) {
-                          typeBadgeClass = 'bg-rose-100 text-rose-800 border-rose-200 font-bold'
-                        }
+                        const typeBadgeClass = needleActionBadgeClass(act)
 
                         return (
                           <tr key={log.id || log.logId} className="hover:bg-slate-50 transition">
@@ -1357,7 +1335,7 @@ export default function NeedleStock() {
                             </td>
                             <td className="p-3.5">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${typeBadgeClass}`}>
-                                {act}
+                                {needleActionLabel(act)}
                               </span>
                             </td>
                             <td className="p-3.5">
@@ -1866,6 +1844,32 @@ export default function NeedleStock() {
             setNeedleSets(prev => [newSet, ...prev])
             setAddModalOpen(false)
             toast.success(`เพิ่มชุดเข็ม ${newSet.setId} (${newSet.needleModel}) สำเร็จแล้ว!`)
+
+            // Log the opening stock so the ledger / "รับเข้าสะสม" KPI stay complete
+            const openingQty = parseInt(newSet.quantity, 10) || 0
+            if (openingQty > 0) {
+              const openingLog = {
+                id: `LOG-OPEN-${Date.now()}`,
+                logId: `LOG-OPEN-${Date.now()}`,
+                setId: newSet.setId,
+                actionType: 'รับเข้า (Stock In)',
+                movementType: 'IN',
+                oldGrade: newSet.grade,
+                newGrade: newSet.grade,
+                conditionDetail: newSet.conditionDetail,
+                quantity: openingQty,
+                qtyChange: openingQty,
+                balanceAfter: openingQty,
+                dateAction: new Date().toISOString().slice(0, 10),
+                technician: user?.full_name || user?.username || 'ผู้ดูแลสต็อก',
+                remarks: `ตั้งต้นสต็อกชุดเข็มใหม่ ${newSet.setId}`,
+                images: [],
+                createdAt: new Date().toISOString(),
+              }
+              NeedleHistoryAPI.create(openingLog)
+                .then(() => setHistoryLogs(prev => [openingLog, ...prev]))
+                .catch((err) => console.warn('Stock opening log warning:', err))
+            }
           }}
         />
       )}
@@ -3397,10 +3401,13 @@ function TimelineHistoryModal({ isOpen, onClose, currentSet, historyLogs, onView
                 const change = parseInt(log.qtyChange, 10) || 0
                 const hasImgs = log.images && log.images.length > 0
 
-                let dotColor = 'bg-sky-500 ring-sky-100'
-                if (act.includes('รับเข้า')) dotColor = 'bg-emerald-500 ring-emerald-100'
-                else if (act.includes('เบิกออก')) dotColor = 'bg-blue-500 ring-blue-100'
-                else if (act.includes('ตัดทิ้ง') || act.includes('Scrap')) dotColor = 'bg-rose-500 ring-rose-100'
+                const dotClasses = {
+                  in: 'bg-emerald-500 ring-emerald-100',
+                  out: 'bg-blue-500 ring-blue-100',
+                  adjust: 'bg-amber-500 ring-amber-100',
+                  scrap: 'bg-rose-500 ring-rose-100',
+                }
+                const dotColor = dotClasses[classifyNeedleAction(act)] || 'bg-sky-500 ring-sky-100'
 
                 return (
                   <div key={log.id || log.logId || idx} className="relative pl-6">
@@ -3410,7 +3417,7 @@ function TimelineHistoryModal({ isOpen, onClose, currentSet, historyLogs, onView
                     <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 shadow-xs space-y-2">
                       <div className="flex flex-wrap justify-between items-start gap-1">
                         <div>
-                          <span className="font-bold text-slate-800 text-xs sm:text-sm">{act}</span>
+                          <span className="font-bold text-slate-800 text-xs sm:text-sm">{needleActionLabel(act)}</span>
                           <span className="text-[11px] text-slate-400 ml-2">{log.dateAction || log.createdAt?.split('T')[0]}</span>
                         </div>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
