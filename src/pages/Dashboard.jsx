@@ -29,6 +29,9 @@ import {
   StockTxnAPI,
   RepairRequestAPI,
   DesignBomAPI,
+  NeedleConditionAPI,
+  NeedleSetAPI,
+  NeedleHistoryAPI,
   isSystemWorkOrder,
 } from '../api/entities'
 import { useT } from '../contexts/LanguageContext'
@@ -74,6 +77,9 @@ const SHEET_APIS = {
   spareparts: SparePartAPI,
   purchaseorders: PurchaseOrderAPI,
   stocktransactions: StockTxnAPI,
+  needleConditions: NeedleConditionAPI,
+  needleSets: NeedleSetAPI,
+  needleHistory: NeedleHistoryAPI,
 }
 
 function StatCard({ icon: Icon, label, value, sub, color = 'slate', to, onClick }) {
@@ -224,7 +230,9 @@ export default function Dashboard() {
     try {
       const results = await Promise.allSettled(
         SHEET_EXPORTS.map(async (config) => {
-          const rows = await SHEET_APIS[config.key].list()
+          const api = SHEET_APIS[config.key]
+          if (!api) throw new Error(`ไม่พบ API สำหรับชีท "${config.sheetName}"`)
+          const rows = await api.list()
           const result = await syncRowsToGoogleSheet({
             sheetName: config.sheetName,
             columns: config.columns,
@@ -246,9 +254,18 @@ export default function Dashboard() {
         .filter(({ item }) => item.status === 'rejected')
 
       if (failed.length) {
+        // Show why it failed, not just which sheet (the reason came back from
+        // the Google Sheets webhook and used to be swallowed).
+        const detail = failed
+          .slice(0, 3)
+          .map(({ item, config }) => {
+            const reason = String(item.reason?.message || item.reason || '').replace(/\s+/g, ' ').slice(0, 120)
+            return reason ? `${config.sheetName}: ${reason}` : config.sheetName
+          })
+          .join(' • ')
         toast.warning(
-          'อัปเดต Sheet บางเมนูไม่สำเร็จ',
-          failed.map(({ config }) => config.sheetName).join(', ')
+          `อัปเดต Sheet สำเร็จ ${passed.length}/${SHEET_EXPORTS.length} ชีต`,
+          `ไม่สำเร็จ: ${detail}`
         )
         return
       }
