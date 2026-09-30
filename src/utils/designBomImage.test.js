@@ -2,15 +2,24 @@ import { describe, expect, it } from 'vitest'
 import {
   DESIGN_BOM_COVER_FOLDER,
   DESIGN_BOM_APP_FOLDER,
+  DESIGN_BOM_MASTER_FOLDER,
+  MASTER_NOTE_PREFIX,
   extractCoverImageUrl,
   extractAppImageUrl,
+  extractMasterImageUrl,
   stripDesignImagesMeta,
   getDesignCoverImageUrl,
   getDesignAppImageUrl,
+  getDesignMasterImageUrl,
   appendDesignImagesMeta,
 } from './designBomImage'
 
 describe('designBomImage helpers and folders', () => {
+  it('defines the Google Drive folder for the Master image', () => {
+    expect(DESIGN_BOM_MASTER_FOLDER).toBe('Master')
+    expect(MASTER_NOTE_PREFIX).toBe('MasterImageUrl:')
+  })
+
   it('defines the correct Google Drive folder names for cover and app sheets', () => {
     expect(DESIGN_BOM_COVER_FOLDER).toBe('DesignBOM-ใบปะหน้า')
     expect(DESIGN_BOM_APP_FOLDER).toBe('DesignBOM-ใบApp')
@@ -134,6 +143,38 @@ describe('designBomImage helpers and folders', () => {
     it('handles empty comment without leading newlines', () => {
       expect(appendDesignImagesMeta('', 'https://cover.jpg', 'https://app.jpg')).toBe(
         'CoverImageUrl: https://cover.jpg\nAppImageUrl: https://app.jpg',
+      )
+    })
+  })
+
+  describe('master image helpers', () => {
+    it('extracts the master image url from the comment meta line', () => {
+      const note = 'หมายเหตุ\nMasterImageUrl: https://drive.google.com/master.jpg'
+      expect(extractMasterImageUrl(note)).toBe('https://drive.google.com/master.jpg')
+      expect(getDesignMasterImageUrl({ Comment: note })).toBe('https://drive.google.com/master.jpg')
+    })
+
+    it('prefers the row column over the comment meta and returns empty when missing', () => {
+      expect(getDesignMasterImageUrl({ MasterImageUrl: 'https://col.jpg', Comment: 'MasterImageUrl: https://meta.jpg' }))
+        .toBe('https://col.jpg')
+      expect(getDesignMasterImageUrl({ Comment: 'ไม่มีข้อมูล' })).toBe('')
+      expect(getDesignMasterImageUrl({})).toBe('')
+    })
+
+    it('strips the master meta line out of the displayed comment', () => {
+      const note = 'โน้ต\nCoverImageUrl: c.jpg\nAppImageUrl: a.jpg\nMasterImageUrl: m.jpg'
+      expect(stripDesignImagesMeta(note)).toBe('โน้ต')
+    })
+
+    it('appends all three image meta lines (master optional)', () => {
+      expect(appendDesignImagesMeta('โน้ต', 'c.jpg', 'a.jpg', 'm.jpg')).toBe(
+        'โน้ต\nCoverImageUrl: c.jpg\nAppImageUrl: a.jpg\nMasterImageUrl: m.jpg',
+      )
+      expect(appendDesignImagesMeta('โน้ต', 'c.jpg', 'a.jpg')).toBe(
+        'โน้ต\nCoverImageUrl: c.jpg\nAppImageUrl: a.jpg',
+      )
+      expect(appendDesignImagesMeta('โน้ต', '', '', 'm.jpg')).toBe(
+        'โน้ต\nMasterImageUrl: m.jpg',
       )
     })
   })
