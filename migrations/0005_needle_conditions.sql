@@ -24,3 +24,10 @@ CREATE TABLE IF NOT EXISTS needle_conditions (
 CREATE INDEX IF NOT EXISTS idx_needle_conditions_serial ON needle_conditions(serial);
 CREATE INDEX IF NOT EXISTS idx_needle_conditions_doc_date ON needle_conditions(doc_date);
 CREATE INDEX IF NOT EXISTS idx_needle_conditions_machine ON needle_conditions(machine_mc);
+
+-- Counter comparison columns (added 2026-09-30): the previous reading and the
+-- difference are stored with each inspection so reports/history stay correct
+-- even when older records are edited later.
+ALTER TABLE needle_conditions ADD COLUMN counter_prev NUMERIC;
+ALTER TABLE needle_conditions ADD COLUMN counter_diff NUMERIC;
+ALTER TABLE needle_conditions ADD COLUMN counter_prev_date TEXT;

@@ -281,6 +281,8 @@ export const SHEET_EXPORTS = [
       col('location', 'ตำแหน่ง'),
       col('type', 'ประเภท'),
       col('counter', 'Counter ล่าสุด'),
+      col('counter_prev', 'Counter ครั้งก่อน'),
+      col('counter_total', 'ผลต่างรอบ'),
       col('status', 'สภาพเข็ม'),
       col('needle_condition', 'รายละเอียดสภาพเข็ม'),
       col('doc_date', 'วันที่ตรวจล่าสุด'),

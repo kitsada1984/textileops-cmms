@@ -698,15 +698,22 @@ export function generateNeedleConditionPdfProps(needle, historyList = [], contex
     'REPLACED': 'เปลี่ยนเข็มใหม่แล้ว (Replaced)',
   }
 
-  const tableRows = historyList.map((h, idx) => [
-    idx + 1,
-    safeFormatDate(h.doc_date, 'dd/MM/yyyy'),
-    h.machine_mc || '—',
-    h.location || '—',
-    h.counter ? Number(h.counter).toLocaleString() : '—',
-    statusLabels[h.status] || h.status || 'ปกติ',
-    h.inspector || '—',
-  ])
+  const tableRows = historyList.map((h, idx) => {
+    const prev = Number(h.counter_prev ?? 0) || 0
+    const diff = Number(
+      h.counter_total ?? (prev > 0 && Number(h.counter) > 0 ? Math.max(0, Number(h.counter) - prev) : 0)
+    ) || 0
+    return [
+      idx + 1,
+      safeFormatDate(h.doc_date, 'dd/MM/yyyy'),
+      h.machine_mc || '—',
+      h.location || '—',
+      h.counter ? Number(h.counter).toLocaleString() : '—',
+      diff > 0 ? `+${diff.toLocaleString()}` : '—',
+      statusLabels[h.status] || h.status || 'ปกติ',
+      h.inspector || '—',
+    ]
+  })
 
   // Cross-reference cylinder for location
   const cylinders = resolveCylinders(context)
@@ -737,12 +744,14 @@ export function generateNeedleConditionPdfProps(needle, historyList = [], contex
           { label: 'ช่างผู้ตรวจเช็ค (Inspector)', value: needle.inspector || '—' },
           { label: 'สถานะสภาพเข็ม (Condition Status)', value: statusLabels[needle.status] || needle.status || 'ปกติ' },
           { label: 'จำนวนรอบ Counter ล่าสุด', value: needle.counter ? `${Number(needle.counter).toLocaleString()} รอบ` : '—', mono: true },
+          { label: 'Counter ครั้งก่อน (Previous)', value: (needle.counter_prev ?? needle.counter_total) ? `${Number(needle.counter_prev ?? 0).toLocaleString()} รอบ` : '—', mono: true },
+          { label: 'ผลต่างรอบ (Difference)', value: (needle.counter_prev ?? needle.counter_total) ? `+${Number(needle.counter_total ?? Math.max(0, Number(needle.counter || 0) - Number(needle.counter_prev || 0))).toLocaleString()} รอบ` : '—', mono: true },
         ],
       },
     ],
     tableData: {
       title: 'ประวัติการตรวจเช็คย้อนหลัง (Inspection History)',
-      headers: ['ครั้งที่', 'วันที่ตรวจ', 'เครื่องจักร', 'สถานที่', 'Counter (รอบ)', 'สภาพเข็ม', 'ผู้ตรวจ'],
+      headers: ['ครั้งที่', 'วันที่ตรวจ', 'เครื่องจักร', 'สถานที่', 'Counter (รอบ)', 'ผลต่างรอบ', 'สภาพเข็ม', 'ผู้ตรวจ'],
       rows: tableRows,
     },
     images,

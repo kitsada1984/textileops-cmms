@@ -57,6 +57,7 @@ import { applyFilterSort } from '../utils/filterSort'
 import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
 import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../modules/media'
 import { buildCylinderInspectionSync, sortInspectionsNewestFirst } from '../utils/needleConditionSync'
+import { buildCounterFields, computeCounterDiff, normalizeCounter, pickPreviousWithCounter } from '../utils/counterDiff'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
 
@@ -179,6 +180,9 @@ export default function NeedleCondition() {
     type: 'Single Jersey',
     doc_date: format(new Date(), 'yyyy-MM-dd'),
     counter: '',
+    counter_prev: '',
+    counter_prev_date: '',
+    counter_diff: 0,
     status: 'สึกเล็กน้อย',
     custom_status: '',
     needle_condition: '',
@@ -353,8 +357,13 @@ export default function NeedleCondition() {
     const cyl = cylinderMap.get(key)
     const mcObj = machines.find((m) => normalizeMachine(m.Mc || m.Machine_MC || m.name) === key)
 
-    // Lookup existing needle condition to get previous counter
-    const prevCondition = latestRecords.find((r) => normalizeSerial(r.serial) === key)
+    // Lookup the most recent earlier inspection that actually has a counter,
+    // so the difference can be worked out when the new reading is typed in.
+    const prevCondition = pickPreviousWithCounter(records, {
+      matches: (r) => normalizeSerial(r.serial) === key || normalizeMachine(r.machine_mc) === key,
+      excludeId: formData.id || undefined,
+      getCounter: (r) => r.counter,
+    })
 
     const serialOld = cyl?.Serial_OLD || cyl?.Serial_NOW || cleanCode
     const machineMc = cyl?.NewMC || cyl?.Standard || mcObj?.Mc || mcObj?.Machine_MC || ''
@@ -369,7 +378,10 @@ export default function NeedleCondition() {
       type: type,
       doc_date: format(new Date(), 'yyyy-MM-dd'),
       inspector: user?.full_name || user?.username || 'ช่างประจำกะ',
-      counter: prevCondition?.counter ? String(prevCondition.counter) : prev.counter,
+      counter: '',
+      counter_prev: prevCondition ? String(normalizeCounter(prevCondition.counter)) : '',
+      counter_prev_date: prevCondition?.doc_date || '',
+      counter_diff: 0,
     }))
 
     toast.success(
@@ -549,6 +561,9 @@ export default function NeedleCondition() {
         type: formData.type,
         doc_date: formData.doc_date || format(new Date(), 'yyyy-MM-dd'),
         counter: Number(formData.counter) || 0,
+        counter_prev: normalizeCounter(formData.counter_prev),
+        counter_diff: computeCounterDiff(formData.counter, formData.counter_prev),
+        counter_prev_date: formData.counter_prev_date || '',
         status: finalStatus,
         needle_condition: formData.needle_condition || '',
         remark: formData.remark || '',
@@ -626,6 +641,9 @@ export default function NeedleCondition() {
       type: item.type || 'Single Jersey',
       doc_date: item.doc_date || format(new Date(), 'yyyy-MM-dd'),
       counter: item.counter ? String(item.counter) : '',
+      counter_prev: item.counter_prev ? String(item.counter_prev) : '',
+      counter_prev_date: item.counter_prev_date || '',
+      counter_diff: Number(item.counter_diff ?? item.counter_total ?? 0) || 0,
       status: isStandard ? rawStatus : 'ระบุเอง',
       custom_status: isStandard ? '' : rawStatus,
       needle_condition: item.needle_condition || '',
@@ -839,6 +857,7 @@ export default function NeedleCondition() {
                 <th className="py-3 px-3 text-left whitespace-nowrap">ตำแหน่ง</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">ประเภท</th>
                 <th className="py-3 px-3 text-right whitespace-nowrap">Counter ล่าสุด</th>
+                <th className="py-3 px-3 text-right whitespace-nowrap">ผลต่างรอบ</th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">สภาพเข็ม</th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">รูปถ่าย</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">วันที่ตรวจล่าสุด</th>
@@ -894,6 +913,13 @@ export default function NeedleCondition() {
                     {/* Counter */}
                     <td className="py-2.5 px-3 text-right font-mono font-bold text-teal-600 dark:text-teal-400 whitespace-nowrap">
                       {row.counter ? Number(row.counter).toLocaleString() : '—'}
+                    </td>
+
+                    {/* ผลต่างรอบ (counter diff vs previous visit) */}
+                    <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                      {computeCounterDiff(row.counter, row.counter_prev ?? row.counter_total) > 0
+                        ? `+${computeCounterDiff(row.counter, row.counter_prev ?? row.counter_total).toLocaleString()}`
+                        : '—'}
                     </td>
 
                     {/* Status */}
@@ -1243,11 +1269,31 @@ export default function NeedleCondition() {
                 type="number"
                 min="0"
                 value={formData.counter}
-                onChange={(e) => setFormData({ ...formData, counter: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setFormData((prev) => ({
+                    ...prev,
+                    counter: val,
+                    counter_diff: computeCounterDiff(val, prev.counter_prev),
+                  }))
+                }}
                 placeholder="เช่น 1540200"
                 className="input font-mono font-black text-teal-600 dark:text-teal-400 text-sm"
                 required
               />
+              {(formData.counter_prev || formData.counter_diff > 0) && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold">
+                  {formData.counter_prev ? (
+                    <span className="text-slate-500 dark:text-slate-400">
+                      ครั้งก่อน: {Number(formData.counter_prev).toLocaleString()}
+                      {formData.counter_prev_date ? ` (${formData.counter_prev_date})` : ''}
+                    </span>
+                  ) : null}
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    ผลต่างรอบ: +{Number(formData.counter_diff || 0).toLocaleString()} รอบ
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Status */}
@@ -1428,6 +1474,14 @@ export default function NeedleCondition() {
                       </div>
                     </div>
                     <div>
+                      <span className="text-slate-400 text-[10px]">ผลต่างรอบ:</span>
+                      <div className="font-mono font-bold text-emerald-600">
+                        {computeCounterDiff(hRec.counter, hRec.counter_prev ?? hRec.counter_total) > 0
+                          ? `+${computeCounterDiff(hRec.counter, hRec.counter_prev ?? hRec.counter_total).toLocaleString()} รอบ`
+                          : '—'}
+                      </div>
+                    </div>
+                    <div>
                       <span className="text-slate-400 text-[10px]">ตำแหน่ง:</span>
                       <div className="font-semibold">{hRec.location || '—'}</div>
                     </div>
@@ -1497,6 +1551,8 @@ export default function NeedleCondition() {
                 { label: 'ตำแหน่ง (Location)', value: detailItem.location },
                 { label: 'ประเภท (Type)', value: detailItem.type },
                 { label: 'Counter ล่าสุด', value: detailItem.counter ? `${Number(detailItem.counter).toLocaleString()} รอบ` : '—', mono: true },
+                { label: 'Counter ครั้งก่อน', value: (detailItem.counter_prev ?? detailItem.counter_total) ? `${Number(detailItem.counter_prev ?? 0).toLocaleString()} รอบ` : '—', mono: true },
+                { label: 'ผลต่างรอบ', value: computeCounterDiff(detailItem.counter, detailItem.counter_prev ?? detailItem.counter_total) > 0 ? `+${computeCounterDiff(detailItem.counter, detailItem.counter_prev ?? detailItem.counter_total).toLocaleString()} รอบ` : '—', mono: true },
                 { label: 'วันที่ตรวจล่าสุด', value: detailItem.doc_date ? format(new Date(detailItem.doc_date), 'dd/MM/yyyy') : '—', mono: true },
                 { label: 'ช่างผู้ตรวจ', value: detailItem.inspector },
                 { label: 'สถานะสภาพเข็ม', value: detailItem.status },

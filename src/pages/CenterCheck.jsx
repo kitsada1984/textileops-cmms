@@ -53,6 +53,7 @@ import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
 import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../modules/media'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import { buildCylinderInspectionSync } from '../utils/needleConditionSync'
+import { pickPreviousWithCounter } from '../utils/counterDiff'
 
 const CENTER_CHECK_IMAGE_FOLDER = 'ประวัติเช็คศูนย์'
 
@@ -336,16 +337,15 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         ? Math.max(0, differenceInCalendarDays(new Date(todayStr), new Date(initialPreset.prev_doc_date)))
         : 0
 
-      // Look up previous counter if available
+      // Look up the previous counter (skip checks saved without a reading)
       const cleanMc = String(initialPreset.mc || '').trim().toUpperCase()
       let prevVal = 0
       if (cleanMc) {
-        const pastChecks = records
-          .filter((r) => r.mc && r.mc.toUpperCase() === cleanMc)
-          .sort((a, b) => new Date(b.doc_date || 0) - new Date(a.doc_date || 0))
-        if (pastChecks.length > 0) {
-          prevVal = Number(pastChecks[0].counter_latest || 0)
-        }
+        const prevCheck = pickPreviousWithCounter(records, {
+          matches: (r) => r.mc && r.mc.toUpperCase() === cleanMc,
+          getCounter: (r) => r.counter_latest,
+        })
+        prevVal = Number(prevCheck?.counter_latest || 0)
       }
 
       setFormData({
@@ -643,12 +643,12 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
     let prevDate = ''
 
     if (cleanMc) {
-      const pastChecks = records
-        .filter((r) => r.mc && r.mc.toUpperCase() === cleanMc && (editingId ? r.id !== editingId : true))
-        .sort((a, b) => new Date(b.doc_date || 0) - new Date(a.doc_date || 0))
-
-      if (pastChecks.length > 0) {
-        const lastCheck = pastChecks[0]
+      const lastCheck = pickPreviousWithCounter(records, {
+        matches: (r) => r.mc && r.mc.toUpperCase() === cleanMc,
+        excludeId: editingId || undefined,
+        getCounter: (r) => r.counter_latest,
+      })
+      if (lastCheck) {
         prevVal = Number(lastCheck.counter_latest || 0)
         prevDate = lastCheck.doc_date || ''
       }
