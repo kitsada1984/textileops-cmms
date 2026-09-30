@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  normalizeNeedleSet,
   generateCenterCheckDocNo,
   DEFAULT_SINGLE_CHECKLIST_ITEMS,
   DEFAULT_DOUBLE_CHECKLIST_ITEMS,
@@ -112,3 +113,27 @@ describe('SpareNeedleRequest Entities & Normalizer', () => {
   })
 })
 
+describe('normalizeNeedleSet quantity precedence', () => {
+  it('prefers the edited lowercase quantity over the stale DB column copy', () => {
+    // Stock-out payloads spread the loaded record (Quantity) and override the
+    // lowercase quantity — the edited value must win or stock never decreases.
+    expect(normalizeNeedleSet({ id: 'NS-1', quantity: 240, Quantity: 250 }).quantity).toBe(240)
+    expect(normalizeNeedleSet({ id: 'NS-1', quantity: 240, Quantity: 250 }).Quantity).toBe(240)
+  })
+
+  it('falls back to the Quantity column for records loaded from the cloud', () => {
+    expect(normalizeNeedleSet({ id: 'NS-2', Quantity: 250 }).quantity).toBe(250)
+    expect(normalizeNeedleSet({ id: 'NS-2', Quantity: '250' }).quantity).toBe(250)
+  })
+
+  it('accepts an explicit zero (stock finished)', () => {
+    expect(normalizeNeedleSet({ id: 'NS-3', quantity: 0, Quantity: 250 }).quantity).toBe(0)
+    expect(normalizeNeedleSet({ id: 'NS-3', quantity: '0', Quantity: 250 }).quantity).toBe(0)
+  })
+
+  it('clamps missing or invalid quantities to zero', () => {
+    expect(normalizeNeedleSet({ id: 'NS-4', quantity: 'abc' }).quantity).toBe(0)
+    expect(normalizeNeedleSet({ id: 'NS-4' }).quantity).toBe(0)
+    expect(normalizeNeedleSet({ id: 'NS-4', quantity: '', Quantity: 120 }).quantity).toBe(120)
+  })
+})

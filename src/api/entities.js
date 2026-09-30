@@ -296,6 +296,21 @@ export const RepairRequestAPI   = createEntityClient('repair_requests')
 export const DesignBomAPI       = createEntityClient('design_bom')
 
 /* ── Needle Stock & Grade Entities (needle_grade_latest_v16) ── */
+/**
+ * Needle-set quantity resolver.
+ * Records coming from the cloud only carry `Quantity`; records held in app
+ * state carry both `quantity` (edited) and `Quantity` (as loaded). The edited
+ * lowercase value must win, otherwise stock transactions silently keep the old
+ * balance.
+ */
+function parseNeedleQuantity(item = {}) {
+  const raw = item.quantity !== undefined && item.quantity !== null && item.quantity !== ''
+    ? item.quantity
+    : item.Quantity
+  const n = parseInt(raw, 10)
+  return Number.isFinite(n) && n >= 0 ? n : 0
+}
+
 export function normalizeNeedleSet(item = {}) {
   const setId = item.id || item.Set_ID || item.setId || `NS-${Date.now()}`
   let images = []
@@ -328,8 +343,11 @@ export function normalizeNeedleSet(item = {}) {
     Condition_Detail: item.Condition_Detail || item.conditionDetail || 'สึกปานกลาง',
     status: item.Status || item.status || 'คัดแล้ว',
     Status: item.Status || item.status || 'คัดแล้ว',
-    quantity: parseInt(item.Quantity ?? item.quantity, 10) || 0,
-    Quantity: parseInt(item.Quantity ?? item.quantity, 10) || 0,
+    // `quantity` (lowercase) is the value the app edits; `Quantity` is the DB
+    // column copied along in spreads. Prefer the edited value, otherwise a
+    // stock-out would write the old balance back.
+    quantity: parseNeedleQuantity(item),
+    Quantity: parseNeedleQuantity(item),
     dateRecorded: item.Date_Recorded || item.dateRecorded || '',
     Date_Recorded: item.Date_Recorded || item.dateRecorded || '',
     inspector: item.Inspector || item.inspector || 'ช่างประจำกะ',
