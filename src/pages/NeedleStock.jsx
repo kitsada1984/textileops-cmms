@@ -66,6 +66,7 @@ export default function NeedleStock() {
   const [editSpareModalOpen, setEditSpareModalOpen] = useState(false)
   const [selectedEditReq, setSelectedEditReq] = useState(null)
   const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false)
+  const [deleteAckReturned, setDeleteAckReturned] = useState(false)
   const [selectedDeleteReq, setSelectedDeleteReq] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
@@ -183,10 +184,21 @@ export default function NeedleStock() {
   // Handle Delete Spare Needle Request (with Automatic Stock Refund)
   const handleConfirmDeleteSpareRequest = async () => {
     if (!selectedDeleteReq) return
+    const req = selectedDeleteReq
+    const issuedItems = Array.isArray(req.issued_items) ? req.issued_items : []
+
+    // A request the technician already received (COMPLETED) means the needles are
+    // physically on the machine — refunding them without a real return would
+    // overstate the store stock, so the keeper has to confirm the return first.
+    if (req.status === 'COMPLETED' && issuedItems.length > 0 && !deleteAckReturned) {
+      toast.warning('ต้องยืนยันการรับคืนก่อน', 'ใบเบิกนี้ช่างรับเข็มไปแล้ว — ต้องติ๊กยืนยันว่ารับเข็มคืนจากช่างแล้วก่อนจึงจะคืนสต็อกได้')
+      return
+    }
+
     setDeleteLoading(true)
     try {
       let returnedCount = 0
-      const req = selectedDeleteReq
+      const missingSets = []
 
       // If items were issued/deducted from stock, restore them to store stock
       if (Array.isArray(req.issued_items) && req.issued_items.length > 0) {
@@ -197,6 +209,10 @@ export default function NeedleStock() {
             try {
               setRecord = await NeedleSetAPI.getById(item.setId)
             } catch {}
+          }
+          if (!setRecord) {
+            missingSets.push(item.setId)
+            continue
           }
           if (setRecord) {
             const currentBal = parseInt(setRecord.quantity, 10) || 0
@@ -222,7 +238,7 @@ export default function NeedleStock() {
               quantity: returnQty,
               dateAction: new Date().toISOString().slice(0, 10),
               technician: user?.name || user?.username || 'ผู้ดูแลระบบ',
-              remarks: `ยกเลิก/ลบใบเบิก ${req.request_no || req.id} คืนเข็ม Spare เข้าคลังสต็อกอัตโนมัติ`,
+              remarks: `ยกเลิก/ลบใบเบิก ${req.request_no || req.id} คืนเข็ม Spare เข้าคลังสต็อกอัตโนมัติ${req.status === 'COMPLETED' ? ' (ยืนยันรับคืนจากช่างแล้ว)' : ''}`,
               targetMachine: req.machine_mc,
               qtyChange: `+${returnQty}`,
               balanceAfter: newBal,
@@ -244,6 +260,9 @@ export default function NeedleStock() {
         toast.success(`ลบใบเบิก ${req.request_no || req.id} สำเร็จ พร้อมคืนเข็ม ${returnedCount} ตัวกลับเข้าคลังสต็อกเรียบร้อยแล้ว`)
       } else {
         toast.success(`ลบใบเบิก ${req.request_no || req.id} เรียบร้อยแล้ว`)
+      }
+      if (missingSets.length > 0) {
+        toast.warning('คืนสต็อกไม่ครบ', `ไม่พบชุดเข็ม ${missingSets.join(', ')} ในคลัง — ยังไม่ได้คืนยอดให้ชุดเหล่านี้ กรุณาตรวจสอบ`)
       }
     } catch (err) {
       console.error('Delete spare needle request error:', err)
@@ -1622,6 +1641,7 @@ export default function NeedleStock() {
                                     type="button"
                                     onClick={() => {
                                       setSelectedDeleteReq(req)
+                                      setDeleteAckReturned(false)
                                       setDeleteConfirmModalOpen(true)
                                     }}
                                     className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-semibold transition cursor-pointer"
@@ -1782,6 +1802,27 @@ export default function NeedleStock() {
               <p className="text-xs text-slate-500 mb-5">
                 ใบเบิกนี้ยังไม่ได้ตัดจ่ายสต็อกเข็ม การลบจะยกเลิกคำขอนี้โดยไม่มีผลกระทบต่อยอดสต็อก
               </p>
+            )}
+
+            {selectedDeleteReq.status === 'COMPLETED' && selectedDeleteReq.issued_items?.length > 0 && (
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 text-xs text-rose-900 space-y-2 mb-5">
+                <div className="flex items-center gap-1.5 font-bold text-rose-700">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>ใบเบิกนี้ช่างรับเข็มไปแล้ว</span>
+                </div>
+                <p className="text-[11px] text-rose-700 leading-relaxed">
+                  เข็มชุดนี้อยู่ที่เครื่องจักรแล้ว การคืนยอดเข้าคลังจะถูกต้อง <strong>เฉพาะเมื่อได้รับเข็มคืนจากช่างจริง</strong>
+                </p>
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={deleteAckReturned}
+                    onChange={(e) => setDeleteAckReturned(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-rose-600"
+                  />
+                  <span className="font-semibold">ยืนยันว่ารับเข็มคืนจากช่างแล้ว จึงให้คืนยอดเข้าคลังสต็อก</span>
+                </label>
+              </div>
             )}
 
             <div className="flex items-center justify-end gap-2.5">
