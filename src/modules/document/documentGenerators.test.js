@@ -256,14 +256,20 @@ describe('Document Generation Deep Module', () => {
 
       const mockHistory = [
         { doc_date: '2026-06-01', machine_mc: 'MC-05', counter: 200000, status: 'NORMAL', inspector: 'ช่างเอ' },
+        { doc_date: '2026-07-01', machine_mc: 'MC-05', counter: 250000, counter_prev: 200000, counter_total: 50000, status: 'สึกเล็กน้อย', inspector: 'ช่างบี' },
       ]
 
       const result = generateNeedleConditionPdfProps(mockNeedle, mockHistory, { cylinders: [] })
       expect(result).not.toBeNull()
       expect(result.docType).toBe('needle')
       expect(result.status).toBe('สึกปานกลาง (Medium Wear)')
-      expect(result.tableData.rows).toHaveLength(1)
-      expect(result.tableData.rows[0][5]).toBe('สึกเล็กน้อย (Minor Wear)')
+      expect(result.tableData.rows).toHaveLength(2)
+      expect(result.tableData.headers).toContain('ผลต่างรอบ')
+      // first inspection has no earlier reading → no difference
+      expect(result.tableData.rows[0][5]).toBe('—')
+      expect(result.tableData.rows[0][6]).toBe('สึกเล็กน้อย (Minor Wear)')
+      // second row shows the stored difference
+      expect(result.tableData.rows[1][5]).toBe('+50,000')
     })
 
     it('generateSparePartPdfProps accurately computes valuations and stock status', () => {
