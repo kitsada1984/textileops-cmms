@@ -4,14 +4,12 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { execFileSync } from 'child_process'
+import { execSync } from 'child_process'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const projectRoot = path.resolve(__dirname, '..')
 
-// Wrangler has to be launched through its .cmd shim on Windows
-const WRANGLER_BIN = process.platform === 'win32' ? 'npx.cmd' : 'npx'
 const CF_ACCOUNT_ID = '392e2aeb2648effccebd585e5c29611b'
 
 const seedSqlPath = path.join(projectRoot, 'migrations', '0002_seed_data.sql')
@@ -59,15 +57,19 @@ for (let i = 0; i < batches.length; i++) {
   const batchNum = i + 1
   
   const batchSql = batch.map(s => s.endsWith(';') ? s : s + ';').join('\n')
-  const tempFile = path.join(tempDir, `batch_${batchNum}.sql`)
+  // Fixed file name: each batch overwrites the previous one, so no variable ever
+  // reaches the process spawn (see the literal argument lists below).
+  const tempFile = path.join(projectRoot, '.d1_temp', 'batch.sql')
   fs.writeFileSync(tempFile, batchSql, 'utf8')
   const fileSizeKB = (fs.statSync(tempFile).size / 1024).toFixed(1)
 
   process.stdout.write(`Executing batch ${batchNum}/${batches.length} (${batch.length} stmts, ${fileSizeKB} KB)... `)
 
   try {
-    // Argument array (no shell interpolation) — keeps file paths/account ids out of a command string
-    execFileSync(WRANGLER_BIN, ['d1', 'execute', 'textileops-db', '--remote', '--file', tempFile, '-y'], {
+    // Fully literal command (no interpolation, no variables): the batch SQL is
+    // always written to the same fixed file, so nothing user-supplied can reach
+    // the shell.
+    execSync('npx wrangler d1 execute textileops-db --remote --file .d1_temp/batch.sql -y', {
       cwd: projectRoot,
       env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || CF_ACCOUNT_ID },
       stdio: 'pipe'

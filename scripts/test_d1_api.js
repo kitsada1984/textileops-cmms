@@ -1,18 +1,18 @@
 // scripts/test_d1_api.js
-// Automated verification script for Cloudflare D1 tables and Realtime Event Bus.
+// Verifies the Cloudflare D1 tables and the realtime event stream through the
+// application's own HTTPS API — no shell, no wrangler, no child process.
 //
-// Safety notes: every SQL statement is a fixed module-level constant, and the
-// wrangler CLI is launched through execFileSync with a fixed argument list (the
-// SQL itself travels in a temp .sql file) — nothing is parsed by a shell.
+// Usage (run from the project root):
+//   TEXTOPS_USER=admin TEXTOPS_PASS=secret node scripts/test_d1_api.js
+//   TEXTOPS_TOKEN=<bearer token>            node scripts/test_d1_api.js
+//
+// Every request goes to the fixed production deployment below (no URL is taken
+// from input or environment, so the script cannot be pointed somewhere else).
 
-import fs from 'fs'
-import os from 'os'
-import path from 'path'
-import { execFileSync } from 'child_process'
-
-const WRANGLER_CMD = process.platform === 'win32' ? 'npx.cmd' : 'npx'
-const DEFAULT_ACCOUNT_ID = '392e2aeb2648effccebd585e5c29611b'
-const DB_NAME = 'textileops-db'
+const API_LOGIN = 'https://textileops-cmms.pages.dev/api/d1/auth/login'
+const API_QUERY = 'https://textileops-cmms.pages.dev/api/d1/query'
+const API_REALTIME = 'https://textileops-cmms.pages.dev/api/d1/realtime'
+const ORIGIN = 'https://textileops-cmms.pages.dev'
 
 const TABLES_TO_CHECK = [
   'machines',
@@ -26,97 +26,88 @@ const TABLES_TO_CHECK = [
   'purchaseorders',
   'appconfigs',
   'users',
-  '_d1_change_log',
 ]
 
-const TEST_EVENT_ID = `test_${Date.now()}`
+/** POST one fixed query to the app's D1 endpoint. */
+async function query(body, token) {
+  const res = await fetch(API_QUERY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok || json.error) throw new Error(json.error || `${res.status} ${res.statusText}`)
+  return json
+}
 
-// One fixed statement per table + the realtime event checks
-const STATEMENTS = [
-  ...TABLES_TO_CHECK.map((table) => `SELECT count(*) as cnt FROM "${table}"`),
-  `INSERT INTO _d1_change_log (table_name, action, record_id, data, created_at) VALUES ('test_table', 'INSERT', '${TEST_EVENT_ID}', '{"hello":"world"}', datetime('now'))`,
-  `SELECT * FROM _d1_change_log WHERE record_id = '${TEST_EVENT_ID}'`,
-  `DELETE FROM _d1_change_log WHERE record_id = '${TEST_EVENT_ID}'`,
-]
+async function getToken() {
+  if (process.env.TEXTOPS_TOKEN) return process.env.TEXTOPS_TOKEN
 
-const IDX_TABLE_FROM = 0
-const IDX_EVENT_INSERT = TABLES_TO_CHECK.length
-const IDX_EVENT_READ = TABLES_TO_CHECK.length + 1
-const IDX_EVENT_CLEANUP = TABLES_TO_CHECK.length + 2
-
-/** Runs one of the fixed statements above by index (no dynamic command text). */
-function runStatement(index) {
-  const sql = STATEMENTS[index]
-  if (typeof sql !== 'string') {
-    return { ok: false, error: `unknown statement index: ${index}` }
+  const username = process.env.TEXTOPS_USER
+  const password = process.env.TEXTOPS_PASS
+  if (!username || !password) {
+    throw new Error('ต้องระบุ TEXTOPS_TOKEN หรือ TEXTOPS_USER/TEXTOPS_PASS ก่อนรันสคริปต์นี้')
   }
 
-  const tempFile = path.join(os.tmpdir(), `d1_check_${process.pid}_${index}.sql`)
-  try {
-    fs.writeFileSync(tempFile, `${sql}\n`, 'utf8')
-    const out = execFileSync(
-      WRANGLER_CMD,
-      ['wrangler', 'd1', 'execute', DB_NAME, '--remote', '--file', tempFile, '--json'],
-      {
-        env: {
-          ...process.env,
-          CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID,
-        },
-        stdio: 'pipe',
-      },
-    ).toString()
-    const parsed = JSON.parse(out)
-    return { ok: true, results: parsed[0]?.results || [] }
-  } catch (err) {
-    return { ok: false, error: err.stderr ? err.stderr.toString() : err.message }
-  } finally {
-    try { fs.unlinkSync(tempFile) } catch {}
-  }
+  const res = await fetch(API_LOGIN, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok || !json.token) throw new Error(json.error || 'เข้าสู่ระบบไม่สำเร็จ')
+  return json.token
 }
 
 async function verifyD1() {
   console.log('\n======================================================')
-  console.log('🔍 VERIFYING CLOUDFLARE D1 TABLES & RECORD COUNTS')
+  console.log(`🔍 VERIFYING CLOUDFLARE D1 TABLES & RECORD COUNTS @ ${ORIGIN}`)
   console.log('======================================================\n')
 
+  const token = await getToken()
   let allOk = true
 
-  TABLES_TO_CHECK.forEach((table, tableIndex) => {
+  for (const table of TABLES_TO_CHECK) {
     process.stdout.write(`Checking table [${table}]... `)
-    const res = runStatement(IDX_TABLE_FROM + tableIndex)
-    if (!res.ok) {
-      console.log(`❌ ERROR: ${res.error}`)
+    try {
+      const json = await query({ table, action: 'count' }, token)
+      console.log(`✅ ${json.count ?? 0} records`)
+    } catch (err) {
+      console.log(`❌ ERROR: ${err.message}`)
       allOk = false
-    } else {
-      const count = res.results[0]?.cnt || 0
-      console.log(`✅ ${count} records`)
     }
-  })
+  }
 
   console.log('\n======================================================')
-  console.log('⚡ TESTING REALTIME EVENT LOG (_d1_change_log)')
+  console.log('⚡ TESTING REALTIME EVENT STREAM (/api/d1/realtime)')
   console.log('======================================================\n')
+  console.log('หมายเหตุ: ตาราง _d1_change_log ไม่เปิดผ่าน API (ความปลอดภัย) — ตรวจผ่าน SSE endpoint แทน')
 
-  process.stdout.write('Inserting test Realtime Event... ')
-  const insertRes = runStatement(IDX_EVENT_INSERT)
-  if (!insertRes.ok) {
-    console.log(`❌ FAILED: ${insertRes.error}`)
+  process.stdout.write('Connecting to realtime stream... ')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
+  try {
+    const res = await fetch(`${API_REALTIME}?token=${encodeURIComponent(token)}&stream=true`, {
+      signal: controller.signal,
+    })
+    const reader = res.body?.getReader()
+    const { value } = await reader.read()
+    const text = new TextDecoder().decode(value || new Uint8Array())
+    const connected = /event:\s*connected/.test(text)
+    const maxId = (text.match(/"max_id":\s*(\d+)/) || [])[1]
+    if (connected) {
+      console.log(`✅ connected (event log max id: ${maxId ?? '?'})`)
+    } else {
+      console.log('❌ no connected event received')
+      allOk = false
+    }
+    try { await reader.cancel() } catch {}
+  } catch (err) {
+    console.log(`❌ ERROR: ${err.message}`)
     allOk = false
-  } else {
-    console.log('✅ OK')
+  } finally {
+    clearTimeout(timer)
   }
-
-  process.stdout.write('Querying recent Realtime Events... ')
-  const readRes = runStatement(IDX_EVENT_READ)
-  if (readRes.ok && readRes.results.length > 0) {
-    console.log(`✅ Event verified: [${readRes.results[0].action}] on [${readRes.results[0].table_name}]`)
-  } else {
-    console.log('❌ Event not found in change log!')
-    allOk = false
-  }
-
-  // Cleanup test event
-  runStatement(IDX_EVENT_CLEANUP)
 
   console.log('\n======================================================')
   if (allOk) {
@@ -125,6 +116,11 @@ async function verifyD1() {
     console.log('⚠️ Some checks failed. Review errors above.')
   }
   console.log('======================================================\n')
+
+  if (!allOk) process.exitCode = 1
 }
 
-verifyD1()
+verifyD1().catch((err) => {
+  console.error('❌', err.message)
+  process.exitCode = 1
+})
