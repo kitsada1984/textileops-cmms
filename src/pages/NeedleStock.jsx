@@ -32,7 +32,7 @@ import NeedleKeeperConfigModal from '../components/repair/NeedleKeeperConfigModa
 import CreateSpareNeedleModal from '../components/repair/CreateSpareNeedleModal'
 import EditSpareNeedleModal from '../components/repair/EditSpareNeedleModal'
 import { uploadMedia } from '../modules/media/mediaUploader'
-import { getDirectImageUrl, isGoogleDriveUrl, getImageFallbackUrls, extractImageUrl } from '../utils/imageUrlUtils'
+import { getDirectImageUrl, isGoogleDriveUrl, getImageFallbackUrls, extractImageUrl, getFullResolutionImageUrl } from '../utils/imageUrlUtils'
 import { formatNeedleStockFileName } from '../utils/needleStockUtils'
 import initialNeedleSetsData from '../data/initialNeedleSets.json'
 
