@@ -56,15 +56,25 @@ const LOCATIONS = ['GMK1', 'STORE', 'GMK3']
  * Resilient image renderer for needle stock cards, tables, logs, and previews.
  * Handles Google Drive hotlink referrer blocking (403), fallback multi-tier URLs, and placeholder.
  */
-function NeedleImage({ src, alt = '', className = '', style, size = 'w600', onClick, title }) {
+function NeedleImage({ src, alt = '', className = '', style, size = 'w600', onClick, title, fallbackSrcs }) {
   const resolvedUrl = extractImageUrl(src)
+  // รูปสำรอง: ถ้ารูปแรกโหลดไม่ได้ (ไฟล์ถูกลบ/ยังไม่ถูกแชร์) ให้ลองรูปถัดไปในลิสต์
+  const extraSources = useMemo(
+    () => (Array.isArray(fallbackSrcs) ? fallbackSrcs.map(extractImageUrl).filter(Boolean) : []),
+    [fallbackSrcs]
+  )
+  const sources = useMemo(() => [resolvedUrl, ...extraSources].filter(Boolean), [resolvedUrl, extraSources])
+
+  const [srcIndex, setSrcIndex] = useState(0)
   const [fallbackIndex, setFallbackIndex] = useState(0)
   const [hasError, setHasError] = useState(false)
 
-  const fallbacks = useMemo(() => getImageFallbackUrls(resolvedUrl, size), [resolvedUrl, size])
-  const currentSrc = fallbacks[fallbackIndex] || getDirectImageUrl(resolvedUrl, size)
+  const activeUrl = sources[srcIndex] || ''
+  const fallbacks = useMemo(() => getImageFallbackUrls(activeUrl, size), [activeUrl, size])
+  const currentSrc = fallbacks[fallbackIndex] || getDirectImageUrl(activeUrl, size)
 
   useEffect(() => {
+    setSrcIndex(0)
     setFallbackIndex(0)
     setHasError(false)
   }, [resolvedUrl, size])
@@ -72,12 +82,16 @@ function NeedleImage({ src, alt = '', className = '', style, size = 'w600', onCl
   const handleImageError = () => {
     if (fallbackIndex < fallbacks.length - 1) {
       setFallbackIndex((prev) => prev + 1)
+    } else if (srcIndex < sources.length - 1) {
+      // ทุกรูปแบบ URL ของรูปนี้ใช้ไม่ได้ → ลองรูปถัดไป
+      setSrcIndex((prev) => prev + 1)
+      setFallbackIndex(0)
     } else {
       setHasError(true)
     }
   }
 
-  if (hasError || !resolvedUrl) {
+  if (hasError || !activeUrl) {
     return (
       <div
         className={`flex items-center justify-center bg-slate-100 text-slate-300 ${className}`}
@@ -1133,6 +1147,7 @@ export default function NeedleStock() {
                                 src={mainImg}
                                 alt={item.needleModel}
                                 size="w600"
+                                fallbackSrcs={(item.images || []).slice(1)}
                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
                               />
                               {isGoogleDriveUrl(mainImg) && (
@@ -1260,6 +1275,7 @@ export default function NeedleStock() {
                                       src={mainImg}
                                       alt=""
                                       size="w160"
+                                      fallbackSrcs={(item.images || []).slice(1)}
                                       className="w-full h-full object-cover"
                                     />
                                     {imgCount > 1 && (
@@ -1534,7 +1550,7 @@ export default function NeedleStock() {
                                   }}
                                   className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200 inline-block hover:opacity-80 transition cursor-pointer"
                                 >
-                                  <NeedleImage src={firstImg} alt="" size="w160" className="w-full h-full object-cover" />
+                                  <NeedleImage src={firstImg} alt="" size="w160" fallbackSrcs={(log.images || []).slice(1)} className="w-full h-full object-cover" />
                                 </button>
                               ) : (
                                 <span className="text-slate-300 text-xs">-</span>
