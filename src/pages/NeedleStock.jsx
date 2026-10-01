@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Layers, Package, ScrollText, AlertTriangle, Box, ShieldCheck, CheckCircle2, Clock,
@@ -2284,17 +2284,26 @@ function StockTransactionModal({ isOpen, onClose: onCloseProp, currentSet, needl
 
 
   // กันปิดหน้าต่างทั้งที่ยังมีรูปอัปโหลดขึ้น Drive แล้วแต่ยังไม่ได้บันทึกเข้าระบบ
-  const onClose = () => {
-    if (uploadedImages.length > 0 && !submitting) {
+  // ใช้ ref เพื่อให้ onClose มี identity เดิมเสมอ — ไม่งั้น useEffect [isOpen, onClose]
+  // จะรีเซ็ตรูปที่ staged ไว้ทุก render (ทำให้รูปหายก่อนกดบันทึก และหน้าค้าง)
+  const uploadedImagesRef = useRef(uploadedImages)
+  uploadedImagesRef.current = uploadedImages
+  const submittingRef = useRef(submitting)
+  submittingRef.current = submitting
+  const onClosePropRef = useRef(onCloseProp)
+  onClosePropRef.current = onCloseProp
+
+  const onClose = useCallback(() => {
+    if (uploadedImagesRef.current.length > 0 && !submittingRef.current) {
       const ok = window.confirm(
-        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImages.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
+        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImagesRef.current.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
 ` +
         'ถ้าปิดตอนนี้ รูปจะไม่ถูกบันทึกเข้าชุดเข็ม — ต้องการปิดโดยไม่บันทึกหรือไม่?'
       )
       if (!ok) return
     }
-    onCloseProp()
-  }
+    onClosePropRef.current()
+  }, [])
   useEffect(() => {
     if (!isOpen) return
     setUploadedImages([])
@@ -2942,17 +2951,26 @@ function AddNewNeedleSetModal({ isOpen, onClose: onCloseProp, needleSets, combob
 
 
   // กันปิดหน้าต่างทั้งที่ยังมีรูปอัปโหลดขึ้น Drive แล้วแต่ยังไม่ได้บันทึกเข้าระบบ
-  const onClose = () => {
-    if (uploadedImages.length > 0 && !submitting) {
+  // ใช้ ref เพื่อให้ onClose มี identity เดิมเสมอ — ไม่งั้น useEffect [isOpen, onClose]
+  // จะรีเซ็ตรูปที่ staged ไว้ทุก render (ทำให้รูปหายก่อนกดบันทึก และหน้าค้าง)
+  const uploadedImagesRef = useRef(uploadedImages)
+  uploadedImagesRef.current = uploadedImages
+  const submittingRef = useRef(submitting)
+  submittingRef.current = submitting
+  const onClosePropRef = useRef(onCloseProp)
+  onClosePropRef.current = onCloseProp
+
+  const onClose = useCallback(() => {
+    if (uploadedImagesRef.current.length > 0 && !submittingRef.current) {
       const ok = window.confirm(
-        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImages.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
+        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImagesRef.current.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
 ` +
         'ถ้าปิดตอนนี้ รูปจะไม่ถูกบันทึกเข้าชุดเข็ม — ต้องการปิดโดยไม่บันทึกหรือไม่?'
       )
       if (!ok) return
     }
-    onCloseProp()
-  }
+    onClosePropRef.current()
+  }, [])
   useEffect(() => {
     if (!isOpen) return
     setUploadedImages([])
@@ -3405,17 +3423,26 @@ function UpdateGradeModal({ isOpen, onClose: onCloseProp, currentSet, comboboxSt
 
 
   // กันปิดหน้าต่างทั้งที่ยังมีรูปอัปโหลดขึ้น Drive แล้วแต่ยังไม่ได้บันทึกเข้าระบบ
-  const onClose = () => {
-    if (uploadedImages.length > 0 && !submitting) {
+  // ใช้ ref เพื่อให้ onClose มี identity เดิมเสมอ — ไม่งั้น useEffect [isOpen, onClose]
+  // จะรีเซ็ตรูปที่ staged ไว้ทุก render (ทำให้รูปหายก่อนกดบันทึก และหน้าค้าง)
+  const uploadedImagesRef = useRef(uploadedImages)
+  uploadedImagesRef.current = uploadedImages
+  const submittingRef = useRef(submitting)
+  submittingRef.current = submitting
+  const onClosePropRef = useRef(onCloseProp)
+  onClosePropRef.current = onCloseProp
+
+  const onClose = useCallback(() => {
+    if (uploadedImagesRef.current.length > 0 && !submittingRef.current) {
       const ok = window.confirm(
-        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImages.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
+        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImagesRef.current.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
 ` +
         'ถ้าปิดตอนนี้ รูปจะไม่ถูกบันทึกเข้าชุดเข็ม — ต้องการปิดโดยไม่บันทึกหรือไม่?'
       )
       if (!ok) return
     }
-    onCloseProp()
-  }
+    onClosePropRef.current()
+  }, [])
   useEffect(() => {
     if (!isOpen) return
     setUploadedImages([])

@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v1.3.130'
+export const APP_VERSION = 'v1.3.131'
 export const APP_BUILD_DATE = '2026-10-01'
 export const APP_NAME = 'TextileOps CMMS'
 export const APP_SUBTITLE = 'Gemma Knits CMMS Platform'
