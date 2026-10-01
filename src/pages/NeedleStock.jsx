@@ -32,7 +32,7 @@ import NeedleKeeperConfigModal from '../components/repair/NeedleKeeperConfigModa
 import CreateSpareNeedleModal from '../components/repair/CreateSpareNeedleModal'
 import EditSpareNeedleModal from '../components/repair/EditSpareNeedleModal'
 import { uploadMedia } from '../modules/media/mediaUploader'
-import { getDirectImageUrl, isGoogleDriveUrl } from '../utils/imageUrlUtils'
+import { getDirectImageUrl, isGoogleDriveUrl, getImageFallbackUrls, extractImageUrl } from '../utils/imageUrlUtils'
 import { formatNeedleStockFileName } from '../utils/needleStockUtils'
 import initialNeedleSetsData from '../data/initialNeedleSets.json'
 
@@ -52,8 +52,61 @@ const GRADES = ['เกรด A', 'เกรด B', 'รอคัดแยก', 
 
 const LOCATIONS = ['GMK1', 'STORE', 'GMK3']
 
+/**
+ * Resilient image renderer for needle stock cards, tables, logs, and previews.
+ * Handles Google Drive hotlink referrer blocking (403), fallback multi-tier URLs, and placeholder.
+ */
+function NeedleImage({ src, alt = '', className = '', style, size = 'w600', onClick, title }) {
+  const resolvedUrl = extractImageUrl(src)
+  const [fallbackIndex, setFallbackIndex] = useState(0)
+  const [hasError, setHasError] = useState(false)
+
+  const fallbacks = useMemo(() => getImageFallbackUrls(resolvedUrl, size), [resolvedUrl, size])
+  const currentSrc = fallbacks[fallbackIndex] || getDirectImageUrl(resolvedUrl, size)
+
+  useEffect(() => {
+    setFallbackIndex(0)
+    setHasError(false)
+  }, [resolvedUrl, size])
+
+  const handleImageError = () => {
+    if (fallbackIndex < fallbacks.length - 1) {
+      setFallbackIndex((prev) => prev + 1)
+    } else {
+      setHasError(true)
+    }
+  }
+
+  if (hasError || !resolvedUrl) {
+    return (
+      <div
+        className={`flex items-center justify-center bg-slate-100 text-slate-300 ${className}`}
+        onClick={onClick}
+        title={title}
+      >
+        <ImageIcon className="w-5 h-5 opacity-60" />
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt}
+      title={title}
+      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
+      onError={handleImageError}
+      className={className}
+      style={style}
+      onClick={onClick}
+      loading="lazy"
+    />
+  )
+}
+
 export default function NeedleStock() {
-  const { toast } = useToast()
+  const toast = useToast()
   const { user } = useAuth()
 
   // Main state
@@ -537,12 +590,16 @@ export default function NeedleStock() {
   // Open Image Gallery
   const openGallery = (set) => {
     const imgs = (set.images && set.images.length > 0)
-      ? set.images.map(img => typeof img === 'string' ? { url: img, name: 'รูปภาพ' } : img)
+      ? set.images.map(img => {
+          const u = extractImageUrl(img)
+          const n = typeof img === 'object' && img?.name ? img.name : 'รูปภาพ'
+          return { url: u, name: n }
+        }).filter(item => Boolean(item.url))
       : []
 
     setCurrentGallerySet(set)
     setGalleryImages(imgs)
-    setGalleryTitle(`รูปภาพชุดเข็ม ${set.setId} (${set.machineId || 'ไม่ระบุ'})`)
+    setGalleryTitle(`รูปภาพชุดเข็ม ${set.setId || set.id} (${set.machineId || 'ไม่ระบุ'})`)
     setGallerySubtitle(`${set.needleModel} • ${set.grade}`)
     setActiveGalleryIndex(0)
     setGalleryZoom(1)
@@ -1010,7 +1067,7 @@ export default function NeedleStock() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4">
                 {filteredSets.map(item => {
                   const hasImages = item.images && item.images.length > 0
-                  const mainImg = hasImages ? (typeof item.images[0] === 'string' ? item.images[0] : item.images[0].url) : ''
+                  const mainImg = hasImages ? extractImageUrl(item.images[0]) : ''
                   const imgCount = hasImages ? item.images.length : 0
                   const qty = parseInt(item.quantity, 10) || 0
                   const isOutOfStock = qty === 0
@@ -1072,13 +1129,11 @@ export default function NeedleStock() {
                         >
                           {hasImages ? (
                             <>
-                              <img
-                                src={getDirectImageUrl(mainImg, 'w600')}
+                              <NeedleImage
+                                src={mainImg}
                                 alt={item.needleModel}
+                                size="w600"
                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
-                                onError={(e) => {
-                                  e.target.style.display = 'none'
-                                }}
                               />
                               {isGoogleDriveUrl(mainImg) && (
                                 <div className="absolute top-2 left-2 bg-emerald-950/85 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs flex items-center space-x-1 shadow-xs">
@@ -1185,7 +1240,7 @@ export default function NeedleStock() {
                     <tbody className="divide-y divide-slate-100">
                       {filteredSets.map(item => {
                         const hasImages = item.images && item.images.length > 0
-                        const mainImg = hasImages ? (typeof item.images[0] === 'string' ? item.images[0] : item.images[0].url) : ''
+                        const mainImg = hasImages ? extractImageUrl(item.images[0]) : ''
                         const imgCount = hasImages ? item.images.length : 0
                         const qty = parseInt(item.quantity, 10) || 0
                         const isOutOfStock = qty === 0
@@ -1201,7 +1256,12 @@ export default function NeedleStock() {
                               >
                                 {hasImages ? (
                                   <>
-                                    <img src={getDirectImageUrl(mainImg, 'w160')} alt="" className="w-full h-full object-cover" />
+                                    <NeedleImage
+                                      src={mainImg}
+                                      alt=""
+                                      size="w160"
+                                      className="w-full h-full object-cover"
+                                    />
                                     {imgCount > 1 && (
                                       <span className="absolute bottom-0 right-0 bg-black/70 text-[9px] text-white px-1 font-bold rounded-tl">
                                         +{imgCount}
@@ -1418,7 +1478,7 @@ export default function NeedleStock() {
                         const change = parseInt(log.qtyChange, 10) || 0
                         const isPlus = change > 0
                         const hasImages = log.images && log.images.length > 0
-                        const firstImg = hasImages ? (typeof log.images[0] === 'string' ? log.images[0] : log.images[0].url) : ''
+                        const firstImg = hasImages ? extractImageUrl(log.images[0]) : ''
 
                         const typeBadgeClass = needleActionBadgeClass(act)
 
@@ -1461,7 +1521,11 @@ export default function NeedleStock() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setGalleryImages(log.images.map(img => typeof img === 'string' ? { url: img, name: 'หลักฐาน' } : img))
+                                    const mappedImgs = log.images.map(img => ({
+                                      url: extractImageUrl(img),
+                                      name: typeof img === 'object' && img?.name ? img.name : 'หลักฐาน'
+                                    })).filter(i => Boolean(i.url))
+                                    setGalleryImages(mappedImgs)
                                     setGalleryTitle(`รูปถ่ายหลักฐาน ${log.logId || log.setId}`)
                                     setGallerySubtitle(`${log.actionType} โดย ${log.technician || 'ช่าง'}`)
                                     setActiveGalleryIndex(0)
@@ -1470,7 +1534,7 @@ export default function NeedleStock() {
                                   }}
                                   className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200 inline-block hover:opacity-80 transition cursor-pointer"
                                 >
-                                  <img src={getDirectImageUrl(firstImg, 'w160')} alt="" className="w-full h-full object-cover" />
+                                  <NeedleImage src={firstImg} alt="" size="w160" className="w-full h-full object-cover" />
                                 </button>
                               ) : (
                                 <span className="text-slate-300 text-xs">-</span>
@@ -2056,10 +2120,23 @@ export default function NeedleStock() {
           comboboxStore={comboboxStore}
           onLearnValues={learnValues}
           onSuccess={(updatedSet, newLog) => {
-            setNeedleSets(prev => prev.map(s => s.setId === updatedSet.setId ? updatedSet : s))
-            setHistoryLogs(prev => [newLog, ...prev])
+            setNeedleSets(prev => prev.map(s => {
+              const isMatch = (
+                (s.setId && updatedSet.setId && s.setId === updatedSet.setId) ||
+                (s.id && updatedSet.id && s.id === updatedSet.id) ||
+                (s.Set_ID && updatedSet.setId && s.Set_ID === updatedSet.setId) ||
+                (s.id && updatedSet.setId && s.id === updatedSet.setId) ||
+                (s.setId && updatedSet.id && s.setId === updatedSet.id)
+              )
+              return isMatch ? updatedSet : s
+            }))
+            if (newLog) setHistoryLogs(prev => [newLog, ...prev])
             setStockModalOpen(false)
-            toast.success(`ทำรายการสต็อกชุดเข็ม ${updatedSet.setId} สำเร็จ! ยอดคงเหลือใหม่: ${updatedSet.quantity.toLocaleString()} เล่ม`)
+            try {
+              if (toast && typeof toast.success === 'function') {
+                toast.success(`ทำรายการสต็อกชุดเข็ม ${updatedSet.setId} สำเร็จ! ยอดคงเหลือใหม่: ${(parseInt(updatedSet.quantity, 10) || 0).toLocaleString()} เล่ม`)
+              }
+            } catch {}
           }}
         />
       )}
@@ -2075,7 +2152,11 @@ export default function NeedleStock() {
           onSuccess={(newSet) => {
             setNeedleSets(prev => [newSet, ...prev])
             setAddModalOpen(false)
-            toast.success(`เพิ่มชุดเข็ม ${newSet.setId} (${newSet.needleModel}) สำเร็จแล้ว!`)
+            try {
+              if (toast && typeof toast.success === 'function') {
+                toast.success(`เพิ่มชุดเข็ม ${newSet.setId} (${newSet.needleModel}) สำเร็จแล้ว!`)
+              }
+            } catch {}
 
             // Log the opening stock so the ledger / "รับเข้าสะสม" KPI stay complete
             const openingQty = parseInt(newSet.quantity, 10) || 0
@@ -2115,10 +2196,23 @@ export default function NeedleStock() {
           comboboxStore={comboboxStore}
           onLearnValues={learnValues}
           onSuccess={(updatedSet, newLog) => {
-            setNeedleSets(prev => prev.map(s => s.setId === updatedSet.setId ? updatedSet : s))
+            setNeedleSets(prev => prev.map(s => {
+              const isMatch = (
+                (s.setId && updatedSet.setId && s.setId === updatedSet.setId) ||
+                (s.id && updatedSet.id && s.id === updatedSet.id) ||
+                (s.Set_ID && updatedSet.setId && s.Set_ID === updatedSet.setId) ||
+                (s.id && updatedSet.setId && s.id === updatedSet.setId) ||
+                (s.setId && updatedSet.id && s.setId === updatedSet.id)
+              )
+              return isMatch ? updatedSet : s
+            }))
             if (newLog) setHistoryLogs(prev => [newLog, ...prev])
             setUpdateModalOpen(false)
-            toast.success(`อัปเดตเกรด/สภาพชุดเข็ม ${updatedSet.setId} สำเร็จแล้ว!`)
+            try {
+              if (toast && typeof toast.success === 'function') {
+                toast.success(`อัปเดตเกรด/สภาพชุดเข็ม ${updatedSet.setId} สำเร็จแล้ว!`)
+              }
+            } catch {}
           }}
         />
       )}
@@ -2169,8 +2263,8 @@ export default function NeedleStock() {
 /**
  * 1. Stock Transaction Modal (IN, OUT, ADJUST, SCRAP)
  */
-function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, comboboxStore, onLearnValues, onSuccess }) {
-  const { toast } = useToast()
+function StockTransactionModal({ isOpen, onClose: onCloseProp, currentSet, needleSets, comboboxStore, onLearnValues, onSuccess }) {
+  const toast = useToast()
   const [selectedSetId, setSelectedSetId] = useState(currentSet?.setId || needleSets[0]?.setId || '')
   const [movementType, setMovementType] = useState('OUT') // 'IN' | 'OUT' | 'ADJUST' | 'SCRAP'
   const [quantity, setQuantity] = useState('')
@@ -2188,6 +2282,19 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
   const [uploadingImage, setUploadingImage] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+
+  // กันปิดหน้าต่างทั้งที่ยังมีรูปอัปโหลดขึ้น Drive แล้วแต่ยังไม่ได้บันทึกเข้าระบบ
+  const onClose = () => {
+    if (uploadedImages.length > 0 && !submitting) {
+      const ok = window.confirm(
+        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImages.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
+` +
+        'ถ้าปิดตอนนี้ รูปจะไม่ถูกบันทึกเข้าชุดเข็ม — ต้องการปิดโดยไม่บันทึกหรือไม่?'
+      )
+      if (!ok) return
+    }
+    onCloseProp()
+  }
   useEffect(() => {
     if (!isOpen) return
     setUploadedImages([])
@@ -2285,7 +2392,7 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
         }
       }
       if (successCount > 0) {
-        toast.success('อัปโหลดรูปสำเร็จ', `บันทึกลง Google Drive (${NEEDLE_IMAGE_FOLDER}) เรียบร้อย ${successCount} รูป`)
+        toast.success('อัปโหลดรูปขึ้น Google Drive สำเร็จ', 'อย่าลืมกดปุ่ม "ยืนยันทำรายการ" ด้านล่างเพื่อบันทึกข้อมูลเข้าระบบ')
       }
     } finally {
       setUploadingImage(false)
@@ -2375,7 +2482,14 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
         NeedleHistoryAPI.create(newLogData),
       ])
 
-      onSuccess(updatedSetData, newLogData)
+      try {
+        if (typeof onSuccess === 'function') {
+          onSuccess(updatedSetData, newLogData)
+        }
+      } catch (cbErr) {
+        console.warn('onSuccess callback warning:', cbErr)
+        onClose()
+      }
     } catch (err) {
       console.error('Stock transaction failed:', err)
       alert('บันทึกรายการสต็อกไม่สำเร็จ: ' + err.message)
@@ -2727,12 +2841,17 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
 
             {/* Uploading indicator or uploaded list */}
             {(uploadedImages.length > 0 || uploadingImage) && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {uploadedImages.map((img, idx) => {
-                  const directUrl = getDirectImageUrl(img.url)
-                  return (
+              <div className="space-y-2 pt-1">
+                {uploadedImages.length > 0 && (
+                  <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>รูปภาพพร้อมบันทึก ({uploadedImages.length} รูป) — กรุณากดปุ่ม <b>"ยืนยันทำรายการ"</b> ด้านล่างเพื่อบันทึกข้อมูลเข้าระบบ</span>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {uploadedImages.map((img, idx) => (
                     <div key={idx} className="relative w-16 h-16 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 group">
-                      <img src={directUrl} alt={img.name || `photo-${idx}`} className="w-full h-full object-cover" />
+                      <NeedleImage src={img.url} alt={img.name || `photo-${idx}`} size="w240" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
                         <span className="text-[9px] text-white text-center truncate">{img.name || 'รูปภาพ'}</span>
                       </div>
@@ -2749,15 +2868,15 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
                         ×
                       </button>
                     </div>
-                  )
-                })}
+                  ))}
 
-                {uploadingImage && (
-                  <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
-                    <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
-                    <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
-                  </div>
-                )}
+                  {uploadingImage && (
+                    <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
+                      <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
+                      <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -2775,7 +2894,11 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
             <button
               type="submit"
               disabled={submitting || isError || uploadingImage}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+              className={`px-5 py-2 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 ${
+                uploadedImages.length > 0
+                  ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-300 ring-offset-1 font-bold'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
               {submitting ? (
                 <>
@@ -2800,8 +2923,8 @@ function StockTransactionModal({ isOpen, onClose, currentSet, needleSets, combob
 /**
  * 2. Add New Needle Set Modal
  */
-function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLearnValues, onSuccess }) {
-  const { toast } = useToast()
+function AddNewNeedleSetModal({ isOpen, onClose: onCloseProp, needleSets, comboboxStore, onLearnValues, onSuccess }) {
+  const toast = useToast()
   const [machineType, setMachineType] = useState('Single')
   const [gauge, setGauge] = useState('28G')
   const [machineId, setMachineId] = useState('')
@@ -2817,6 +2940,19 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
   const [uploadingImage, setUploadingImage] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+
+  // กันปิดหน้าต่างทั้งที่ยังมีรูปอัปโหลดขึ้น Drive แล้วแต่ยังไม่ได้บันทึกเข้าระบบ
+  const onClose = () => {
+    if (uploadedImages.length > 0 && !submitting) {
+      const ok = window.confirm(
+        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImages.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
+` +
+        'ถ้าปิดตอนนี้ รูปจะไม่ถูกบันทึกเข้าชุดเข็ม — ต้องการปิดโดยไม่บันทึกหรือไม่?'
+      )
+      if (!ok) return
+    }
+    onCloseProp()
+  }
   useEffect(() => {
     if (!isOpen) return
     setUploadedImages([])
@@ -2885,7 +3021,7 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
         }
       }
       if (successCount > 0) {
-        toast.success('อัปโหลดรูปสำเร็จ', `บันทึกลง Google Drive (${NEEDLE_IMAGE_FOLDER}) เรียบร้อย ${successCount} รูป`)
+        toast.success('อัปโหลดรูปขึ้น Google Drive สำเร็จ', 'อย่าลืมกดปุ่ม "บันทึกชุดเข็มใหม่" ด้านล่างเพื่อบันทึกข้อมูลเข้าระบบ')
       }
     } finally {
       setUploadingImage(false)
@@ -2932,7 +3068,14 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
       })
 
       await NeedleSetAPI.create(newSetRecord)
-      onSuccess(newSetRecord)
+      try {
+        if (typeof onSuccess === 'function') {
+          onSuccess(newSetRecord)
+        }
+      } catch (cbErr) {
+        console.warn('onSuccess callback warning:', cbErr)
+        onClose()
+      }
     } catch (err) {
       console.error('Failed to create needle set:', err)
       alert('บันทึกชุดเข็มไม่สำเร็จ: ' + err.message)
@@ -3168,12 +3311,17 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
 
             {/* Uploading indicator or uploaded list */}
             {(uploadedImages.length > 0 || uploadingImage) && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {uploadedImages.map((img, idx) => {
-                  const directUrl = getDirectImageUrl(img.url)
-                  return (
+              <div className="space-y-2 pt-1">
+                {uploadedImages.length > 0 && (
+                  <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>รูปภาพพร้อมบันทึก ({uploadedImages.length} รูป) — กรุณากดปุ่ม <b>"บันทึกชุดเข็มใหม่"</b> ด้านล่างเพื่อบันทึกข้อมูลเข้าระบบ</span>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {uploadedImages.map((img, idx) => (
                     <div key={idx} className="relative w-16 h-16 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 group">
-                      <img src={directUrl} alt={img.name || `photo-${idx}`} className="w-full h-full object-cover" />
+                      <NeedleImage src={img.url} alt={img.name || `photo-${idx}`} size="w240" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
                         <span className="text-[9px] text-white text-center truncate">{img.name || 'รูปภาพ'}</span>
                       </div>
@@ -3190,15 +3338,15 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
                         ×
                       </button>
                     </div>
-                  )
-                })}
+                  ))}
 
-                {uploadingImage && (
-                  <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
-                    <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
-                    <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
-                  </div>
-                )}
+                  {uploadingImage && (
+                    <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
+                      <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
+                      <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -3216,7 +3364,11 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
             <button
               type="submit"
               disabled={submitting || uploadingImage}
-              className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+              className={`px-5 py-2 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 ${
+                uploadedImages.length > 0
+                  ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-300 ring-offset-1 font-bold'
+                  : 'bg-sky-600 hover:bg-sky-700'
+              }`}
             >
               {submitting ? (
                 <>
@@ -3238,8 +3390,8 @@ function AddNewNeedleSetModal({ isOpen, onClose, needleSets, comboboxStore, onLe
 /**
  * 3. Update Grade / Inspect Modal
  */
-function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnValues, onSuccess }) {
-  const { toast } = useToast()
+function UpdateGradeModal({ isOpen, onClose: onCloseProp, currentSet, comboboxStore, onLearnValues, onSuccess }) {
+  const toast = useToast()
   const [actionType, setActionType] = useState('คัดแยก/เปลี่ยนเกรดเข็ม')
   const [grade, setGrade] = useState(currentSet?.grade || 'เกรด B')
   const [conditionDetail, setConditionDetail] = useState(currentSet?.conditionDetail || '')
@@ -3251,6 +3403,19 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
   const [uploadingImage, setUploadingImage] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+
+  // กันปิดหน้าต่างทั้งที่ยังมีรูปอัปโหลดขึ้น Drive แล้วแต่ยังไม่ได้บันทึกเข้าระบบ
+  const onClose = () => {
+    if (uploadedImages.length > 0 && !submitting) {
+      const ok = window.confirm(
+        `มีรูปที่อัปโหลดขึ้น Google Drive แล้ว ${uploadedImages.length} รูป แต่ยังไม่ได้บันทึกเข้าระบบ
+` +
+        'ถ้าปิดตอนนี้ รูปจะไม่ถูกบันทึกเข้าชุดเข็ม — ต้องการปิดโดยไม่บันทึกหรือไม่?'
+      )
+      if (!ok) return
+    }
+    onCloseProp()
+  }
   useEffect(() => {
     if (!isOpen) return
     setUploadedImages([])
@@ -3293,7 +3458,7 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
         }
       }
       if (successCount > 0) {
-        toast.success('อัปโหลดรูปสำเร็จ', `บันทึกลง Google Drive (${NEEDLE_IMAGE_FOLDER}) เรียบร้อย ${successCount} รูป`)
+        toast.success('อัปโหลดรูปขึ้น Google Drive สำเร็จ', 'อย่าลืมกดปุ่ม "บันทึกการเปลี่ยนแปลง" ด้านล่างเพื่อบันทึกข้อมูลเข้าระบบ')
       }
     } finally {
       setUploadingImage(false)
@@ -3353,7 +3518,14 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
         NeedleHistoryAPI.create(newLog),
       ])
 
-      onSuccess(updatedSet, newLog)
+      try {
+        if (typeof onSuccess === 'function') {
+          onSuccess(updatedSet, newLog)
+        }
+      } catch (cbErr) {
+        console.warn('onSuccess callback warning:', cbErr)
+        onClose()
+      }
     } catch (err) {
       console.error('Update grade failed:', err)
       alert('อัปเดตเกรดไม่สำเร็จ: ' + err.message)
@@ -3509,12 +3681,17 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
 
             {/* Uploading indicator or uploaded list */}
             {(uploadedImages.length > 0 || uploadingImage) && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {uploadedImages.map((img, idx) => {
-                  const directUrl = getDirectImageUrl(img.url)
-                  return (
+              <div className="space-y-2 pt-1">
+                {uploadedImages.length > 0 && (
+                  <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>รูปภาพพร้อมบันทึก ({uploadedImages.length} รูป) — กรุณากดปุ่ม <b>"บันทึกการเปลี่ยนแปลง"</b> ด้านล่างเพื่อบันทึกข้อมูลเข้าระบบ</span>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {uploadedImages.map((img, idx) => (
                     <div key={idx} className="relative w-16 h-16 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 group">
-                      <img src={directUrl} alt={img.name || `photo-${idx}`} className="w-full h-full object-cover" />
+                      <NeedleImage src={img.url} alt={img.name || `photo-${idx}`} size="w240" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
                         <span className="text-[9px] text-white text-center truncate">{img.name || 'รูปภาพ'}</span>
                       </div>
@@ -3531,15 +3708,15 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
                         ×
                       </button>
                     </div>
-                  )
-                })}
+                  ))}
 
-                {uploadingImage && (
-                  <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
-                    <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
-                    <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
-                  </div>
-                )}
+                  {uploadingImage && (
+                    <div className="w-16 h-16 rounded-xl bg-sky-50 border-2 border-dashed border-sky-400 flex flex-col items-center justify-center p-1 text-center animate-pulse">
+                      <div className="w-4 h-4 border-2 border-sky-600 border-t-transparent rounded-full animate-spin mb-1" />
+                      <span className="text-[8px] font-bold text-sky-700">ส่งเข้า Drive...</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -3557,7 +3734,11 @@ function UpdateGradeModal({ isOpen, onClose, currentSet, comboboxStore, onLearnV
             <button
               type="submit"
               disabled={submitting || uploadingImage}
-              className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+              className={`px-5 py-2 text-white rounded-xl font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 ${
+                uploadedImages.length > 0
+                  ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-300 ring-offset-1 font-bold'
+                  : 'bg-sky-600 hover:bg-sky-700'
+              }`}
             >
               {submitting ? (
                 <>
@@ -3693,7 +3874,7 @@ function TimelineHistoryModal({ isOpen, onClose, currentSet, historyLogs, onView
                       {hasImgs && (
                         <div className="flex flex-wrap gap-2 pt-1">
                           {log.images.map((img, imgIdx) => {
-                            const url = typeof img === 'string' ? img : img.url
+                            const url = extractImageUrl(img)
                             return (
                               <button
                                 key={imgIdx}
@@ -3701,7 +3882,7 @@ function TimelineHistoryModal({ isOpen, onClose, currentSet, historyLogs, onView
                                 onClick={() => onViewImage(log.images, `หลักฐาน ${act}`, `${log.dateAction} โดย ${log.technician}`)}
                                 className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 hover:opacity-80 transition cursor-pointer relative"
                               >
-                                <img src={getDirectImageUrl(url, 'w240')} alt="" className="w-full h-full object-cover" />
+                                <NeedleImage src={url} alt="" size="w240" className="w-full h-full object-cover" />
                                 {isGoogleDriveUrl(url) && (
                                   <span className="absolute bottom-0.5 right-0.5 bg-blue-600/80 text-white rounded p-0.5" title="Google Drive">
                                     <Cloud className="w-2.5 h-2.5" />
@@ -3754,7 +3935,7 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
     }
   }, [isOpen, onClose])
 
-  const currentImg = images && images.length > 0 ? (images[activeIndex]?.url || images[activeIndex] || '') : ''
+  const currentImg = images && images.length > 0 ? extractImageUrl(images[activeIndex]) : ''
   const hasPhotos = Boolean(currentImg)
 
   const handleZoom = (delta) => {
@@ -3794,7 +3975,7 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
           <div className="flex items-center space-x-2">
             {hasPhotos && isGoogleDriveUrl(currentImg) && (
               <a
-                href={currentImg}
+                href={getFullResolutionImageUrl(currentImg)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-2.5 py-1.5 bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition"
@@ -3847,9 +4028,10 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
         {/* Viewport */}
         <div className="flex-1 overflow-auto flex items-center justify-center p-6 min-h-[380px] bg-slate-950 select-none">
           {hasPhotos ? (
-            <img
-              src={getDirectImageUrl(currentImg, 'w1600')}
+            <NeedleImage
+              src={currentImg}
               alt=""
+              size="w1600"
               style={{ transform: `scale(${zoom})`, transition: 'transform 0.15s ease-out' }}
               className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-lg cursor-grab active:cursor-grabbing"
             />
@@ -3883,7 +4065,7 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
         {images.length > 1 && (
           <div className="p-3 bg-slate-800 border-t border-slate-700 flex items-center space-x-2 overflow-x-auto">
             {images.map((img, idx) => {
-              const url = typeof img === 'string' ? img : img.url
+              const url = extractImageUrl(img)
               return (
                 <button
                   key={idx}
@@ -3893,7 +4075,7 @@ function ImageGalleryModal({ isOpen, onClose, images, title, subtitle, activeInd
                     activeIndex === idx ? 'border-sky-500 scale-105' : 'border-slate-600 opacity-60 hover:opacity-100'
                   }`}
                 >
-                  <img src={getDirectImageUrl(url, 'w160')} alt="" className="w-full h-full object-cover" />
+                  <NeedleImage src={url} alt="" size="w160" className="w-full h-full object-cover" />
                   {isGoogleDriveUrl(url) && (
                     <span className="absolute bottom-0.5 right-0.5 bg-blue-600/80 text-white rounded p-0.5" title="Google Drive">
                       <Cloud className="w-2 h-2" />

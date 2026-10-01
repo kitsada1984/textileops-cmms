@@ -690,7 +690,7 @@ export default function SettingsPage() {
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           {c.picture_url ? (
-                            <img src={c.picture_url} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                            <img src={c.picture_url} alt="" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 text-[10px] flex-shrink-0">
                               {c.name?.[0] || 'L'}

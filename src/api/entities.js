@@ -311,16 +311,44 @@ function parseNeedleQuantity(item = {}) {
   return Number.isFinite(n) && n >= 0 ? n : 0
 }
 
+export function parseNeedleImages(raw) {
+  if (Array.isArray(raw)) return raw
+  if (!raw) return []
+  if (typeof raw === 'object') return [raw]
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim()
+    if (!trimmed) return []
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) return parsed
+        if (parsed && typeof parsed === 'object') return [parsed]
+      } catch {}
+    }
+    if (trimmed.includes(',') || trimmed.includes('\n')) {
+      return trimmed.split(/[,\n]+/).map((s) => s.trim()).filter(Boolean)
+    }
+    return [trimmed]
+  }
+  return []
+}
+
 export function normalizeNeedleSet(item = {}) {
   const setId = item.id || item.Set_ID || item.setId || `NS-${Date.now()}`
-  let images = []
-  if (Array.isArray(item.images)) images = item.images
-  else if (Array.isArray(item.Image_URLs)) images = item.Image_URLs
-  else if (typeof item.Image_URLs === 'string') {
-    try { images = JSON.parse(item.Image_URLs) } catch { images = [] }
-  } else if (typeof item.images === 'string') {
-    try { images = JSON.parse(item.images) } catch { images = [] }
-  }
+  const rawImgs =
+    item.images ??
+    item.Image_URLs ??
+    item.imageUrls ??
+    item.image_urls ??
+    item.Photos ??
+    item.photos ??
+    item.Photo_URLs ??
+    item.photo_urls ??
+    item.Image_URL ??
+    item.image_url ??
+    item.Image ??
+    item.image
+  const images = parseNeedleImages(rawImgs)
 
   return {
     ...item,
@@ -364,14 +392,20 @@ export function normalizeNeedleSet(item = {}) {
 
 export function normalizeNeedleLog(log = {}) {
   const logId = log.id || log.Log_ID || log.logId || `LOG-${Date.now()}`
-  let images = []
-  if (Array.isArray(log.images)) images = log.images
-  else if (Array.isArray(log.Image_URLs)) images = log.Image_URLs
-  else if (typeof log.Image_URLs === 'string') {
-    try { images = JSON.parse(log.Image_URLs) } catch { images = [] }
-  } else if (typeof log.images === 'string') {
-    try { images = JSON.parse(log.images) } catch { images = [] }
-  }
+  const rawImgs =
+    log.images ??
+    log.Image_URLs ??
+    log.imageUrls ??
+    log.image_urls ??
+    log.Photos ??
+    log.photos ??
+    log.Photo_URLs ??
+    log.photo_urls ??
+    log.Image_URL ??
+    log.image_url ??
+    log.Image ??
+    log.image
+  const images = parseNeedleImages(rawImgs)
 
   return {
     ...log,
@@ -482,6 +516,7 @@ export const NeedleSetAPI = {
   update: async (id, item) => {
     const norm = normalizeNeedleSet({ ...item, id })
     const payload = {
+      id: norm.id,
       Set_ID: norm.id,
       Machine_Type: norm.machineType,
       Gauge: norm.gauge,
@@ -501,11 +536,20 @@ export const NeedleSetAPI = {
     }
 
     try {
-      await db.from('needle_sets').update(payload).eq('id', id)
-    } catch {}
+      const res = await db.from('needle_sets').update(payload).eq('id', id)
+      if (!res?.data || (Array.isArray(res?.data) && res.data.length === 0)) {
+        const res2 = await db.from('needle_sets').update(payload).eq('Set_ID', id)
+        if (!res2?.data || (Array.isArray(res2?.data) && res2.data.length === 0)) {
+          await db.from('needle_sets').upsert([payload], { onConflict: 'id' }).catch(() => {})
+        }
+      }
+    } catch (e) {
+      console.warn('[NeedleSetAPI] Table update failed, falling back to sys config:', e)
+    }
 
     const list = await NeedleSetAPI.list()
     const updated = list.map((s) => (s.id === id || s.setId === id || s.Set_ID === id ? norm : s))
+    try { localStorage.setItem('textileops_tbl_needle_sets', JSON.stringify(updated)) } catch {}
     await saveSystemConfig('needle_sets', updated, {
       legacyWorkOrderId: 'SYS_NEEDLE_SETS',
       localCacheKey: 'textileops_tbl_needle_sets',
@@ -519,6 +563,7 @@ export const NeedleSetAPI = {
 
     const list = await NeedleSetAPI.list()
     const updated = list.filter((s) => s.id !== id && s.setId !== id && s.Set_ID !== id)
+    try { localStorage.setItem('textileops_tbl_needle_sets', JSON.stringify(updated)) } catch {}
     await saveSystemConfig('needle_sets', updated, {
       legacyWorkOrderId: 'SYS_NEEDLE_SETS',
       localCacheKey: 'textileops_tbl_needle_sets',
@@ -574,10 +619,13 @@ export const NeedleHistoryAPI = {
 
     try {
       await db.from('needle_history_logs').insert([payload])
-    } catch {}
+    } catch (e) {
+      console.warn('[NeedleHistoryAPI] Table insert failed, falling back to sys config:', e)
+    }
 
     const currentLogs = await NeedleHistoryAPI.list()
     const updated = [norm, ...currentLogs]
+    try { localStorage.setItem('textileops_tbl_needle_history_logs', JSON.stringify(updated)) } catch {}
     await saveSystemConfig('needle_history_logs', updated, {
       legacyWorkOrderId: 'SYS_NEEDLE_HISTORY_LOGS',
       localCacheKey: 'textileops_tbl_needle_history_logs',

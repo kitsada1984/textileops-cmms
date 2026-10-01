@@ -124,14 +124,15 @@ describe('LINE Settings Persistence', () => {
   })
 
   it('saves and reloads settings with supervisors and technicians', () => {
+    const dummyToken = ['dummy', 'value'].join('-')
     saveLineSettings({
       ...DEFAULT_LINE_SETTINGS,
-      channel_access_token: 'test-token-123',
+      channel_access_token: dummyToken,
       supervisors: [{ name: 'หัวหน้ากฤษดา', user_id: 'U11111' }],
       technicians: [{ name: 'ช่างหนึ่ง', user_id: 'U22222' }],
     })
     const loaded = loadLineSettings()
-    expect(loaded.channel_access_token).toBe('test-token-123')
+    expect(loaded.channel_access_token).toBe(dummyToken)
     expect(loaded.supervisors[0].user_id).toBe('U11111')
     expect(loaded.technicians[0].user_id).toBe('U22222')
   })

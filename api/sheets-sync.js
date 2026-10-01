@@ -122,14 +122,18 @@ async function syncViaServiceAccount(payload) {
   const sheets = google.sheets({ version: 'v4', auth })
   const { sheetName, values } = normalizePayload(payload)
 
+  // A1 notation requires single quotes inside sheet names to be doubled, so a
+  // crafted name cannot break out of the quoted range.
+  const rangeSheetName = String(sheetName).replace(/'/g, "''")
+
   await ensureSheet(sheets, spreadsheetId, sheetName)
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
-    range: `'${sheetName}'`,
+    range: `'${rangeSheetName}'`,
   })
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${sheetName}'!A1`,
+    range: `'${rangeSheetName}'!A1`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values },
   })

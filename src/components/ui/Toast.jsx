@@ -4,8 +4,21 @@ import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react'
 /* ── Context ─────────────────────────────────────────────────────────────── */
 const ToastCtx = createContext(null)
 
+const noop = () => {}
+const safeToastObj = {
+  success: noop,
+  error: noop,
+  warning: noop,
+  info: noop,
+}
+safeToastObj.toast = safeToastObj
+
 export function useToast() {
-  return useContext(ToastCtx)
+  const ctx = useContext(ToastCtx)
+  if (!ctx) {
+    return safeToastObj
+  }
+  return ctx
 }
 
 /* ── Single toast item ───────────────────────────────────────────────────── */
@@ -111,6 +124,7 @@ export function ToastProvider({ children }) {
     warning: (title, message) => add({ type: 'warning', title, message }),
     info:    (title, message) => add({ type: 'info',    title, message }),
   }
+  toast.toast = toast
 
   return (
     <ToastCtx.Provider value={toast}>

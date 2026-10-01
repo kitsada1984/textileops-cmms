@@ -4,11 +4,15 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const projectRoot = path.resolve(__dirname, '..')
+
+// Wrangler has to be launched through its .cmd shim on Windows
+const WRANGLER_BIN = process.platform === 'win32' ? 'npx.cmd' : 'npx'
+const CF_ACCOUNT_ID = '392e2aeb2648effccebd585e5c29611b'
 
 const seedSqlPath = path.join(projectRoot, 'migrations', '0002_seed_data.sql')
 const content = fs.readFileSync(seedSqlPath, 'utf8')
@@ -62,10 +66,10 @@ for (let i = 0; i < batches.length; i++) {
   process.stdout.write(`Executing batch ${batchNum}/${batches.length} (${batch.length} stmts, ${fileSizeKB} KB)... `)
 
   try {
-    const cmd = `npx wrangler d1 execute textileops-db --remote --file="${tempFile}" -y`
-    execSync(cmd, {
+    // Argument array (no shell interpolation) — keeps file paths/account ids out of a command string
+    execFileSync(WRANGLER_BIN, ['d1', 'execute', 'textileops-db', '--remote', '--file', tempFile, '-y'], {
       cwd: projectRoot,
-      env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || '392e2aeb2648effccebd585e5c29611b' },
+      env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || CF_ACCOUNT_ID },
       stdio: 'pipe'
     })
     console.log(`✅ OK`)

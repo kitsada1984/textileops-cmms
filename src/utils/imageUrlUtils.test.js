@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  extractImageUrl,
   getGoogleDriveFileId,
   isGoogleDriveUrl,
   getDirectImageUrl,
@@ -9,6 +10,27 @@ import {
 
 describe('imageUrlUtils', () => {
   const FILE_ID = '1Zmtl3Rv5ivOGbEidAPRXEtgEW5h48IE3'
+
+  describe('extractImageUrl', () => {
+    it('extracts URL from plain string', () => {
+      expect(extractImageUrl('https://example.com/img.jpg')).toBe('https://example.com/img.jpg')
+      expect(extractImageUrl('  https://example.com/img.jpg  ')).toBe('https://example.com/img.jpg')
+    })
+
+    it('extracts URL from object with url or imageUrl property', () => {
+      expect(extractImageUrl({ url: 'https://example.com/a.jpg' })).toBe('https://example.com/a.jpg')
+      expect(extractImageUrl({ imageUrl: 'https://example.com/b.jpg' })).toBe('https://example.com/b.jpg')
+      expect(extractImageUrl({ Image_URL: 'https://example.com/c.jpg' })).toBe('https://example.com/c.jpg')
+      expect(extractImageUrl({ dataUrl: 'data:image/jpeg;base64,123' })).toBe('data:image/jpeg;base64,123')
+    })
+
+    it('returns empty string for null, undefined, or empty objects', () => {
+      expect(extractImageUrl('')).toBe('')
+      expect(extractImageUrl(null)).toBe('')
+      expect(extractImageUrl(undefined)).toBe('')
+      expect(extractImageUrl({})).toBe('')
+    })
+  })
 
   describe('getGoogleDriveFileId', () => {
     it('extracts ID from /file/d/ format', () => {
@@ -36,6 +58,11 @@ describe('imageUrlUtils', () => {
       expect(getGoogleDriveFileId(url)).toBe(FILE_ID)
     })
 
+    it('extracts ID from object input', () => {
+      expect(getGoogleDriveFileId({ url: `https://drive.google.com/file/d/${FILE_ID}/view` })).toBe(FILE_ID)
+      expect(getGoogleDriveFileId({ imageUrl: `https://drive.google.com/file/d/${FILE_ID}/view` })).toBe(FILE_ID)
+    })
+
     it('returns null for non-drive URLs', () => {
       expect(getGoogleDriveFileId('https://example.com/image.png')).toBeNull()
       expect(getGoogleDriveFileId('')).toBeNull()
@@ -47,6 +74,7 @@ describe('imageUrlUtils', () => {
     it('detects Google Drive URLs', () => {
       expect(isGoogleDriveUrl(`https://drive.google.com/file/d/${FILE_ID}/view`)).toBe(true)
       expect(isGoogleDriveUrl('https://example.com/pic.jpg')).toBe(false)
+      expect(isGoogleDriveUrl({ url: `https://drive.google.com/file/d/${FILE_ID}/view` })).toBe(true)
     })
   })
 
@@ -54,6 +82,11 @@ describe('imageUrlUtils', () => {
     it('converts Google Drive viewer URL to direct thumbnail image URL', () => {
       const driveUrl = `https://drive.google.com/file/d/${FILE_ID}/view`
       const direct = getDirectImageUrl(driveUrl, 'w1000')
+      expect(direct).toBe(`https://lh3.googleusercontent.com/d/${FILE_ID}=s1000`)
+    })
+
+    it('works with image objects', () => {
+      const direct = getDirectImageUrl({ imageUrl: `https://drive.google.com/file/d/${FILE_ID}/view` }, 'w1000')
       expect(direct).toBe(`https://lh3.googleusercontent.com/d/${FILE_ID}=s1000`)
     })
 

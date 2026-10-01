@@ -2,9 +2,33 @@
  * Utility functions for handling image URLs and Google Drive links.
  */
 
+/**
+ * Extracts a valid image URL string from any type of input (string, object, nested properties).
+ * Supports: string URL, { url }, { imageUrl }, { image_url }, { Image_URL }, { dataUrl }, { src }, { link }, { path }
+ */
+export function extractImageUrl(img) {
+  if (!img) return ''
+  if (typeof img === 'string') return img.trim()
+  if (typeof img === 'object') {
+    return (
+      img.url ||
+      img.imageUrl ||
+      img.image_url ||
+      img.Image_URL ||
+      img.dataUrl ||
+      img.src ||
+      img.link ||
+      img.path ||
+      ''
+    ).trim()
+  }
+  return ''
+}
+
 export function getGoogleDriveFileId(url = '') {
-  if (!url || typeof url !== 'string') return null
-  const trimmed = url.trim()
+  const actualUrl = typeof url === 'string' ? url : extractImageUrl(url)
+  if (!actualUrl || typeof actualUrl !== 'string') return null
+  const trimmed = actualUrl.trim()
 
   // Match /file/d/FILE_ID or /file/u/0/d/FILE_ID (multi-account)
   const fileDMatch = trimmed.match(/\/file\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/i)
@@ -34,8 +58,9 @@ export function isGoogleDriveUrl(url = '') {
  * For Google Drive, uses lh3.googleusercontent.com CDN which supports direct image rendering without auth blocks.
  */
 export function getDirectImageUrl(url = '', size = 'w1200') {
-  if (!url || typeof url !== 'string') return ''
-  const trimmed = url.trim()
+  const actualUrl = typeof url === 'string' ? url : extractImageUrl(url)
+  if (!actualUrl || typeof actualUrl !== 'string') return ''
+  const trimmed = actualUrl.trim()
   const fileId = getGoogleDriveFileId(trimmed)
   if (fileId) {
     const sParam = size.startsWith('w') ? 's' + size.slice(1) : (size.startsWith('s') ? size : 's800')
@@ -48,8 +73,9 @@ export function getDirectImageUrl(url = '', size = 'w1200') {
  * Returns fallback image URLs if the primary thumbnail URL fails.
  */
 export function getImageFallbackUrls(url = '', size = 'w800') {
-  if (!url || typeof url !== 'string') return []
-  const trimmed = url.trim()
+  const actualUrl = typeof url === 'string' ? url : extractImageUrl(url)
+  if (!actualUrl || typeof actualUrl !== 'string') return []
+  const trimmed = actualUrl.trim()
   const fileId = getGoogleDriveFileId(trimmed)
   if (!fileId) return [trimmed]
 
@@ -69,8 +95,9 @@ export function getImageFallbackUrls(url = '', size = 'w800') {
  * Returns the full-resolution URL for opening in a new tab.
  */
 export function getFullResolutionImageUrl(url = '') {
-  if (!url || typeof url !== 'string') return ''
-  const trimmed = url.trim()
+  const actualUrl = typeof url === 'string' ? url : extractImageUrl(url)
+  if (!actualUrl || typeof actualUrl !== 'string') return ''
+  const trimmed = actualUrl.trim()
   const fileId = getGoogleDriveFileId(trimmed)
   if (fileId) {
     return 'https://drive.google.com/file/d/' + fileId + '/view'
