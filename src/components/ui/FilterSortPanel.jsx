@@ -289,7 +289,61 @@ function FilterField({ col, value, onChange, onToggle }) {
       </div>
 
       {type === 'select' && (() => {
+        const multi = col.filter.multi !== false
+        // ตัวเลือกน้อยกว่า 5 รายการ → ใช้การ์ดกดเลือกได้หลายรายการ / ตั้งแต่ 5 ขึ้นไป → ดรอปดาวน์ลิสต์
+        const useChips = multi && options.length > 0 && options.length < 5
         const selectedSingleVal = Array.isArray(value) ? (value.length === 1 ? value[0] : '') : (value || '')
+        const selectedList = Array.isArray(value) ? value.map(String) : (value ? [String(value)] : [])
+
+        if (useChips) {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {/* การ์ดตัวเลือก (กดเลือกได้หลายรายการ) */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {options.map((opt) => {
+                  const ov = String(optionValue(opt))
+                  const ol = optionLabel(opt)
+                  const selected = selectedList.includes(ov)
+                  return (
+                    <button
+                      key={String(ov)}
+                      type="button"
+                      onClick={() => onToggle(col.key, ov, true)}
+                      aria-pressed={selected}
+                      aria-label={`ตัวเลือก ${ol}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '6px 11px',
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 120ms ease',
+                        border: selected ? '1.5px solid #10b981' : '1px solid var(--border, #e2e8f0)',
+                        background: selected ? 'rgba(16,185,129,0.14)' : 'var(--bg-input, #f8fafc)',
+                        color: selected ? '#059669' : 'var(--text-700, #334155)',
+                      }}
+                    >
+                      {selected ? '✓ ' : ''}{ol}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Optional Free Text Search */}
+              <input
+                className="input text-xs"
+                type="text"
+                value={Array.isArray(value) ? value.join(', ') : (value || '')}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={`หรือพิมพ์ระบุคำค้นหา ${col.label}...`}
+                style={{ fontSize: 12, minHeight: 34 }}
+              />
+            </div>
+          )
+        }
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>

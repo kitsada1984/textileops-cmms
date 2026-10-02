@@ -167,9 +167,11 @@ export const MC_FIELD_KEYS = {
   ImagePreview: 'รูป',
 }
 
-const MACHINE_MULTI_FILTER_KEYS = ['Location', 'Manufacturer', 'Type', 'Diameter', 'Gauge']
+// คอลัมน์ที่กรองแบบเลือกหลายรายการได้ (ตัวเลือกมาจากข้อมูลจริงอัตโนมัติ)
+// < 5 ตัวเลือก แสดงเป็นการ์ดกดเลือก / ≥ 5 แสดงเป็นดรอปดาวน์ลิสต์ (ดู FilterSortPanel)
+const MACHINE_MULTI_FILTER_KEYS = ['Location', 'Mc', 'Serial_OLD', 'Manufacturer', 'Type', 'Diameter', 'Gauge']
 const MACHINE_MULTI_FILTER_SET = new Set(MACHINE_MULTI_FILTER_KEYS)
-const MACHINE_FILTER_EXCLUDE_SET = new Set(['Mc'])
+const MACHINE_FILTER_EXCLUDE_SET = new Set()
 
 function machineFilterLabel(row, key) {
   const value = row?.[key]
