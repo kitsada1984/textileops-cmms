@@ -1851,6 +1851,21 @@ export function StepAcknowledgeSpareNeedle({ snr, cylinder, onAcknowledged, onHo
           marginBottom: 20,
         }}
       >
+        <div style={{ marginBottom: 14, padding: '10px 12px', background: '#ffffff', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
+            📌 รายการ Track ที่ขอเบิก:
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {dial.single > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial Single: {dial.single} ตัว</span>}
+            {dial.t1 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial T1: {dial.t1} ตัว</span>}
+            {dial.t2 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial T2: {dial.t2} ตัว</span>}
+            {cyl.t1 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T1: {cyl.t1} ตัว</span>}
+            {cyl.t2 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T2: {cyl.t2} ตัว</span>}
+            {cyl.t3 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T3: {cyl.t3} ตัว</span>}
+            {cyl.t4 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T4: {cyl.t4} ตัว</span>}
+          </div>
+        </div>
+
         <div style={{ fontSize: 13, fontWeight: 800, color: '#334155', marginBottom: 10 }}>
           📦 รายการเข็มที่ตัดจ่ายและจัดเตรียม:
         </div>
