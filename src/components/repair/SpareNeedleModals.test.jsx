@@ -95,7 +95,7 @@ describe('CreateSpareNeedleModal', () => {
       expect(SpareNeedleRequestAPI.create).toHaveBeenCalledWith(
         expect.objectContaining({
           tracks_requested: expect.objectContaining({
-            dial: { single: 50, t1: 50, t2: 0 },
+            dial: { single: 50, t1: 50, t2: 0, sinker: 0 },
           }),
         })
       )

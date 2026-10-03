@@ -44,6 +44,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
     single: { active: false, qty: 0 },
     t1: { active: false, qty: 0 },
     t2: { active: false, qty: 0 },
+    sinker: { active: false, qty: 0 },
   })
 
   const [cylTracks, setCylTracks] = useState({
@@ -76,6 +77,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
       single: { active: (dial.single || 0) > 0, qty: dial.single || 0 },
       t1: { active: (dial.t1 || 0) > 0, qty: dial.t1 || 0 },
       t2: { active: (dial.t2 || 0) > 0, qty: dial.t2 || 0 },
+      sinker: { active: (dial.sinker || 0) > 0, qty: dial.sinker || 0 },
     })
 
     setCylTracks({
@@ -145,6 +147,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
     (dialTracks.single.active ? dialTracks.single.qty : 0) +
     (dialTracks.t1.active ? dialTracks.t1.qty : 0) +
     (dialTracks.t2.active ? dialTracks.t2.qty : 0) +
+    (dialTracks.sinker.active ? dialTracks.sinker.qty : 0) +
     (cylTracks.t1.active ? cylTracks.t1.qty : 0) +
     (cylTracks.t2.active ? cylTracks.t2.qty : 0) +
     (cylTracks.t3.active ? cylTracks.t3.qty : 0) +
@@ -187,6 +190,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
             single: dialTracks.single.active ? dialTracks.single.qty : 0,
             t1: dialTracks.t1.active ? dialTracks.t1.qty : 0,
             t2: dialTracks.t2.active ? dialTracks.t2.qty : 0,
+            sinker: dialTracks.sinker.active ? dialTracks.sinker.qty : 0,
           },
           cylinder: {
             t1: cylTracks.t1.active ? cylTracks.t1.qty : 0,
@@ -396,6 +400,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
                   { key: 'single', label: 'Single' },
                   { key: 't1', label: 'Track 1' },
                   { key: 't2', label: 'Track 2' },
+                  { key: 'sinker', label: 'Sinker' },
                 ].map(({ key, label }) => {
                   const item = dialTracks[key]
                   return (

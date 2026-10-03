@@ -1132,7 +1132,7 @@ export function normalizeSpareNeedleRequest(item = {}) {
       }
       return t && typeof t === 'object'
         ? t
-        : { dial: { single: 0, t1: 0, t2: 0 }, cylinder: { t1: 0, t2: 0, t3: 0, t4: 0 } }
+        : { dial: { single: 0, t1: 0, t2: 0, sinker: 0 }, cylinder: { t1: 0, t2: 0, t3: 0, t4: 0 } }
     })(),
     request_comment: item.request_comment || '',
     status: item.status || 'PENDING', // PENDING | PREPARED | COMPLETED | CANCELLED

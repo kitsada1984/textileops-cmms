@@ -101,7 +101,7 @@ describe('SpareNeedleRequest Entities & Normalizer', () => {
     expect(norm.issued_items).toEqual([])
 
     const defaultNorm = normalizeSpareNeedleRequest({})
-    expect(defaultNorm.tracks_requested.dial).toEqual({ single: 0, t1: 0, t2: 0 })
+    expect(defaultNorm.tracks_requested.dial).toEqual({ single: 0, t1: 0, t2: 0, sinker: 0 })
   })
 
   it('identifies SYS_SPARE_NEEDLE_REQUESTS as a system work order', () => {

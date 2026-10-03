@@ -132,6 +132,12 @@ describe('SpareNeedleFlow Components', () => {
     fireEvent.click(singleLabel)
     expect(screen.getByText('50 ตัว')).toBeInTheDocument()
 
+    // Find Sinker option in Dial and click it
+    const sinkerLabel = screen.getByText('Sinker')
+    expect(sinkerLabel).toBeInTheDocument()
+    fireEvent.click(sinkerLabel)
+    expect(screen.getAllByText('50 ตัว').length).toBeGreaterThanOrEqual(1)
+
     // Find Track 1 and click it
     const track1Label = screen.getAllByText('Track 1')[0]
     fireEvent.click(track1Label)

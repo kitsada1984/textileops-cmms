@@ -272,7 +272,7 @@ export function ActionChoiceModal({ cylinder, serial, onSelectAction, onCancel }
               </span>
             </div>
             <div style={{ fontSize: 12, color: '#4338ca', lineHeight: 1.4 }}>
-              เช็คลิสต์เบิกเข็ม Dial (Single / Track 1-2) และ Cylinder (Track 1-4) ไปยังผู้จ่ายเข็ม
+              เช็คลิสต์เบิกเข็ม Dial (Single / Track 1-2 / Sinker) และ Cylinder (Track 1-4) ไปยังผู้จ่ายเข็ม
             </div>
           </div>
           <ChevronRight size={20} style={{ color: '#6366f1' }} />
@@ -513,6 +513,7 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
     single: { active: false, qty: 50 },
     t1: { active: false, qty: 50 },
     t2: { active: false, qty: 50 },
+    sinker: { active: false, qty: 50 },
   })
 
   const [cylTracks, setCylTracks] = useState({
@@ -552,6 +553,7 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
     dialTracks.single.active ||
     dialTracks.t1.active ||
     dialTracks.t2.active ||
+    dialTracks.sinker.active ||
     cylTracks.t1.active ||
     cylTracks.t2.active ||
     cylTracks.t3.active ||
@@ -578,6 +580,7 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
           single: dialTracks.single.active ? dialTracks.single.qty : 0,
           t1: dialTracks.t1.active ? dialTracks.t1.qty : 0,
           t2: dialTracks.t2.active ? dialTracks.t2.qty : 0,
+          sinker: dialTracks.sinker.active ? dialTracks.sinker.qty : 0,
         },
         cylinder: {
           t1: cylTracks.t1.active ? cylTracks.t1.qty : 0,
@@ -781,6 +784,23 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
                 setDialTracks((prev) => ({
                   ...prev,
                   t2: { ...prev.t2, qty },
+                }))
+              }
+            />
+            <TrackCounterItem
+              label="Sinker"
+              checked={dialTracks.sinker.active}
+              quantity={dialTracks.sinker.qty}
+              onToggle={() =>
+                setDialTracks((prev) => ({
+                  ...prev,
+                  sinker: { ...prev.sinker, active: !prev.sinker.active },
+                }))
+              }
+              onChangeQty={(qty) =>
+                setDialTracks((prev) => ({
+                  ...prev,
+                  sinker: { ...prev.sinker, qty },
                 }))
               }
             />
@@ -1275,6 +1295,7 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
             {dial.single > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial Single: {dial.single} ตัว</span>}
             {dial.t1 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial T1: {dial.t1} ตัว</span>}
             {dial.t2 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial T2: {dial.t2} ตัว</span>}
+            {dial.sinker > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial Sinker: {dial.sinker} ตัว</span>}
             {cyl.t1 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T1: {cyl.t1} ตัว</span>}
             {cyl.t2 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T2: {cyl.t2} ตัว</span>}
             {cyl.t3 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T3: {cyl.t3} ตัว</span>}
@@ -1859,6 +1880,7 @@ export function StepAcknowledgeSpareNeedle({ snr, cylinder, onAcknowledged, onHo
             {dial.single > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial Single: {dial.single} ตัว</span>}
             {dial.t1 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial T1: {dial.t1} ตัว</span>}
             {dial.t2 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial T2: {dial.t2} ตัว</span>}
+            {dial.sinker > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial Sinker: {dial.sinker} ตัว</span>}
             {cyl.t1 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T1: {cyl.t1} ตัว</span>}
             {cyl.t2 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T2: {cyl.t2} ตัว</span>}
             {cyl.t3 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T3: {cyl.t3} ตัว</span>}
