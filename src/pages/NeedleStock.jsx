@@ -1749,7 +1749,7 @@ export default function NeedleStock() {
                                   {dial.single > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial Single: {dial.single}</span>}
                                   {dial.t1 > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial T1: {dial.t1}</span>}
                                   {dial.t2 > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial T2: {dial.t2}</span>}
-                                  {dial.sinker > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial Sinker: {dial.sinker}</span>}
+                                  {(dial.singker > 0 || dial.sinker > 0) && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial Singker: {dial.singker || dial.sinker}</span>}
                                   {cyl.t1 > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-bold">Cyl T1: {cyl.t1}</span>}
                                   {cyl.t2 > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-bold">Cyl T2: {cyl.t2}</span>}
                                   {cyl.t3 > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-bold">Cyl T3: {cyl.t3}</span>}

@@ -126,17 +126,14 @@ describe('SpareNeedleFlow Components', () => {
     expect(screen.getByText('ฟอร์มขอเบิกเข็ม Spare')).toBeInTheDocument()
     expect(screen.getByText('DG-341M')).toBeInTheDocument()
 
-    // Find Single option in Dial and click it
-    const singleLabel = screen.getByText('Single')
-    expect(singleLabel).toBeInTheDocument()
-    fireEvent.click(singleLabel)
-    expect(screen.getByText('50 ตัว')).toBeInTheDocument()
-
-    // Find Sinker option in Dial and click it
-    const sinkerLabel = screen.getByText('Sinker')
-    expect(sinkerLabel).toBeInTheDocument()
-    fireEvent.click(sinkerLabel)
+    // Find Singker option in Dial and click it
+    const singkerLabel = screen.getByText('Singker')
+    expect(singkerLabel).toBeInTheDocument()
+    fireEvent.click(singkerLabel)
     expect(screen.getAllByText('50 ตัว').length).toBeGreaterThanOrEqual(1)
+
+    // Ensure Single is not in the form
+    expect(screen.queryByText('Single')).not.toBeInTheDocument()
 
     // Find Track 1 and click it
     const track1Label = screen.getAllByText('Track 1')[0]

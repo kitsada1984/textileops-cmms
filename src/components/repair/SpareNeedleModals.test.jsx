@@ -75,16 +75,16 @@ describe('CreateSpareNeedleModal', () => {
     const mcInput = screen.getByPlaceholderText(/DG-341M/)
     fireEvent.change(mcInput, { target: { value: 'DG-341M' } })
 
-    // Select Dail Single
-    const dailSingleBtn = screen.getByRole('button', { name: /Dail Single/i })
-    expect(dailSingleBtn).toBeInTheDocument()
-    fireEvent.click(dailSingleBtn)
+    // Select Dail Singker
+    const dailSingkerBtn = screen.getByRole('button', { name: /Dail Singker/i })
+    expect(dailSingkerBtn).toBeInTheDocument()
+    fireEvent.click(dailSingkerBtn)
 
     // Select Dail Track 1
     const dailT1Btn = screen.getByRole('button', { name: /Dail Track 1/i })
     fireEvent.click(dailT1Btn)
 
-    // Verify quantity initialized to 100 (50 for Single + 50 for T1)
+    // Verify quantity initialized to 100 (50 for Singker + 50 for T1)
     expect(screen.getByText(/ส่งคำขอเบิกเข็ม \(100 ตัว\)/i)).toBeInTheDocument()
 
     // Click submit
@@ -95,7 +95,7 @@ describe('CreateSpareNeedleModal', () => {
       expect(SpareNeedleRequestAPI.create).toHaveBeenCalledWith(
         expect.objectContaining({
           tracks_requested: expect.objectContaining({
-            dial: { single: 50, t1: 50, t2: 0, sinker: 0 },
+            dial: { t1: 50, t2: 0, singker: 50 },
           }),
         })
       )

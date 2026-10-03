@@ -261,7 +261,7 @@ function formatTracksSummary(tracks = {}) {
   if (dial.single > 0) dialParts.push(`Single: <b>${dial.single}</b> ตัว`)
   if (dial.t1 > 0) dialParts.push(`T1: <b>${dial.t1}</b> ตัว`)
   if (dial.t2 > 0) dialParts.push(`T2: <b>${dial.t2}</b> ตัว`)
-  if (dial.sinker > 0) dialParts.push(`Sinker: <b>${dial.sinker}</b> ตัว`)
+  if (dial.singker > 0 || dial.sinker > 0) dialParts.push(`Singker: <b>${dial.singker || dial.sinker}</b> ตัว`)
   if (dialParts.length > 0) lines.push(`🔘 <b>Dial:</b> ${dialParts.join(', ')}`)
 
   const cylParts = []
