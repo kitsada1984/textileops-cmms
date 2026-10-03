@@ -46,19 +46,22 @@
 
 ---
 
-## 🚀 4. กระบวนการอัปเดตเวอร์ชันและ Deploy (Release Protocol)
+## 🚀 4. กระบวนการอัปเดตเวอร์ชันและ Deploy (Release Protocol & Account Policy)
+
+> **⚠️ บัญชีที่ได้รับอนุญาต:** โปรเจกต์นี้ผูกกับบัญชี **`kitsada1984@gmail.com`** (Account ID: `392e2aeb2648effccebd585e5c29611b`) เท่านั้น ห้ามสลับไปใช้บัญชีอื่นโดยเด็ดขาด ดูรายละเอียดใน [CLOUDFLARE_ACCOUNT.md](file:///c:/Users/kitsa/Documents/TextileOpsV1/TextileOpsV1/TextileOps/CLOUDFLARE_ACCOUNT.md)
 
 เมื่อมีการพัฒนา แก้ไข หรือเพิ่มเติมฟังก์ชันในระบบ ให้ดำเนินการตามขั้นตอน:
 
-1. **Bump Version (3 จุดพร้อมกัน):**
+1. **Verify Unit Tests:** รัน `npm test` เพื่อให้แน่ใจว่า Test Suites ทั้งหมดผ่าน 100%
+2. **Bump Version (3 จุดพร้อมกัน):**
    - `src/version.js` (`APP_VERSION`)
    - `package.json` (`version`)
    - `public/sw.js` (`CACHE_NAME`)
-2. **Build Verification:** รัน `npm run build` เพื่อตรวจสอบว่าไม่มี Syntax Error หรือ Module Missing
-3. **Git Commit & Push:** บันทึกการเปลี่ยนแปลงด้วย Semantic Commit Message และ Push ขึ้น GitHub (`origin/master`)
-4. **Vercel Production Deploy:** รันคำสั่ง `npx vercel --prod --yes` เพื่อ Deploy ขึ้นระบบจริง (`https://textileops-cmms.vercel.app`)
-5. **Verify Live Chunk:** ตรวจสอบว่าหน้าเว็บจริงให้บริการ JavaScript Bundle ล่าสุด
-6. **Force Refresh:** ผู้ใช้สามารถกดปุ่มไอคอน `🔄` (ล้างแคช & รีเฟรช) ที่แถบด้านบนขวาของเว็บเพื่อโหลดเวอร์ชันล่าสุดทันที
+3. **Build Verification:** รัน `npm run build` เพื่อตรวจสอบว่าไม่มี Syntax Error หรือ Module Missing และสร้างโฟลเดอร์ `dist`
+4. **Git Commit & Push:** บันทึกการเปลี่ยนแปลงด้วย Semantic Commit Message และ Push ขึ้น GitHub (`origin/master`)
+5. **Cloudflare Pages Production Deploy:** รันคำสั่ง `npx wrangler pages deploy dist --project-name textileops-cmms` เพื่อ Deploy ขึ้นระบบจริง (`https://textileops-cmms.pages.dev`) *โดยต้องตรวจสอบว่า wrangler เชื่อมต่อกับ `kitsada1984@gmail.com` เสมอ*
+6. **Verify Live Chunk & Cache:** ตรวจสอบผ่าน `https://textileops-cmms.pages.dev/sw.js` ว่า Cache Name ตรงกับเวอร์ชันล่าสุด
+7. **Force Refresh:** ผู้ใช้สามารถกดปุ่มไอคอน `🔄` (ล้างแคช & รีเฟรช) ที่แถบด้านบนขวาของเว็บ หรือรีเฟรชแอพ PWA เพื่อโหลดเวอร์ชันล่าสุดทันที
  
 ---
 
