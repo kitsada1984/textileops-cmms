@@ -83,7 +83,7 @@ describe('SpareNeedleRequest Entities & Normalizer', () => {
       technician_name: 'ช่างหนึ่ง',
       shift: 'กะเช้า',
       tracks_requested: {
-        dial: { t1: 10, t2: 5 },
+        dial: { single: 20, t1: 10, t2: 5 },
         cylinder: { t1: 5, t2: 5, t3: 0, t4: 0 },
       },
       request_comment: 'เข็มหักจากลายริ้ว',
@@ -95,9 +95,13 @@ describe('SpareNeedleRequest Entities & Normalizer', () => {
     expect(norm.gauge).toBe('28G')
     expect(norm.technician_name).toBe('ช่างหนึ่ง')
     expect(norm.status).toBe('PENDING')
+    expect(norm.tracks_requested.dial.single).toBe(20)
     expect(norm.tracks_requested.dial.t1).toBe(10)
     expect(norm.tracks_requested.cylinder.t2).toBe(5)
     expect(norm.issued_items).toEqual([])
+
+    const defaultNorm = normalizeSpareNeedleRequest({})
+    expect(defaultNorm.tracks_requested.dial).toEqual({ single: 0, t1: 0, t2: 0 })
   })
 
   it('identifies SYS_SPARE_NEEDLE_REQUESTS as a system work order', () => {

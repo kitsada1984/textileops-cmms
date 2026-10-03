@@ -131,7 +131,7 @@ export default function MachinesMobileView({ logic }) {
           />
         </div>
         <FilterSortPanel
-          columns={FS_COLS}
+          cols={FS_COLS}
           value={filterSort}
           onChange={setFilterSort}
         />

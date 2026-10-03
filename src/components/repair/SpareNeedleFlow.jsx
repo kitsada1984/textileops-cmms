@@ -272,7 +272,7 @@ export function ActionChoiceModal({ cylinder, serial, onSelectAction, onCancel }
               </span>
             </div>
             <div style={{ fontSize: 12, color: '#4338ca', lineHeight: 1.4 }}>
-              เช็คลิสต์เบิกเข็ม Dial (Track 1-2) และ Cylinder (Track 1-4) ไปยังผู้จ่ายเข็ม
+              เช็คลิสต์เบิกเข็ม Dial (Single / Track 1-2) และ Cylinder (Track 1-4) ไปยังผู้จ่ายเข็ม
             </div>
           </div>
           <ChevronRight size={20} style={{ color: '#6366f1' }} />
@@ -510,6 +510,7 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
 
   // Track selection state - defaults to 50
   const [dialTracks, setDialTracks] = useState({
+    single: { active: false, qty: 50 },
     t1: { active: false, qty: 50 },
     t2: { active: false, qty: 50 },
   })
@@ -548,6 +549,7 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
   }, [])
 
   const hasAnySelection =
+    dialTracks.single.active ||
     dialTracks.t1.active ||
     dialTracks.t2.active ||
     cylTracks.t1.active ||
@@ -573,6 +575,7 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
     try {
       const tracksPayload = {
         dial: {
+          single: dialTracks.single.active ? dialTracks.single.qty : 0,
           t1: dialTracks.t1.active ? dialTracks.t1.qty : 0,
           t2: dialTracks.t2.active ? dialTracks.t2.qty : 0,
         },
@@ -730,6 +733,23 @@ export function StepSpareNeedleRequest({ cylinder, serial, onSubmitted, onBack }
             🔘 Dial (จานบน) — เลือก Track ที่ต้องการ
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <TrackCounterItem
+              label="Single"
+              checked={dialTracks.single.active}
+              quantity={dialTracks.single.qty}
+              onToggle={() =>
+                setDialTracks((prev) => ({
+                  ...prev,
+                  single: { ...prev.single, active: !prev.single.active },
+                }))
+              }
+              onChangeQty={(qty) =>
+                setDialTracks((prev) => ({
+                  ...prev,
+                  single: { ...prev.single, qty },
+                }))
+              }
+            />
             <TrackCounterItem
               label="Track 1"
               checked={dialTracks.t1.active}
@@ -1252,6 +1272,7 @@ export function StepPrepareSpareNeedle({ snr, cylinder, onPrepared, onClose }) {
             รายการ Track ที่ช่างต้องการ:
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {dial.single > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial Single: {dial.single} ตัว</span>}
             {dial.t1 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial T1: {dial.t1} ตัว</span>}
             {dial.t2 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 12, fontWeight: 700 }}>Dial T2: {dial.t2} ตัว</span>}
             {cyl.t1 > 0 && <span style={{ padding: '3px 8px', borderRadius: 6, background: '#ede9fe', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>Cyl T1: {cyl.t1} ตัว</span>}

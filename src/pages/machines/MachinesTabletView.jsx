@@ -94,7 +94,7 @@ export default function MachinesTabletView({ logic }) {
 
         <div className="flex items-center gap-1.5">
           <FilterSortPanel
-            columns={FS_COLS}
+            cols={FS_COLS}
             value={filterSort}
             onChange={setFilterSort}
           />

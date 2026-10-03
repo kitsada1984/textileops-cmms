@@ -1,13 +1,14 @@
 // functions/api/drive-upload.js
 // Cloudflare Pages Function: Google Drive Upload Webhook Proxy
 
+import { CORS_HEADERS as AUTH_CORS_HEADERS, jsonResponse, verifyAuthToken, getBearerToken } from './_auth.js'
+
 const DEFAULT_WEBHOOK_URL =
   'https://script.google.com/macros/s/AKfycbwRwXwdCgnFZ6CU7L1IxK7aLD7K4VX_L-w4UD1LkyO5bICzhhRAHZpxN7OlJWxdmWdG/exec'
 
 const CORS_HEADERS = {
+  ...AUTH_CORS_HEADERS,
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
 }
 
 function normalizeUploadResponse(json) {
@@ -45,6 +46,12 @@ export async function onRequestGet({ env }) {
 
 export async function onRequestPost({ request, env }) {
   const jsonHeaders = { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+  // Uploads cost Drive quota — require a logged-in user token like /api/d1/*.
+  // (GET health check stays public.)
+  const auth = await verifyAuthToken(env, getBearerToken(request))
+  if (!auth) {
+    return jsonResponse({ ok: false, error: 'Unauthorized: missing or invalid token' }, 401)
+  }
   const webhook = (env?.GOOGLE_DRIVE_UPLOAD_WEBHOOK || env?.VITE_DRIVE_UPLOAD_WEBHOOK || DEFAULT_WEBHOOK_URL).trim()
 
   try {

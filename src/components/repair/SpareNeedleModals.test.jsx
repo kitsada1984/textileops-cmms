@@ -75,19 +75,30 @@ describe('CreateSpareNeedleModal', () => {
     const mcInput = screen.getByPlaceholderText(/DG-341M/)
     fireEvent.change(mcInput, { target: { value: 'DG-341M' } })
 
+    // Select Dail Single
+    const dailSingleBtn = screen.getByRole('button', { name: /Dail Single/i })
+    expect(dailSingleBtn).toBeInTheDocument()
+    fireEvent.click(dailSingleBtn)
+
     // Select Dail Track 1
     const dailT1Btn = screen.getByRole('button', { name: /Dail Track 1/i })
     fireEvent.click(dailT1Btn)
 
-    // Verify quantity initialized to 50
-    expect(screen.getByText(/ส่งคำขอเบิกเข็ม \(50 ตัว\)/i)).toBeInTheDocument()
+    // Verify quantity initialized to 100 (50 for Single + 50 for T1)
+    expect(screen.getByText(/ส่งคำขอเบิกเข็ม \(100 ตัว\)/i)).toBeInTheDocument()
 
     // Click submit
     const submitBtn = screen.getByRole('button', { name: /ส่งคำขอเบิกเข็ม/i })
     fireEvent.click(submitBtn)
 
     await waitFor(() => {
-      expect(SpareNeedleRequestAPI.create).toHaveBeenCalled()
+      expect(SpareNeedleRequestAPI.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tracks_requested: expect.objectContaining({
+            dial: { single: 50, t1: 50, t2: 0 },
+          }),
+        })
+      )
       expect(handleSuccess).toHaveBeenCalled()
     })
   })
@@ -112,7 +123,7 @@ describe('EditSpareNeedleModal', () => {
       shift: 'กะเช้า',
       status: 'PENDING',
       tracks_requested: {
-        dial: { t1: 50, t2: 0 },
+        dial: { single: 50, t1: 50, t2: 0 },
         cylinder: { t1: 0, t2: 0, t3: 0, t4: 0 },
       },
       request_comment: 'เข็มหัก',

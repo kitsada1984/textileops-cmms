@@ -519,8 +519,9 @@ export async function notifyLineSpareNeedleRequested(snr, cylinder) {
     const dial = snr.tracks_requested?.dial || {}
     const cyl = snr.tracks_requested?.cylinder || {}
     const trackLines = []
-    if (dial.t1 > 0 || dial.t2 > 0) {
+    if (dial.single > 0 || dial.t1 > 0 || dial.t2 > 0) {
       const parts = []
+      if (dial.single > 0) parts.push(`Single: ${dial.single} เล่ม`)
       if (dial.t1 > 0) parts.push(`T1: ${dial.t1} เล่ม`)
       if (dial.t2 > 0) parts.push(`T2: ${dial.t2} เล่ม`)
       trackLines.push(`• Dial: ${parts.join(', ')}`)

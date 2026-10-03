@@ -120,4 +120,12 @@ describe('FilterSortPanel select mode (chips vs dropdown)', () => {
     expect(screen.getByLabelText(/ดรอปดาวน์ลิสต์ เกรด/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^A$/ })).not.toBeInTheDocument()
   })
+
+  it('accepts the columns prop as an alias so a typo cannot blank the panel', () => {
+    render(<FilterSortPanel columns={FEW_OPTS_COLS} value={INIT_FS} onChange={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /ตัวกรอง/i }))
+
+    expect(screen.getByRole('button', { name: /GMK1/i })).toBeInTheDocument()
+  })
 })

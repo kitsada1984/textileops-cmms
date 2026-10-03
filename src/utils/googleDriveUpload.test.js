@@ -157,6 +157,29 @@ describe('uploadImageToGoogleDrive', () => {
     )
   })
 
+  it('throws a re-login error on 401 without falling back to the direct webhook', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          provider: 'webhook',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ ok: false, error: 'Unauthorized: missing or invalid token' }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const file = new File(['abc'], 'fabric.png', { type: 'image/png' })
+
+    await expect(uploadImageToGoogleDrive(file)).rejects.toThrow('เซสชันหมดอายุ')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/drive-upload')
+  })
+
   it('retries with direct Apps Script webhook when /api/drive-upload returns 413', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({

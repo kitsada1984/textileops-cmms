@@ -1,6 +1,16 @@
 const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwRwXwdCgnFZ6CU7L1IxK7aLD7K4VX_L-w4UD1LkyO5bICzhhRAHZpxN7OlJWxdmWdG/exec'
 const DRIVE_UPLOAD_WEBHOOK = import.meta.env.VITE_DRIVE_UPLOAD_WEBHOOK || '/api/drive-upload'
+const AUTH_TOKEN_KEY = 'textileops_auth_token'
 let uploadConfigPromise = null
+
+function authHeader() {
+  try {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY) || ''
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  } catch {
+    return {}
+  }
+}
 
 async function compressImageInBrowser(file, options = {}) {
   if (typeof window === 'undefined' || typeof Worker === 'undefined' || typeof document === 'undefined') return null
@@ -100,7 +110,7 @@ export async function uploadImageToGoogleDrive(file, options = {}) {
   try {
     res = await fetch(targetUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify(payload),
     })
   } catch (err) {
@@ -112,7 +122,8 @@ export async function uploadImageToGoogleDrive(file, options = {}) {
   // retry directly with Google Apps Script Webhook which supports CORS & larger payloads
   const shouldRetryWithDirectWebhook =
     targetUrl === '/api/drive-upload' &&
-    (!res || res.status === 413 || res.status >= 500)
+    (!res || res.status === 413 || res.status >= 500) &&
+    res?.status !== 401
 
   if (shouldRetryWithDirectWebhook) {
     console.warn('POST /api/drive-upload failed or hit payload limit, retrying directly with Google Apps Script Webhook...')
@@ -140,6 +151,9 @@ export async function uploadImageToGoogleDrive(file, options = {}) {
   if (!res?.ok || json?.ok === false) {
     if (res?.status === 413) {
       throw new Error('ไฟล์รูปภาพมีขนาดใหญ่เกินขีดจำกัด กรุณาลดขนาดภาพหรือลองใหม่อีกครั้ง')
+    }
+    if (res?.status === 401) {
+      throw new Error('เซสชันหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่ก่อนอัปโหลดรูป')
     }
     throw new Error(json?.error || 'อัปโหลด Google Drive ไม่สำเร็จ')
   }

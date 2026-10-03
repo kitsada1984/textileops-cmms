@@ -41,6 +41,7 @@ export default function CreateSpareNeedleModal({ isOpen, onClose, onSuccess, cur
   const [comment, setComment] = useState('')
 
   const [dialTracks, setDialTracks] = useState({
+    single: { active: false, qty: 50 },
     t1: { active: false, qty: 50 },
     t2: { active: false, qty: 50 },
   })
@@ -66,6 +67,7 @@ export default function CreateSpareNeedleModal({ isOpen, onClose, onSuccess, cur
     setComment('')
     setErrorMsg('')
     setDialTracks({
+      single: { active: false, qty: 50 },
       t1: { active: false, qty: 50 },
       t2: { active: false, qty: 50 },
     })
@@ -171,6 +173,7 @@ export default function CreateSpareNeedleModal({ isOpen, onClose, onSuccess, cur
 
   // Calculate totals
   const totalNeedles =
+    (dialTracks.single.active ? dialTracks.single.qty : 0) +
     (dialTracks.t1.active ? dialTracks.t1.qty : 0) +
     (dialTracks.t2.active ? dialTracks.t2.qty : 0) +
     (cylTracks.t1.active ? cylTracks.t1.qty : 0) +
@@ -202,6 +205,7 @@ export default function CreateSpareNeedleModal({ isOpen, onClose, onSuccess, cur
     try {
       const tracksPayload = {
         dial: {
+          single: dialTracks.single.active ? dialTracks.single.qty : 0,
           t1: dialTracks.t1.active ? dialTracks.t1.qty : 0,
           t2: dialTracks.t2.active ? dialTracks.t2.qty : 0,
         },
@@ -413,6 +417,7 @@ export default function CreateSpareNeedleModal({ isOpen, onClose, onSuccess, cur
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {[
+                  { key: 'single', label: 'Single' },
                   { key: 't1', label: 'Track 1' },
                   { key: 't2', label: 'Track 2' },
                 ].map(({ key, label }) => {

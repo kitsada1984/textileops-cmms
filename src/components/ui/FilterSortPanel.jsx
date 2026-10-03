@@ -29,7 +29,8 @@ function cloneFilterSort(next = INIT_FS) {
   }
 }
 
-export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }) {
+export default function FilterSortPanel({ cols, columns, value = INIT_FS, onChange }) {
+  const panelCols = cols ?? columns ?? []
   const [open, setOpen] = useState(false)
   const [draftValue, setDraftValue] = useState(() => cloneFilterSort(value))
   const [isMobile, setIsMobile] = useState(() =>
@@ -71,8 +72,8 @@ export default function FilterSortPanel({ cols = [], value = INIT_FS, onChange }
   const activeValue = open ? draftValue : value
   const sort = activeValue?.sort ?? { key: '', dir: 'asc' }
   const filters = activeValue?.filters ?? {}
-  const sortable = cols.filter(c => c.sortable)
-  const filterable = cols.filter(c => c.filter)
+  const sortable = panelCols.filter(c => c.sortable)
+  const filterable = panelCols.filter(c => c.filter)
   const filterActive = getActiveFilterCount(filters)
   const total = filterActive + (sort.key ? 1 : 0)
 

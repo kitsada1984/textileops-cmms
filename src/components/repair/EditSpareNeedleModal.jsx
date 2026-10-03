@@ -41,6 +41,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
   const [issuerComment, setIssuerComment] = useState('')
 
   const [dialTracks, setDialTracks] = useState({
+    single: { active: false, qty: 0 },
     t1: { active: false, qty: 0 },
     t2: { active: false, qty: 0 },
   })
@@ -72,6 +73,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
     const cyl = req.tracks_requested?.cylinder || {}
 
     setDialTracks({
+      single: { active: (dial.single || 0) > 0, qty: dial.single || 0 },
       t1: { active: (dial.t1 || 0) > 0, qty: dial.t1 || 0 },
       t2: { active: (dial.t2 || 0) > 0, qty: dial.t2 || 0 },
     })
@@ -140,6 +142,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
   }
 
   const totalNeedles =
+    (dialTracks.single.active ? dialTracks.single.qty : 0) +
     (dialTracks.t1.active ? dialTracks.t1.qty : 0) +
     (dialTracks.t2.active ? dialTracks.t2.qty : 0) +
     (cylTracks.t1.active ? cylTracks.t1.qty : 0) +
@@ -181,6 +184,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
       if (isPending) {
         updatedFields.tracks_requested = {
           dial: {
+            single: dialTracks.single.active ? dialTracks.single.qty : 0,
             t1: dialTracks.t1.active ? dialTracks.t1.qty : 0,
             t2: dialTracks.t2.active ? dialTracks.t2.qty : 0,
           },
@@ -389,6 +393,7 @@ export default function EditSpareNeedleModal({ isOpen, onClose, onSuccess, req }
               <div className="text-xs font-bold text-blue-900">🔵 Dail (จานบน)</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {[
+                  { key: 'single', label: 'Single' },
                   { key: 't1', label: 'Track 1' },
                   { key: 't2', label: 'Track 2' },
                 ].map(({ key, label }) => {

@@ -1746,6 +1746,7 @@ export default function NeedleStock() {
                               </td>
                               <td className="p-3.5">
                                 <div className="flex flex-wrap gap-1 max-w-xs">
+                                  {dial.single > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial Single: {dial.single}</span>}
                                   {dial.t1 > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial T1: {dial.t1}</span>}
                                   {dial.t2 > 0 && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[11px] font-bold">Dial T2: {dial.t2}</span>}
                                   {cyl.t1 > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-bold">Cyl T1: {cyl.t1}</span>}

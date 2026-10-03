@@ -102,7 +102,7 @@ export default function MachinesDesktopView({ logic }) {
             />
           </div>
           <FilterSortPanel
-            columns={FS_COLS}
+            cols={FS_COLS}
             value={filterSort}
             onChange={setFilterSort}
           />

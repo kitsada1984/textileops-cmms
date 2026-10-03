@@ -690,6 +690,7 @@ export function buildSpareNeedleRequestFlexMessage(snr = {}, cylinder = {}, appB
   const dial = tracks.dial || {}
   const cyl = tracks.cylinder || {}
   const trackItems = []
+  if (dial.single > 0) trackItems.push(`Dial Single: ${dial.single} เล่ม`)
   if (dial.t1 > 0) trackItems.push(`Dial Track 1: ${dial.t1} เล่ม`)
   if (dial.t2 > 0) trackItems.push(`Dial Track 2: ${dial.t2} เล่ม`)
   if (cyl.t1 > 0) trackItems.push(`Cylinder Track 1: ${cyl.t1} เล่ม`)

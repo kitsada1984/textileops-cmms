@@ -126,29 +126,33 @@ describe('SpareNeedleFlow Components', () => {
     expect(screen.getByText('ฟอร์มขอเบิกเข็ม Spare')).toBeInTheDocument()
     expect(screen.getByText('DG-341M')).toBeInTheDocument()
 
+    // Find Single option in Dial and click it
+    const singleLabel = screen.getByText('Single')
+    expect(singleLabel).toBeInTheDocument()
+    fireEvent.click(singleLabel)
+    expect(screen.getByText('50 ตัว')).toBeInTheDocument()
+
     // Find Track 1 and click it
     const track1Label = screen.getAllByText('Track 1')[0]
     fireEvent.click(track1Label)
 
-    // Default quantity should be 50
-    expect(screen.getByText('50 ตัว')).toBeInTheDocument()
-
     // Presets should be rendered (50, 100, 150, 200, 250, 300)
-    expect(screen.getByText('เลือกจำนวน (ครั้งละ 50):')).toBeInTheDocument()
-    const preset150 = screen.getByRole('button', { name: '150' })
+    expect(screen.getAllByText('เลือกจำนวน (ครั้งละ 50):').length).toBeGreaterThanOrEqual(1)
+    const preset150 = screen.getAllByRole('button', { name: '150' })[1]
     expect(preset150).toBeInTheDocument()
 
-    // Click preset 150
+    // Click preset 150 for Track 1
     fireEvent.click(preset150)
     expect(screen.getByText('150 ตัว')).toBeInTheDocument()
 
     // Click +50 button
-    const plus50Btn = screen.getByRole('button', { name: '+50' })
+    const plus50Btn = screen.getAllByRole('button', { name: '+50' })[1]
     fireEvent.click(plus50Btn)
     expect(screen.getByText('200 ตัว')).toBeInTheDocument()
 
     // Test manual input field
-    const manualInput = screen.getByPlaceholderText('ระบุ')
+    const manualInputs = screen.getAllByPlaceholderText('ระบุ')
+    const manualInput = manualInputs[1]
     expect(manualInput).toBeInTheDocument()
     expect(manualInput.value).toBe('200')
 

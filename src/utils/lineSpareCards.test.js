@@ -78,11 +78,12 @@ describe('D1 JSON-string fields (regression)', () => {
       gauge: '28',
       technician_name: 'ช.ต๋อง',
       shift: 'กะเช้า',
-      tracks_requested: '{"dial":{"t1":100,"t2":0},"cylinder":{"t1":200,"t2":0,"t3":0,"t4":0}}',
+      tracks_requested: '{"dial":{"single":50,"t1":100,"t2":0},"cylinder":{"t1":200,"t2":0,"t3":0,"t4":0}}',
       status: 'PENDING',
     }
     const card = buildSpareNeedleRequestFlexMessage(snrFromD1, null, BASE)
     const text = JSON.stringify(card)
+    expect(text).toContain('Dial Single: 50')
     expect(text).toContain('Dial Track 1: 100')
     expect(text).toContain('Cylinder Track 1: 200')
     expect(text).not.toContain('ระบุตามหน้างาน')
