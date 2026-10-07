@@ -119,4 +119,48 @@ describe('SearchableDropdown Component', () => {
     fireEvent.click(clearBtn)
     expect(handleChange).toHaveBeenCalledWith('')
   })
+
+  it('displays all options when opened via toggle chevron even if an option is already selected', () => {
+    render(
+      <SearchableDropdown
+        value="SP-001"
+        onChange={vi.fn()}
+        options={options}
+        placeholder="เลือกอะไหล่..."
+      />
+    )
+
+    const toggleBtn = screen.getByLabelText('เปิดดรอปดาวน์ลิสต์')
+    fireEvent.click(toggleBtn)
+
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    expect(screen.getByText('SP-001 - Bearing 6204')).toBeInTheDocument()
+    expect(screen.getByText('SP-002 - Timing Belt')).toBeInTheDocument()
+    expect(screen.getByText('SP-003 - Cylinder Needle')).toBeInTheDocument()
+  })
+
+  it('displays all options when input is focused with existing value, and switches to filtering upon typing', () => {
+    const handleChange = vi.fn()
+    render(
+      <SearchableDropdown
+        value="SP-001"
+        onChange={handleChange}
+        options={options}
+        placeholder="เลือกอะไหล่..."
+      />
+    )
+
+    const input = screen.getByPlaceholderText('เลือกอะไหล่...')
+    fireEvent.focus(input)
+
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    // All options visible without needing to delete existing value
+    expect(screen.getByText('SP-001 - Bearing 6204')).toBeInTheDocument()
+    expect(screen.getByText('SP-002 - Timing Belt')).toBeInTheDocument()
+    expect(screen.getByText('SP-003 - Cylinder Needle')).toBeInTheDocument()
+
+    // Can directly pick another option
+    fireEvent.click(screen.getByText('SP-002 - Timing Belt'))
+    expect(handleChange).toHaveBeenCalledWith('SP-002')
+  })
 })

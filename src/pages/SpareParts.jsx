@@ -1118,7 +1118,7 @@ export default function SpareParts() {
                 </div>
                 <SearchableDropdown
                   id="Category"
-                  value={form.Category || 'อะไหล่'}
+                  value={form.Category ?? 'อะไหล่'}
                   onChange={(val) => setForm((p) => ({ ...p, Category: val }))}
                   options={allCategories.map((c) => ({ value: c, label: c }))}
                   placeholder="เลือก หรือพิมพ์หมวดหมู่ใหม่..."

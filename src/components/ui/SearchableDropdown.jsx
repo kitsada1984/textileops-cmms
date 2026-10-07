@@ -29,6 +29,7 @@ export default function SearchableDropdown({
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
   const containerRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -40,6 +41,8 @@ export default function SearchableDropdown({
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setOpen(false)
+        setIsSearching(false)
+        setSearch('')
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -50,8 +53,8 @@ export default function SearchableDropdown({
     }
   }, [])
 
-  // Filter options based on typed search query when open
-  const query = String(open ? search : '').trim().toLowerCase()
+  // Filter options based on typed search query only when actively searching
+  const query = String(open && isSearching ? search : '').trim().toLowerCase()
   const filteredOptions = query
     ? normalizedOptions.filter(
         (opt) => opt.value.toLowerCase().includes(query) || opt.label.toLowerCase().includes(query)
@@ -61,25 +64,38 @@ export default function SearchableDropdown({
   const handleSelect = (optValue) => {
     onChange?.(optValue)
     setSearch('')
+    setIsSearching(false)
     setOpen(false)
   }
 
   const handleInputChange = (e) => {
     const nextVal = e.target.value
+    setIsSearching(true)
     setSearch(nextVal)
     onChange?.(nextVal)
     if (!open) setOpen(true)
   }
 
   const handleInputFocus = () => {
+    setIsSearching(false)
     setSearch(value || '')
     setOpen(true)
+  }
+
+  const handleInputClick = () => {
+    if (!open) {
+      setIsSearching(false)
+      setSearch(value || '')
+      setOpen(true)
+    }
   }
 
   const clearValue = (e) => {
     e.stopPropagation()
     onChange?.('')
     setSearch('')
+    setIsSearching(false)
+    if (!open) setOpen(true)
     inputRef.current?.focus()
   }
 
@@ -87,11 +103,14 @@ export default function SearchableDropdown({
     e.stopPropagation()
     if (disabled) return
     if (!open) {
+      setIsSearching(false)
       setSearch(value || '')
       setOpen(true)
       inputRef.current?.focus()
     } else {
       setOpen(false)
+      setIsSearching(false)
+      setSearch('')
     }
   }
 
@@ -114,9 +133,17 @@ export default function SearchableDropdown({
           id={id}
           type="text"
           disabled={disabled}
-          value={open ? search : (value || '')}
+          value={open && isSearching ? search : (value || '')}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
+          onClick={handleInputClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setOpen(false)
+              setIsSearching(false)
+              setSearch('')
+            }
+          }}
           placeholder={placeholder}
           className={`input text-xs w-full pr-14 ${inputClassName}`}
           autoComplete="off"
@@ -160,7 +187,7 @@ export default function SearchableDropdown({
           className="absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50 py-1 text-xs divide-y divide-slate-100 dark:divide-slate-800/60"
           role="listbox"
         >
-          {allowCustom && search.trim() && !normalizedOptions.some((o) => o.value.toLowerCase() === search.trim().toLowerCase()) && (
+          {allowCustom && isSearching && search.trim() && !normalizedOptions.some((o) => o.value.toLowerCase() === search.trim().toLowerCase()) && (
             <button
               type="button"
               onClick={() => handleSelect(search.trim())}
