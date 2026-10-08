@@ -136,4 +136,44 @@ describe('SparePartsReportModal', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('cleans empty compatible machines and does not render "ใช้กับ: []"', () => {
+    const partsWithMachines = [
+      {
+        id: 10,
+        Part_Code: 'SP-EMPTY-ARR',
+        Part_Name_EN: 'Test Empty Array',
+        Stock_Qty: 5,
+        Min_Qty: 2,
+        Compatible_Machines: [],
+      },
+      {
+        id: 11,
+        Part_Code: 'SP-EMPTY-STR',
+        Part_Name_EN: 'Test Empty String',
+        Stock_Qty: 5,
+        Min_Qty: 2,
+        Compatible_Machines: '[]',
+      },
+      {
+        id: 12,
+        Part_Code: 'SP-VALID',
+        Part_Name_EN: 'Test Valid Machines',
+        Stock_Qty: 5,
+        Min_Qty: 2,
+        Compatible_Machines: ['M01', 'M02'],
+      },
+    ]
+
+    render(
+      <SparePartsReportModal
+        open={true}
+        onClose={vi.fn()}
+        items={partsWithMachines}
+      />
+    )
+
+    expect(screen.queryByText(/ใช้กับ: \[\]/i)).not.toBeInTheDocument()
+    expect(screen.getByTitle('ใช้กับ: M01, M02')).toHaveTextContent('ใช้กับ: M01, M02')
+  })
 })

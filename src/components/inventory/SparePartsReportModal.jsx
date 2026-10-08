@@ -27,6 +27,20 @@ function getPartName(part = {}) {
 }
 
 /**
+ * Clean compatible machines text (strips empty [], dashes, nulls)
+ */
+function getCompatibleMachinesText(val) {
+  if (!val) return ''
+  if (Array.isArray(val)) {
+    const list = val.map(String).map((s) => s.trim()).filter((s) => s && s !== '[]' && s !== '-' && s !== '—')
+    return list.join(', ')
+  }
+  const str = String(val).trim()
+  if (!str || str === '[]' || str === '-' || str === '—' || str.toLowerCase() === 'n/a') return ''
+  return str
+}
+
+/**
  * Status meta for spare parts
  */
 const STATUS_META = {
@@ -36,6 +50,7 @@ const STATUS_META = {
     bg: '#ecfdf5',
     text: '#047857',
     border: '#a7f3d0',
+    dot: '#10b981',
   },
   LOW_STOCK: {
     label: 'สต็อกต่ำ',
@@ -43,6 +58,7 @@ const STATUS_META = {
     bg: '#fffbeb',
     text: '#b45309',
     border: '#fde68a',
+    dot: '#f59e0b',
   },
   OUT_OF_STOCK: {
     label: 'สินค้าหมด',
@@ -50,6 +66,7 @@ const STATUS_META = {
     bg: '#fef2f2',
     text: '#b91c1c',
     border: '#fecaca',
+    dot: '#ef4444',
   },
 }
 
@@ -166,7 +183,7 @@ export default function SparePartsReportModal({
         @media print {
           @page {
             size: A4 portrait;
-            margin: 8mm 7mm;
+            margin: 6mm 5mm;
           }
           html, body {
             background: #ffffff !important;
@@ -199,6 +216,7 @@ export default function SparePartsReportModal({
           }
           #printable-spare-parts-report table {
             width: 100% !important;
+            table-layout: fixed !important;
             border-collapse: collapse !important;
             page-break-inside: auto;
           }
@@ -222,13 +240,12 @@ export default function SparePartsReportModal({
       `}</style>
 
       {/* ── PREVIEW CONTAINER ───────────────────────────────────── */}
-      <div className="flex-1 w-full p-4 sm:p-8 flex justify-center items-start">
+      <div className="flex-1 w-full p-2 sm:p-6 flex justify-center items-start overflow-x-auto">
         {/* ── A4 PAPER SHEET ─────────────────────────────────────── */}
         <div
           id="printable-spare-parts-report"
           ref={printRef}
-          className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-6 sm:p-9 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-sans relative overflow-hidden"
-          style={{ boxSizing: 'border-box' }}
+          className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-4 sm:p-6 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-sans relative box-border"
         >
           {/* Top Decorative Header Accent */}
           <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-800" />
@@ -365,24 +382,38 @@ export default function SparePartsReportModal({
             </div>
 
             {/* ── 3. DATA TABLE (A4 Portrait Fit) ──────────────── */}
-            <div className="flex-1">
-              <table className="w-full text-left border-collapse text-[10px]">
+            <div className="flex-1 w-full">
+              <table className="w-full table-fixed text-left border-collapse text-[10px]">
+                <colgroup>
+                  <col style={{ width: '26px' }} />
+                  {showThumbnails ? <col style={{ width: '34px' }} /> : null}
+                  <col style={{ width: '78px' }} />
+                  <col />
+                  <col style={{ width: '78px' }} />
+                  <col style={{ width: '44px' }} />
+                  <col style={{ width: '46px' }} />
+                  <col style={{ width: '36px' }} />
+                  <col style={{ width: '34px' }} />
+                  <col style={{ width: '56px' }} />
+                  <col style={{ width: '64px' }} />
+                  <col style={{ width: '70px' }} />
+                </colgroup>
                 <thead>
                   <tr className="bg-slate-900 text-white font-bold uppercase text-[9px] tracking-wider">
-                    <th className="py-2 px-1.5 text-center w-7 border border-slate-900">#</th>
+                    <th className="py-2 px-1 text-center border border-slate-900">#</th>
                     {showThumbnails && (
-                      <th className="py-2 px-1 text-center w-8 border border-slate-900">รูป</th>
+                      <th className="py-2 px-1 text-center border border-slate-900">รูป</th>
                     )}
-                    <th className="py-2 px-2 w-20 border border-slate-900">รหัสอะไหล่</th>
+                    <th className="py-2 px-1.5 border border-slate-900">รหัสอะไหล่</th>
                     <th className="py-2 px-2 border border-slate-900">ชื่ออะไหล่ / รายละเอียด</th>
-                    <th className="py-2 px-2 w-16 border border-slate-900">หมวดหมู่</th>
-                    <th className="py-2 px-1.5 text-center w-12 border border-slate-900">คลัง</th>
-                    <th className="py-2 px-2 text-right w-14 border border-slate-900">คงเหลือ</th>
-                    <th className="py-2 px-1.5 text-right w-11 border border-slate-900">ขั้นต่ำ</th>
-                    <th className="py-2 px-1.5 text-center w-10 border border-slate-900">หน่วย</th>
-                    <th className="py-2 px-2 text-right w-16 border border-slate-900">ราคา/หน่วย</th>
-                    <th className="py-2 px-2 text-right w-18 border border-slate-900">มูลค่ารวม</th>
-                    <th className="py-2 px-2 text-center w-16 border border-slate-900">สถานะ</th>
+                    <th className="py-2 px-1.5 border border-slate-900">หมวดหมู่</th>
+                    <th className="py-2 px-1 text-center border border-slate-900">คลัง</th>
+                    <th className="py-2 px-1.5 text-right border border-slate-900">คงเหลือ</th>
+                    <th className="py-2 px-1 text-right border border-slate-900">ขั้นต่ำ</th>
+                    <th className="py-2 px-1 text-center border border-slate-900">หน่วย</th>
+                    <th className="py-2 px-1.5 text-right border border-slate-900">ราคา/หน่วย</th>
+                    <th className="py-2 px-1.5 text-right border border-slate-900">มูลค่ารวม</th>
+                    <th className="py-2 px-1.5 text-center border border-slate-900">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-800">
@@ -407,6 +438,7 @@ export default function SparePartsReportModal({
                       const partName = getPartName(part)
                       const isLow = qty <= min && qty > 0
                       const isOut = qty <= 0
+                      const machinesText = getCompatibleMachinesText(part.Compatible_Machines)
 
                       return (
                         <tr
@@ -416,13 +448,13 @@ export default function SparePartsReportModal({
                           } border-b border-slate-200`}
                         >
                           {/* Row Number */}
-                          <td className="py-1.5 px-1 text-center font-mono text-[9px] text-slate-500 border border-slate-200">
+                          <td className="py-1.5 px-0.5 text-center font-mono text-[9px] text-slate-500 border border-slate-200">
                             {idx + 1}
                           </td>
 
                           {/* Thumbnail */}
                           {showThumbnails && (
-                            <td className="py-1 px-1 text-center border border-slate-200">
+                            <td className="py-1 px-0.5 text-center border border-slate-200">
                               {imgUrl ? (
                                 <img
                                   src={imgUrl}
@@ -442,47 +474,55 @@ export default function SparePartsReportModal({
                           )}
 
                           {/* Part Code */}
-                          <td className="py-1.5 px-2 font-mono font-bold text-slate-900 border border-slate-200 whitespace-nowrap">
-                            {part.Part_Code || '—'}
+                          <td className="py-1.5 px-1 border border-slate-200">
+                            <span
+                              className="font-mono font-bold text-[9px] text-slate-900 bg-slate-100/90 px-1 py-0.5 rounded border border-slate-200/90 block text-center truncate tracking-tight"
+                              title={part.Part_Code || '—'}
+                            >
+                              {part.Part_Code || '—'}
+                            </span>
                           </td>
 
                           {/* Part Name & Sub info */}
-                          <td className="py-1.5 px-2 border border-slate-200">
-                            <div className="font-bold text-slate-950 leading-tight">
+                          <td className="py-1.5 px-2 border border-slate-200 overflow-hidden">
+                            <div className="font-bold text-slate-950 text-[9.5px] leading-snug line-clamp-2" title={partName}>
                               {partName}
                             </div>
                             {part.Part_Name_TH && part.Part_Name_EN && (
-                              <div className="text-[9px] text-slate-500 leading-tight">
+                              <div className="text-[8.5px] text-slate-500 leading-tight truncate">
                                 {part.Part_Name_TH}
                               </div>
                             )}
-                            {part.Compatible_Machines && (
-                              <div className="text-[8.5px] text-blue-600/90 leading-tight mt-0.5 truncate max-w-[170px]">
-                                ใช้กับ: {Array.isArray(part.Compatible_Machines) ? part.Compatible_Machines.join(', ') : part.Compatible_Machines}
+                            {machinesText ? (
+                              <div
+                                className="text-[8px] text-blue-700 leading-tight mt-0.5 truncate font-medium"
+                                title={`ใช้กับ: ${machinesText}`}
+                              >
+                                <span className="text-blue-500 font-normal">ใช้กับ:</span> {machinesText}
                               </div>
-                            )}
+                            ) : null}
                           </td>
 
                           {/* Category */}
-                          <td className="py-1.5 px-2 text-slate-700 border border-slate-200 whitespace-nowrap">
+                          <td className="py-1.5 px-1.5 text-slate-700 border border-slate-200 text-[9px] leading-tight break-words">
                             {part.Category || '—'}
                           </td>
 
                           {/* Location / Store */}
-                          <td className="py-1.5 px-1.5 text-center font-semibold border border-slate-200 whitespace-nowrap">
-                            <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold ${
+                          <td className="py-1.5 px-1 text-center font-semibold border border-slate-200">
+                            <span className={`px-1 py-0.5 rounded text-[8px] font-bold block truncate ${
                               part.Location_Store === 'Store'
                                 ? 'bg-blue-50 text-blue-800 border border-blue-200'
                                 : part.Location_Store?.startsWith('GMK')
                                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                  : 'bg-slate-100 text-slate-700'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
                             }`}>
                               {part.Location_Store || '—'}
                             </span>
                           </td>
 
                           {/* Stock Qty */}
-                          <td className={`py-1.5 px-2 text-right font-mono font-bold border border-slate-200 ${
+                          <td className={`py-1.5 px-1.5 text-right font-mono font-bold text-[9.5px] border border-slate-200 whitespace-nowrap ${
                             isOut
                               ? 'text-rose-600 font-black'
                               : isLow
@@ -493,36 +533,40 @@ export default function SparePartsReportModal({
                           </td>
 
                           {/* Min Qty */}
-                          <td className="py-1.5 px-1.5 text-right font-mono text-slate-500 border border-slate-200">
+                          <td className="py-1.5 px-1 text-right font-mono text-[9px] text-slate-500 border border-slate-200 whitespace-nowrap">
                             {min ? min.toLocaleString() : '—'}
                           </td>
 
                           {/* Unit */}
-                          <td className="py-1.5 px-1.5 text-center text-slate-600 border border-slate-200 whitespace-nowrap">
+                          <td className="py-1.5 px-1 text-center text-slate-600 text-[9px] border border-slate-200 whitespace-nowrap">
                             {part.Unit || 'ชิ้น'}
                           </td>
 
                           {/* Unit Price */}
-                          <td className="py-1.5 px-2 text-right font-mono text-slate-700 border border-slate-200 whitespace-nowrap">
+                          <td className="py-1.5 px-1.5 text-right font-mono text-[9px] text-slate-700 border border-slate-200 whitespace-nowrap">
                             {price > 0 ? `฿${price.toLocaleString()}` : '—'}
                           </td>
 
                           {/* Total Valuation */}
-                          <td className="py-1.5 px-2 text-right font-mono font-bold text-slate-900 border border-slate-200 whitespace-nowrap">
+                          <td className="py-1.5 px-1.5 text-right font-mono font-bold text-[9px] text-slate-900 border border-slate-200 whitespace-nowrap">
                             {val > 0 ? `฿${val.toLocaleString()}` : '—'}
                           </td>
 
                           {/* Status Badge */}
-                          <td className="py-1.5 px-1.5 text-center border border-slate-200 whitespace-nowrap">
+                          <td className="py-1.5 px-1 text-center border border-slate-200 whitespace-nowrap">
                             <span
-                              className="px-1.5 py-0.5 rounded text-[8.5px] font-black inline-block border"
+                              className="inline-flex items-center justify-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold border whitespace-nowrap leading-none"
                               style={{
                                 backgroundColor: meta.bg,
                                 color: meta.text,
                                 borderColor: meta.border,
                               }}
                             >
-                              {meta.label}
+                              <span
+                                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: meta.dot }}
+                              />
+                              <span>{meta.label}</span>
                             </span>
                           </td>
                         </tr>
@@ -541,16 +585,16 @@ export default function SparePartsReportModal({
                       >
                         รวมทั้งสิ้น ({items.length} รายการ):
                       </td>
-                      <td className="py-2 px-2 text-right font-mono text-[10.5px] text-emerald-800 font-black border border-slate-300">
+                      <td className="py-2 px-1.5 text-right font-mono text-[10.5px] text-emerald-800 font-black border border-slate-300 whitespace-nowrap">
                         {summary.totalQty.toLocaleString()}
                       </td>
-                      <td colSpan={3} className="py-2 px-2 text-center text-slate-400 border border-slate-300">
+                      <td colSpan={3} className="py-2 px-1 text-center text-slate-400 border border-slate-300">
                         —
                       </td>
-                      <td className="py-2 px-2 text-right font-mono text-[10.5px] text-blue-900 font-black border border-slate-300 whitespace-nowrap">
+                      <td className="py-2 px-1.5 text-right font-mono text-[10.5px] text-blue-900 font-black border border-slate-300 whitespace-nowrap">
                         ฿{Math.round(summary.totalValuation).toLocaleString()}
                       </td>
-                      <td className="py-2 px-2 text-center border border-slate-300">
+                      <td className="py-2 px-1 text-center border border-slate-300">
                         <span className="text-[9px] text-slate-500 font-normal">ครบถ้วน</span>
                       </td>
                     </tr>
