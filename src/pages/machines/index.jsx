@@ -1,12 +1,13 @@
 // src/pages/machines/index.jsx
 // Main Machines Feature Container: Selects Tri-View based on Device (ADR-0002)
 
-import React from 'react'
+import React, { useState } from 'react'
 import useDeviceView from '../../hooks/useDeviceView'
 import useMachinesLogic from './useMachinesLogic'
 import MachinesDesktopView from './MachinesDesktopView'
 import MachinesTabletView from './MachinesTabletView'
 import MachinesMobileView from './MachinesMobileView'
+import YarnBeltsView from './YarnBeltsView'
 
 import Modal from '../../components/ui/Modal'
 import DetailDrawer from '../../components/ui/DetailDrawer'
@@ -19,13 +20,14 @@ import { generateMachinePdfProps } from '../../utils/pdfDocGenerators'
 import { MACHINE_STATUS } from '../../api/entities'
 import { format } from 'date-fns'
 import {
-  Cpu, Layers, SlidersHorizontal, Image as ImageIcon,
+  Cpu, Disc, Layers, SlidersHorizontal, Image as ImageIcon,
   Upload, RefreshCw, Check, ExternalLink
 } from 'lucide-react'
 
 export default function MachinesPage() {
   const { device } = useDeviceView()
   const logic = useMachinesLogic()
+  const [activeTab, setActiveTab] = useState('machines')
 
   const {
     t,
@@ -54,10 +56,52 @@ export default function MachinesPage() {
 
   return (
     <div className="machines-page-root w-full">
+      {/* ── 0. SUB-TABS NAVIGATION (Machines vs Yarn Belts) ─── */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-5">
+        <button
+          type="button"
+          onClick={() => setActiveTab('machines')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'machines'
+              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Cpu size={15} />
+          <span>ข้อมูลเครื่องจักร</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+            activeTab === 'machines'
+              ? 'bg-blue-800 text-blue-100'
+              : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+          }`}>
+            {logic.data?.length || 0}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('yarn_belts')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'yarn_belts'
+              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Disc size={15} />
+          <span>สายพานส่งด้าย (เทป 1-5)</span>
+        </button>
+      </div>
+
       {/* ── 1. ACTIVE PRESENTATION VIEW ───────────────────────── */}
-      {device === 'mobile' && <MachinesMobileView logic={logic} />}
-      {device === 'tablet' && <MachinesTabletView logic={logic} />}
-      {device === 'desktop' && <MachinesDesktopView logic={logic} />}
+      {activeTab === 'yarn_belts' ? (
+        <YarnBeltsView logic={logic} />
+      ) : (
+        <>
+          {device === 'mobile' && <MachinesMobileView logic={logic} />}
+          {device === 'tablet' && <MachinesTabletView logic={logic} />}
+          {device === 'desktop' && <MachinesDesktopView logic={logic} />}
+        </>
+      )}
 
       {/* ── 2. SHARED DETAIL DRAWER ───────────────────────────── */}
       <DetailDrawer
