@@ -74,7 +74,9 @@ const MISSING_SPAREPART_COLUMN_RE = /Could not find the '([^']+)' column of 'spa
 const SPARE_PART_IMAGE_FOLDER = 'รูปอะไหล่'
 const CATEGORY_OPTIONS = DEFAULT_SPARE_PART_CATEGORIES
 const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
-const SP_FILTER_KEYS = ['Location_Store', 'Category', 'Status']
+const SP_FILTER_KEYS = ['Part_Name_EN', 'Location_Store', 'Category', 'Status']
+const SP_SORT_ONLY_KEYS = ['Part_Name_EN']
+const SP_INIT_FS = { sort: { key: 'Part_Name_EN', dir: 'asc' }, filters: {} }
 
 function optionRawValue(option) {
   if (option && typeof option === 'object') return option.value ?? option.id ?? option.label ?? ''
@@ -208,7 +210,7 @@ export default function SpareParts() {
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [filterSort, setFilterSort] = useState(INIT_FS)
+  const [filterSort, setFilterSort] = useState(SP_INIT_FS)
   const [detailRec, setDetailRec] = useState(null)
   const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
@@ -416,6 +418,7 @@ export default function SpareParts() {
 
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
     include: SP_FILTER_KEYS,
+    sortOnly: SP_SORT_ONLY_KEYS,
     selectOptions: {
       Location_Store: locationFilterOptions,
       Status: statusFilterOptions,

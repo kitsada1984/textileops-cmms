@@ -42,9 +42,11 @@ export function buildFilterSortColumns(cols = [], {
   matchers = {},
   exclude = [],
   include = null,
+  sortOnly = [],
 } = {}) {
   const excludeSet = new Set(exclude)
   const includeSet = include ? new Set(include) : null
+  const sortOnlySet = new Set(sortOnly)
 
   return cols
     .map((col) => {
@@ -59,6 +61,10 @@ export function buildFilterSortColumns(cols = [], {
         type: col.type,
         getValue: valueGetters[key],
         matcher: matchers[key] || col.matcher,
+      }
+
+      if (sortOnlySet.has(key)) {
+        return { ...base, filter: null }
       }
 
       if (type === 'select' || selectOptions[key]) {

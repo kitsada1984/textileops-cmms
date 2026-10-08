@@ -128,4 +128,22 @@ describe('FilterSortPanel select mode (chips vs dropdown)', () => {
 
     expect(screen.getByRole('button', { name: /GMK1/i })).toBeInTheDocument()
   })
+
+  it('handles sortOnly columns: shows in sort dropdown but excludes from filter list', () => {
+    const colsWithSortOnly = [
+      { key: 'Part_Name_EN', label: 'ชื่ออะไหล่', sortable: true, filter: null },
+      { key: 'Category', label: 'หมวดหมู่', sortable: true, filter: { type: 'select', opts: ['ลูกปืน', 'สายพาน'] } },
+    ]
+    render(<FilterSortPanel cols={colsWithSortOnly} value={INIT_FS} onChange={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /ตัวกรอง/i }))
+
+    // Should appear in sort dropdown
+    expect(screen.getByRole('option', { name: 'ชื่ออะไหล่' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'หมวดหมู่' })).toBeInTheDocument()
+
+    // Should NOT appear in filter section
+    expect(screen.queryByLabelText(/ดรอปดาวน์ลิสต์ ชื่ออะไหล่/i)).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/กรอง ชื่ออะไหล่/i)).not.toBeInTheDocument()
+  })
 })
