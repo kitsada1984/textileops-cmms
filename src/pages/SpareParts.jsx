@@ -18,9 +18,11 @@ import {
   Sparkles,
   FileText,
   ShoppingCart,
+  Printer,
 } from 'lucide-react'
 import useEntity from '../hooks/useEntity'
 import { SparePartAPI, PART_STATUS } from '../api/entities'
+import { useAuth } from '../contexts/AuthContext'
 import useWebBuilderMenu, { useFieldOptions } from '../hooks/useWebBuilderMenu'
 import Modal from '../components/ui/Modal'
 import StatusBadge from '../components/ui/StatusBadge'
@@ -45,6 +47,7 @@ import {
 import { uploadMedia } from '../modules/media'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import SparePartsReportModal from '../components/inventory/SparePartsReportModal'
 import { generateSparePartPdfProps } from '../utils/pdfDocGenerators'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
@@ -191,6 +194,7 @@ export default function SpareParts() {
   const { t } = useT()
   const navigate = useNavigate()
   const { canAdd, canEdit, canDelete } = usePagePerms('spareparts')
+  const { user } = useAuth()
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(SparePartAPI)
 
@@ -213,6 +217,7 @@ export default function SpareParts() {
   const [filterSort, setFilterSort] = useState(SP_INIT_FS)
   const [detailRec, setDetailRec] = useState(null)
   const [pdfItem, setPdfItem] = useState(null)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const [newCategoryInput, setNewCategoryInput] = useState('')
@@ -434,6 +439,21 @@ export default function SpareParts() {
   }), [categoryFilterOptions, cols, locationFilterOptions, statusFilterOptions])
 
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
+
+  const reportFilterContext = useMemo(() => {
+    const parts = []
+    if (search?.trim()) parts.push(`ค้นหา: "${search.trim()}"`)
+    if (filterSort?.filters) {
+      Object.entries(filterSort.filters).forEach(([key, val]) => {
+        if (val) {
+          const col = FS_COLS.find((c) => c.key === key)
+          const label = col?.label || key
+          parts.push(`${label}: ${val}`)
+        }
+      })
+    }
+    return parts.length ? parts.join(' | ') : ''
+  }, [search, filterSort, FS_COLS])
 
   const openNew = () => {
     setForm({ ...EMPTY, Part_Code: generatePartCode(data) })
@@ -805,6 +825,15 @@ export default function SpareParts() {
               Status: getSparePartStatus,
             }}
           />
+          <button
+            type="button"
+            onClick={() => setReportModalOpen(true)}
+            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5 border-slate-300 dark:border-slate-700 hover:border-blue-400 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 shadow-xs"
+            title="พิมพ์รายงานตารางรายการอะไหล่ (A4 Portrait)"
+          >
+            <Printer size={14} className="text-blue-600 dark:text-blue-400" />
+            <span>พิมพ์รายงาน A4</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1428,6 +1457,17 @@ export default function SpareParts() {
           open={!!pdfItem}
           onClose={() => setPdfItem(null)}
           {...generateSparePartPdfProps(pdfItem)}
+        />
+      )}
+
+      {/* ── SPARE PARTS TABLE REPORT MODAL (A4 PORTRAIT) ──────── */}
+      {reportModalOpen && (
+        <SparePartsReportModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          items={displayRows}
+          filterContext={reportFilterContext}
+          currentUserName={user?.name || user?.username || ''}
         />
       )}
     </div>
