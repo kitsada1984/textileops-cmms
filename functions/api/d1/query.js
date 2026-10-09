@@ -174,6 +174,43 @@ export async function onRequestPost(context) {
       const records = Array.isArray(data) ? data : [data]
       const inserted = []
 
+      // D1 Batch optimization: execute all statements atomically in a single round-trip
+      if (records.length > 1 && typeof db.batch === 'function') {
+        const insertStmts = []
+        const preparedRecords = []
+
+        for (const source of records) {
+          if (!source || typeof source !== 'object') {
+            return jsonResponse({ data: null, error: 'Insert requires a record object' }, 400)
+          }
+          const rec = { ...source }
+          const sourceKeys = Object.keys(rec).filter((k) => k !== '_id' && k !== 'id')
+          if (sourceKeys.length === 0) {
+            return jsonResponse({ data: null, error: 'Insert requires at least one column value' }, 400)
+          }
+          if (!rec.id) rec.id = crypto.randomUUID()
+          const keys = Object.keys(rec).filter((k) => k !== '_id')
+          keys.forEach((k) => assertIdent(k, 'column name'))
+          const cols = keys.map((k) => `"${k}"`).join(', ')
+          const placeholders = keys.map(() => '?').join(', ')
+          const values = keys.map((k) => serialize(rec[k]))
+
+          const insertSql = `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) RETURNING *`
+          insertStmts.push(db.prepare(insertSql).bind(...values))
+          preparedRecords.push(rec)
+        }
+
+        const batchResults = await db.batch(insertStmts)
+        for (let i = 0; i < batchResults.length; i++) {
+          const resRow = batchResults[i]?.results?.[0] || preparedRecords[i]
+          inserted.push(resRow)
+          const recId = resRow.id || resRow.Technician_ID || resRow.WO_ID || ''
+          await logRealtimeEvent('INSERT', recId, resRow)
+        }
+
+        return jsonResponse({ data: inserted, error: null })
+      }
+
       for (const source of records) {
         if (!source || typeof source !== 'object') {
           return jsonResponse({ data: null, error: 'Insert requires a record object' }, 400)
@@ -263,6 +300,39 @@ export async function onRequestPost(context) {
       const conflictCol = assertIdent(onConflict || 'id', 'conflict column')
       const records = Array.isArray(data) ? data : [data]
       const savedRows = []
+
+      // D1 Batch optimization: execute all upserts atomically in a single round-trip
+      if (records.length > 1 && typeof db.batch === 'function') {
+        const upsertStmts = []
+        const preparedRecords = []
+
+        for (const source of records) {
+          const rec = { ...source }
+          delete rec._id
+          const keys = Object.keys(rec)
+          keys.forEach((k) => assertIdent(k, 'column name'))
+          const cols = keys.map((k) => `"${k}"`).join(', ')
+          const placeholders = keys.map(() => '?').join(', ')
+          const updateSets = keys.filter((k) => k !== conflictCol).map((k) => `"${k}" = excluded."${k}"`).join(', ')
+          const values = keys.map((k) => serialize(rec[k]))
+
+          const upsertSql = updateSets
+            ? `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) ON CONFLICT ("${conflictCol}") DO UPDATE SET ${updateSets} RETURNING *`
+            : `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) ON CONFLICT ("${conflictCol}") DO NOTHING RETURNING *`
+          upsertStmts.push(db.prepare(upsertSql).bind(...values))
+          preparedRecords.push(rec)
+        }
+
+        const batchResults = await db.batch(upsertStmts)
+        for (let i = 0; i < batchResults.length; i++) {
+          const resRow = batchResults[i]?.results?.[0] || preparedRecords[i]
+          savedRows.push(resRow)
+          const recId = resRow.id || resRow[conflictCol] || ''
+          await logRealtimeEvent('UPSERT', recId, resRow)
+        }
+
+        return jsonResponse({ data: savedRows, error: null })
+      }
 
       for (const source of records) {
         const rec = { ...source }
