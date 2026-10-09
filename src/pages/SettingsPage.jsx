@@ -15,17 +15,16 @@ const TABLES = [
   ['stocktransactions','เคลื่อนไหวสต็อก'], ['auditlogs','บันทึกระบบ'], ['appconfigs','ตั้งค่าแอป'],
 ]
 
+import Card from '../components/ui/Card'
+
 function SectionCard({ icon: Icon, title, children }) {
   return (
-    <div className="card overflow-hidden">
-      <div className="card-header">
-        <div className="flex items-center gap-2">
-          <Icon size={15} style={{color:'var(--text-500)'}}/>
-          <span className="font-semibold text-sm" style={{color:'var(--text-900)'}}>{title}</span>
-        </div>
-      </div>
-      <div className="card-body">{children}</div>
-    </div>
+    <Card>
+      <Card.Header>
+        <Card.Title icon={Icon}>{title}</Card.Title>
+      </Card.Header>
+      <Card.Body>{children}</Card.Body>
+    </Card>
   )
 }
 
