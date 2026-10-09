@@ -44,6 +44,8 @@ export default function MachinesMobileView({ logic }) {
     setDetailRec,
     setPdfItem,
     setPreviewImageModal,
+    toggleLocationFilter,
+    activeLocationFilters,
   } = logic
 
   // Quick Status Filter State (for fast one-tap filtering on mobile)
@@ -120,6 +122,41 @@ export default function MachinesMobileView({ logic }) {
           <RefreshCw size={15} className={loading ? 'animate-spin text-blue-500' : ''} />
         </button>
       </div>
+
+      {/* ── 1.2 ZONE / LOCATION QUICK CHIPS ─────────────────── */}
+      {stats.locationStats?.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
+          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap pl-0.5 flex items-center gap-1 flex-shrink-0">
+            <MapPin size={12} className="text-indigo-500" /> โซน:
+          </span>
+          {stats.locationStats.map((loc) => {
+            const isActive = activeLocationFilters?.includes(loc.name.toLowerCase())
+            return (
+              <button
+                key={loc.name}
+                type="button"
+                onClick={() => toggleLocationFilter(loc.name)}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl font-semibold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1.5 ring-indigo-400'
+                    : 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border border-slate-200/80 dark:border-slate-700/80'
+                }`}
+              >
+                <span>{loc.name}</span>
+                <span
+                  className={`text-[10px] font-mono px-1 rounded ${
+                    isActive
+                      ? 'bg-indigo-700 text-white'
+                      : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300'
+                  }`}
+                >
+                  {loc.count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── 2. STICKY TOP SEARCH & FILTER BAR ─────────────────── */}
       <div className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 flex items-center gap-2 transition-colors">

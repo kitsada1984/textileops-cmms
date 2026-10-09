@@ -36,6 +36,8 @@ export default function MachinesDesktopView({ logic }) {
     del,
     setDetailRec,
     setPdfItem,
+    toggleLocationFilter,
+    activeLocationFilters,
   } = logic
 
   return (
@@ -78,16 +80,51 @@ export default function MachinesDesktopView({ logic }) {
           </div>
         </div>
 
-        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
-          <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">โซน / ตำแหน่ง</div>
-            <div className="text-xl font-black mt-0.5 text-indigo-600 dark:text-indigo-400">
-              {stats.uniqueLocations} <span className="text-xs font-normal text-slate-400">โซน</span>
+        <div className="card p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">โซน / ตำแหน่ง</div>
+              <div className="text-xl font-black mt-0.5 text-indigo-600 dark:text-indigo-400">
+                {stats.uniqueLocations} <span className="text-xs font-normal text-slate-400">โซน</span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold">
+              <MapPin size={18} />
             </div>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold">
-            <MapPin size={18} />
-          </div>
+
+          {/* Dynamic zone breakdown chips: GK1, GK3, GK4 */}
+          {stats.locationStats?.length > 0 && (
+            <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center gap-1.5">
+              {stats.locationStats.map((loc) => {
+                const isActive = activeLocationFilters?.includes(loc.name.toLowerCase())
+                return (
+                  <button
+                    key={loc.name}
+                    type="button"
+                    onClick={() => toggleLocationFilter(loc.name)}
+                    title={`กรองเครื่องจักรโซน ${loc.name} (${loc.count} เครื่อง) - คลิกเพื่อสลับ`}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold transition-all active:scale-95 cursor-pointer ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400 dark:ring-indigo-500'
+                        : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/60'
+                    }`}
+                  >
+                    <span>{loc.name}</span>
+                    <span
+                      className={`text-[10px] font-mono px-1 rounded ${
+                        isActive
+                          ? 'bg-indigo-700 text-white'
+                          : 'bg-indigo-200/60 dark:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200'
+                      }`}
+                    >
+                      {loc.count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 

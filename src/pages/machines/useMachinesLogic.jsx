@@ -212,14 +212,58 @@ export default function useMachinesLogic() {
   const [showSummary, setShowSummary] = useState(false)
   const [previewImageModal, setPreviewImageModal] = useState(null)
 
+  // Group and count machines by Location dynamically
+  const locationStats = useMemo(() => {
+    const counts = {}
+    data.forEach((m) => {
+      const loc = String(m.Location || '').trim()
+      if (loc) {
+        counts[loc] = (counts[loc] || 0) + 1
+      }
+    })
+    // Sort locations naturally (e.g., GK1, GK3, GK4)
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+  }, [data])
+
   // Top summary stats
   const stats = useMemo(() => {
     const total = data.length
     const running = data.filter((m) => m.Status === 'RUNNING').length
     const maintenance = data.filter((m) => m.Status === 'MAINTENANCE' || m.Status === 'STOP').length
-    const uniqueLocations = new Set(data.map((m) => m.Location).filter(Boolean)).size
-    return { total, running, maintenance, uniqueLocations }
-  }, [data])
+    const uniqueLocations = locationStats.length
+    return { total, running, maintenance, uniqueLocations, locationStats }
+  }, [data, locationStats])
+
+  // Toggle filter by Location chip
+  const toggleLocationFilter = (locName) => {
+    setFilterSort((prev) => {
+      const currentLoc = prev.filters?.Location
+      const currentList = Array.isArray(currentLoc)
+        ? currentLoc
+        : (currentLoc ? [currentLoc] : [])
+
+      const isCurrentActive = currentList.some(
+        (c) => String(c).toLowerCase() === String(locName).toLowerCase()
+      )
+
+      const newFilters = { ...prev.filters }
+      if (isCurrentActive) {
+        delete newFilters.Location
+      } else {
+        newFilters.Location = [locName]
+      }
+      return { ...prev, filters: newFilters }
+    })
+  }
+
+  const activeLocationFilters = useMemo(() => {
+    const loc = filterSort.filters?.Location
+    if (Array.isArray(loc)) return loc.map((l) => String(l).toLowerCase())
+    if (loc) return [String(loc).toLowerCase()]
+    return []
+  }, [filterSort.filters?.Location])
 
   const renderMachineImageUrl = (row) => {
     const imageUrl = getMachineImageUrl(row)
@@ -367,6 +411,14 @@ export default function useMachinesLogic() {
           label,
           sortable: true,
           filter: { type: 'select', opts: machineFilterOptions[key] || [], multi: true },
+          matcher: key === 'Location' ? (row, val) => {
+            if (!val || (Array.isArray(val) && val.length === 0)) return true
+            const r = String(row.Location || '').trim().toLowerCase()
+            if (Array.isArray(val)) {
+              return val.some((v) => r === String(v).trim().toLowerCase())
+            }
+            return r === String(val).trim().toLowerCase()
+          } : undefined,
         }
       }
       if (['date', 'datetime', 'datetime-local'].includes(col.type)) {
@@ -539,5 +591,7 @@ export default function useMachinesLogic() {
     getMachineImageUrl,
     getMachineTape5,
     stripMachineMeta,
+    toggleLocationFilter,
+    activeLocationFilters,
   }
 }
