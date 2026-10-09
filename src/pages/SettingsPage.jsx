@@ -6,6 +6,8 @@ import { useAuth, hashPassword } from '../contexts/AuthContext'
 import { APP_VERSION, APP_BUILD_DATE } from '../version'
 import { fetchTelegramContacts, loadTelegramSettings, saveTelegramSettings, saveTelegramSettingsDB, loadTelegramSettingsDB, testTelegram } from '../utils/telegram'
 import { fetchLineContacts, loadLineSettings, saveLineSettingsDB, loadLineSettingsDB, testLineNotification, DEFAULT_LINE_SETTINGS } from '../utils/line'
+import { useToast } from '../components/ui/Toast'
+import { syncNotificationTechsToRegistry } from '../utils/technicianSync'
 
 const TABLES = [
   ['machines','เครื่องจักร'], ['cylinders','กระบอก'], ['workorders','ใบสั่งงาน'],
@@ -30,6 +32,7 @@ function SectionCard({ icon: Icon, title, children }) {
 export default function SettingsPage() {
   const { t } = useT()
   const { user, refreshUser } = useAuth()
+  const toast = useToast()
   const [counts,     setCounts]     = useState({})
   const [newPwd,     setNewPwd]     = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
@@ -120,9 +123,22 @@ export default function SettingsPage() {
   const isOk = pwdMsg.includes('✓') || pwdMsg.toLowerCase().includes('success') || pwdMsg.includes('สำเร็จ')
 
   const saveTg = async () => {
-    await saveTelegramSettingsDB(tg)
-    setTgMsg('บันทึกแล้ว ✓')
-    setTimeout(() => setTgMsg(''), 3000)
+    try {
+      await saveTelegramSettingsDB(tg)
+      const syncResult = await syncNotificationTechsToRegistry(tg.technicians, 'TELEGRAM')
+      if (syncResult.createdCount > 0) {
+        setTgMsg(`บันทึกแล้ว ✓ (เพิ่มเข้าทะเบียนช่าง ${syncResult.createdCount} ท่าน: ${syncResult.createdNames.join(', ')})`)
+        toast.success('บันทึกและซิงค์ทะเบียนช่างสำเร็จ', `เพิ่มช่างใหม่เข้าทะเบียนช่าง: ${syncResult.createdNames.join(', ')}`)
+      } else if (syncResult.updatedCount > 0) {
+        setTgMsg('บันทึกแล้ว ✓ (อัปเดตเชื่อมโยงทะเบียนช่างเรียบร้อย)')
+      } else {
+        setTgMsg('บันทึกแล้ว ✓')
+      }
+    } catch (e) {
+      setTgMsg(`ผิดพลาด: ${e.message}`)
+      toast.error('เกิดข้อผิดพลาดในการบันทึก', e.message)
+    }
+    setTimeout(() => setTgMsg(''), 5000)
   }
 
   const handleTestTg = async () => {
@@ -138,10 +154,24 @@ export default function SettingsPage() {
   }
 
   const saveLine = async () => {
-    await saveLineSettingsDB(line)
-    setLineIsOk(true)
-    setLineMsg('บันทึกการตั้งค่า LINE สำเร็จ ✓')
-    setTimeout(() => setLineMsg(''), 4000)
+    try {
+      await saveLineSettingsDB(line)
+      const syncResult = await syncNotificationTechsToRegistry(line.technicians, 'LINE')
+      setLineIsOk(true)
+      if (syncResult.createdCount > 0) {
+        setLineMsg(`บันทึกการตั้งค่า LINE สำเร็จ ✓ (เพิ่มเข้าทะเบียนช่าง ${syncResult.createdCount} ท่าน: ${syncResult.createdNames.join(', ')})`)
+        toast.success('บันทึกและซิงค์ทะเบียนช่างสำเร็จ', `เพิ่มช่างใหม่เข้าทะเบียนช่าง: ${syncResult.createdNames.join(', ')}`)
+      } else if (syncResult.updatedCount > 0) {
+        setLineMsg('บันทึกการตั้งค่า LINE สำเร็จ ✓ (อัปเดตเชื่อมโยงทะเบียนช่างเรียบร้อย)')
+      } else {
+        setLineMsg('บันทึกการตั้งค่า LINE สำเร็จ ✓')
+      }
+    } catch (e) {
+      setLineIsOk(false)
+      setLineMsg(`ผิดพลาด: ${e.message}`)
+      toast.error('เกิดข้อผิดพลาดในการบันทึก', e.message)
+    }
+    setTimeout(() => setLineMsg(''), 5000)
   }
 
   const handleTestLine = async () => {
@@ -202,7 +232,7 @@ export default function SettingsPage() {
       return { ...p, [key]: [...current, { name: contact.name, user_id: contact.user_id }] }
     })
     setLineIsOk(true)
-    setLineMsg(`เพิ่ม ${contact.name} ใน ${label} เรียบร้อยแล้ว (กดบันทึกเพื่อเริ่มใช้งาน)`)
+    setLineMsg(`เพิ่ม ${contact.name} ใน ${label} เรียบร้อยแล้ว (กดบันทึกการตั้งค่าเพื่อเริ่มใช้งานและซิงค์เข้าทะเบียนช่าง)`)
   }
 
   const loadTgContacts = async () => {
@@ -238,7 +268,7 @@ export default function SettingsPage() {
       if (current.some(item => item.chat_id === contact.chat_id)) return p
       return { ...p, [key]: [...current, { name: contact.name, chat_id: contact.chat_id }] }
     })
-    setTgMsg(`เพิ่ม ${contact.name} ใน ${label} แล้ว กดบันทึกเพื่อใช้งาน`)
+    setTgMsg(`เพิ่ม ${contact.name} ใน ${label} แล้ว (กดบันทึกเพื่อเริ่มใช้งานและซิงค์เข้าทะเบียนช่าง)`)
   }
 
   const tgIsOk = tgMsg.startsWith('✓') || tgMsg.includes('สำเร็จ') || tgMsg.includes('บันทึกแล้ว') || tgMsg.includes('พบรายชื่อ') || tgMsg.includes('เพิ่ม ')
