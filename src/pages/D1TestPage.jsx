@@ -1,14 +1,16 @@
 // src/pages/D1TestPage.jsx
 // Sandbox and Parallel Testing Page for Cloudflare D1 + Realtime SSE
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { 
   Database, RefreshCw, Radio, Zap, CheckCircle2, AlertTriangle, 
-  Send, Layers, ArrowLeftRight, Clock, Plus, Trash2, Edit3 
+  Send, Layers, ArrowLeftRight, Clock, Plus, Trash2, Edit3, SlidersHorizontal 
 } from 'lucide-react'
 import { d1 } from '../api/d1Client'
 import { supabase } from '../supabase'
 import { getActiveDbProvider, setDbProvider } from '../api/dbClient'
+import DataTable from '../components/ui/DataTable'
+import { useUIStore } from '../stores/useUIStore'
 
 const TABLES = [
   'machines',
@@ -34,6 +36,24 @@ export default function D1TestPage() {
   const [d1Latency, setD1Latency] = useState(null)
   const [supabaseLatency, setSupabaseLatency] = useState(null)
   const [testLog, setTestLog] = useState([])
+
+  const tableDensity = useUIStore((s) => s.tableDensity)
+  const setTableDensity = useUIStore((s) => s.setTableDensity)
+
+  const dynamicColumns = useMemo(() => {
+    if (!tableData || tableData.length === 0) return []
+    const keys = Object.keys(tableData[0]).slice(0, 8)
+    return keys.map((key) => ({
+      accessorKey: key,
+      header: key,
+      cell: (info) => {
+        const val = info.getValue()
+        return typeof val === 'object' && val !== null
+          ? JSON.stringify(val)
+          : String(val ?? '')
+      },
+    }))
+  }, [tableData])
 
   const channelRef = useRef(null)
 
@@ -72,7 +92,7 @@ export default function D1TestPage() {
     setLoading(true)
     try {
       const startTime = performance.now()
-      const { data, error } = await d1.from(table).select('*').limit(15)
+      const { data, error } = await d1.from(table).select('*').limit(50)
       const duration = (performance.now() - startTime).toFixed(1)
       setD1Latency(duration)
 
@@ -246,6 +266,20 @@ export default function D1TestPage() {
               </select>
 
               <button
+                type="button"
+                onClick={() => setTableDensity(tableDensity === 'compact' ? 'comfortable' : 'compact')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px',
+                  backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px',
+                  cursor: 'pointer', fontSize: '13px', color: '#475569'
+                }}
+                title="สลับโหมดความแน่นของตาราง (Comfortable / Compact)"
+              >
+                <SlidersHorizontal size={14} />
+                {tableDensity === 'compact' ? 'กระชับ (Compact)' : 'ปกติ (Normal)'}
+              </button>
+
+              <button
                 onClick={() => loadTableData(selectedTable)}
                 disabled={loading}
                 style={{
@@ -260,39 +294,19 @@ export default function D1TestPage() {
             </div>
           </div>
 
-          {/* Table View */}
-          <div style={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: '8px' }}>
-            {tableData.length === 0 ? (
-              <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>
-                {loading ? 'กำลังดึงข้อมูลจาก Cloudflare D1...' : 'ไม่มีข้อมูลในตารางนี้'}
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    {Object.keys(tableData[0]).slice(0, 6).map(col => (
-                      <th key={col} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', color: '#475569' }}>
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableData.map((row, idx) => (
-                    <tr key={row.id || idx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
-                      {Object.keys(tableData[0]).slice(0, 6).map(col => (
-                        <td key={col} style={{ padding: '8px 12px', color: '#334155', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {typeof row[col] === 'object' ? JSON.stringify(row[col]) : String(row[col] ?? '')}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+          {/* Table View powered by TanStack Table v8 */}
+          <div style={{ marginTop: '4px' }}>
+            <DataTable
+              data={tableData}
+              columns={dynamicColumns}
+              loading={loading}
+              emptyMessage={loading ? 'กำลังดึงข้อมูลจาก Cloudflare D1...' : 'ไม่มีข้อมูลในตารางนี้'}
+              showPagination={true}
+              pageSizeOptions={[10, 20, 50]}
+            />
           </div>
           <div style={{ marginTop: '10px', fontSize: '12px', color: '#64748b', textAlign: 'right' }}>
-            แสดงผล {tableData.length} แถวแรกจาก D1
+            โหลด {tableData.length} แถวแรกจาก D1 (รองรับ Sorting, Pagination, และ Dynamic Density)
           </div>
         </div>
 
