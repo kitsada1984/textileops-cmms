@@ -13,6 +13,7 @@ import { fetchLineContacts, loadLineSettings, saveLineSettingsDB, loadLineSettin
 import { useToast } from '../components/ui/Toast'
 import { syncNotificationTechsToRegistry } from '../utils/technicianSync'
 import Modal from '../components/ui/Modal'
+import { telegramAdminSchema } from '../schemas/telegramAdminSchema'
 
 const TABLES = [
   ['machines','เครื่องจักร'], ['cylinders','กระบอก'], ['workorders','ใบสั่งงาน'],
@@ -280,12 +281,12 @@ export default function SettingsPage() {
       return
     }
     if (adminModalMode !== 'delete') {
-      if (!adminFormName.trim()) {
-        setAdminAuthError('กรุณากรอกชื่อแอดมิน')
-        return
-      }
-      if (!adminFormChatId.trim()) {
-        setAdminAuthError('กรุณากรอก Telegram Chat ID')
+      const parseResult = telegramAdminSchema.safeParse({
+        name: adminFormName,
+        chat_id: adminFormChatId,
+      })
+      if (!parseResult.success) {
+        setAdminAuthError(parseResult.error.issues[0]?.message || 'ข้อมูลแอดมินไม่ถูกต้อง')
         return
       }
     }
