@@ -17,17 +17,21 @@ import ImageThumbnail from '../../components/ui/ImageThumbnail'
 import ImagePreviewModal from '../../components/ui/ImagePreviewModal'
 import PdfPreviewModal from '../../components/ui/PdfPreviewModal'
 import { generateMachinePdfProps } from '../../utils/pdfDocGenerators'
-import { MACHINE_STATUS } from '../../api/entities'
+import { AuditLogAPI, MACHINE_STATUS } from '../../api/entities'
+import useEntity from '../../hooks/useEntity'
+import CylinderHistoryModal from '../../components/CylinderHistoryModal'
 import { format } from 'date-fns'
 import {
   Cpu, Disc, Layers, SlidersHorizontal, Image as ImageIcon,
-  Upload, RefreshCw, Check, ExternalLink
+  Upload, RefreshCw, Check, ExternalLink, History
 } from 'lucide-react'
 
 export default function MachinesPage() {
   const { device } = useDeviceView()
   const logic = useMachinesLogic()
   const [activeTab, setActiveTab] = useState('machines')
+  const [cylinderHistoryMc, setCylinderHistoryMc] = useState(null)
+  const { data: auditLogs } = useEntity(AuditLogAPI)
 
   const {
     t,
@@ -120,6 +124,17 @@ export default function MachinesPage() {
           del(detailRec._id || detailRec.id)
           setDetailRec(null)
         }}
+        extraActions={detailRec && (
+          <button
+            type="button"
+            onClick={() => setCylinderHistoryMc(detailRec.Mc)}
+            className="btn-outline text-xs flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+            title="ดูประวัติการเปลี่ยนกระบอกของเครื่องนี้"
+          >
+            <History size={13} />
+            <span>ประวัติกระบอก</span>
+          </button>
+        )}
         groups={detailRec ? [
           {
             label: t('dr_general_info'),
@@ -180,6 +195,34 @@ export default function MachinesPage() {
               { label: t('mc_th_leg3'), value: detailRec.Leg3 },
               { label: t('mc_th_leg4'), value: detailRec.Leg4 },
             ].filter((f) => f.value),
+          },
+          {
+            label: 'ประวัติกระบอกเข็ม (Cylinder Change History)',
+            single: true,
+            fields: [
+              {
+                label: 'ประวัติการเปลี่ยนกระบอก',
+                full: true,
+                node: (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Disc size={14} className="text-indigo-600 dark:text-indigo-400" />
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        ตรวจสอบประวัติว่าเครื่องนี้เคยเปลี่ยนกระบอกไปกี่ครั้ง เปลี่ยนอะไรบ้าง
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCylinderHistoryMc(detailRec.Mc)}
+                      className="btn-outline text-[11px] py-1 px-2.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-1 font-bold"
+                    >
+                      <History size={11} />
+                      <span>ดูประวัติ</span>
+                    </button>
+                  </div>
+                ),
+              },
+            ],
           },
           {
             label: t('remark'),
@@ -380,6 +423,14 @@ export default function MachinesPage() {
           {...generateMachinePdfProps(pdfItem)}
         />
       )}
+
+      {/* ── 6. CYLINDER HISTORY MODAL ─────────────────────────── */}
+      <CylinderHistoryModal
+        open={!!cylinderHistoryMc}
+        onClose={() => setCylinderHistoryMc(null)}
+        machineCode={cylinderHistoryMc || ''}
+        auditLogs={auditLogs}
+      />
     </div>
   )
 }

@@ -22,6 +22,7 @@ import {
   ChevronUp,
   FileText,
   Zap,
+  History,
 } from 'lucide-react'
 import useWebBuilderMenu, { useWebBuilderColumn } from '../hooks/useWebBuilderMenu'
 import { format } from 'date-fns'
@@ -31,6 +32,7 @@ import Modal from '../components/ui/Modal'
 import StatusBadge from '../components/ui/StatusBadge'
 import SearchInput from '../components/ui/SearchInput'
 import SearchableDropdown from '../components/ui/SearchableDropdown'
+import CylinderHistoryModal from '../components/CylinderHistoryModal'
 import { useT } from '../contexts/LanguageContext'
 import SwapCylinderModal, { buildCylinderSwapPayload, SwapSettingsModal } from '../components/SwapCylinder'
 import usePagePerms from '../hooks/usePagePerms'
@@ -283,6 +285,7 @@ function CylinderCard({
   onEdit,
   onDelete,
   onPreviewImage,
+  onHistory,
 }) {
   const imageUrl = getCylinderImageUrl(c)
   const display = (c.Serial_OLD && c.Serial_NOW && c.Serial_OLD === c.Serial_NOW)
@@ -379,6 +382,19 @@ function CylinderCard({
           >
             <QrCode size={14} />
           </button>
+          {onHistory && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onHistory(c)
+              }}
+              className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors border border-indigo-200 dark:border-indigo-800/60"
+              title="ประวัติการเปลี่ยนกระบอก"
+            >
+              <History size={14} />
+            </button>
+          )}
           {canEdit && (
             <button
               type="button"
@@ -412,6 +428,7 @@ export default function Cylinders() {
   const toast = useToast()
   const { data, loading, load, save, remove } = useEntity(CylinderAPI)
   const { data: machines } = useEntity(MachineAPI)
+  const { data: auditLogs, load: loadAuditLogs } = useEntity(AuditLogAPI)
   const [search, setSearch] = useState('')
   const [filterSort, setFilterSort] = useState(INIT_FS)
   const [modal, setModal] = useState(false)
@@ -424,6 +441,7 @@ export default function Cylinders() {
   const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [selectedImportMcKey, setSelectedImportMcKey] = useState('')
+  const [historyTarget, setHistoryTarget] = useState(null)
 
   // Machines eligible for cylinder creation (keyed by Serial_OLD)
   const unlinkedMachines = useMemo(() => {
@@ -742,11 +760,48 @@ export default function Cylinders() {
     }
     setSaving(true)
     const isEdit = !!(form._id || form.id)
+    const editId = form._id || form.id
+    const origCyl = isEdit ? data.find((c) => (c._id || c.id) === editId) : null
+
     try {
       await saveWithImageFallback({
         ...form,
         Comment: appendCylinderImageMeta(form.Comment, form.ImageUrl),
       })
+
+      if (isEdit && origCyl) {
+        const mcChanged = (origCyl.NewMC || '') !== (form.NewMC || '')
+        const locChanged = (origCyl.Location || '') !== (form.Location || '')
+        const serialChanged = (origCyl.Serial_NOW || '') !== (form.Serial_NOW || '')
+
+        if (mcChanged || locChanged || serialChanged) {
+          try {
+            await AuditLogAPI.create({
+              Module: 'CYLINDERS',
+              ActionType: 'UPDATE',
+              RecordID: form.Serial_NOW || editId,
+              FieldName: mcChanged ? 'MachineChange' : 'CylinderUpdate',
+              OldValue: JSON.stringify({
+                mc: origCyl.NewMC || '',
+                loc: origCyl.Location || '',
+                serial: origCyl.Serial_NOW || '',
+                standard: origCyl.Standard || '',
+              }),
+              NewValue: JSON.stringify({
+                mc: form.NewMC || '',
+                loc: form.Location || '',
+                serial: form.Serial_NOW || '',
+                standard: form.Standard || '',
+              }),
+              Comment: mcChanged
+                ? `เปลี่ยนเครื่องจักรสำหรับกระบอก ${form.Serial_NOW}: จาก ${origCyl.NewMC || '—'} ➔ ${form.NewMC || '—'}`
+                : `อัปเดตข้อมูลกระบอก ${form.Serial_NOW} (ตำแหน่ง: ${origCyl.Location || '—'} ➔ ${form.Location || '—'})`,
+            })
+            loadAuditLogs?.()
+          } catch {}
+        }
+      }
+
       toast.success(
         isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ',
         `กระบอก ${form.Serial_NOW}`
@@ -810,13 +865,42 @@ export default function Cylinders() {
         ActionType: 'SWAP',
         RecordID: `${payload.newIn.Serial_NOW || ''} <-> ${payload.newOut.Serial_NOW || ''}`,
         FieldName: 'SwapCylinder',
-        OldValue: JSON.stringify({ in: meta.inId, out: meta.outId }),
-        NewValue: JSON.stringify({
-          in: { id: payload.newIn.id, serial: payload.newIn.Serial_NOW, loc: payload.newIn.Location },
-          out: { id: payload.newOut.id, serial: payload.newOut.Serial_NOW, loc: payload.newOut.Location },
+        OldValue: JSON.stringify({
+          in: {
+            id: meta.inId,
+            serial: origIn?.Serial_NOW || payload.newIn.Serial_NOW,
+            mc: origIn?.NewMC || payload.newIn.NewMC || '',
+            loc: origIn?.Location || payload.newIn.Location || '',
+            standard: origIn?.Standard || payload.newIn.Standard || '',
+          },
+          out: {
+            id: meta.outId,
+            serial: origOut?.Serial_NOW || payload.newOut.Serial_NOW,
+            mc: origOut?.NewMC || payload.newOut.NewMC || '',
+            loc: origOut?.Location || payload.newOut.Location || '',
+            standard: origOut?.Standard || payload.newOut.Standard || '',
+          },
         }),
-        Comment: `สลับกระบอก ${payload.newIn.Serial_NOW} กับ ${payload.newOut.Serial_NOW}`,
+        NewValue: JSON.stringify({
+          swapCols: meta.swapCols || ['Location', 'Machine_Ref', 'Feeder'],
+          in: {
+            id: inId,
+            serial: payload.newIn.Serial_NOW,
+            mc: payload.newIn.NewMC || '',
+            loc: payload.newIn.Location || '',
+            standard: payload.newIn.Standard || '',
+          },
+          out: {
+            id: outId,
+            serial: payload.newOut.Serial_NOW,
+            mc: payload.newOut.NewMC || '',
+            loc: payload.newOut.Location || '',
+            standard: payload.newOut.Standard || '',
+          },
+        }),
+        Comment: `สลับกระบอก ${payload.newIn.Serial_NOW} (MC: ${payload.newIn.NewMC || '—'}) กับ ${payload.newOut.Serial_NOW} (MC: ${payload.newOut.NewMC || '—'})`,
       })
+      loadAuditLogs?.()
     } catch {}
 
     await load()
@@ -1024,6 +1108,7 @@ export default function Cylinders() {
               onEdit={openEdit}
               onDelete={(id) => del(id)}
               onPreviewImage={setPreviewImageModal}
+              onHistory={setHistoryTarget}
             />
           ))}
           {!loading && !displayRows.length && (
@@ -1072,6 +1157,7 @@ export default function Cylinders() {
                   onEdit={openEdit}
                   onDelete={(id) => del(id)}
                   onPreviewImage={setPreviewImageModal}
+                  onHistory={setHistoryTarget}
                 />
               ))}
             </div>
@@ -1140,6 +1226,15 @@ export default function Cylinders() {
                         >
                           <QrCode size={13} />
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryTarget(c)}
+                          className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 dark:text-indigo-400 transition-all border border-indigo-200 dark:border-indigo-800/60"
+                          title="ดูประวัติการเปลี่ยน/สลับกระบอก"
+                          aria-label="ดูประวัติการเปลี่ยน/สลับกระบอก"
+                        >
+                          <History size={13} />
+                        </button>
                         {canEdit && (
                           <button
                             type="button"
@@ -1199,17 +1294,28 @@ export default function Cylinders() {
           setDetailRec(null)
         }}
         extraActions={detailRec && (
-          <button
-            type="button"
-            onClick={() => {
-              setQrRec(detailRec)
-              setDetailRec(null)
-            }}
-            className="btn-outline text-xs flex items-center gap-1.5"
-          >
-            <QrCode size={13} />
-            <span>QR Code</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setHistoryTarget(detailRec)}
+              className="btn-outline text-xs flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+              title="ดูประวัติการเปลี่ยน/สลับกระบอก"
+            >
+              <History size={13} />
+              <span>ประวัติ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setQrRec(detailRec)
+                setDetailRec(null)
+              }}
+              className="btn-outline text-xs flex items-center gap-1.5"
+            >
+              <QrCode size={13} />
+              <span>QR Code</span>
+            </button>
+          </div>
         )}
         groups={detailRec ? [
           {
@@ -1247,6 +1353,34 @@ export default function Cylinders() {
               { label: t('cyl_th_gauge'), value: detailRec.Gauge ? `${detailRec.Gauge}G` : null },
               { label: t('cyl_th_needle'), value: detailRec.Needle },
             ].filter((f) => f.value),
+          },
+          {
+            label: 'ประวัติการเปลี่ยน / สลับกระบอก',
+            single: true,
+            fields: [
+              {
+                label: 'ประวัติการใช้งาน',
+                full: true,
+                node: (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 text-xs">
+                    <div className="flex items-center gap-2">
+                      <History size={14} className="text-indigo-600 dark:text-indigo-400" />
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        ตรวจสอบประวัติการสลับ/ย้ายเครื่องย้อนหลัง
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryTarget(detailRec)}
+                      className="btn-outline text-[11px] py-1 px-2.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-1 font-bold"
+                    >
+                      <History size={11} />
+                      <span>เปิดดูไทม์ไลน์</span>
+                    </button>
+                  </div>
+                ),
+              },
+            ],
           },
           {
             label: t('remark'),
@@ -1488,6 +1622,15 @@ export default function Cylinders() {
           {...generateCylinderPdfProps(pdfItem, { machines })}
         />
       )}
+
+      {/* ── CYLINDER HISTORY MODAL ─────────────────────────── */}
+      <CylinderHistoryModal
+        open={!!historyTarget}
+        onClose={() => setHistoryTarget(null)}
+        cylinder={historyTarget}
+        machineCode={historyTarget?.NewMC || ''}
+        auditLogs={auditLogs}
+      />
     </div>
   )
 }
