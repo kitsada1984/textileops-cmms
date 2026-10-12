@@ -4,6 +4,8 @@ import {
   parseCylinderAuditLog,
   filterCylinderHistory,
   summarizeCylinderHistory,
+  buildSwapCompareTable,
+  buildUpdateCompareTable,
 } from './cylinderHistory'
 
 describe('cylinderHistory utility', () => {
@@ -146,6 +148,88 @@ describe('cylinderHistory utility', () => {
       expect(summary.machines).toContain('MC-03')
       expect(summary.cylinders).toContain('CYL-1')
       expect(summary.cylinders).toContain('CYL-2')
+    })
+  })
+
+  describe('buildSwapCompareTable', () => {
+    it('constructs detailed side-by-side compare rows matching swap modal', () => {
+      const item = {
+        type: 'SWAP',
+        swapCols: ['Location', 'Machine_Ref', 'Feeder'],
+        in: {
+          serial: 'CYL-01',
+          mc: 'MC-01',
+          loc: 'Line A',
+          machineRef: 'In-use',
+          feeder: 'F1',
+          type: 'Rib',
+        },
+        out: {
+          serial: 'CYL-02',
+          mc: 'MC-02',
+          loc: 'Line B',
+          machineRef: 'Reserve',
+          feeder: 'F2',
+          type: 'Interlock',
+        },
+        inBefore: {
+          serial: 'CYL-01',
+          mc: 'MC-01',
+          loc: 'Line B',
+          machineRef: 'Reserve',
+          feeder: 'F2',
+          type: 'Rib',
+        },
+        outBefore: {
+          serial: 'CYL-02',
+          mc: 'MC-02',
+          loc: 'Line A',
+          machineRef: 'In-use',
+          feeder: 'F1',
+          type: 'Interlock',
+        },
+      }
+
+      const { rows, outCyl, inCyl, swapCount } = buildSwapCompareTable(item)
+      expect(outCyl.Serial_NOW).toBe('CYL-02')
+      expect(inCyl.Serial_NOW).toBe('CYL-01')
+      expect(swapCount).toBeGreaterThan(0)
+
+      const locRow = rows.find((r) => r.key === 'Location')
+      expect(locRow).toBeDefined()
+      expect(locRow.isSwap).toBe(true)
+      expect(locRow.outOld).toBe('Line A')
+      expect(locRow.outNew).toBe('Line B')
+      expect(locRow.inOld).toBe('Line B')
+      expect(locRow.inNew).toBe('Line A')
+      expect(locRow.outChanged).toBe(true)
+      expect(locRow.inChanged).toBe(true)
+
+      const typeRow = rows.find((r) => r.key === 'Type')
+      expect(typeRow).toBeDefined()
+      expect(typeRow.isSwap).toBe(false)
+      expect(typeRow.outOld).toBe('Interlock')
+      expect(typeRow.inOld).toBe('Rib')
+    })
+  })
+
+  describe('buildUpdateCompareTable', () => {
+    it('constructs diff rows for UPDATE entries', () => {
+      const item = {
+        type: 'UPDATE',
+        oldData: { NewMC: 'MC-01', Location: 'Line A' },
+        newData: { NewMC: 'MC-03', Location: 'Line A' },
+      }
+
+      const { rows } = buildUpdateCompareTable(item)
+      expect(rows).toHaveLength(2)
+      const mcRow = rows.find((r) => r.key === 'NewMC')
+      expect(mcRow.changed).toBe(true)
+      expect(mcRow.oldVal).toBe('MC-01')
+      expect(mcRow.newVal).toBe('MC-03')
+
+      const locRow = rows.find((r) => r.key === 'Location')
+      expect(locRow.changed).toBe(false)
     })
   })
 })
