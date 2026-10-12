@@ -111,10 +111,15 @@ export function buildSwapCompareTable(item = {}) {
       // If after value is not explicitly present in legacy logs, swap from the other cylinder's old value
       if (!outNew && inOld) outNew = inOld
       if (!inNew && outOld) inNew = outOld
+      // If before value was not stored (legacy log), infer from opposite after value
+      if (!outOld && inNew) outOld = inNew
+      if (!inOld && outNew) inOld = outNew
     } else {
       // If column is kept, new value matches old
       if (!outNew && outOld) outNew = outOld
       if (!inNew && inOld) inNew = inOld
+      if (!outOld && outNew) outOld = outNew
+      if (!inOld && inNew) inOld = inNew
     }
 
     // Skip if all values are empty

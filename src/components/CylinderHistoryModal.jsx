@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   History,
+  ArrowLeft,
   ArrowLeftRight,
   Pencil,
   Calendar,
@@ -10,8 +11,7 @@ import {
   Search,
   CheckCircle2,
   Layers,
-  ChevronDown,
-  ChevronUp,
+  ChevronRight,
   TableProperties,
 } from 'lucide-react'
 import Modal from './ui/Modal'
@@ -56,6 +56,52 @@ function CylChip({ cyl, color, accent, label }) {
 }
 
 /**
+ * Step Bar matching the SwapCylinder 3-step workflow style.
+ */
+function HistoryStepBar({ actionType = 'SWAP' }) {
+  const steps = actionType === 'SWAP'
+    ? ['เลือกกระบอก', 'ตรวจสอบสเปก', 'ยืนยันการสลับ']
+    : ['เลือกเครื่องจักร', 'ตรวจสอบข้อมูล', 'บันทึกการเปลี่ยนแปลง']
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, userSelect: 'none' }}>
+      {steps.map((label, i) => {
+        const s = i + 1
+        return (
+          <div key={s} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
+                background: 'linear-gradient(135deg,#10b981,#059669)',
+                color: '#fff',
+                boxShadow: '0 2px 6px rgba(16,185,129,0.3)',
+              }}>
+                <CheckCircle2 size={13} strokeWidth={2.5} />
+              </div>
+              <span style={{
+                fontSize: 11, fontWeight: 700,
+                color: 'var(--text-800)',
+                whiteSpace: 'nowrap',
+              }}>
+                {label} (บันทึกสมบูรณ์)
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{
+                flex: 1, height: 2, margin: '0 10px',
+                background: 'linear-gradient(90deg,#10b981,#059669)',
+                borderRadius: 99,
+              }} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
  * Detailed side-by-side comparison table matching the Swap modal (CompareTable).
  */
 function HistorySwapCompareTable({ item }) {
@@ -70,7 +116,7 @@ function HistorySwapCompareTable({ item }) {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/90 text-xs mt-2">
+    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/90 text-xs">
       {/* Cylinder Header Bar (เหมือนตอนเปลี่ยน) */}
       <div
         className="grid grid-cols-[minmax(110px,1.2fr)_60px_minmax(100px,1fr)_24px_minmax(100px,1fr)] p-2.5 px-3 gap-2 items-center bg-gradient-to-r from-amber-500/10 via-slate-100 dark:via-slate-800/40 to-indigo-500/10 border-b border-slate-200 dark:border-slate-800"
@@ -104,7 +150,7 @@ function HistorySwapCompareTable({ item }) {
         {rows.map((row) => (
           <div
             key={row.key}
-            className={`grid grid-cols-[minmax(110px,1.2fr)_60px_minmax(100px,1fr)_24px_minmax(100px,1fr)] p-2 px-3 gap-2 items-center text-xs transition-colors ${
+            className={`grid grid-cols-[minmax(110px,1.2fr)_60px_minmax(100px,1fr)_24px_minmax(100px,1fr)] p-2.5 px-3 gap-2 items-center text-xs transition-colors ${
               row.isSwap
                 ? 'bg-indigo-50/20 dark:bg-indigo-950/10'
                 : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
@@ -194,8 +240,8 @@ function HistoryUpdateCompareTable({ item }) {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/90 text-xs mt-2">
-      <div className="grid grid-cols-[minmax(120px,1.2fr)_68px_minmax(100px,1fr)_24px_minmax(100px,1fr)] p-2 px-3 gap-2 items-center bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/90 text-xs">
+      <div className="grid grid-cols-[minmax(120px,1.2fr)_68px_minmax(100px,1fr)_24px_minmax(100px,1fr)] p-2.5 px-3 gap-2 items-center bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
         <span>คอลัมน์ / สเปก</span>
         <span className="text-center">สถานะ</span>
         <span className="text-center">ค่าเดิม (ก่อนเปลี่ยน)</span>
@@ -207,7 +253,7 @@ function HistoryUpdateCompareTable({ item }) {
         {rows.map((row) => (
           <div
             key={row.key}
-            className={`grid grid-cols-[minmax(120px,1.2fr)_68px_minmax(100px,1fr)_24px_minmax(100px,1fr)] p-2 px-3 gap-2 items-center text-xs transition-colors ${
+            className={`grid grid-cols-[minmax(120px,1.2fr)_68px_minmax(100px,1fr)_24px_minmax(100px,1fr)] p-2.5 px-3 gap-2 items-center text-xs transition-colors ${
               row.changed
                 ? 'bg-blue-50/20 dark:bg-blue-950/15'
                 : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
@@ -249,6 +295,78 @@ function HistoryUpdateCompareTable({ item }) {
   )
 }
 
+/**
+ * Dedicated Full Screen / Drill-down view for a selected history entry,
+ * looking exactly like the Swap confirmation screen.
+ */
+function HistoryItemDetailView({ item, onBack }) {
+  const isSwap = item.type === 'SWAP'
+
+  return (
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {/* Top Navigation & Info Header */}
+      <div className="flex items-center justify-between gap-2 flex-wrap pb-3 border-b border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={onBack}
+          className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1.5 font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          <ArrowLeft size={14} />
+          <span>ย้อนกลับไปรายการประวัติทั้งหมด</span>
+        </button>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-xs ${
+              isSwap
+                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+            }`}
+          >
+            {isSwap ? <ArrowLeftRight size={13} /> : <Pencil size={13} />}
+            <span>{isSwap ? 'รายการสลับกระบอก (SWAP)' : 'รายการแก้ไข / ย้ายเครื่อง'}</span>
+          </span>
+
+          <span className="text-xs text-slate-500 flex items-center gap-1 font-mono bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg">
+            <Calendar size={13} className="text-slate-400" />
+            <span>{formatHistoryDate(item.date)}</span>
+          </span>
+
+          <span className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg font-medium">
+            <User size={13} className="text-slate-400" />
+            <span>ผู้ดำเนินการ: {item.user}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Step Bar (เหมือนตอนทำรายการสลับกระบอก) */}
+      <HistoryStepBar actionType={item.type} />
+
+      {/* Detailed Compare Table */}
+      {isSwap ? (
+        <HistorySwapCompareTable item={item} />
+      ) : (
+        <HistoryUpdateCompareTable item={item} />
+      )}
+
+      {/* Bottom Remarks & Record ID Card */}
+      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+        <div className="flex items-center justify-between text-slate-500 font-medium">
+          <span>หมายเหตุการดำเนินการ:</span>
+          {item.raw?.RecordID && (
+            <span className="font-mono text-[11px] text-slate-400">
+              Record ID: {item.raw.RecordID}
+            </span>
+          )}
+        </div>
+        <div className="text-slate-700 dark:text-slate-200 font-medium bg-white dark:bg-slate-800/60 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700/60">
+          {item.comment || 'ไม่มีหมายเหตุเพิ่มเติม'}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CylinderHistoryModal({
   open,
   onClose,
@@ -258,11 +376,17 @@ export default function CylinderHistoryModal({
 }) {
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('auto') // 'cylinder' | 'machine' | 'all' | 'auto'
-  const [detailedView, setDetailedView] = useState(true) // Full spec comparison table like swap modal
-  const [expandedItems, setExpandedItems] = useState({}) // Custom per-card override
+  const [selectedItem, setSelectedItem] = useState(null)
 
   const effectiveSerial = cylinder?.Serial_NOW || cylinder?.Serial_OLD || ''
   const effectiveMc = machineCode || cylinder?.NewMC || cylinder?.OLDMC || ''
+
+  // Reset selected item when modal opens or target changes
+  useEffect(() => {
+    if (open) {
+      setSelectedItem(null)
+    }
+  }, [open, cylinder, machineCode])
 
   // Determine current filter criteria based on tab
   const criteria = useMemo(() => {
@@ -300,20 +424,6 @@ export default function CylinderHistoryModal({
     })
   }, [historyList, search])
 
-  const isItemExpanded = (itemId) => {
-    if (expandedItems[itemId] !== undefined) {
-      return expandedItems[itemId]
-    }
-    return detailedView
-  }
-
-  const toggleItemExpanded = (itemId) => {
-    setExpandedItems((prev) => ({
-      ...prev,
-      [itemId]: !isItemExpanded(itemId),
-    }))
-  }
-
   if (!open) return null
 
   return (
@@ -328,7 +438,9 @@ export default function CylinderHistoryModal({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                ประวัติการเปลี่ยน / สลับกระบอกเข็ม
+                {selectedItem
+                  ? 'รายละเอียดประวัติการเปลี่ยนกระบอก'
+                  : 'ประวัติการเปลี่ยน / สลับกระบอกเข็ม'}
               </span>
               {effectiveMc && (
                 <span className="font-mono font-bold text-[11px] bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-lg border border-blue-500/20">
@@ -342,7 +454,9 @@ export default function CylinderHistoryModal({
               )}
             </div>
             <div className="text-[11px] text-slate-400 font-normal mt-0.5">
-              แสดงประวัติเปรียบเทียบสเปกอย่างละเอียดเหมือนตอนสลับ (OUT ↔ IN) และย้อนหลังครบทุกฟิลด์
+              {selectedItem
+                ? 'กดดูรายละเอียดตารางเปรียบเทียบสเปกแบบเต็มเหมือนตอนขั้นตอนสลับกระบอก'
+                : 'คลิกที่รายการใดก็ได้เพื่อเปิดดูรายละเอียดเปรียบเทียบสเปกแบบเต็มเหมือนตอนสลับ'}
             </div>
           </div>
         </div>
@@ -350,233 +464,225 @@ export default function CylinderHistoryModal({
       size="xl"
       footer={
         <div className="flex items-center justify-between w-full text-xs text-slate-500">
-          <span>พบ {historyList.length} รายการบันทึกประวัติ</span>
-          <button type="button" className="btn-outline px-4" onClick={onClose}>
+          {selectedItem ? (
+            <button
+              type="button"
+              className="btn-outline px-3.5 py-1.5 flex items-center gap-1.5 font-medium"
+              onClick={() => setSelectedItem(null)}
+            >
+              <ArrowLeft size={13} />
+              <span>กลับไปหน้ารายการประวัติ</span>
+            </button>
+          ) : (
+            <span>พบ {historyList.length} รายการบันทึกประวัติ (คลิกรายการเพื่อดูแบบละเอียด)</span>
+          )}
+
+          <button type="button" className="btn-outline px-4 py-1.5 font-medium" onClick={onClose}>
             ปิดหน้าต่าง
           </button>
         </div>
       }
     >
       <div className="space-y-4 text-xs">
-        {/* ── Summary Metric Cards ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-            <div className="text-[10px] font-bold uppercase text-slate-400">ประวัติทั้งหมด</div>
-            <div className="text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5">
-              {summary.total} <span className="text-xs font-normal text-slate-500">ครั้ง</span>
-            </div>
-          </div>
-          <div className="p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
-            <div className="text-[10px] font-bold uppercase text-indigo-500">สลับกระบอก (SWAP)</div>
-            <div className="text-lg font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
-              {summary.swapCount} <span className="text-xs font-normal text-indigo-400">ครั้ง</span>
-            </div>
-          </div>
-          <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40">
-            <div className="text-[10px] font-bold uppercase text-blue-500">แก้ไข/ย้ายเครื่อง</div>
-            <div className="text-lg font-black text-blue-600 dark:text-blue-400 mt-0.5">
-              {summary.updateCount} <span className="text-xs font-normal text-blue-400">ครั้ง</span>
-            </div>
-          </div>
-          <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
-            <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">เปลี่ยนล่าสุด</div>
-            <div className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 truncate">
-              {summary.lastDate}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Filter Tabs & Search Bar & View Mode Toggle ── */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl flex-wrap">
-            {effectiveSerial && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('cylinder')}
-                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
-                  activeTab === 'cylinder'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Disc size={13} />
-                <span>ตามกระบอกนี้</span>
-              </button>
-            )}
-            {effectiveMc && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('machine')}
-                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
-                  activeTab === 'machine'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Cpu size={13} />
-                <span>ตามเครื่อง ({effectiveMc})</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
-                activeTab === 'all' || activeTab === 'auto'
-                  ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <Layers size={13} />
-              <span>ทั้งหมด</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => {
-                const next = !detailedView
-                setDetailedView(next)
-                setExpandedItems({})
-              }}
-              className={`btn-outline text-[11px] py-1.5 px-3 flex items-center gap-1.5 rounded-xl font-bold transition-all ${
-                detailedView
-                  ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'
-                  : 'text-slate-600 dark:text-slate-400'
-              }`}
-              title="สลับโหมดแสดงตารางเปรียบเทียบเต็มรูปแบบเหมือนตอนเปลี่ยน"
-            >
-              <TableProperties size={13} />
-              <span>{detailedView ? 'แสดงตารางละเอียด (เปิดอยู่)' : 'แสดงตารางละเอียด'}</span>
-            </button>
-
-            <div className="relative flex-1 sm:w-56">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ค้นหา ช่าง, เครื่อง, ซีเรียล..."
-                className="input pl-8 py-1.5 text-xs w-full"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ── Timeline List ── */}
-        <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
-          {filteredItems.length === 0 ? (
-            <div className="p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-              <History size={32} className="mx-auto mb-2 opacity-30 text-slate-400" />
-              <div className="font-semibold text-slate-600 dark:text-slate-400">
-                ยังไม่พบประวัติการเปลี่ยนกระบอก
+        {/* If an item is selected, show its full dedicated comparison view! */}
+        {selectedItem ? (
+          <HistoryItemDetailView
+            item={selectedItem}
+            onBack={() => setSelectedItem(null)}
+          />
+        ) : (
+          <>
+            {/* ── Summary Metric Cards ── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <div className="text-[10px] font-bold uppercase text-slate-400">ประวัติทั้งหมด</div>
+                <div className="text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5">
+                  {summary.total} <span className="text-xs font-normal text-slate-500">ครั้ง</span>
+                </div>
               </div>
-              <div className="text-[11px] text-slate-400 mt-0.5">
-                ประวัติจะถูกบันทึกอัตโนมัติเมื่อทำรายการสลับกระบอก หรือแก้ไขรหัสเครื่องจักร
+              <div className="p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
+                <div className="text-[10px] font-bold uppercase text-indigo-500">สลับกระบอก (SWAP)</div>
+                <div className="text-lg font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+                  {summary.swapCount} <span className="text-xs font-normal text-indigo-400">ครั้ง</span>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40">
+                <div className="text-[10px] font-bold uppercase text-blue-500">แก้ไข/ย้ายเครื่อง</div>
+                <div className="text-lg font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                  {summary.updateCount} <span className="text-xs font-normal text-blue-400">ครั้ง</span>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
+                <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">เปลี่ยนล่าสุด</div>
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 truncate">
+                  {summary.lastDate}
+                </div>
               </div>
             </div>
-          ) : (
-            filteredItems.map((item, idx) => {
-              const isSwap = item.type === 'SWAP'
-              const expanded = isItemExpanded(item.id || idx)
 
-              return (
-                <div
-                  key={item.id || idx}
-                  className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+            {/* ── Filter Tabs & Search Bar ── */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl flex-wrap">
+                {effectiveSerial && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('cylinder')}
+                    className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
+                      activeTab === 'cylinder'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Disc size={13} />
+                    <span>ตามกระบอกนี้</span>
+                  </button>
+                )}
+                {effectiveMc && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('machine')}
+                    className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
+                      activeTab === 'machine'
+                        ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Cpu size={13} />
+                    <span>ตามเครื่อง ({effectiveMc})</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('all')}
+                  className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
+                    activeTab === 'all' || activeTab === 'auto'
+                      ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
                 >
-                  {/* Top Bar: Action Badge + Date + User + Collapse Button */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-bold text-[11px] ${
-                          isSwap
-                            ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
-                            : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-                        }`}
-                      >
-                        {isSwap ? <ArrowLeftRight size={11} /> : <Pencil size={11} />}
-                        <span>{isSwap ? 'สลับกระบอก (SWAP)' : 'แก้ไข / ย้ายเครื่อง'}</span>
-                      </span>
+                  <Layers size={13} />
+                  <span>ทั้งหมด</span>
+                </button>
+              </div>
 
-                      <span className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
-                        <Calendar size={11} className="text-slate-400" />
-                        <span>{formatHistoryDate(item.date)}</span>
-                      </span>
-                    </div>
+              <div className="relative flex-1 sm:w-64">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="ค้นหา ช่าง, เครื่อง, ซีเรียล..."
+                  className="input pl-8 py-1.5 text-xs w-full"
+                />
+              </div>
+            </div>
 
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
-                        <User size={11} className="text-slate-400" />
-                        <span>{item.user}</span>
+            {/* ── Timeline List: Clickable cards to open full detail ── */}
+            <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+              {filteredItems.length === 0 ? (
+                <div className="p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                  <History size={32} className="mx-auto mb-2 opacity-30 text-slate-400" />
+                  <div className="font-semibold text-slate-600 dark:text-slate-400">
+                    ยังไม่พบประวัติการเปลี่ยนกระบอก
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    ประวัติจะถูกบันทึกอัตโนมัติเมื่อทำรายการสลับกระบอก หรือแก้ไขรหัสเครื่องจักร
+                  </div>
+                </div>
+              ) : (
+                filteredItems.map((item, idx) => {
+                  const isSwap = item.type === 'SWAP'
+
+                  return (
+                    <div
+                      key={item.id || idx}
+                      onClick={() => setSelectedItem(item)}
+                      className="group p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-2.5 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-md transition-all relative overflow-hidden"
+                      title="คลิกเพื่อดูรายละเอียดแบบเต็มเหมือนตอนสลับกระบอก"
+                    >
+                      {/* Accent left highlight bar on hover */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-indigo-500 transition-colors" />
+
+                      {/* Top Bar: Action Badge + Date + User + CTA */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap pl-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-bold text-[11px] ${
+                              isSwap
+                                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                                : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                            }`}
+                          >
+                            {isSwap ? <ArrowLeftRight size={11} /> : <Pencil size={11} />}
+                            <span>{isSwap ? 'สลับกระบอก (SWAP)' : 'แก้ไข / ย้ายเครื่อง'}</span>
+                          </span>
+
+                          <span className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
+                            <Calendar size={11} className="text-slate-400" />
+                            <span>{formatHistoryDate(item.date)}</span>
+                          </span>
+
+                          <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
+                            <User size={11} className="text-slate-400" />
+                            <span>{item.user}</span>
+                          </span>
+                        </div>
+
+                        {/* CTA button */}
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-lg border border-indigo-200/60 dark:border-indigo-800/60 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                          <TableProperties size={12} />
+                          <span>ดูรายละเอียดเหมือนตอนสลับ</span>
+                          <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                        </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => toggleItemExpanded(item.id || idx)}
-                        className="text-[11px] text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 font-medium px-2 py-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                      >
-                        <span>{expanded ? 'ย่อตาราง' : 'ดูตารางละเอียด'}</span>
-                        {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                      </button>
-                    </div>
-                  </div>
+                      {/* Summary Box */}
+                      <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[11px] ml-1">
+                        {isSwap ? (
+                          <div className="flex items-center justify-between gap-2 flex-wrap font-mono">
+                            <div className="flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[10px]">OUT</span>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">{item.out?.serial || '—'}</span>
+                              <span className="text-slate-400">(เครื่อง {item.out?.mc || '—'})</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-indigo-500 font-bold text-[11px]">
+                              <ArrowLeftRight size={12} />
+                              <span className="text-[10px] uppercase font-sans">สลับคู่กับ</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px]">IN</span>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">{item.in?.serial || '—'}</span>
+                              <span className="text-slate-400">(เครื่อง {item.in?.mc || '—'})</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-slate-500">เครื่องจักร:</span>
+                            <span className="font-mono line-through text-slate-400">{item.mcFrom || '—'}</span>
+                            <span className="text-slate-400">➔</span>
+                            <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{item.mcTo || '—'}</span>
+                            {item.locFrom || item.locTo ? (
+                              <span className="text-slate-400 ml-2">
+                                (ตำแหน่ง: {item.locFrom || '—'} ➔ {item.locTo || '—'})
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
 
-                  {/* Summary Preview Box (Always visible as quick summary) */}
-                  {!expanded && (
-                    <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[11px]">
-                      {isSwap ? (
-                        <div className="flex items-center justify-between gap-2 flex-wrap font-mono">
-                          <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 font-bold text-[10px]">OUT</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">{item.out?.serial || '—'}</span>
-                            <span className="text-slate-400">(เครื่อง {item.out?.mc || '—'})</span>
-                          </div>
-                          <ArrowLeftRight size={12} className="text-slate-400" />
-                          <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 font-bold text-[10px]">IN</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">{item.in?.serial || '—'}</span>
-                            <span className="text-slate-400">(เครื่อง {item.in?.mc || '—'})</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-slate-500">เครื่องจักร:</span>
-                          <span className="font-mono line-through text-slate-400">{item.mcFrom || '—'}</span>
-                          <span className="text-slate-400">➔</span>
-                          <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{item.mcTo || '—'}</span>
-                          {item.locFrom || item.locTo ? (
-                            <span className="text-slate-400 ml-2">
-                              (ตำแหน่ง: {item.locFrom || '—'} ➔ {item.locTo || '—'})
-                            </span>
-                          ) : null}
+                      {/* Comment preview if present */}
+                      {item.comment && (
+                        <div className="text-[11px] text-slate-500 italic bg-slate-50/50 dark:bg-slate-900/30 px-2 py-1 rounded-md ml-1 truncate">
+                          "{item.comment}"
                         </div>
                       )}
                     </div>
-                  )}
-
-                  {/* Detailed Table (เหมือนตอนเปลี่ยน) */}
-                  {expanded && (
-                    <div>
-                      {isSwap ? (
-                        <HistorySwapCompareTable item={item} />
-                      ) : (
-                        <HistoryUpdateCompareTable item={item} />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Comment */}
-                  {item.comment && (
-                    <div className="text-[11px] text-slate-500 italic bg-slate-50/50 dark:bg-slate-900/30 px-2 py-1 rounded-md">
-                      "{item.comment}"
-                    </div>
-                  )}
-                </div>
-              )
-            })
-          )}
-        </div>
+                  )
+                })
+              )}
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   )
