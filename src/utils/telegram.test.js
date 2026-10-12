@@ -6,6 +6,8 @@ import {
   getAppBaseUrl,
   encodeRepairProblemDescription,
   normalizeRepairRecord,
+  getAdminIds,
+  notifySystemCrash,
 } from './telegram'
 
 const DEFAULTS = {
@@ -214,4 +216,47 @@ describe('Repair Record Encoding and Normalization with repair_type', () => {
     expect(record.repair_type).toBe('COMPLEX')
   })
 })
+
+describe('getAdminIds', () => {
+  it('returns configured admin chat IDs when present', () => {
+    const cfg = { admins: [{ name: 'Admin 1', chat_id: '111' }, { name: 'Admin 2', chat_id: '222' }] }
+    expect(getAdminIds(cfg)).toEqual(['111', '222'])
+  })
+
+  it('falls back to supervisor IDs when admins is empty or missing', () => {
+    const cfg = { supervisors: [{ name: 'Sup', chat_id: '999' }] }
+    expect(getAdminIds(cfg)).toEqual(['999'])
+  })
+})
+
+describe('notifySystemCrash', () => {
+  it('dispatches crash alert via Telegram to admin IDs', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ ok: true, result: { message_id: 123 } }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    localStorage.setItem('telegram_settings', JSON.stringify({
+      bot_token: 'fake-token-123',
+      admins: [{ name: 'Admin Test', chat_id: '777' }],
+    }))
+
+    const result = await notifySystemCrash({
+      error: new Error('Render failed at MachineTable'),
+      path: '/machines',
+      version: 'v1.3.150',
+      user: { username: 'testuser' },
+    })
+
+    expect(result.ok).toBe(true)
+    const tgCall = fetchMock.mock.calls.find(c => String(c[0]).includes('api.telegram.org'))
+    expect(tgCall).toBeDefined()
+    expect(tgCall[0]).toContain('https://api.telegram.org/botfake-token-123/sendMessage')
+    const body = JSON.parse(tgCall[1].body)
+    expect(body.chat_id).toBe('777')
+    expect(body.text).toContain('Render failed at MachineTable')
+    expect(body.text).toContain('/machines')
+  })
+})
+
 

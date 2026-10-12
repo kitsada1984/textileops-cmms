@@ -1,8 +1,6 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { APP_VERSION } from './version'
-import Login from './pages/Login'
-import RepairPage from './pages/RepairPage'
 import gemmaLogo from './assets/logo-gemma.png'
 import {
   LayoutDashboard, Cpu, Disc, ClipboardList, Calendar,
@@ -17,27 +15,28 @@ import { ToastProvider } from './components/ui/Toast'
 import { AuthProvider, useAuth, canAccess } from './contexts/AuthContext'
 import { WebBuilderConfigProvider } from './contexts/WebBuilderConfigContext'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import RouteLoadingFallback from './components/common/RouteLoadingFallback'
 import PWAInstallPrompt from './components/ui/PWAInstallPrompt'
 import MobileBottomNav from './components/common/MobileBottomNav'
 
-import Dashboard     from './pages/Dashboard'
-import Machines      from './pages/Machines'
-import Cylinders     from './pages/Cylinders'
-import WorkOrders    from './pages/WorkOrders'
-import PMPlan        from './pages/PMPlan'
-import PMLog         from './pages/PMLog'
-import SpareParts    from './pages/SpareParts'
-import Purchasing    from './pages/Purchasing'
-import Reports       from './pages/Reports'
-import SettingsPage  from './pages/SettingsPage'
-import Logs          from './pages/Logs'
-import StockMovement from './pages/StockMovement'
-import UsersPage     from './pages/Users'
-import WebBuilder       from './pages/WebBuilder'
-import RepairRequests  from './pages/RepairRequests'
-import DesignBom from './pages/DesignBom'
-import NeedleStock from './pages/NeedleStock'
-import D1TestPage from './pages/D1TestPage'
+const Login         = lazy(() => import('./pages/Login'))
+const RepairPage    = lazy(() => import('./pages/RepairPage'))
+const Dashboard     = lazy(() => import('./pages/Dashboard'))
+const Machines      = lazy(() => import('./pages/Machines'))
+const Cylinders     = lazy(() => import('./pages/Cylinders'))
+const WorkOrders    = lazy(() => import('./pages/WorkOrders'))
+const PMPlan        = lazy(() => import('./pages/PMPlan'))
+const SpareParts    = lazy(() => import('./pages/SpareParts'))
+const Purchasing    = lazy(() => import('./pages/Purchasing'))
+const Reports       = lazy(() => import('./pages/Reports'))
+const SettingsPage  = lazy(() => import('./pages/SettingsPage'))
+const Logs          = lazy(() => import('./pages/Logs'))
+const StockMovement = lazy(() => import('./pages/StockMovement'))
+const UsersPage     = lazy(() => import('./pages/Users'))
+const WebBuilder    = lazy(() => import('./pages/WebBuilder'))
+const DesignBom     = lazy(() => import('./pages/DesignBom'))
+const NeedleStock   = lazy(() => import('./pages/NeedleStock'))
+const D1TestPage    = lazy(() => import('./pages/D1TestPage'))
 
 const NAV_SECTIONS = [
   {
@@ -85,30 +84,33 @@ const NAV_SECTIONS = [
 const ALL_NAV_ITEMS = NAV_SECTIONS.flatMap(s => s.items)
 
 function PageRoutes() {
+  const location = useLocation()
   return (
-    <ErrorBoundary>
-      <Routes>
-        <Route path="/"           element={<Dashboard />} />
-        <Route path="/machines"   element={<Machines />} />
-        <Route path="/cylinders"  element={<Cylinders />} />
-        <Route path="/workorders"      element={<WorkOrders />} />
-        <Route path="/repair-requests" element={<WorkOrders defaultTab="repair_requests" />} />
-        <Route path="/pm"           element={<PMPlan />} />
-        <Route path="/pm-log"       element={<PMPlan defaultTab="log" />} />
-        <Route path="/center-check" element={<PMPlan defaultTab="center_check" />} />
-        <Route path="/needle-condition" element={<PMPlan defaultTab="needle" />} />
-        <Route path="/design-bom"   element={<DesignBom />} />
-        <Route path="/needle-stock" element={<NeedleStock />} />
-        <Route path="/spareparts" element={<SpareParts />} />
-        <Route path="/purchasing" element={<Purchasing />} />
-        <Route path="/stock"      element={<StockMovement />} />
-        <Route path="/reports"    element={<Reports />} />
-        <Route path="/logs"       element={<Logs />} />
-        <Route path="/users"      element={<UsersPage />} />
-        <Route path="/webbuilder" element={<WebBuilder />} />
-        <Route path="/settings"   element={<SettingsPage />} />
-        <Route path="/d1-test"    element={<D1TestPage />} />
-      </Routes>
+    <ErrorBoundary resetKey={location.pathname}>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          <Route path="/"           element={<Dashboard />} />
+          <Route path="/machines"   element={<Machines />} />
+          <Route path="/cylinders"  element={<Cylinders />} />
+          <Route path="/workorders"      element={<WorkOrders />} />
+          <Route path="/repair-requests" element={<WorkOrders defaultTab="repair_requests" />} />
+          <Route path="/pm"           element={<PMPlan />} />
+          <Route path="/pm-log"       element={<PMPlan defaultTab="log" />} />
+          <Route path="/center-check" element={<PMPlan defaultTab="center_check" />} />
+          <Route path="/needle-condition" element={<PMPlan defaultTab="needle" />} />
+          <Route path="/design-bom"   element={<DesignBom />} />
+          <Route path="/needle-stock" element={<NeedleStock />} />
+          <Route path="/spareparts" element={<SpareParts />} />
+          <Route path="/purchasing" element={<Purchasing />} />
+          <Route path="/stock"      element={<StockMovement />} />
+          <Route path="/reports"    element={<Reports />} />
+          <Route path="/logs"       element={<Logs />} />
+          <Route path="/users"      element={<UsersPage />} />
+          <Route path="/webbuilder" element={<WebBuilder />} />
+          <Route path="/settings"   element={<SettingsPage />} />
+          <Route path="/d1-test"    element={<D1TestPage />} />
+        </Routes>
+      </Suspense>
     </ErrorBoundary>
   )
 }
@@ -182,7 +184,13 @@ function AppInner() {
       </div>
     </div>
   )
-  if (!user) return <Login />
+  if (!user) {
+    return (
+      <Suspense fallback={<RouteLoadingFallback message="กำลังโหลดหน้าเข้าสู่ระบบ..." />}>
+        <Login />
+      </Suspense>
+    )
+  }
 
   const currentNav = [...ALL_NAV_ITEMS].sort((a, b) => b.to.length - a.to.length).find(n =>
     n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to)
@@ -662,10 +670,12 @@ export default function App() {
         <DeviceViewProvider>
           <ToastProvider>
             <WebBuilderConfigProvider>
-              <Routes>
-                <Route path="/repair/:serial" element={<RepairPage />} />
-                <Route path="/*" element={<AppInner />} />
-              </Routes>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <Routes>
+                  <Route path="/repair/:serial" element={<RepairPage />} />
+                  <Route path="/*" element={<AppInner />} />
+                </Routes>
+              </Suspense>
             </WebBuilderConfigProvider>
           </ToastProvider>
         </DeviceViewProvider>

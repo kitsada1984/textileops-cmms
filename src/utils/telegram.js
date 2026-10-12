@@ -5,6 +5,7 @@ const DB_KEY      = 'telegram_settings'
 
 const DEFAULTS = {
   bot_token:   '',
+  admins:      [{ name: 'กฤษดา (Admin)', chat_id: '6981653027' }],
   supervisors: [{ name: 'กฤษดา', chat_id: '6981653027' }],
   needle_keepers: [],
   technicians: [{ name: 'หนึ่ง',  chat_id: '8207474130' }],
@@ -14,7 +15,12 @@ const DEFAULTS = {
 export const loadTelegramSettings = () => {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
-    return saved ? { ...DEFAULTS, ...saved } : { ...DEFAULTS }
+    if (!saved) return { ...DEFAULTS }
+    return {
+      ...DEFAULTS,
+      ...saved,
+      admins: Array.isArray(saved.admins) ? saved.admins : (saved.supervisors || DEFAULTS.admins),
+    }
   } catch { return { ...DEFAULTS } }
 }
 
@@ -360,3 +366,59 @@ export async function notifySpareNeedleReceived(snr, cylinder) {
   const results = await Promise.all(ids.map(id => sendMessage(cfg.bot_token, id, text)))
   return results[0]
 }
+
+export function getAdminIds(cfg) {
+  if (Array.isArray(cfg?.admins) && cfg.admins.length > 0) {
+    const ids = cfg.admins.map(a => a?.chat_id).filter(Boolean)
+    if (ids.length > 0) return ids
+  }
+  return getSupervisorIds(cfg)
+}
+
+let lastCrashAlertTime = 0
+let lastCrashMessage = ''
+
+export async function notifySystemCrash({ error, path, url, version, user }) {
+  try {
+    const now = Date.now()
+    const errMsg = error?.message || String(error || 'ข้อผิดพลาดไม่ทราบสาเหตุ')
+
+    // Throttle duplicate alerts within 60 seconds
+    if (now - lastCrashAlertTime < 60000 && lastCrashMessage === errMsg) {
+      return { ok: false, throttled: true }
+    }
+    lastCrashAlertTime = now
+    lastCrashMessage = errMsg
+
+    const cfg = await loadTelegramSettingsDB()
+    if (!cfg?.bot_token) return { ok: false, error: 'ไม่มี Telegram Bot Token' }
+
+    const adminIds = Array.from(new Set(getAdminIds(cfg)))
+    if (!adminIds.length) return { ok: false, error: 'ไม่มี Chat ID ของแอดมินหรือหัวหน้างาน' }
+
+    const timeStr = new Date().toLocaleString('th-TH')
+    const stackSnippet = error?.stack
+      ? String(error.stack).split('\n').slice(0, 3).map(l => l.trim()).join('\n')
+      : ''
+
+    const text = [
+      `🚨 <b>[TextileOps CMMS] ตรวจพบข้อผิดพลาดของระบบ</b>`,
+      ``,
+      `🏷️ <b>เวอร์ชัน:</b> <code>${escapeHtml(version || 'v1.3.150')}</code>`,
+      `⏰ <b>เวลา:</b> ${timeStr}`,
+      `📍 <b>หน้าจอ/URL:</b> <code>${escapeHtml(path || url || '—')}</code>`,
+      user?.username ? `👤 <b>ผู้ใช้:</b> ${escapeHtml(user.full_name || user.username)} (${escapeHtml(user.role || 'user')})` : null,
+      ``,
+      `⚠️ <b>ข้อผิดพลาด (Error):</b>`,
+      `<code>${escapeHtml(errMsg)}</code>`,
+      stackSnippet ? `\n📌 <b>ตำแหน่ง Stack:</b>\n<pre>${escapeHtml(stackSnippet)}</pre>` : null,
+    ].filter(Boolean).join('\n')
+
+    const results = await Promise.all(adminIds.map(id => sendMessage(cfg.bot_token, id, text)))
+    return { ok: true, results }
+  } catch (err) {
+    console.warn('[Telegram System Crash] Failed to dispatch crash alert:', err)
+    return { ok: false, error: err?.message }
+  }
+}
+
