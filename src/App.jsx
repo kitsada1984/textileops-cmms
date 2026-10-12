@@ -18,6 +18,8 @@ import ErrorBoundary from './components/common/ErrorBoundary'
 import RouteLoadingFallback from './components/common/RouteLoadingFallback'
 import PWAInstallPrompt from './components/ui/PWAInstallPrompt'
 import MobileBottomNav from './components/common/MobileBottomNav'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './lib/queryClient'
 
 const Login         = lazy(() => import('./pages/Login'))
 const RepairPage    = lazy(() => import('./pages/RepairPage'))
@@ -665,21 +667,23 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <LanguageProvider>
-        <DeviceViewProvider>
-          <ToastProvider>
-            <WebBuilderConfigProvider>
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <Routes>
-                  <Route path="/repair/:serial" element={<RepairPage />} />
-                  <Route path="/*" element={<AppInner />} />
-                </Routes>
-              </Suspense>
-            </WebBuilderConfigProvider>
-          </ToastProvider>
-        </DeviceViewProvider>
-      </LanguageProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <LanguageProvider>
+          <DeviceViewProvider>
+            <ToastProvider>
+              <WebBuilderConfigProvider>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <Routes>
+                    <Route path="/repair/:serial" element={<RepairPage />} />
+                    <Route path="/*" element={<AppInner />} />
+                  </Routes>
+                </Suspense>
+              </WebBuilderConfigProvider>
+            </ToastProvider>
+          </DeviceViewProvider>
+        </LanguageProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }
