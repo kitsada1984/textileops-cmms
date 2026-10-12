@@ -29,6 +29,7 @@ function ModalHeader({ children, className = '', showClose = true, title, ...pro
           onClick={onClose}
           className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
           title="ปิดหน้าต่าง"
+          aria-label="ปิดหน้าต่าง"
         >
           <X size={18} />
         </button>
@@ -69,6 +70,7 @@ function ModalCloseButton({ className = '', children, ...props }) {
       onClick={onClose}
       className={`text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 ${className}`}
       title="ปิดหน้าต่าง"
+      aria-label="ปิดหน้าต่าง"
       {...props}
     >
       {children || <X size={18} />}
@@ -108,7 +110,7 @@ export default function Modal({
   return createPortal(
     <ModalContext.Provider value={{ open, onClose, size }}>
       <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
-        <div className={`modal-box w-full ${maxW} ${className}`} style={{ margin: '0 auto' }}>
+        <div role="dialog" aria-modal="true" className={`modal-box w-full ${maxW} ${className}`} style={{ margin: '0 auto' }}>
           {hasLegacyProps ? (
             <>
               <div className="modal-header">
@@ -120,6 +122,7 @@ export default function Modal({
                   onClick={onClose}
                   className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                   title="ปิดหน้าต่าง"
+                  aria-label="ปิดหน้าต่าง"
                 >
                   <X size={18} />
                 </button>

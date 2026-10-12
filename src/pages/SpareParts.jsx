@@ -918,6 +918,7 @@ export default function SpareParts() {
                             : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-slate-200 dark:border-slate-700'
                         }`}
                         title="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
+                        aria-label="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
                       >
                         <ShoppingCart size={13} />
                       </button>
@@ -926,6 +927,7 @@ export default function SpareParts() {
                         onClick={() => setPdfItem(p)}
                         className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
                         title="ดูเอกสาร PDF และพิมพ์"
+                        aria-label="ดูเอกสาร PDF และพิมพ์"
                       >
                         <FileText size={13} />
                       </button>
@@ -935,6 +937,7 @@ export default function SpareParts() {
                           onClick={() => openEdit(p)}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                           title="แก้ไขข้อมูลอะไหล่"
+                          aria-label="แก้ไขข้อมูลอะไหล่"
                         >
                           <Pencil size={13} />
                         </button>
@@ -945,6 +948,7 @@ export default function SpareParts() {
                           onClick={() => del(p._id || p.id)}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                           title="ลบข้อมูล"
+                          aria-label="ลบข้อมูล"
                         >
                           <Trash2 size={13} />
                         </button>

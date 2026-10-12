@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useUIStore } from '../../stores/useUIStore'
 import { useDataTable } from '../../hooks/useDataTable'
+import { TableSkeleton } from './Skeleton'
 
 /**
  * Standardized Data Table Component powered by TanStack Table v8
@@ -135,12 +136,11 @@ export function DataTable({
 
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
             {loading ? (
-              <tr>
-                <td colSpan={leafColumns.length || 1} className="text-center py-12 text-slate-400">
-                  <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50 text-blue-600" />
-                  <span className="text-xs">กำลังโหลดข้อมูล...</span>
-                </td>
-              </tr>
+              <TableSkeleton
+                rows={Math.min(pageSize || 5, 8)}
+                cols={leafColumns.length || 4}
+                density={density}
+              />
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={leafColumns.length || 1} className="text-center py-12 text-slate-400">
@@ -207,6 +207,7 @@ export function DataTable({
               disabled={!table.getCanPreviousPage()}
               className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-colors"
               title="หน้าแรก"
+              aria-label="หน้าแรก"
             >
               <ChevronsLeft size={14} />
             </button>
@@ -216,6 +217,7 @@ export function DataTable({
               disabled={!table.getCanPreviousPage()}
               className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-colors"
               title="หน้าก่อนหน้า"
+              aria-label="หน้าก่อนหน้า"
             >
               <ChevronLeft size={14} />
             </button>
@@ -230,6 +232,7 @@ export function DataTable({
               disabled={!table.getCanNextPage()}
               className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-colors"
               title="หน้าถัดไป"
+              aria-label="หน้าถัดไป"
             >
               <ChevronRight size={14} />
             </button>
@@ -239,6 +242,7 @@ export function DataTable({
               disabled={!table.getCanNextPage()}
               className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-colors"
               title="หน้าสุดท้าย"
+              aria-label="หน้าสุดท้าย"
             >
               <ChevronsRight size={14} />
             </button>

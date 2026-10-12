@@ -253,6 +253,7 @@ export default function MachinesDesktopView({ logic }) {
                         onClick={() => setPdfItem(m)}
                         className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
                         title="ดูเอกสาร PDF และพิมพ์"
+                        aria-label="ดูเอกสาร PDF และพิมพ์"
                       >
                         <FileText size={13} />
                       </button>
@@ -262,6 +263,7 @@ export default function MachinesDesktopView({ logic }) {
                           onClick={() => openEdit(m)}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                           title="แก้ไขข้อมูลเครื่องจักร"
+                          aria-label="แก้ไขข้อมูลเครื่องจักร"
                         >
                           <Pencil size={13} />
                         </button>
@@ -272,6 +274,7 @@ export default function MachinesDesktopView({ logic }) {
                           onClick={() => del(m._id || m.id)}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                           title="ลบข้อมูล"
+                          aria-label="ลบข้อมูล"
                         >
                           <Trash2 size={13} />
                         </button>

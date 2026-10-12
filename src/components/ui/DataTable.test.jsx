@@ -32,7 +32,7 @@ describe('DataTable UI Component - TanStack Table v8', () => {
   it('renders loading state when loading is true', () => {
     render(<DataTable data={sampleData} columns={sampleColumns} loading={true} />)
 
-    expect(screen.getByText('กำลังโหลดข้อมูล...')).toBeInTheDocument()
+    expect(screen.getAllByText('กำลังโหลดข้อมูล...').length).toBeGreaterThan(0)
     expect(screen.queryByText('MC-01')).not.toBeInTheDocument()
   })
 

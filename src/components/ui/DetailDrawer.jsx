@@ -43,6 +43,7 @@ export function DetailDrawerCloseButton({ className = '', style, ...props }) {
         e.currentTarget.style.borderColor = 'var(--border)'
       }}
       title="ปิดหน้าต่าง"
+      aria-label="ปิดหน้าต่าง"
       className={className}
       {...props}
     >
@@ -370,6 +371,7 @@ export default function DetailDrawer({
                           e.currentTarget.style.transform = 'translateY(0)'
                         }}
                         title="ดูเอกสาร PDF และสั่งพิมพ์"
+                        aria-label="ดูเอกสาร PDF และสั่งพิมพ์"
                       >
                         <Printer size={12} /> PDF / พิมพ์
                       </button>
@@ -399,6 +401,8 @@ export default function DetailDrawer({
                           e.currentTarget.style.boxShadow = '0 2px 8px rgba(10,20,50,0.35), inset 0 1px 0 rgba(255,255,255,0.12)'
                           e.currentTarget.style.transform = 'translateY(0)'
                         }}
+                        title="แก้ไขข้อมูล"
+                        aria-label="แก้ไขข้อมูล"
                       >
                         <Pencil size={12} /> แก้ไข
                       </button>
@@ -425,6 +429,8 @@ export default function DetailDrawer({
                           e.currentTarget.style.boxShadow = '0 2px 8px rgba(220,38,38,0.30)'
                           e.currentTarget.style.transform = 'translateY(0)'
                         }}
+                        title="ลบข้อมูล"
+                        aria-label="ลบข้อมูล"
                       >
                         <Trash2 size={12} />
                       </button>
