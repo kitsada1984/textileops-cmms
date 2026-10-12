@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { renderHook, render, screen } from '@testing-library/react'
+import { renderHook, render, screen, fireEvent } from '@testing-library/react'
 import { ToastProvider, useToast } from './Toast'
 
 describe('Toast System', () => {
@@ -35,5 +35,34 @@ describe('Toast System', () => {
     )
 
     expect(screen.getByText('Trigger Toast')).toBeDefined()
+  })
+
+  it('renders Toast with role=status and accessible close button', () => {
+    function TestConsumer() {
+      const toast = useToast()
+      return (
+        <div>
+          <button onClick={() => toast.success('บันทึกสำเร็จ', 'ข้อมูลถูกบันทึกแล้ว')}>
+            Success Toast
+          </button>
+        </div>
+      )
+    }
+
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByText('Success Toast'))
+    expect(screen.getByText('บันทึกสำเร็จ')).toBeInTheDocument()
+
+    const statusEl = screen.getByRole('status')
+    expect(statusEl).toBeInTheDocument()
+    expect(statusEl.getAttribute('aria-live')).toBe('polite')
+
+    const closeBtn = screen.getByLabelText('ปิดการแจ้งเตือน')
+    expect(closeBtn).toBeInTheDocument()
   })
 })

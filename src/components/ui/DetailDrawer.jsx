@@ -315,6 +315,9 @@ export default function DetailDrawer({
       >
         {/* Panel card */}
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={title || 'รายละเอียด'}
           style={{
             width: 560, maxWidth: '100%',
             maxHeight: '100%',

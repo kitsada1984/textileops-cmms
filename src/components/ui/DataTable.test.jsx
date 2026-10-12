@@ -112,4 +112,25 @@ describe('DataTable UI Component - TanStack Table v8', () => {
       useUIStore.getState().setTableDensity('comfortable')
     })
   })
+
+  it('renders th with scope="col" and keyboard navigable rows', () => {
+    const handleRowClick = vi.fn()
+    const { container } = render(
+      <DataTable data={sampleData} columns={sampleColumns} onRowClick={handleRowClick} />
+    )
+
+    const ths = container.querySelectorAll('th')
+    expect(ths.length).toBeGreaterThan(0)
+    ths.forEach((th) => {
+      expect(th.getAttribute('scope')).toBe('col')
+    })
+
+    const rows = container.querySelectorAll('tbody tr')
+    expect(rows.length).toBe(3)
+    expect(rows[0].getAttribute('tabindex')).toBe('0')
+
+    // Press Enter on the first row
+    fireEvent.keyDown(rows[0], { key: 'Enter' })
+    expect(handleRowClick).toHaveBeenCalledTimes(1)
+  })
 })

@@ -254,6 +254,8 @@ function AppInner() {
               }}>CMMS Platform · {APP_VERSION}</div>
             </div>
             <button className="lg:hidden" onClick={() => setSideOpen(false)}
+              title="ปิดเมนูหลัก"
+              aria-label="ปิดเมนูหลัก"
               style={{ color: dark ? 'rgba(248,250,252,0.4)' : '#64748b', padding: 4 }}>
               <X size={14}/>
             </button>
@@ -398,7 +400,8 @@ function AppInner() {
           zIndex: 10,
         }}>
           <button className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => setSideOpen(true)}
-            title="เปิดเมนูหลัก">
+            title="เปิดเมนูหลัก"
+            aria-label="เปิดเมนูหลัก">
             <Menu size={20}/>
           </button>
 
@@ -449,6 +452,9 @@ function AppInner() {
             >
               <button
                 type="button"
+                role="button"
+                aria-pressed={simulatorMode === 'auto'}
+                aria-label={`โหมดอัตโนมัติตามขนาดจอจริง (ปัจจุบัน: ${autoDevice === 'mobile' ? 'มือถือ' : autoDevice === 'tablet' ? 'แท็บเล็ต' : 'คอมพิวเตอร์'})`}
                 onClick={() => setSimulatorMode('auto')}
                 title={`โหมดอัตโนมัติตามขนาดจอจริง (ปัจจุบัน: ${autoDevice === 'mobile' ? 'มือถือ' : autoDevice === 'tablet' ? 'แท็บเล็ต' : 'คอมพิวเตอร์'})`}
                 className="px-2 py-1 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold rounded-lg"
@@ -467,6 +473,9 @@ function AppInner() {
               </button>
               <button
                 type="button"
+                role="button"
+                aria-pressed={simulatorMode === 'desktop'}
+                aria-label="จำลองมุมมองคอมพิวเตอร์ (PC / Desktop)"
                 onClick={() => setSimulatorMode('desktop')}
                 title="จำลองมุมมองคอมพิวเตอร์ (PC / Desktop)"
                 className="px-2 py-1 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold rounded-lg"
@@ -485,6 +494,9 @@ function AppInner() {
               </button>
               <button
                 type="button"
+                role="button"
+                aria-pressed={simulatorMode === 'tablet'}
+                aria-label="จำลองมุมมองแท็บเล็ต (Tablet)"
                 onClick={() => setSimulatorMode('tablet')}
                 title="จำลองมุมมองแท็บเล็ต (Tablet)"
                 className="px-2 py-1 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold rounded-lg"
@@ -503,6 +515,9 @@ function AppInner() {
               </button>
               <button
                 type="button"
+                role="button"
+                aria-pressed={simulatorMode === 'mobile'}
+                aria-label="จำลองมุมมองมือถือ (Mobile)"
                 onClick={() => setSimulatorMode('mobile')}
                 title="จำลองมุมมองมือถือ (Mobile)"
                 className="px-2 py-1 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold rounded-lg"
@@ -526,6 +541,7 @@ function AppInner() {
               type="button"
               onClick={() => setPwaModalOpen(true)}
               title="ติดตั้งแอป TextileOps บนมือถือ (PWA)"
+              aria-label="ติดตั้งแอป TextileOps บนมือถือ (PWA)"
               className="px-2 sm:px-3 active:scale-95 transition-all flex-shrink-0"
               style={{
                 height: 30,
@@ -569,6 +585,7 @@ function AppInner() {
               type="button"
               onClick={handleForceUpdate}
               title="อัปเดตระบบเป็นเวอร์ชันล่าสุด / ล้างแคช"
+              aria-label="อัปเดตระบบเป็นเวอร์ชันล่าสุดและล้างแคช"
               className="active:scale-95 transition-all"
               style={{
                 width: 30, height: 30, borderRadius: 10,
@@ -589,6 +606,7 @@ function AppInner() {
               type="button"
               onClick={() => setDark(d => !d)}
               title={dark ? 'โหมดสว่าง' : 'โหมดมืด'}
+              aria-label={dark ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
               className="active:scale-95 transition-all"
               style={{
                 width: 30, height: 30, borderRadius: 10,

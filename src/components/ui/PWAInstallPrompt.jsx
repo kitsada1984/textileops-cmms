@@ -131,9 +131,11 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
                 <span>ติดตั้ง</span>
               </button>
               <button
+                type="button"
                 onClick={handleDismissBanner}
                 className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
-                title="ปิด"
+                title="ปิดการแจ้งเตือนติดตั้ง"
+                aria-label="ปิดการแจ้งเตือนติดตั้ง"
               >
                 <X size={16} />
               </button>
@@ -150,7 +152,12 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
             if (e.target === e.currentTarget) closeModal()
           }}
         >
-          <div className="w-full max-w-2xl bg-slate-900 text-white rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="ติดตั้งแอปพลิเคชัน TextileOps (PWA)"
+            className="w-full max-w-2xl bg-slate-900 text-white rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+          >
             
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
@@ -167,7 +174,10 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
                 </div>
               </div>
               <button
+                type="button"
                 onClick={closeModal}
+                title="ปิดหน้าต่างติดตั้งแอป"
+                aria-label="ปิดหน้าต่างติดตั้งแอป"
                 className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
               >
                 <X size={20} />
@@ -175,9 +185,11 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
             </div>
 
             {/* Platform Selector Tabs */}
-            <div className="flex border-b border-slate-800 bg-slate-950/40 p-2 gap-2">
+            <div role="tablist" aria-label="เลือกระบบปฏิบัติการ" className="flex border-b border-slate-800 bg-slate-950/40 p-2 gap-2">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'pc'}
                 onClick={() => setActiveTab('pc')}
                 className={`flex-1 py-2.5 px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                   activeTab === 'pc'
@@ -191,6 +203,8 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
 
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'android'}
                 onClick={() => setActiveTab('android')}
                 className={`flex-1 py-2.5 px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                   activeTab === 'android'
@@ -204,6 +218,8 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
 
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'ios'}
                 onClick={() => setActiveTab('ios')}
                 className={`flex-1 py-2.5 px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                   activeTab === 'ios'

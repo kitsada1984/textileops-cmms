@@ -100,9 +100,18 @@ export function DataTable({
                   return (
                     <th
                       key={header.id}
+                      scope="col"
                       colSpan={header.colSpan}
+                      aria-sort={isSorted === 'asc' ? 'ascending' : isSorted === 'desc' ? 'descending' : canSort ? 'none' : undefined}
+                      tabIndex={canSort ? 0 : undefined}
+                      onKeyDown={canSort ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          header.column.getToggleSortingHandler()?.(e)
+                        }
+                      } : undefined}
                       className={`${thPadding} text-left whitespace-nowrap select-none ${
-                        canSort ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors' : ''
+                        canSort ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500' : ''
                       }`}
                       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                     >
@@ -153,8 +162,15 @@ export function DataTable({
                 <tr
                   key={row.id}
                   onClick={(e) => onRowClick && onRowClick(row.original, i, e)}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={onRowClick ? (e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      onRowClick(row.original, i, e)
+                    }
+                  } : undefined}
                   className={`transition-colors ${
-                    onRowClick ? 'hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'
+                    onRowClick ? 'hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer focus:outline-none focus:bg-blue-50/60 dark:focus:bg-slate-800/60' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'
                   } ${row.getIsSelected() ? 'bg-blue-50/80 dark:bg-blue-950/40' : ''}`}
                 >
                   {row.getVisibleCells().map((cell) => (

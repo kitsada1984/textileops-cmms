@@ -88,12 +88,13 @@ export default function Login() {
         <form onSubmit={submit} className="space-y-4">
           {/* Username */}
           <div>
-            <label className="block text-[10.5px] font-bold mb-2 tracking-[0.12em] uppercase"
+            <label htmlFor="login-username" className="block text-[10.5px] font-bold mb-2 tracking-[0.12em] uppercase"
               style={{color:'rgba(248,250,252,0.6)'}}>ชื่อผู้ใช้</label>
             <div className="relative">
               <User size={15} className="absolute left-4 top-1/2 -translate-y-1/2"
                 style={{color:'#60a5fa'}}/>
               <input
+                id="login-username"
                 type="text"
                 placeholder="ชื่อผู้ใช้"
                 value={username}
@@ -113,16 +114,18 @@ export default function Login() {
 
           {/* Password */}
           <div>
-            <label className="block text-[10.5px] font-bold mb-2 tracking-[0.12em] uppercase"
+            <label htmlFor="login-password" className="block text-[10.5px] font-bold mb-2 tracking-[0.12em] uppercase"
               style={{color:'rgba(248,250,252,0.6)'}}>รหัสผ่าน</label>
             <div className="relative">
               <Lock size={15} className="absolute left-4 top-1/2 -translate-y-1/2"
                 style={{color:'#60a5fa'}}/>
               <input
+                id="login-password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                autoComplete="current-password"
                 className="input"
                 style={{
                   display:'block', width:'100%', paddingLeft:'42px', paddingRight:'16px',
@@ -136,7 +139,7 @@ export default function Login() {
 
           {/* Error */}
           {error && (
-            <div style={{
+            <div role="alert" aria-live="assertive" style={{
               background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)',
               borderRadius:'12px', padding:'12px 16px', fontSize:'13px', color:'#fca5a5',
             }}>{error}</div>

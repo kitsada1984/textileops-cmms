@@ -56,6 +56,8 @@ function ToastItem({ toast, onRemove }) {
 
   return (
     <div
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
       onClick={dismiss}
       style={{
         display: 'flex', alignItems: 'flex-start', gap: 10,
@@ -96,7 +98,10 @@ function ToastItem({ toast, onRemove }) {
         )}
       </div>
       <button
+        type="button"
         onClick={e => { e.stopPropagation(); dismiss() }}
+        title="ปิดการแจ้งเตือน"
+        aria-label="ปิดการแจ้งเตือน"
         style={{ color: 'var(--text-400)', flexShrink: 0, marginTop: 1, lineHeight: 1, background:'none', border:'none', cursor:'pointer', padding:0 }}
       >
         <X size={13} />
