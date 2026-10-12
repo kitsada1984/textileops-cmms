@@ -50,6 +50,38 @@ export const HISTORY_COMPARE_COLUMNS = [
   { key: 'Comment', label: 'หมายเหตุ (Comment)', fieldAliases: ['Comment', 'comment'] },
 ]
 
+/**
+ * Finds a cylinder in a list by Serial_NOW, Serial_OLD, or id/_id.
+ * Case-insensitive and trimmed.
+ *
+ * @param {string} serial
+ * @param {Array} cylinders
+ * @returns {Object|null}
+ */
+export function findCylinderBySerial(serial, cylinders = []) {
+  if (!serial || !Array.isArray(cylinders) || !cylinders.length) return null
+  const s = String(serial).trim().toLowerCase()
+  if (!s) return null
+
+  // 1. Direct match on Serial_NOW
+  let found = cylinders.find((c) => String(c?.Serial_NOW || '').trim().toLowerCase() === s)
+  if (found) return found
+
+  // 2. Direct match on Serial_OLD
+  found = cylinders.find((c) => String(c?.Serial_OLD || '').trim().toLowerCase() === s)
+  if (found) return found
+
+  // 3. Match on id or _id
+  found = cylinders.find((c) => String(c?.id || c?._id || '').trim().toLowerCase() === s)
+  if (found) return found
+
+  // 4. Match on ITEM
+  found = cylinders.find((c) => String(c?.ITEM || '').trim().toLowerCase() === s)
+  if (found) return found
+
+  return null
+}
+
 export function extractFieldValue(sourceObj, fallbackSnapshot, aliases = []) {
   if (fallbackSnapshot && typeof fallbackSnapshot === 'object') {
     for (const k of aliases) {
@@ -71,7 +103,7 @@ export function extractFieldValue(sourceObj, fallbackSnapshot, aliases = []) {
 /**
  * Builds detailed column comparison rows matching the swap modal (CompareTable).
  */
-export function buildSwapCompareTable(item = {}) {
+export function buildSwapCompareTable(item = {}, cylinders = []) {
   const isSwap = item.type === 'SWAP'
   if (!isSwap) return { rows: [], outCyl: null, inCyl: null, swapCount: 0 }
 
@@ -85,13 +117,19 @@ export function buildSwapCompareTable(item = {}) {
   const snapOutAfter = item.snapshotOutAfter || null
   const snapInAfter = item.snapshotInAfter || null
 
+  const outSerial = outAfter.serial || extractFieldValue(outAfter, snapOutAfter, ['Serial_NOW', 'serial']) || extractFieldValue(outBefore, snapOutBefore, ['Serial_NOW', 'serial']) || ''
+  const inSerial = inAfter.serial || extractFieldValue(inAfter, snapInAfter, ['Serial_NOW', 'serial']) || extractFieldValue(inBefore, snapInBefore, ['Serial_NOW', 'serial']) || ''
+
+  const masterOut = findCylinderBySerial(outSerial, cylinders) || findCylinderBySerial(outBefore.Serial_OLD, cylinders)
+  const masterIn = findCylinderBySerial(inSerial, cylinders) || findCylinderBySerial(inBefore.Serial_OLD, cylinders)
+
   const outCyl = {
-    Serial_NOW: outAfter.serial || extractFieldValue(outAfter, snapOutAfter, ['Serial_NOW', 'serial']) || extractFieldValue(outBefore, snapOutBefore, ['Serial_NOW', 'serial']),
-    NewMC: outAfter.mc || extractFieldValue(outAfter, snapOutAfter, ['NewMC', 'mc']) || outAfter.standard || '',
+    Serial_NOW: outSerial || masterOut?.Serial_NOW || '',
+    NewMC: outAfter.mc || extractFieldValue(outAfter, snapOutAfter, ['NewMC', 'mc']) || outAfter.standard || masterOut?.NewMC || masterOut?.Standard || '',
   }
   const inCyl = {
-    Serial_NOW: inAfter.serial || extractFieldValue(inAfter, snapInAfter, ['Serial_NOW', 'serial']) || extractFieldValue(inBefore, snapInBefore, ['Serial_NOW', 'serial']),
-    NewMC: inAfter.mc || extractFieldValue(inAfter, snapInAfter, ['NewMC', 'mc']) || inAfter.standard || '',
+    Serial_NOW: inSerial || masterIn?.Serial_NOW || '',
+    NewMC: inAfter.mc || extractFieldValue(inAfter, snapInAfter, ['NewMC', 'mc']) || inAfter.standard || masterIn?.NewMC || masterIn?.Standard || '',
   }
 
   let swapCount = 0
@@ -101,8 +139,8 @@ export function buildSwapCompareTable(item = {}) {
       (sc) => sc === col.key || col.fieldAliases.includes(sc)
     )
 
-    let outOld = extractFieldValue(outBefore, snapOutBefore, col.fieldAliases)
-    let inOld = extractFieldValue(inBefore, snapInBefore, col.fieldAliases)
+    let outOld = extractFieldValue(outBefore, snapOutBefore, col.fieldAliases) || (masterOut ? extractFieldValue(masterOut, null, col.fieldAliases) : '')
+    let inOld = extractFieldValue(inBefore, snapInBefore, col.fieldAliases) || (masterIn ? extractFieldValue(masterIn, null, col.fieldAliases) : '')
     let outNew = extractFieldValue(outAfter, snapOutAfter, col.fieldAliases)
     let inNew = extractFieldValue(inAfter, snapInAfter, col.fieldAliases)
 
@@ -149,13 +187,22 @@ export function buildSwapCompareTable(item = {}) {
 /**
  * Builds detailed comparison rows for UPDATE action (single cylinder change/machine update).
  */
-export function buildUpdateCompareTable(item = {}) {
+export function buildUpdateCompareTable(item = {}, masterCyl = null) {
   const oldData = item.oldData || {}
   const newData = item.newData || {}
 
   const rows = HISTORY_COMPARE_COLUMNS.map((col) => {
-    const oldVal = extractFieldValue(oldData, null, col.fieldAliases)
-    const newVal = extractFieldValue(newData, null, col.fieldAliases)
+    let oldVal = extractFieldValue(oldData, null, col.fieldAliases)
+    let newVal = extractFieldValue(newData, null, col.fieldAliases)
+    const masterVal = masterCyl ? extractFieldValue(masterCyl, null, col.fieldAliases) : ''
+
+    if (!oldVal && !newVal && masterVal) {
+      oldVal = masterVal
+      newVal = masterVal
+    } else {
+      if (!oldVal && masterVal) oldVal = masterVal
+      if (!newVal && masterVal) newVal = masterVal
+    }
 
     if (!oldVal && !newVal) return null
 

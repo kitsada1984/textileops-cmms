@@ -6,6 +6,7 @@ import {
   summarizeCylinderHistory,
   buildSwapCompareTable,
   buildUpdateCompareTable,
+  findCylinderBySerial,
 } from './cylinderHistory'
 
 describe('cylinderHistory utility', () => {
@@ -230,6 +231,82 @@ describe('cylinderHistory utility', () => {
 
       const locRow = rows.find((r) => r.key === 'Location')
       expect(locRow.changed).toBe(false)
+    })
+
+    it('enriches unchanged fields from master cylinder when available', () => {
+      const item = {
+        type: 'UPDATE',
+        oldData: { NewMC: 'MC-01' },
+        newData: { NewMC: 'MC-03' },
+      }
+      const masterCyl = {
+        Serial_NOW: 'CYL-05',
+        Type: 'Rib',
+        Gauge: '24',
+        Needle: '2280',
+      }
+
+      const { rows } = buildUpdateCompareTable(item, masterCyl)
+      expect(rows.length).toBeGreaterThan(1)
+      const typeRow = rows.find((r) => r.key === 'Type')
+      expect(typeRow).toBeDefined()
+      expect(typeRow.oldVal).toBe('Rib')
+      expect(typeRow.newVal).toBe('Rib')
+      expect(typeRow.changed).toBe(false)
+    })
+  })
+
+  describe('findCylinderBySerial', () => {
+    const cylinders = [
+      { id: '1', Serial_NOW: '11574', Serial_OLD: 'OLD-11574', Type: 'Single', Gauge: '24' },
+      { id: '2', Serial_NOW: 'M2500013459-1', Serial_OLD: 'M25000', Type: 'Double', Gauge: '28' },
+    ]
+
+    it('finds cylinder by Serial_NOW (case-insensitive & trimmed)', () => {
+      const found = findCylinderBySerial(' 11574 ', cylinders)
+      expect(found).toBeDefined()
+      expect(found.id).toBe('1')
+      expect(found.Type).toBe('Single')
+    })
+
+    it('finds cylinder by Serial_OLD', () => {
+      const found = findCylinderBySerial('m25000', cylinders)
+      expect(found).toBeDefined()
+      expect(found.id).toBe('2')
+      expect(found.Type).toBe('Double')
+    })
+
+    it('returns null if not found or invalid inputs', () => {
+      expect(findCylinderBySerial('NON-EXISTENT', cylinders)).toBeNull()
+      expect(findCylinderBySerial('', cylinders)).toBeNull()
+      expect(findCylinderBySerial(null, cylinders)).toBeNull()
+      expect(findCylinderBySerial('11574', null)).toBeNull()
+    })
+  })
+
+  describe('buildSwapCompareTable with cylinders master list', () => {
+    it('enriches missing fields from cylinder master database by serial', () => {
+      const item = {
+        type: 'SWAP',
+        swapCols: ['Location'],
+        in: { serial: '11574', mc: 'GA-306W' },
+        out: { serial: 'M2500013459-1', mc: 'SC-368M' },
+      }
+      const cylinders = [
+        { Serial_NOW: '11574', Type: 'Single', Gauge: '24', Needle: '2280' },
+        { Serial_NOW: 'M2500013459-1', Type: 'Double', Gauge: '28', Needle: '2800' },
+      ]
+
+      const { rows } = buildSwapCompareTable(item, cylinders)
+      const typeRow = rows.find((r) => r.key === 'Type')
+      expect(typeRow).toBeDefined()
+      expect(typeRow.outOld).toBe('Double')
+      expect(typeRow.inOld).toBe('Single')
+
+      const gaugeRow = rows.find((r) => r.key === 'Gauge')
+      expect(gaugeRow).toBeDefined()
+      expect(gaugeRow.outOld).toBe('28G')
+      expect(gaugeRow.inOld).toBe('24G')
     })
   })
 })

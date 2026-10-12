@@ -22,7 +22,9 @@ import {
   summarizeCylinderHistory,
   formatHistoryDate,
   buildUpdateCompareTable,
+  findCylinderBySerial,
 } from '../utils/cylinderHistory'
+import { CylinderAPI } from '../api/entities'
 import { getCylinderImageUrl, stripCylinderImageMeta } from '../utils/cylinderImage'
 
 /* ── Column Definitions matching SwapCylinder.jsx ──────────────────────── */
@@ -318,9 +320,10 @@ function CompareTable({ displayCols, swapCols, cylIn, cylOut, afterSwap }) {
 }
 
 /**
- * Reconstructs cylinder records from a SWAP history log item.
+ * Reconstructs cylinder records from a SWAP history log item, enriching with
+ * cylinder master specifications (Type, Gauge, Needle, Standard, etc.) by serial.
  */
-function reconstructSwapCylinders(item) {
+export function reconstructSwapCylinders(item, cylinders = []) {
   const swapCols = Array.isArray(item.swapCols) ? item.swapCols : ['Location', 'Machine_Ref', 'Feeder']
 
   const rawOut = item.snapshotOutBefore || item.outBefore || {}
@@ -328,36 +331,220 @@ function reconstructSwapCylinders(item) {
   const afterOut = item.snapshotOutAfter || item.out || {}
   const afterIn = item.snapshotInAfter || item.in || {}
 
-  // Base state before swap
+  let fallbackOutSerial = ''
+  let fallbackInSerial = ''
+  if (item.raw?.RecordID && (item.raw.RecordID.includes('<->') || item.raw.RecordID.includes('↔'))) {
+    const parts = item.raw.RecordID.split(/<->|↔/).map((s) => s.trim())
+    if (parts.length >= 2) {
+      fallbackOutSerial = parts[0]
+      fallbackInSerial = parts[1]
+    }
+  }
+
+  const outSerial =
+    rawOut.Serial_NOW ||
+    item.out?.serial ||
+    rawOut.serial ||
+    item.out?.Serial_NOW ||
+    afterOut.Serial_NOW ||
+    afterOut.serial ||
+    fallbackOutSerial ||
+    ''
+
+  const inSerial =
+    rawIn.Serial_NOW ||
+    item.in?.serial ||
+    rawIn.serial ||
+    item.in?.Serial_NOW ||
+    afterIn.Serial_NOW ||
+    afterIn.serial ||
+    fallbackInSerial ||
+    ''
+
+  const masterOut =
+    findCylinderBySerial(outSerial, cylinders) ||
+    findCylinderBySerial(rawOut.Serial_OLD || item.out?.Serial_OLD, cylinders)
+
+  const masterIn =
+    findCylinderBySerial(inSerial, cylinders) ||
+    findCylinderBySerial(rawIn.Serial_OLD || item.in?.Serial_OLD, cylinders)
+
+  // Base state before swap - enriched with master cylinder attributes by serial
   const cylOut = {
-    Serial_NOW: rawOut.Serial_NOW || item.out?.serial || rawOut.serial || '',
-    Serial_OLD: rawOut.Serial_OLD || item.out?.Serial_OLD || rawOut.serial || item.out?.serial || '',
-    Standard: rawOut.Standard || rawOut.standard || item.out?.standard || '',
-    NewMC: rawOut.NewMC || rawOut.mc || item.out?.mc || '',
-    Location: rawOut.Location || rawOut.loc || item.out?.loc || '',
-    Type: rawOut.Type || rawOut.type || item.out?.type || '',
-    Gauge: rawOut.Gauge || rawOut.gauge || item.out?.gauge || '',
-    Needle: rawOut.Needle || rawOut.needle || item.out?.needle || '',
-    Machine_Ref: rawOut.Machine_Ref || rawOut.machineRef || item.out?.machineRef || '',
-    ImageUrl: rawOut.ImageUrl || '',
-    Comment: rawOut.Comment || item.comment || '',
+    Serial_NOW:
+      rawOut.Serial_NOW ||
+      item.out?.serial ||
+      rawOut.serial ||
+      masterOut?.Serial_NOW ||
+      outSerial ||
+      '',
+    Serial_OLD:
+      rawOut.Serial_OLD ||
+      item.out?.Serial_OLD ||
+      masterOut?.Serial_OLD ||
+      rawOut.serial ||
+      item.out?.serial ||
+      masterOut?.Serial_NOW ||
+      '',
+    Standard:
+      rawOut.Standard ||
+      rawOut.standard ||
+      item.out?.standard ||
+      masterOut?.Standard ||
+      '',
+    NewMC:
+      rawOut.NewMC ||
+      rawOut.mc ||
+      item.out?.mc ||
+      masterOut?.NewMC ||
+      '',
+    Location:
+      rawOut.Location ||
+      rawOut.loc ||
+      item.out?.loc ||
+      masterOut?.Location ||
+      '',
+    Type:
+      rawOut.Type ||
+      rawOut.type ||
+      item.out?.type ||
+      masterOut?.Type ||
+      '',
+    Gauge:
+      rawOut.Gauge ||
+      rawOut.gauge ||
+      item.out?.gauge ||
+      masterOut?.Gauge ||
+      '',
+    Needle:
+      rawOut.Needle ||
+      rawOut.needle ||
+      item.out?.needle ||
+      masterOut?.Needle ||
+      '',
+    Diameter:
+      rawOut.Diameter ||
+      rawOut.dia ||
+      item.out?.dia ||
+      masterOut?.Diameter ||
+      '',
+    Feeder:
+      rawOut.Feeder ||
+      rawOut.feeder ||
+      item.out?.feeder ||
+      masterOut?.Feeder ||
+      '',
+    Manufacturer:
+      rawOut.Manufacturer ||
+      rawOut.mfr ||
+      item.out?.mfr ||
+      masterOut?.Manufacturer ||
+      '',
+    Machine_Ref:
+      rawOut.Machine_Ref ||
+      rawOut.machineRef ||
+      item.out?.machineRef ||
+      masterOut?.Machine_Ref ||
+      '',
+    ImageUrl:
+      rawOut.ImageUrl ||
+      masterOut?.ImageUrl ||
+      '',
+    Comment:
+      rawOut.Comment ||
+      item.comment ||
+      masterOut?.Comment ||
+      '',
   }
 
   const cylIn = {
-    Serial_NOW: rawIn.Serial_NOW || item.in?.serial || rawIn.serial || '',
-    Serial_OLD: rawIn.Serial_OLD || item.in?.Serial_OLD || rawIn.serial || item.in?.serial || '',
-    Standard: rawIn.Standard || rawIn.standard || item.in?.standard || '',
-    NewMC: rawIn.NewMC || rawIn.mc || item.in?.mc || '',
-    Location: rawIn.Location || rawIn.loc || item.in?.loc || '',
-    Type: rawIn.Type || rawIn.type || item.in?.type || '',
-    Gauge: rawIn.Gauge || rawIn.gauge || item.in?.gauge || '',
-    Needle: rawIn.Needle || rawIn.needle || item.in?.needle || '',
-    Machine_Ref: rawIn.Machine_Ref || rawIn.machineRef || item.in?.machineRef || '',
-    ImageUrl: rawIn.ImageUrl || '',
-    Comment: rawIn.Comment || item.comment || '',
+    Serial_NOW:
+      rawIn.Serial_NOW ||
+      item.in?.serial ||
+      rawIn.serial ||
+      masterIn?.Serial_NOW ||
+      inSerial ||
+      '',
+    Serial_OLD:
+      rawIn.Serial_OLD ||
+      item.in?.Serial_OLD ||
+      masterIn?.Serial_OLD ||
+      rawIn.serial ||
+      item.in?.serial ||
+      masterIn?.Serial_NOW ||
+      '',
+    Standard:
+      rawIn.Standard ||
+      rawIn.standard ||
+      item.in?.standard ||
+      masterIn?.Standard ||
+      '',
+    NewMC:
+      rawIn.NewMC ||
+      rawIn.mc ||
+      item.in?.mc ||
+      masterIn?.NewMC ||
+      '',
+    Location:
+      rawIn.Location ||
+      rawIn.loc ||
+      item.in?.loc ||
+      masterIn?.Location ||
+      '',
+    Type:
+      rawIn.Type ||
+      rawIn.type ||
+      item.in?.type ||
+      masterIn?.Type ||
+      '',
+    Gauge:
+      rawIn.Gauge ||
+      rawIn.gauge ||
+      item.in?.gauge ||
+      masterIn?.Gauge ||
+      '',
+    Needle:
+      rawIn.Needle ||
+      rawIn.needle ||
+      item.in?.needle ||
+      masterIn?.Needle ||
+      '',
+    Diameter:
+      rawIn.Diameter ||
+      rawIn.dia ||
+      item.in?.dia ||
+      masterIn?.Diameter ||
+      '',
+    Feeder:
+      rawIn.Feeder ||
+      rawIn.feeder ||
+      item.in?.feeder ||
+      masterIn?.Feeder ||
+      '',
+    Manufacturer:
+      rawIn.Manufacturer ||
+      rawIn.mfr ||
+      item.in?.mfr ||
+      masterIn?.Manufacturer ||
+      '',
+    Machine_Ref:
+      rawIn.Machine_Ref ||
+      rawIn.machineRef ||
+      item.in?.machineRef ||
+      masterIn?.Machine_Ref ||
+      '',
+    ImageUrl:
+      rawIn.ImageUrl ||
+      masterIn?.ImageUrl ||
+      '',
+    Comment:
+      rawIn.Comment ||
+      item.comment ||
+      masterIn?.Comment ||
+      '',
   }
 
-  // If before location was identical to after because only after was saved, reciprocal inference:
+  // Reciprocal location inference if location is swapped
   if (swapCols.includes('Location')) {
     if (!cylOut.Location && cylIn.Location) cylOut.Location = cylIn.Location
     if (!cylIn.Location && cylOut.Location) cylIn.Location = cylOut.Location
@@ -369,12 +556,14 @@ function reconstructSwapCylinders(item) {
       ...cylOut,
       Location: afterOut.Location || afterOut.loc || (swapCols.includes('Location') ? cylIn.Location : cylOut.Location),
       Machine_Ref: afterOut.Machine_Ref || afterOut.machineRef || (swapCols.includes('Machine_Ref') ? cylIn.Machine_Ref : cylOut.Machine_Ref),
+      Feeder: afterOut.Feeder || afterOut.feeder || (swapCols.includes('Feeder') ? cylIn.Feeder : cylOut.Feeder),
       NewMC: afterOut.NewMC || afterOut.mc || cylOut.NewMC,
     },
     newIn: {
       ...cylIn,
       Location: afterIn.Location || afterIn.loc || (swapCols.includes('Location') ? cylOut.Location : cylIn.Location),
       Machine_Ref: afterIn.Machine_Ref || afterIn.machineRef || (swapCols.includes('Machine_Ref') ? cylOut.Machine_Ref : cylIn.Machine_Ref),
+      Feeder: afterIn.Feeder || afterIn.feeder || (swapCols.includes('Feeder') ? cylOut.Feeder : cylIn.Feeder),
       NewMC: afterIn.NewMC || afterIn.mc || cylIn.NewMC,
     },
   }
@@ -385,32 +574,86 @@ function reconstructSwapCylinders(item) {
 /**
  * Exact Swap View matching the user's screenshot 100%!
  */
-function ExactSwapDetailView({ item, onBack, onClose }) {
+function ExactSwapDetailView({ item, onBack, onClose, cylinders = [] }) {
   const [step, setStep] = useState(2) // Defaults to Step 2 (as seen in the user's screenshot)
 
   const { cylOut, cylIn, afterSwap, swapCols } = useMemo(() => {
-    return reconstructSwapCylinders(item)
-  }, [item])
+    return reconstructSwapCylinders(item, cylinders)
+  }, [item, cylinders])
 
   const displayCols = useMemo(() => {
     // Show standard columns in order, filtered to ones relevant
     const baseKeys = ['Location', 'Standard', 'NewMC', 'Serial_OLD', 'Serial_NOW', 'Type', 'Gauge', 'Needle', 'Machine_Ref', 'ImageUrl', 'ImagePreview']
-    return baseKeys.map((k) => SWAP_COL_DEFS.find((col) => col.key === k)).filter(Boolean)
-  }, [])
+    return SWAP_COL_DEFS.filter((col) => {
+      if (baseKeys.includes(col.key)) return true
+      if (isColumnSwap(col, swapCols)) return true
+      const outV = getCompareValue(cylOut, col.key)
+      const inV = getCompareValue(cylIn, col.key)
+      return (outV !== undefined && outV !== null && outV !== '') ||
+             (inV !== undefined && inV !== null && inV !== '')
+    })
+  }, [swapCols, cylIn, cylOut])
 
   return (
     <div className="space-y-3">
       {/* ── Step Bar (exact replica) ── */}
       <StepBar step={step} onStepClick={(s) => setStep(s)} />
 
-      {/* ── Compare Table (exact replica) ── */}
-      <CompareTable
-        displayCols={displayCols}
-        swapCols={swapCols}
-        cylIn={cylIn}
-        cylOut={cylOut}
-        afterSwap={step === 3 ? afterSwap : null}
-      />
+      {step === 1 ? (
+        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <Disc size={14} className="text-indigo-500" />
+            <span>กระบอกเข็มคู่ที่ทำการสลับ</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="p-3.5 rounded-xl border border-amber-500/25 bg-amber-500/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded">
+                  กระบอกเดิม (OUT)
+                </span>
+                <span className="font-mono text-xs font-bold text-slate-500">
+                  {cylOut.Standard || cylOut.NewMC || '—'}
+                </span>
+              </div>
+              <div className="font-mono font-black text-base text-slate-800 dark:text-slate-100">
+                {cylOut.Serial_NOW || '—'}
+              </div>
+              <div className="text-[11px] text-slate-600 dark:text-slate-400 space-y-0.5 pt-1 border-t border-amber-500/15">
+                <div>ตำแหน่ง: <strong>{cylOut.Location || '—'}</strong></div>
+                <div>ประเภท: {cylOut.Type || '—'} | เกจ: {cylOut.Gauge || '—'}G | เข็ม: {cylOut.Needle || '—'} เล่ม</div>
+                <div>อ้างอิง: {cylOut.Machine_Ref || '—'}</div>
+              </div>
+            </div>
+            <div className="p-3.5 rounded-xl border border-indigo-500/25 bg-indigo-500/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-500/10 px-2 py-0.5 rounded">
+                  กระบอกใหม่ (IN)
+                </span>
+                <span className="font-mono text-xs font-bold text-slate-500">
+                  {cylIn.Standard || cylIn.NewMC || '—'}
+                </span>
+              </div>
+              <div className="font-mono font-black text-base text-slate-800 dark:text-slate-100">
+                {cylIn.Serial_NOW || '—'}
+              </div>
+              <div className="text-[11px] text-slate-600 dark:text-slate-400 space-y-0.5 pt-1 border-t border-indigo-500/15">
+                <div>ตำแหน่ง: <strong>{cylIn.Location || '—'}</strong></div>
+                <div>ประเภท: {cylIn.Type || '—'} | เกจ: {cylIn.Gauge || '—'}G | เข็ม: {cylIn.Needle || '—'} เล่ม</div>
+                <div>อ้างอิง: {cylIn.Machine_Ref || '—'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ── Compare Table (exact replica) ── */
+        <CompareTable
+          displayCols={displayCols}
+          swapCols={swapCols}
+          cylIn={cylIn}
+          cylOut={cylOut}
+          afterSwap={step === 3 ? afterSwap : null}
+        />
+      )}
 
       {/* ── Notice Box below table (exact replica of screenshot) ── */}
       {step === 2 ? (
@@ -425,7 +668,7 @@ function ExactSwapDetailView({ item, onBack, onClose }) {
             แล้วกด <strong style={{ color: '#d97706' }}>"สลับกระบอก"</strong> เพื่อดูผลลัพธ์
           </span>
         </div>
-      ) : (
+      ) : step === 3 ? (
         <div style={{
           marginTop: 12, padding: '10px 16px', borderRadius: 12,
           background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
@@ -436,7 +679,7 @@ function ExactSwapDetailView({ item, onBack, onClose }) {
             รายการนี้บันทึกการสลับกระบอกเรียบร้อยแล้ว — ทำรายการเมื่อ {formatHistoryDate(item.date)} โดย {item.user}
           </span>
         </div>
-      )}
+      ) : null}
 
       {/* ── Footer matching SwapCylinder modal buttons ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
@@ -449,7 +692,21 @@ function ExactSwapDetailView({ item, onBack, onClose }) {
           <ChevronLeft size={13} /> ย้อนกลับ
         </button>
 
-        {step === 2 ? (
+        {step === 1 ? (
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none',
+              background: 'linear-gradient(135deg,#6366f1 0%,#4f46e5 100%)',
+              color: '#fff', boxShadow: '0 4px 14px rgba(99,102,241,0.4)',
+              transition: 'all 150ms',
+            }}
+          >
+            <span>ถัดไป</span> <ChevronRight size={14} />
+          </button>
+        ) : step === 2 ? (
           <button
             type="button"
             onClick={() => setStep(3)}
@@ -481,18 +738,29 @@ function ExactSwapDetailView({ item, onBack, onClose }) {
 /**
  * Update / Edit Details View for single cylinder edits.
  */
-function UpdateDetailView({ item, onBack, onClose }) {
-  const { rows } = useMemo(() => buildUpdateCompareTable(item), [item])
+function UpdateDetailView({ item, onBack, onClose, cylinders = [] }) {
+  const masterCyl = useMemo(() => {
+    return findCylinderBySerial(item.serial || item.oldData?.Serial_NOW || item.newData?.Serial_NOW, cylinders)
+  }, [item, cylinders])
+
+  const { rows } = useMemo(() => buildUpdateCompareTable(item, masterCyl), [item, masterCyl])
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
       <div style={{
         padding: '10px 14px', borderRadius: 12,
         background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
-        display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-700)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 12, color: 'var(--text-700)',
       }}>
-        <Pencil size={14} className="text-blue-600" />
-        <span>รายการแก้ไขข้อมูลกระบอก / ย้ายเครื่องจักร — ทำรายการเมื่อ {formatHistoryDate(item.date)} โดย {item.user}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Pencil size={14} className="text-blue-600" />
+          <span>รายการแก้ไขข้อมูลกระบอก / ย้ายเครื่องจักร — ทำรายการเมื่อ {formatHistoryDate(item.date)} โดย {item.user}</span>
+        </div>
+        {masterCyl && (
+          <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 border border-blue-500/20">
+            กระบอก {masterCyl.Serial_NOW || item.serial} {masterCyl.Standard ? `(${masterCyl.Standard})` : ''}
+          </span>
+        )}
       </div>
 
       <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -568,10 +836,38 @@ export default function CylinderHistoryModal({
   cylinder = null,
   machineCode = '',
   auditLogs = [],
+  cylinders = null,
 }) {
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('auto')
   const [selectedItem, setSelectedItem] = useState(null)
+  const [internalCylinders, setInternalCylinders] = useState([])
+
+  // Auto-fetch cylinders from CylinderAPI if not provided by caller
+  useEffect(() => {
+    if (!open) return
+    if (Array.isArray(cylinders) && cylinders.length > 0) return
+
+    let active = true
+    try {
+      const res = CylinderAPI.list?.()
+      if (res && typeof res.then === 'function') {
+        res.then((data) => {
+          if (!active) return
+          const list = Array.isArray(data) ? data : data?.data || data?.items || []
+          setInternalCylinders(list)
+        }).catch(() => {})
+      }
+    } catch {}
+
+    return () => {
+      active = false
+    }
+  }, [open, cylinders])
+
+  const effectiveCylinders = (Array.isArray(cylinders) && cylinders.length > 0)
+    ? cylinders
+    : internalCylinders
 
   const effectiveSerial = cylinder?.Serial_NOW || cylinder?.Serial_OLD || ''
   const effectiveMc = machineCode || cylinder?.NewMC || cylinder?.OLDMC || ''
@@ -672,12 +968,14 @@ export default function CylinderHistoryModal({
             item={selectedItem}
             onBack={() => setSelectedItem(null)}
             onClose={onClose}
+            cylinders={effectiveCylinders}
           />
         ) : (
           <UpdateDetailView
             item={selectedItem}
             onBack={() => setSelectedItem(null)}
             onClose={onClose}
+            cylinders={effectiveCylinders}
           />
         )
       ) : (
@@ -829,7 +1127,9 @@ export default function CylinderHistoryModal({
                           <div className="flex items-center gap-2">
                             <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[10px]">OUT</span>
                             <span className="font-bold text-slate-800 dark:text-slate-200">{item.out?.serial || '—'}</span>
-                            <span className="text-slate-400">(เครื่อง {item.out?.mc || '—'})</span>
+                            <span className="text-slate-400">
+                              (เครื่อง {item.out?.mc || findCylinderBySerial(item.out?.serial, effectiveCylinders)?.NewMC || '—'})
+                            </span>
                           </div>
                           <div className="flex items-center gap-1 text-indigo-500 font-bold text-[11px]">
                             <ArrowLeftRight size={12} />
@@ -838,7 +1138,9 @@ export default function CylinderHistoryModal({
                           <div className="flex items-center gap-2">
                             <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px]">IN</span>
                             <span className="font-bold text-slate-800 dark:text-slate-200">{item.in?.serial || '—'}</span>
-                            <span className="text-slate-400">(เครื่อง {item.in?.mc || '—'})</span>
+                            <span className="text-slate-400">
+                              (เครื่อง {item.in?.mc || findCylinderBySerial(item.in?.serial, effectiveCylinders)?.NewMC || '—'})
+                            </span>
                           </div>
                         </div>
                       ) : (

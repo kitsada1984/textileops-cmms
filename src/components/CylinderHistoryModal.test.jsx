@@ -80,4 +80,49 @@ describe('CylinderHistoryModal Component', () => {
 
     expect(screen.getByText(/ประวัติการเปลี่ยน \/ สลับกระบอกเข็ม/i)).toBeInTheDocument()
   })
+
+  it('pulls complete specifications from cylinders master database by serial', () => {
+    const mockCylinders = [
+      {
+        Serial_NOW: '11574',
+        Serial_OLD: '11574-OLD',
+        Standard: 'GA-306W',
+        Type: 'Single-Knit',
+        Gauge: '24',
+        Needle: '2280',
+        Machine_Ref: 'In-use-GMK1',
+      },
+      {
+        Serial_NOW: 'M2500013459-1',
+        Serial_OLD: 'M25000-ORIG',
+        Standard: 'SC-368M',
+        Type: 'Double-Knit',
+        Gauge: '28',
+        Needle: '2800',
+        Machine_Ref: 'Spare-GMK1',
+      },
+    ]
+
+    render(
+      <CylinderHistoryModal
+        open={true}
+        onClose={vi.fn()}
+        cylinder={{ Serial_NOW: '11574', NewMC: 'GA-306W' }}
+        auditLogs={mockAuditLogs}
+        cylinders={mockCylinders}
+      />
+    )
+
+    // Open swap detail view
+    const detailBtn = screen.getByText(/ดูรายละเอียดเหมือนตอนสลับ/i)
+    fireEvent.click(detailBtn)
+
+    // Verify master specs are populated by serial
+    expect(screen.getByText('Single-Knit')).toBeInTheDocument()
+    expect(screen.getByText('Double-Knit')).toBeInTheDocument()
+    expect(screen.getByText('11574-OLD')).toBeInTheDocument()
+    expect(screen.getByText('M25000-ORIG')).toBeInTheDocument()
+    expect(screen.getAllByText('In-use-GMK1').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Spare-GMK1').length).toBeGreaterThanOrEqual(1)
+  })
 })

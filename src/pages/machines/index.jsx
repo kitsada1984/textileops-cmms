@@ -17,7 +17,7 @@ import ImageThumbnail from '../../components/ui/ImageThumbnail'
 import ImagePreviewModal from '../../components/ui/ImagePreviewModal'
 import PdfPreviewModal from '../../components/ui/PdfPreviewModal'
 import { generateMachinePdfProps } from '../../utils/pdfDocGenerators'
-import { AuditLogAPI, MACHINE_STATUS } from '../../api/entities'
+import { AuditLogAPI, CylinderAPI, MACHINE_STATUS } from '../../api/entities'
 import useEntity from '../../hooks/useEntity'
 import CylinderHistoryModal from '../../components/CylinderHistoryModal'
 import { format } from 'date-fns'
@@ -32,6 +32,7 @@ export default function MachinesPage() {
   const [activeTab, setActiveTab] = useState('machines')
   const [cylinderHistoryMc, setCylinderHistoryMc] = useState(null)
   const { data: auditLogs } = useEntity(AuditLogAPI)
+  const { data: cylinders } = useEntity(CylinderAPI)
 
   const {
     t,
@@ -430,6 +431,7 @@ export default function MachinesPage() {
         onClose={() => setCylinderHistoryMc(null)}
         machineCode={cylinderHistoryMc || ''}
         auditLogs={auditLogs}
+        cylinders={cylinders}
       />
     </div>
   )

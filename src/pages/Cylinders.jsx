@@ -1708,6 +1708,7 @@ export default function Cylinders() {
         cylinder={historyTarget}
         machineCode={historyTarget?.NewMC || ''}
         auditLogs={auditLogs}
+        cylinders={data}
       />
     </div>
   )
