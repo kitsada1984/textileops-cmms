@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useWebBuilderColumn } from '../../hooks/useWebBuilderMenu'
 
 /* ── Context ─────────────────────────────────────────────────────────────── */
@@ -135,10 +136,11 @@ export default function FormField({
   const currentOptionExists = effectiveOptions.some(o => String(o.value) === String(val))
 
   const contextValue = { fieldId, label: effectiveLabel, id, value: val, onChange: set }
+  const [parent] = useAutoAnimate()
 
   return (
     <FormFieldContext.Provider value={contextValue}>
-      <div className={`${span ? `col-span-${span}` : ''} ${className}`} {...props}>
+      <div ref={parent} className={`${span ? `col-span-${span}` : ''} ${className}`} {...props}>
         {children ? (
           children
         ) : (

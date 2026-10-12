@@ -7,6 +7,7 @@ import {
   Plus, Pencil, Trash2, RefreshCw, Cpu, Layers, MapPin,
   CheckCircle2, AlertTriangle, FileText, Image as ImageIcon
 } from 'lucide-react'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import SearchInput from '../../components/ui/SearchInput'
 import FilterSortPanel from '../../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../../components/ui/GoogleSheetSyncButton'
@@ -15,6 +16,7 @@ import ImageThumbnail from '../../components/ui/ImageThumbnail'
 import { formatMcType, getMachineImageUrl } from './useMachinesLogic'
 
 export default function MachinesTabletView({ logic }) {
+  const [parentGrid] = useAutoAnimate()
   const {
     t,
     canAdd,
@@ -165,22 +167,25 @@ export default function MachinesTabletView({ logic }) {
       </div>
 
       {/* ── 3. 2-COLUMN RESPONSIVE CARDS GRID ─────────────────── */}
-      {loading && (
-        <div className="text-center py-16 text-slate-400">
-          <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-60 text-blue-500" />
-          <p className="text-sm font-semibold">{t('loading')}</p>
-        </div>
-      )}
-
-      {!loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {displayRows.map((m, i) => {
+      <div ref={parentGrid} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {loading ? (
+          <div key="loading-state" className="col-span-full text-center py-16 text-slate-400">
+            <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-60 text-blue-500" />
+            <p className="text-sm font-semibold">{t('loading')}</p>
+          </div>
+        ) : displayRows.length === 0 ? (
+          <div key="empty-state" className="col-span-full card p-12 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+            <Cpu size={36} className="mx-auto mb-2 opacity-40" />
+            <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+          </div>
+        ) : (
+          displayRows.map((m) => {
             const imageUrl = getMachineImageUrl(m)
             const isRunning = m.Status === 'RUNNING'
 
             return (
               <div
-                key={m._id || m.id || i}
+                key={m.Mc || m.id || m._id}
                 onClick={() => setDetailRec(m)}
                 className={`card p-3.5 border transition-all duration-200 hover:shadow-md cursor-pointer relative flex flex-col justify-between ${
                   isRunning
@@ -273,16 +278,9 @@ export default function MachinesTabletView({ logic }) {
                 </div>
               </div>
             )
-          })}
-        </div>
-      )}
-
-      {!loading && displayRows.length === 0 && (
-        <div className="card p-12 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
-          <Cpu size={36} className="mx-auto mb-2 opacity-40" />
-          <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
-        </div>
-      )}
+          })
+        )}
+      </div>
     </div>
   )
 }

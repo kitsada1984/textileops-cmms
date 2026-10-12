@@ -17,6 +17,7 @@ import {
   X,
   SlidersHorizontal,
 } from 'lucide-react'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import SearchInput from '../../components/ui/SearchInput'
 import FilterSortPanel from '../../components/ui/FilterSortPanel'
 import StatusBadge from '../../components/ui/StatusBadge'
@@ -24,6 +25,7 @@ import ImageThumbnail from '../../components/ui/ImageThumbnail'
 import { formatMcType, getMachineImageUrl } from './useMachinesLogic'
 
 export default function MachinesMobileView({ logic }) {
+  const [parentList] = useAutoAnimate()
   const {
     t,
     canAdd,
@@ -175,23 +177,43 @@ export default function MachinesMobileView({ logic }) {
       </div>
 
       {/* ── 3. CARD LIST FEED ─────────────────────────────────── */}
-      {loading && (
-        <div className="text-center py-20 text-slate-400">
-          <RefreshCw size={30} className="animate-spin mx-auto mb-2 opacity-60 text-blue-500" />
-          <p className="text-xs font-semibold">{t('loading')}</p>
-        </div>
-      )}
-
-      {!loading && (
-        <div className="space-y-3">
-          {filteredDisplayRows.map((m, i) => {
+      <div ref={parentList} className="space-y-3">
+        {loading ? (
+          <div key="loading-state" className="text-center py-20 text-slate-400">
+            <RefreshCw size={30} className="animate-spin mx-auto mb-2 opacity-60 text-blue-500" />
+            <p className="text-xs font-semibold">{t('loading')}</p>
+          </div>
+        ) : filteredDisplayRows.length === 0 ? (
+          <div key="empty-state" className="rounded-2xl p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 space-y-3">
+            <Cpu size={36} className="mx-auto opacity-40 text-slate-400" />
+            <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">
+              {quickStatus !== 'ALL' || search
+                ? 'ไม่พบข้อมูลเครื่องจักรที่ตรงกับเงื่อนไข'
+                : t('no_data')}
+            </p>
+            {(quickStatus !== 'ALL' || search) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickStatus('ALL')
+                  setSearch('')
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold active:scale-95 transition-transform"
+              >
+                <X size={13} />
+                <span>ล้างตัวกรองทั้งหมด</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredDisplayRows.map((m) => {
             const imageUrl = getMachineImageUrl(m)
             const isRunning = m.Status === 'RUNNING'
             const isMaintenance = m.Status === 'MAINTENANCE'
 
             return (
               <div
-                key={m._id || m.id || i}
+                key={m.Mc || m.id || m._id}
                 onClick={() => setDetailRec(m)}
                 className={`rounded-2xl border transition-all active:scale-[0.98] cursor-pointer shadow-xs bg-white dark:bg-slate-900 overflow-hidden ${
                   isRunning
@@ -328,34 +350,9 @@ export default function MachinesMobileView({ logic }) {
                 </div>
               </div>
             )
-          })}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && filteredDisplayRows.length === 0 && (
-        <div className="rounded-2xl p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 space-y-3">
-          <Cpu size={36} className="mx-auto opacity-40 text-slate-400" />
-          <p className="font-semibold text-xs text-slate-600 dark:text-slate-300">
-            {quickStatus !== 'ALL' || search
-              ? 'ไม่พบข้อมูลเครื่องจักรที่ตรงกับเงื่อนไข'
-              : t('no_data')}
-          </p>
-          {(quickStatus !== 'ALL' || search) && (
-            <button
-              type="button"
-              onClick={() => {
-                setQuickStatus('ALL')
-                setSearch('')
-              }}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold active:scale-95 transition-transform"
-            >
-              <X size={13} />
-              <span>ล้างตัวกรองทั้งหมด</span>
-            </button>
-          )}
-        </div>
-      )}
+          })
+        )}
+      </div>
 
       {/* ── 4. MODERN FLOATING ACTION BUTTON (FAB) ──────────────── */}
       {canAdd && (
