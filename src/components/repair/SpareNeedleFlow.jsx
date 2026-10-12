@@ -40,25 +40,7 @@ import {
   loadLineSettingsDB,
 } from '../../utils/line'
 
-/* ── UI Helpers ──────────────────────────────────────────────────────────── */
-function Card({ children, style, className = '' }) {
-  return (
-    <div
-      className={className}
-      style={{
-        background: '#ffffff',
-        borderRadius: 20,
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-        overflow: 'hidden',
-        width: '100%',
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
+
 
 function Btn({ type = 'button', onClick, disabled, loading, children, variant = 'primary', style, ...props }) {
   const styles = {

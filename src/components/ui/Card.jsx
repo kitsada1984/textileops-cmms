@@ -36,6 +36,14 @@ Card.Title = function CardTitle({ children, className = '', icon: Icon, style, .
   )
 }
 
+Card.Action = function CardAction({ children, className = '', style, ...props }) {
+  return (
+    <div className={`card-action flex-shrink-0 ${className}`} style={style} {...props}>
+      {children}
+    </div>
+  )
+}
+
 Card.Body = function CardBody({ children, className = '', style, ...props }) {
   return (
     <div className={`card-body ${className}`} style={style} {...props}>
