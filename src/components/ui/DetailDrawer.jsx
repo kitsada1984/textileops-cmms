@@ -1,6 +1,7 @@
 import { useEffect, createContext, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Pencil, Trash2, Printer } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 /* ── Context ─────────────────────────────────────────────────────────────── */
 const DetailDrawerContext = createContext(null)
@@ -281,57 +282,59 @@ export default function DetailDrawer({
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  if (!open) return null
-
   const hasLegacyProps = Boolean(title || subtitle || groups.length > 0 || onEdit || onDelete || onPdf || extraActions)
 
   return createPortal(
-    <DetailDrawerContext.Provider value={{ open, onClose, accentColor }}>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 300,
-          background: 'rgba(0,4,16,0.65)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
-          opacity: open ? 1 : 0,
-          pointerEvents: open ? 'auto' : 'none',
-          transition: 'opacity 280ms ease',
-        }}
-      />
+    <AnimatePresence>
+      {open && (
+        <DetailDrawerContext.Provider value={{ open, onClose, accentColor }}>
+          {/* Backdrop */}
+          <motion.div
+            key="drawer-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 300,
+              background: 'rgba(0,4,16,0.65)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+            }}
+          />
 
-      {/* Centering wrapper */}
-      <div
-        style={{
-          position: 'fixed', inset: 0, zIndex: 301,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '24px 16px',
-          opacity: open ? 1 : 0,
-          pointerEvents: open ? 'auto' : 'none',
-          transition: 'opacity 220ms ease',
-        }}
-        onClick={onClose}
-      >
-        {/* Panel card */}
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={title || 'รายละเอียด'}
-          style={{
-            width: 560, maxWidth: '100%',
-            maxHeight: '100%',
-            display: 'flex', flexDirection: 'column',
-            background: 'var(--bg-card)',
-            borderRadius: 20,
-            overflow: 'hidden',
-            border: '1px solid var(--border)',
-            boxShadow: 'var(--shadow-modal)',
-            transform: open ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(18px)',
-            transition: 'transform 320ms cubic-bezier(0.22,1,0.36,1)',
-          }}
-          onClick={e => e.stopPropagation()}
-        >
+          {/* Centering wrapper */}
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 301,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '24px 16px',
+            }}
+            onClick={onClose}
+          >
+            {/* Panel card */}
+            <motion.div
+              key="drawer-panel"
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={title || 'รายละเอียด'}
+              style={{
+                width: 560, maxWidth: '100%',
+                maxHeight: '100%',
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg-card)',
+                borderRadius: 20,
+                overflow: 'hidden',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-modal)',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
           {children && !hasLegacyProps ? (
             children
           ) : (
@@ -475,9 +478,11 @@ export default function DetailDrawer({
               </DetailDrawerBody>
             </>
           )}
-        </div>
+        </motion.div>
       </div>
-    </DetailDrawerContext.Provider>,
+        </DetailDrawerContext.Provider>
+      )}
+    </AnimatePresence>,
     document.body
   )
 }

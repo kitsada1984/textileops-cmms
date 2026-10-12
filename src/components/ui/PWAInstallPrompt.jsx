@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Download, X, Smartphone, Share, PlusSquare, Check, QrCode, Monitor, Sparkles, AlertCircle, Laptop, ArrowRight } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { motion, AnimatePresence } from 'framer-motion'
 import gemmaLogo from '../../assets/logo-gemma.png'
 
 export default function PWAInstallPrompt({ open: controlledOpen, onClose: controlledOnClose }) {
@@ -106,58 +107,79 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
   return (
     <>
       {/* ── 1. Floating Bottom Banner (If eligible on mobile/desktop) ── */}
-      {showBanner && !isInstalled && !isModalOpen && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-40 animate-bounce-subtle">
-          <div className="p-4 bg-slate-900/95 text-white rounded-3xl border border-blue-500/40 shadow-2xl backdrop-blur-xl flex items-center justify-between gap-3.5">
-            <div className="flex items-center gap-3 min-w-0">
-              <img src={gemmaLogo} alt="Logo" className="w-10 h-10 object-contain rounded-xl bg-white/10 p-1 flex-shrink-0" />
-              <div className="min-w-0">
-                <div className="font-bold text-xs flex items-center gap-1.5 text-blue-400">
-                  <Smartphone size={13} />
-                  <span>ติดตั้งแอป TextileOps (PWA)</span>
+      <AnimatePresence>
+        {showBanner && !isInstalled && !isModalOpen && (
+          <motion.div
+            key="pwa-banner"
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-40"
+          >
+            <div className="p-4 bg-slate-900/95 text-white rounded-3xl border border-blue-500/40 shadow-2xl backdrop-blur-xl flex items-center justify-between gap-3.5">
+              <div className="flex items-center gap-3 min-w-0">
+                <img src={gemmaLogo} alt="Logo" className="w-10 h-10 object-contain rounded-xl bg-white/10 p-1 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-bold text-xs flex items-center gap-1.5 text-blue-400">
+                    <Smartphone size={13} />
+                    <span>ติดตั้งแอป TextileOps (PWA)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 truncate mt-0.5">
+                    เปิดใช้งานเต็มจอ เร็วขึ้น และรับการแจ้งเตือน
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-300 truncate mt-0.5">
-                  เปิดใช้งานเต็มจอ เร็วขึ้น และรับการแจ้งเตือน
-                </p>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button
+                  onClick={handleTriggerInstall}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-1 transition-all active:scale-95"
+                >
+                  <Download size={13} />
+                  <span>ติดตั้ง</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissBanner}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
+                  title="ปิดการแจ้งเตือนติดตั้ง"
+                  aria-label="ปิดการแจ้งเตือนติดตั้ง"
+                >
+                  <X size={16} />
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <button
-                onClick={handleTriggerInstall}
-                className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-1 transition-all active:scale-95"
-              >
-                <Download size={13} />
-                <span>ติดตั้ง</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleDismissBanner}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
-                title="ปิดการแจ้งเตือนติดตั้ง"
-                aria-label="ปิดการแจ้งเตือนติดตั้ง"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── 2. Full PWA Install & QR Modal (Rendered to Portal) ── */}
-      {isModalOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[99999] bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fade-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeModal()
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="ติดตั้งแอปพลิเคชัน TextileOps (PWA)"
-            className="w-full max-w-2xl bg-slate-900 text-white rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
-          >
+      {createPortal(
+        <AnimatePresence>
+          {isModalOpen && (
+            <motion.div
+              key="pwa-modal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[99999] bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeModal()
+              }}
+            >
+              <motion.div
+                key="pwa-modal-box"
+                initial={{ opacity: 0, scale: 0.95, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 14 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="ติดตั้งแอปพลิเคชัน TextileOps (PWA)"
+                className="w-full max-w-2xl bg-slate-900 text-white rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+              >
             
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
@@ -358,8 +380,10 @@ export default function PWAInstallPrompt({ open: controlledOpen, onClose: contro
               </button>
             </div>
 
-          </div>
-        </div>,
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
     </>

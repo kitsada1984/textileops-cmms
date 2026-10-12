@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 /* ── Context ─────────────────────────────────────────────────────────────── */
 const ToastCtx = createContext(null)
@@ -39,19 +40,17 @@ const COLORS = {
 const DURATION = 3000
 
 function ToastItem({ toast, onRemove }) {
-  const [visible, setVisible] = useState(false)
-  const [leaving, setLeaving] = useState(false)
   const c = COLORS[toast.type] || COLORS.success
 
   useEffect(() => {
-    const t1 = setTimeout(() => setVisible(true), 10)
-    const t2 = setTimeout(() => dismiss(), DURATION)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [])
+    const t = setTimeout(() => {
+      onRemove(toast.id)
+    }, DURATION)
+    return () => clearTimeout(t)
+  }, [toast.id, onRemove])
 
   const dismiss = () => {
-    setLeaving(true)
-    setTimeout(() => onRemove(toast.id), 300)
+    onRemove(toast.id)
   }
 
   return (
@@ -70,11 +69,6 @@ function ToastItem({ toast, onRemove }) {
         cursor: 'pointer',
         minWidth: 240, maxWidth: 340,
         position: 'relative', overflow: 'hidden',
-        transition: 'all 300ms cubic-bezier(0.34,1.56,0.64,1)',
-        opacity:    leaving ? 0 : visible ? 1 : 0,
-        transform:  leaving
-          ? 'translateX(110%)'
-          : visible ? 'translateX(0)' : 'translateX(110%)',
       }}
     >
       {/* progress bar */}
@@ -141,11 +135,21 @@ export function ToastProvider({ children }) {
         display: 'flex', flexDirection: 'column', gap: 10,
         pointerEvents: 'none',
       }}>
-        {toasts.map(t => (
-          <div key={t.id} style={{ pointerEvents: 'auto' }}>
-            <ToastItem toast={t} onRemove={remove} />
-          </div>
-        ))}
+        <AnimatePresence mode="popLayout">
+          {toasts.map(t => (
+            <motion.div
+              key={t.id}
+              layout
+              initial={{ opacity: 0, y: -20, scale: 0.9, x: 20 }}
+              animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.85, x: 80, transition: { duration: 0.2 } }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              style={{ pointerEvents: 'auto' }}
+            >
+              <ToastItem toast={t} onRemove={remove} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       <style>{`

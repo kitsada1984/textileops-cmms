@@ -1,6 +1,7 @@
 import { useEffect, createContext, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const ModalContext = createContext(null)
 
@@ -102,40 +103,60 @@ export default function Modal({
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  if (!open) return null
-
   const maxW = { sm: 'max-w-md', md: 'max-w-2xl', lg: 'max-w-4xl', xl: 'max-w-5xl' }[size] || 'max-w-2xl'
   const hasLegacyProps = Boolean(title || footer)
 
   return createPortal(
-    <ModalContext.Provider value={{ open, onClose, size }}>
-      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
-        <div role="dialog" aria-modal="true" className={`modal-box w-full ${maxW} ${className}`} style={{ margin: '0 auto' }}>
-          {hasLegacyProps ? (
-            <>
-              <div className="modal-header">
-                <h2 className="text-sm sm:text-base font-bold" style={{ color: 'var(--text-900)' }}>
-                  {title}
-                </h2>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                  title="ปิดหน้าต่าง"
-                  aria-label="ปิดหน้าต่าง"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="modal-body">{children}</div>
-              {footer && <div className="modal-footer">{footer}</div>}
-            </>
-          ) : (
-            children
-          )}
-        </div>
-      </div>
-    </ModalContext.Provider>,
+    <AnimatePresence>
+      {open && (
+        <ModalContext.Provider value={{ open, onClose, size }}>
+          <motion.div
+            key="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="modal-overlay"
+            onClick={(e) => e.target === e.currentTarget && onClose?.()}
+          >
+            <motion.div
+              key="modal-box"
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              role="dialog"
+              aria-modal="true"
+              className={`modal-box w-full ${maxW} ${className}`}
+              style={{ margin: '0 auto' }}
+            >
+              {hasLegacyProps ? (
+                <>
+                  <div className="modal-header">
+                    <h2 className="text-sm sm:text-base font-bold" style={{ color: 'var(--text-900)' }}>
+                      {title}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                      title="ปิดหน้าต่าง"
+                      aria-label="ปิดหน้าต่าง"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="modal-body">{children}</div>
+                  {footer && <div className="modal-footer">{footer}</div>}
+                </>
+              ) : (
+                children
+              )}
+            </motion.div>
+          </motion.div>
+        </ModalContext.Provider>
+      )}
+    </AnimatePresence>,
     document.body
   )
 }

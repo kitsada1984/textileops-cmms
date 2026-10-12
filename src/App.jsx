@@ -19,6 +19,7 @@ import RouteLoadingFallback from './components/common/RouteLoadingFallback'
 import PWAInstallPrompt from './components/ui/PWAInstallPrompt'
 import MobileBottomNav from './components/common/MobileBottomNav'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { MotionConfig } from 'framer-motion'
 import { queryClient } from './lib/queryClient'
 
 const Login         = lazy(() => import('./pages/Login'))
@@ -685,23 +686,25 @@ function AppInner() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <LanguageProvider>
-          <DeviceViewProvider>
-            <ToastProvider>
-              <WebBuilderConfigProvider>
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <Routes>
-                    <Route path="/repair/:serial" element={<RepairPage />} />
-                    <Route path="/*" element={<AppInner />} />
-                  </Routes>
-                </Suspense>
-              </WebBuilderConfigProvider>
-            </ToastProvider>
-          </DeviceViewProvider>
-        </LanguageProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <MotionConfig reducedMotion="user">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <LanguageProvider>
+            <DeviceViewProvider>
+              <ToastProvider>
+                <WebBuilderConfigProvider>
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <Routes>
+                      <Route path="/repair/:serial" element={<RepairPage />} />
+                      <Route path="/*" element={<AppInner />} />
+                    </Routes>
+                  </Suspense>
+                </WebBuilderConfigProvider>
+              </ToastProvider>
+            </DeviceViewProvider>
+          </LanguageProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </MotionConfig>
   )
 }
