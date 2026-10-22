@@ -123,6 +123,68 @@ export async function onRequestPost(context) {
 
     const { whereSql, whereParams } = buildWhere(filters)
 
+    const TABLE_MODULE_MAP = {
+      machines: { code: 'MACHINE', label: 'เครื่องจักร' },
+      cylinders: { code: 'CYLINDER', label: 'กระบอก' },
+      workorders: { code: 'WORKORDER', label: 'ใบสั่งงาน' },
+      pmplans: { code: 'PM', label: 'แผน PM' },
+      spareparts: { code: 'SPARE_PART', label: 'อะไหล่' },
+      purchaseorders: { code: 'PURCHASING', label: 'จัดซื้อ' },
+      stocktransactions: { code: 'STOCK', label: 'เคลื่อนไหวสต็อก' },
+      needlesets: { code: 'NEEDLE_STOCK', label: 'สต็อกเข็ม' },
+      needlelogs: { code: 'NEEDLE_STOCK', label: 'บันทึกสต็อกเข็ม' },
+      spareneedlerequests: { code: 'NEEDLE_STOCK', label: 'คำขอเบิกเข็มสำรอง' },
+      centerchecks: { code: 'PM_CENTER', label: 'เช็คศูนย์กระบอก' },
+      needleconditionchecks: { code: 'PM_NEEDLE', label: 'เช็คสภาพเข็ม' },
+      users: { code: 'USER', label: 'ผู้ใช้งาน' },
+      appconfigs: { code: 'SYSTEM', label: 'ตั้งค่าระบบ' },
+      designboms: { code: 'DESIGN_BOM', label: 'Design/BOM' },
+    }
+
+    // Helper: Log mutation to auditlogs table
+    async function logAuditEvent(act, recId, fieldName, oldValue, newValue, customComment) {
+      if (table === 'auditlogs' || table === '_d1_change_log') return
+      if (table === 'appconfigs' && String(recId || '').startsWith('cfg_line_login_session_')) return
+      if (table === 'appconfigs' && String(recId || '').startsWith('cfg_line_magic_')) return
+
+      const modInfo = TABLE_MODULE_MAP[table.toLowerCase()] || { code: table.toUpperCase(), label: table }
+      const auditId = crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now())
+      const actor = auth.username || auth.user || auth.uid || 'ผู้ใช้ระบบ'
+
+      let comment = customComment
+      if (!comment) {
+        if (act === 'CREATE') {
+          comment = `สร้างข้อมูลใหม่ใน ${modInfo.label} (รหัส: ${recId || '—'})`
+        } else if (act === 'UPDATE') {
+          const fieldDesc = fieldName ? ` (${fieldName})` : ''
+          comment = `แก้ไขข้อมูลใน ${modInfo.label}${fieldDesc} (รหัส: ${recId || '—'})`
+        } else if (act === 'DELETE') {
+          comment = `ลบข้อมูลใน ${modInfo.label} (รหัส: ${recId || '—'})`
+        }
+      }
+
+      const oldStr = oldValue != null ? (typeof oldValue === 'object' ? JSON.stringify(oldValue) : String(oldValue)) : null
+      const newStr = newValue != null ? (typeof newValue === 'object' ? JSON.stringify(newValue) : String(newValue)) : null
+
+      try {
+        await db.prepare(
+          'INSERT INTO auditlogs (id, Module, ActionType, RecordID, FieldName, OldValue, NewValue, User, Comment, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime(\'now\'))'
+        ).bind(
+          auditId,
+          modInfo.code,
+          act,
+          String(recId || ''),
+          fieldName || null,
+          oldStr,
+          newStr,
+          actor,
+          comment
+        ).run()
+      } catch (err) {
+        console.warn('AuditLog write warning:', err?.message)
+      }
+    }
+
     // Helper: Log mutation to _d1_change_log for Realtime SSE streaming
     async function logRealtimeEvent(act, recId, recordData) {
       try {
@@ -204,8 +266,9 @@ export async function onRequestPost(context) {
         for (let i = 0; i < batchResults.length; i++) {
           const resRow = batchResults[i]?.results?.[0] || preparedRecords[i]
           inserted.push(resRow)
-          const recId = resRow.id || resRow.Technician_ID || resRow.WO_ID || ''
+          const recId = resRow.id || resRow.Technician_ID || resRow.WO_ID || resRow.ITEM || ''
           await logRealtimeEvent('INSERT', recId, resRow)
+          await logAuditEvent('CREATE', recId, null, null, resRow, null)
         }
 
         return jsonResponse({ data: inserted, error: null })
@@ -236,8 +299,9 @@ export async function onRequestPost(context) {
         const saved = res || rec
         inserted.push(saved)
 
-        const recId = saved.id || saved.Technician_ID || saved.WO_ID || ''
+        const recId = saved.id || saved.Technician_ID || saved.WO_ID || saved.ITEM || ''
         await logRealtimeEvent('INSERT', recId, saved)
+        await logAuditEvent('CREATE', recId, null, null, saved, null)
       }
 
       return jsonResponse({ data: Array.isArray(data) ? inserted : inserted[0], error: null })
@@ -256,6 +320,14 @@ export async function onRequestPost(context) {
       }
       keys.forEach((k) => assertIdent(k, 'column name'))
 
+      // Fetch existing rows before update to compute diff
+      let oldRows = []
+      try {
+        const findOldSql = `SELECT * FROM "${table}"${whereSql}`
+        const findOldRes = await db.prepare(findOldSql).bind(...whereParams).all()
+        oldRows = findOldRes?.results || []
+      } catch {}
+
       const setClauses = keys.map((k) => `"${k}" = ?`).join(', ')
       const setValues = keys.map((k) => serialize(updateData[k]))
 
@@ -264,9 +336,28 @@ export async function onRequestPost(context) {
       const res = await stmt.all()
       const updatedRows = res.results || []
 
-      for (const row of updatedRows) {
-        const recId = row.id || row.Technician_ID || row.WO_ID || ''
+      for (let i = 0; i < updatedRows.length; i++) {
+        const row = updatedRows[i]
+        const oldRow = oldRows.find((o) => (o.id && o.id === row.id) || (o.RecordID && o.RecordID === row.RecordID)) || oldRows[i] || {}
+        const recId = row.id || row.Technician_ID || row.WO_ID || row.ITEM || ''
         await logRealtimeEvent('UPDATE', recId, row)
+
+        const changedKeys = keys.filter((k) => serialize(oldRow[k]) !== serialize(row[k]))
+        const oldDiff = {}
+        const newDiff = {}
+        changedKeys.forEach((k) => {
+          oldDiff[k] = oldRow[k]
+          newDiff[k] = row[k]
+        })
+
+        await logAuditEvent(
+          'UPDATE',
+          recId,
+          changedKeys.join(', '),
+          Object.keys(oldDiff).length > 0 ? oldDiff : null,
+          Object.keys(newDiff).length > 0 ? newDiff : row,
+          null
+        )
       }
 
       return jsonResponse({ data: updatedRows.length === 1 ? updatedRows[0] : updatedRows, error: null })
@@ -280,16 +371,18 @@ export async function onRequestPost(context) {
 
       let deletedRecs = []
       try {
-        const findSql = `SELECT id FROM "${table}"${whereSql}`
+        const findSql = `SELECT * FROM "${table}"${whereSql}`
         const findRes = await db.prepare(findSql).bind(...whereParams).all()
-        deletedRecs = findRes.results || []
+        deletedRecs = findRes?.results || []
       } catch {}
 
       const deleteSql = `DELETE FROM "${table}"${whereSql}`
       await db.prepare(deleteSql).bind(...whereParams).run()
 
       for (const r of deletedRecs) {
-        await logRealtimeEvent('DELETE', r.id, { id: r.id })
+        const recId = r.id || r.Technician_ID || r.WO_ID || r.ITEM || ''
+        await logRealtimeEvent('DELETE', recId, { id: recId })
+        await logAuditEvent('DELETE', recId, null, r, null, null)
       }
 
       return jsonResponse({ data: null, error: null })
@@ -327,8 +420,9 @@ export async function onRequestPost(context) {
         for (let i = 0; i < batchResults.length; i++) {
           const resRow = batchResults[i]?.results?.[0] || preparedRecords[i]
           savedRows.push(resRow)
-          const recId = resRow.id || resRow[conflictCol] || ''
+          const recId = resRow.id || resRow[conflictCol] || resRow.ITEM || ''
           await logRealtimeEvent('UPSERT', recId, resRow)
+          await logAuditEvent('UPDATE', recId, null, null, resRow, `บันทึกข้อมูล (Upsert) ใน ${TABLE_MODULE_MAP[table.toLowerCase()]?.label || table} (รหัส: ${recId})`)
         }
 
         return jsonResponse({ data: savedRows, error: null })
@@ -351,8 +445,9 @@ export async function onRequestPost(context) {
         const saved = res || rec
         savedRows.push(saved)
 
-        const recId = saved.id || saved[conflictCol] || ''
+        const recId = saved.id || saved[conflictCol] || saved.ITEM || ''
         await logRealtimeEvent('UPSERT', recId, saved)
+        await logAuditEvent('UPDATE', recId, null, null, saved, `บันทึกข้อมูล (Upsert) ใน ${TABLE_MODULE_MAP[table.toLowerCase()]?.label || table} (รหัส: ${recId})`)
       }
 
       return jsonResponse({ data: Array.isArray(data) ? savedRows : savedRows[0], error: null })

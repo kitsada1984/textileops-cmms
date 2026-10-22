@@ -51,6 +51,18 @@ export async function onRequestPost(context) {
     }
 
     const token = await createAuthToken(env, { uid: row.id, username: row.username, role: row.role })
+
+    // Auto-record login event in auditlogs
+    try {
+      const auditId = crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now())
+      await db.prepare(`
+        INSERT INTO auditlogs (id, Module, ActionType, RecordID, FieldName, OldValue, NewValue, User, Comment, created_at)
+        VALUES (?, 'AUTH', 'LOGIN', ?, 'login_method', NULL, 'password', ?, 'เข้าสู่ระบบด้วยชื่อผู้ใช้/รหัสผ่าน สำเร็จ', datetime('now'))
+      `).bind(auditId, row.id, row.full_name || row.line_display_name || row.username).run()
+    } catch (auditErr) {
+      console.warn('Login audit log failed:', auditErr?.message)
+    }
+
     return jsonResponse({ ok: true, token, user })
   } catch (err) {
     return jsonResponse({ ok: false, error: err.message }, 500)

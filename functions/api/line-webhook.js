@@ -322,6 +322,17 @@ export async function onRequestPost({ request, env }) {
             created_at: Date.now(),
           })
 
+          // Record login event in auditlogs
+          try {
+            const auditId = crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now())
+            await db.prepare(`
+              INSERT INTO auditlogs (id, Module, ActionType, RecordID, FieldName, OldValue, NewValue, User, Comment, created_at)
+              VALUES (?, 'AUTH', 'LOGIN', ?, 'login_method', NULL, 'line_bot', ?, 'เข้าสู่ระบบด้วย LINE QR สำเร็จ', datetime('now'))
+            `).bind(auditId, appUser.id, appUser.full_name || appUser.line_display_name || appUser.username).run()
+          } catch (auditErr) {
+            console.warn('Webhook login audit log failed:', auditErr?.message)
+          }
+
           const baseOrigin = settings.app_base_url || urlObj.origin || 'https://textileops-cmms.pages.dev'
           const magicUrl = `${baseOrigin.replace(/\/$/, '')}/api/auth/line/login?magic_token=${magicCode}&openExternalBrowser=1`
 
