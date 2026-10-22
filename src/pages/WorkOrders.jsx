@@ -1047,9 +1047,17 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
       // Notify assigned technicians via LINE (Non-blocking async background)
       try {
-        notifyLineWorkOrderAssigned(payload, selectedTechs).catch((err) => {
-          console.warn('[WorkOrders] LINE notification background error:', err)
-        })
+        notifyLineWorkOrderAssigned(payload, selectedTechs, { technicians, systemUsers })
+          .then((res) => {
+            if (res?.ok && res.sentCount > 0) {
+              toast.success('แจ้งเตือน LINE สำเร็จ 📲', `ส่งไปยัง ${res.recipientsText}`)
+            } else if (res?.reason === 'no_line_id') {
+              toast.info('บันทึกใบสั่งงานแล้ว', `ช่างที่เลือก (${res.techsWithoutLine?.join(', ') || ''}) ยังไม่ได้ผูก LINE ID`)
+            }
+          })
+          .catch((err) => {
+            console.warn('[WorkOrders] LINE notification background error:', err)
+          })
       } catch (e) {
         console.warn('[WorkOrders] LINE notification trigger error:', e)
       }
@@ -1212,9 +1220,17 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
       // Notify assigned technicians via LINE (Non-blocking async background)
       try {
-        notifyLineWorkOrderAssigned(payload, editTechs).catch((err) => {
-          console.warn('[WorkOrders] LINE notification background error:', err)
-        })
+        notifyLineWorkOrderAssigned(payload, editTechs, { technicians, systemUsers })
+          .then((res) => {
+            if (res?.ok && res.sentCount > 0) {
+              toast.success('แจ้งเตือน LINE สำเร็จ 📲', `ส่งไปยัง ${res.recipientsText}`)
+            } else if (res?.reason === 'no_line_id') {
+              toast.info('บันทึกใบสั่งงานแล้ว', `ช่างที่เลือก (${res.techsWithoutLine?.join(', ') || ''}) ยังไม่ได้ผูก LINE ID`)
+            }
+          })
+          .catch((err) => {
+            console.warn('[WorkOrders] LINE notification background error:', err)
+          })
       } catch (e) {
         console.warn('[WorkOrders] LINE notification trigger error:', e)
       }

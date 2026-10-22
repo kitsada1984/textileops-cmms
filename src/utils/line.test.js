@@ -13,6 +13,8 @@ import {
   DEFAULT_LINE_SETTINGS,
   resolveTechniciansLineIds,
   notifyLineWorkOrderAssigned,
+  isValidLineTargetId,
+  namesMatch,
 } from './line'
 
 describe('LINE Flex Builder & Deep Linking', () => {
@@ -218,6 +220,48 @@ describe('Work Order LINE Notifications', () => {
       'U22222222222222222222222222222222',
       'U33333333333333333333333333333333',
     ])
+  })
+
+  it('validates LINE target IDs properly', () => {
+    expect(isValidLineTargetId('U66f2b207af94e739c10a3cf937af2965')).toBe(true)
+    expect(isValidLineTargetId('C66f2b207af94e739c10a3cf937af2965')).toBe(true)
+    expect(isValidLineTargetId('R66f2b207af94e739c10a3cf937af2965')).toBe(true)
+    // UUIDs or random strings are rejected
+    expect(isValidLineTargetId('4f291071-70bf-481f-b52b-4ec2f6890f5b')).toBe(false)
+    expect(isValidLineTargetId('')).toBe(false)
+    expect(isValidLineTargetId(null)).toBe(false)
+    expect(isValidLineTargetId(undefined)).toBe(false)
+  })
+
+  it('matches technician names flexibly across titles, emojis, and nicknames', () => {
+    expect(namesMatch('Mr. Prapat', 'Prapat')).toBe(true)
+    expect(namesMatch('Prapat', 'Mr. Prapat')).toBe(true)
+    expect(namesMatch('Kitsada (กริช)', 'Kitsada')).toBe(true)
+    expect(namesMatch('Kitsada (กริช)', 'กริช')).toBe(true)
+    expect(namesMatch('🍓ศ.สพ.คนเพชรบูรณ์🍓', 'ศ.สพ.คนเพชรบูรณ์')).toBe(true)
+    expect(namesMatch('ช่างหนึ่ง', 'หนึ่ง')).toBe(true)
+  })
+
+  it('resolves technicians from in-memory objects and system users, ignoring invalid UUIDs', async () => {
+    const cfg = {}
+    const inMemoryTechs = [
+      { Name: 'Mr. Prapat', Line_ID: 'U22222222222222222222222222222222' },
+      { Name: 'Kitsada (กริช)', User_ID: 'user-uuid-123' }, // User_ID is an auth UUID, should be resolved via systemUsers
+      { Name: 'ช่างสมชาย', User_ID: 'invalid-uuid-not-line' },
+    ]
+    const inMemoryUsers = [
+      { id: 'user-uuid-123', full_name: 'Kitsada', line_user_id: 'U33333333333333333333333333333333' },
+    ]
+
+    const resolved = await resolveTechniciansLineIds(
+      cfg,
+      ['Prapat', 'Kitsada', 'Unknown'],
+      { technicians: inMemoryTechs, systemUsers: inMemoryUsers }
+    )
+
+    expect(resolved).toHaveLength(2)
+    expect(resolved[0].userId).toBe('U22222222222222222222222222222222')
+    expect(resolved[1].userId).toBe('U33333333333333333333333333333333')
   })
 
   it('skips notification when work order has no technicians or is disabled', async () => {

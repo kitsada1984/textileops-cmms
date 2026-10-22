@@ -738,59 +738,150 @@ export async function notifyLineSpareNeedleReceived(snr, cylinder) {
 
 
 /**
- * Resolves an array of technician names to their LINE User IDs
- * Checks:
- * 1. cfg.technicians (line_settings)
- * 2. localStorage 'txops_tbl_technicians'
- * 3. DB appconfigs (key: 'technicians')
- * 4. DB users table (line_user_id)
+ * Validates whether a target ID is a valid LINE user, group, or room ID
  */
-export async function resolveTechniciansLineIds(cfg, techNames = []) {
+export function isValidLineTargetId(id) {
+  if (!id || typeof id !== 'string') return false
+  const trimmed = id.trim()
+  return /^[UCR][a-zA-Z0-9]{20,40}$/.test(trimmed)
+}
+
+/**
+ * Flexible name matching: ignores title prefixes (Mr., นาย, ช่าง), parentheses/nicknames, emojis, case, whitespace
+ */
+export function namesMatch(name1, name2) {
+  if (!name1 || !name2) return false
+  const clean = (s) =>
+    String(s || '')
+      .toLowerCase()
+      .replace(/^(mr\.|mr|miss|mrs|ช่าง|นาย|นางสาว|นาง)\s+/i, '')
+      .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+  const c1 = clean(name1)
+  const c2 = clean(name2)
+  if (!c1 || !c2) return false
+  if (c1 === c2) return true
+  if (c1.length > 2 && c2.length > 2) {
+    if (c1.includes(c2) || c2.includes(c1)) return true
+  }
+
+  const base1 = clean(String(name1).replace(/\([^)]*\)/g, ''))
+  const base2 = clean(String(name2).replace(/\([^)]*\)/g, ''))
+  if (base1 && base2 && (base1 === base2 || (base1.length > 2 && base2.length > 2 && (base1.includes(base2) || base2.includes(base1))))) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Resolves an array of technician names to their LINE User IDs
+ * Supports in-memory data (technicians, systemUsers) for instant 100% accuracy,
+ * with fallbacks to line_settings, localStorage, and DB.
+ */
+export async function resolveTechniciansLineIds(cfg, techNames = [], extra = {}) {
   if (!Array.isArray(techNames) || techNames.length === 0) return []
-  const norm = (s) => String(s || '').trim().toLowerCase()
-  const targetNames = techNames.map(norm).filter(Boolean)
+  const targetNames = techNames.map((s) => String(s || '').trim()).filter(Boolean)
   if (targetNames.length === 0) return []
+
+  const { technicians: inMemoryTechs = [], systemUsers: inMemoryUsers = [] } = extra
 
   const resolved = []
   const foundUserIds = new Set()
 
   const addIfValid = (name, rawId) => {
-    const id = String(rawId || '').trim()
-    if (id && !foundUserIds.has(id)) {
-      foundUserIds.add(id)
-      resolved.push({ name, userId: id })
-    }
-  }
-
-  // 1. Check cfg.technicians
-  if (Array.isArray(cfg?.technicians)) {
-    for (const t of cfg.technicians) {
-      const tName = norm(t.name)
-      if (targetNames.includes(tName) && t.user_id) {
-        addIfValid(t.name, t.user_id)
+    if (isValidLineTargetId(rawId)) {
+      const id = rawId.trim()
+      if (!foundUserIds.has(id)) {
+        foundUserIds.add(id)
+        resolved.push({ name, userId: id })
       }
     }
   }
 
-  // 2. Check localStorage 'txops_tbl_technicians'
+  // 1. Check in-memory technicians passed directly from WorkOrders component
+  if (Array.isArray(inMemoryTechs) && inMemoryTechs.length > 0) {
+    for (const tName of targetNames) {
+      const matched = inMemoryTechs.find((t) => namesMatch(t.Name || t.name, tName))
+      if (matched) {
+        // Direct Line_ID
+        const directLineId = matched.Line_ID || matched.line_id
+        if (isValidLineTargetId(directLineId)) {
+          addIfValid(tName, directLineId)
+          continue
+        }
+        // If User_ID is a LINE User ID directly
+        const rawUserId = matched.User_ID || matched.user_id
+        if (isValidLineTargetId(rawUserId)) {
+          addIfValid(tName, rawUserId)
+          continue
+        }
+        // If User_ID is an auth UUID, resolve against in-memory systemUsers
+        if (rawUserId && Array.isArray(inMemoryUsers)) {
+          const userObj = inMemoryUsers.find((u) => u.id === rawUserId || u.username === rawUserId)
+          if (userObj?.line_user_id && isValidLineTargetId(userObj.line_user_id)) {
+            addIfValid(tName, userObj.line_user_id)
+            continue
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Check in-memory systemUsers directly by name match
+  if (Array.isArray(inMemoryUsers) && inMemoryUsers.length > 0) {
+    for (const tName of targetNames) {
+      if (resolved.some((r) => namesMatch(r.name, tName))) continue
+      const matchedUser = inMemoryUsers.find(
+        (u) =>
+          namesMatch(u.full_name, tName) ||
+          namesMatch(u.line_display_name, tName) ||
+          namesMatch(u.username, tName)
+      )
+      if (matchedUser?.line_user_id && isValidLineTargetId(matchedUser.line_user_id)) {
+        addIfValid(tName, matchedUser.line_user_id)
+      }
+    }
+  }
+
+  // 3. Check cfg.technicians from line_settings
+  if (Array.isArray(cfg?.technicians)) {
+    for (const t of cfg.technicians) {
+      for (const tName of targetNames) {
+        if (resolved.some((r) => namesMatch(r.name, tName))) continue
+        if (namesMatch(t.name, tName) && isValidLineTargetId(t.user_id)) {
+          addIfValid(tName, t.user_id)
+        }
+      }
+    }
+  }
+
+  // 4. Check localStorage 'txops_tbl_technicians'
   try {
     const stored = JSON.parse(localStorage.getItem('txops_tbl_technicians') || '[]')
     if (Array.isArray(stored)) {
       for (const t of stored) {
-        const tName = norm(t.Name || t.name)
-        if (targetNames.includes(tName)) {
-          const uid = t.Line_ID || t.line_id || t.User_ID || t.user_id
-          if (uid) addIfValid(t.Name || t.name, uid)
+        for (const tName of targetNames) {
+          if (resolved.some((r) => namesMatch(r.name, tName))) continue
+          if (namesMatch(t.Name || t.name, tName)) {
+            const directLine = t.Line_ID || t.line_id
+            const rawUser = t.User_ID || t.user_id
+            const uid = isValidLineTargetId(directLine) ? directLine : (isValidLineTargetId(rawUser) ? rawUser : null)
+            if (uid) {
+              addIfValid(tName, uid)
+            }
+          }
         }
       }
     }
   } catch {}
 
-  // 3. If any technician was not found yet, query DB appconfigs ('technicians') and users table
-  const unresolvedNames = targetNames.filter(name => !resolved.some(r => norm(r.name) === name))
+  // 5. If still unresolved, query DB appconfigs ('technicians') and users table
+  const unresolvedNames = targetNames.filter((name) => !resolved.some((r) => namesMatch(r.name, name)))
   if (unresolvedNames.length > 0) {
     try {
-      // Query appconfigs for technicians
       const { data: techConfig } = await db
         .from('appconfigs')
         .select('value')
@@ -801,10 +892,16 @@ export async function resolveTechniciansLineIds(cfg, techNames = []) {
         const dbTechs = JSON.parse(techConfig.value)
         if (Array.isArray(dbTechs)) {
           for (const t of dbTechs) {
-            const tName = norm(t.Name || t.name)
-            if (targetNames.includes(tName)) {
-              const uid = t.Line_ID || t.line_id || t.User_ID || t.user_id
-              if (uid) addIfValid(t.Name || t.name, uid)
+            for (const tName of unresolvedNames) {
+              if (resolved.some((r) => namesMatch(r.name, tName))) continue
+              if (namesMatch(t.Name || t.name, tName)) {
+                const directLine = t.Line_ID || t.line_id
+                const rawUser = t.User_ID || t.user_id
+                const uid = isValidLineTargetId(directLine) ? directLine : (isValidLineTargetId(rawUser) ? rawUser : null)
+                if (uid) {
+                  addIfValid(tName, uid)
+                }
+              }
             }
           }
         }
@@ -814,17 +911,19 @@ export async function resolveTechniciansLineIds(cfg, techNames = []) {
     }
 
     try {
-      // Query users table for line_user_id
       const { data: dbUsers } = await db
         .from('users')
-        .select('username, full_name, line_user_id')
+        .select('id, username, full_name, line_user_id')
 
       if (Array.isArray(dbUsers)) {
         for (const u of dbUsers) {
-          const uFull = norm(u.full_name)
-          const uUser = norm(u.username)
-          if ((targetNames.includes(uFull) || targetNames.includes(uUser)) && u.line_user_id) {
-            addIfValid(u.full_name || u.username, u.line_user_id)
+          if (u.line_user_id && isValidLineTargetId(u.line_user_id)) {
+            for (const tName of unresolvedNames) {
+              if (resolved.some((r) => namesMatch(r.name, tName))) continue
+              if (namesMatch(u.full_name, tName) || namesMatch(u.username, tName)) {
+                addIfValid(tName, u.line_user_id)
+              }
+            }
           }
         }
       }
@@ -840,23 +939,23 @@ export async function resolveTechniciansLineIds(cfg, techNames = []) {
  * Sends Work Order Assignment Notification to LINE
  * - Resolves LINE User IDs for all assigned technicians
  * - Pushes Flex Message directly to each assigned technician
- * - Optionally notifies group if target_group_id or notify_token is configured
+ * - Fallbacks to Group or Supervisor so assignments are never lost
  */
-export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = []) {
+export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [], extra = {}) {
   try {
     if (!jobData) return { ok: false, skipped: true, reason: 'No job data' }
 
     // Normalize technician list
     let techList = []
     if (Array.isArray(assignedTechNames)) {
-      techList = assignedTechNames.map(s => String(s || '').trim()).filter(Boolean)
+      techList = assignedTechNames.map((s) => String(s || '').trim()).filter(Boolean)
     } else if (typeof assignedTechNames === 'string' && assignedTechNames.trim()) {
-      techList = assignedTechNames.split(',').map(s => s.trim()).filter(Boolean)
+      techList = assignedTechNames.split(',').map((s) => s.trim()).filter(Boolean)
     }
     if (techList.length === 0) {
       const rawTechs = jobData.Technicians || jobData.Tech || ''
       if (rawTechs) {
-        techList = rawTechs.split(',').map(s => s.trim()).filter(Boolean)
+        techList = rawTechs.split(',').map((s) => s.trim()).filter(Boolean)
       }
     }
 
@@ -869,7 +968,10 @@ export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [
       return { ok: false, skipped: true, reason: 'LINE notification for work orders disabled' }
     }
 
-    const effectiveProvider = (cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)) ? 'line_oa' : 'line_notify'
+    const effectiveProvider =
+      cfg.provider === 'line_oa' || (cfg.channel_access_token && !cfg.notify_token)
+        ? 'line_oa'
+        : 'line_notify'
 
     const jobId = jobData.Job_ID || jobData['Job ID'] || jobData.WO_ID || (jobData.id ? `JOB-${String(jobData.id).slice(0, 8)}` : 'JOB-NEW')
     const mc = jobData.MC || jobData.mc || '—'
@@ -880,61 +982,66 @@ export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [
     const createdBy = jobData.CreatedBy || jobData.created_by || 'เจ้าหน้าที่'
 
     if (effectiveProvider === 'line_oa') {
-      if (!cfg.channel_access_token) {
-        return { ok: false, skipped: true, reason: 'LINE Channel Access Token not configured' }
-      }
-
       // Resolve individual technician LINE IDs
-      const resolvedTechs = await resolveTechniciansLineIds(cfg, techList)
+      const resolvedTechs = await resolveTechniciansLineIds(cfg, techList, extra)
       const recipientIds = new Set()
 
       // Add individual technicians
       for (const t of resolvedTechs) {
-        if (t.userId) recipientIds.add(t.userId)
+        if (isValidLineTargetId(t.userId)) recipientIds.add(t.userId)
       }
 
-      // If no individual tech has LINE ID, fallback to group or supervisor if configured
-      if (recipientIds.size === 0) {
-        if (cfg.target_group_id?.trim()) {
-          recipientIds.add(cfg.target_group_id.trim())
-        } else {
-          const supers = getSupervisorLineIds(cfg)
-          if (supers[0]) recipientIds.add(supers[0])
-        }
-      } else if (cfg.target_group_id?.trim()) {
-        // Also send copy to group if group ID is set
+      const individualCount = recipientIds.size
+
+      // If any tech has no personal LINE ID or for general group visibility:
+      // Always include group or supervisors as fallback so assignment is not lost!
+      if (cfg.target_group_id && isValidLineTargetId(cfg.target_group_id)) {
         recipientIds.add(cfg.target_group_id.trim())
+      } else {
+        const supers = getSupervisorLineIds(cfg)
+        for (const sId of supers) {
+          if (isValidLineTargetId(sId)) recipientIds.add(sId)
+        }
       }
 
       if (recipientIds.size === 0) {
-        return { ok: false, skipped: true, reason: 'No valid recipient LINE User IDs found for assigned technicians' }
+        console.warn('[notifyLineWorkOrderAssigned] No valid LINE recipient IDs found for:', techList)
+        return {
+          ok: false,
+          skipped: true,
+          reason: 'no_line_id',
+          techsWithoutLine: techList,
+        }
       }
 
       const flexMsg = buildWorkOrderAssignedFlexMessage(jobData, techList, cfg.app_base_url)
 
       const results = await Promise.all(
-        Array.from(recipientIds).map(targetId =>
+        Array.from(recipientIds).map((targetId) =>
           sendLineNotification({
             type: 'flex',
-            token: cfg.channel_access_token,
+            token: cfg.channel_access_token?.trim() || undefined,
             targetId,
             messages: [flexMsg],
           })
         )
       )
 
+      const successCount = results.filter((r) => r.ok).length
+      const failed = results.filter((r) => !r.ok)
+      if (failed.length > 0) {
+        console.warn('[notifyLineWorkOrderAssigned] Some pushes failed:', failed)
+      }
+
       return {
-        ok: results.some(r => r.ok),
-        sentCount: results.filter(r => r.ok).length,
-        totalRecipients: recipientIds.size,
+        ok: successCount > 0,
+        sentCount: successCount,
+        individualCount,
+        recipientsText: resolvedTechs.map((r) => r.name).join(', ') || 'กลุ่มซ่อมบำรุง',
         results,
       }
     } else {
       // LINE Notify mode
-      if (!cfg.notify_token) {
-        return { ok: false, skipped: true, reason: 'LINE Notify Token not configured' }
-      }
-
       const appUrl = resolveAppBaseUrl(cfg.app_base_url)
       const directUrl = `${appUrl}/workorders?job=${encodeURIComponent(jobId)}&openExternalBrowser=1`
       const techStr = techList.join(', ')
@@ -944,14 +1051,22 @@ export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [
 
       const textMessage = `\n📋 [ใบสั่งงานใหม่ - ได้รับมอบหมาย]\nเลขที่: ${jobId}\nเครื่อง: ${mc}${kiLine}${designLine}${rollLine}\nช่างผู้รับผิดชอบ: ${techStr}\nรายละเอียด: ${problem}\nผู้เปิดงาน: ${createdBy}\n👉 แตะเปิดดูใบสั่งงาน PWA: ${directUrl}`
 
-      return await sendLineNotification({
+      const res = await sendLineNotification({
         type: 'notify',
-        notifyToken: cfg.notify_token,
+        notifyToken: cfg.notify_token?.trim() || undefined,
         textMessage,
       })
+
+      return {
+        ok: res.ok,
+        sentCount: res.ok ? 1 : 0,
+        recipientsText: techStr,
+        results: [res],
+      }
     }
   } catch (err) {
     console.warn('[LINE Work Order Notify Error]', err)
     return { ok: false, error: err.message }
   }
 }
+
