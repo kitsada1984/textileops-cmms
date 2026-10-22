@@ -21,25 +21,26 @@ import MobileBottomNav from './components/common/MobileBottomNav'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { MotionConfig } from 'framer-motion'
 import { queryClient } from './lib/queryClient'
+import { lazyWithRetry } from './utils/lazyWithRetry'
 
-const Login         = lazy(() => import('./pages/Login'))
-const RepairPage    = lazy(() => import('./pages/RepairPage'))
-const Dashboard     = lazy(() => import('./pages/Dashboard'))
-const Machines      = lazy(() => import('./pages/Machines'))
-const Cylinders     = lazy(() => import('./pages/Cylinders'))
-const WorkOrders    = lazy(() => import('./pages/WorkOrders'))
-const PMPlan        = lazy(() => import('./pages/PMPlan'))
-const SpareParts    = lazy(() => import('./pages/SpareParts'))
-const Purchasing    = lazy(() => import('./pages/Purchasing'))
-const Reports       = lazy(() => import('./pages/Reports'))
-const SettingsPage  = lazy(() => import('./pages/SettingsPage'))
-const Logs          = lazy(() => import('./pages/Logs'))
-const StockMovement = lazy(() => import('./pages/StockMovement'))
-const UsersPage     = lazy(() => import('./pages/Users'))
-const WebBuilder    = lazy(() => import('./pages/WebBuilder'))
-const DesignBom     = lazy(() => import('./pages/DesignBom'))
-const NeedleStock   = lazy(() => import('./pages/NeedleStock'))
-const D1TestPage    = lazy(() => import('./pages/D1TestPage'))
+const Login         = lazyWithRetry(() => import('./pages/Login'), 'Login')
+const RepairPage    = lazyWithRetry(() => import('./pages/RepairPage'), 'RepairPage')
+const Dashboard     = lazyWithRetry(() => import('./pages/Dashboard'), 'Dashboard')
+const Machines      = lazyWithRetry(() => import('./pages/Machines'), 'Machines')
+const Cylinders     = lazyWithRetry(() => import('./pages/Cylinders'), 'Cylinders')
+const WorkOrders    = lazyWithRetry(() => import('./pages/WorkOrders'), 'WorkOrders')
+const PMPlan        = lazyWithRetry(() => import('./pages/PMPlan'), 'PMPlan')
+const SpareParts    = lazyWithRetry(() => import('./pages/SpareParts'), 'SpareParts')
+const Purchasing    = lazyWithRetry(() => import('./pages/Purchasing'), 'Purchasing')
+const Reports       = lazyWithRetry(() => import('./pages/Reports'), 'Reports')
+const SettingsPage  = lazyWithRetry(() => import('./pages/SettingsPage'), 'SettingsPage')
+const Logs          = lazyWithRetry(() => import('./pages/Logs'), 'Logs')
+const StockMovement = lazyWithRetry(() => import('./pages/StockMovement'), 'StockMovement')
+const UsersPage     = lazyWithRetry(() => import('./pages/Users'), 'UsersPage')
+const WebBuilder    = lazyWithRetry(() => import('./pages/WebBuilder'), 'WebBuilder')
+const DesignBom     = lazyWithRetry(() => import('./pages/DesignBom'), 'DesignBom')
+const NeedleStock   = lazyWithRetry(() => import('./pages/NeedleStock'), 'NeedleStock')
+const D1TestPage    = lazyWithRetry(() => import('./pages/D1TestPage'), 'D1TestPage')
 
 const NAV_SECTIONS = [
   {

@@ -2,6 +2,7 @@ import React from 'react'
 import { AlertTriangle, RefreshCw, Home, RotateCcw, Copy, Check } from 'lucide-react'
 import { APP_VERSION } from '../../version'
 import { notifySystemCrash } from '../../utils/telegram'
+import { isChunkLoadError, clearAppCaches } from '../../utils/lazyWithRetry'
 
 const ERROR_STORAGE_KEY = 'textileops_error_log'
 const MAX_LOG_ENTRIES = 20
@@ -56,19 +57,22 @@ export class ErrorBoundary extends React.Component {
     } catch {}
 
     // 2. Dispatch automatic crash notification to Telegram Admin/Supervisors
-    try {
-      let currentUser = null
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('app_user') : null
-      if (stored) currentUser = JSON.parse(stored)
+    // Suppress Telegram crash notifications for routine dynamic import version mismatches
+    if (!isChunkLoadError(error)) {
+      try {
+        let currentUser = null
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('app_user') : null
+        if (stored) currentUser = JSON.parse(stored)
 
-      notifySystemCrash({
-        error,
-        path: typeof window !== 'undefined' ? window.location.pathname : '',
-        url: typeof window !== 'undefined' ? window.location.href : '',
-        version: APP_VERSION,
-        user: currentUser,
-      }).catch(err => console.warn('notifySystemCrash error:', err))
-    } catch {}
+        notifySystemCrash({
+          error,
+          path: typeof window !== 'undefined' ? window.location.pathname : '',
+          url: typeof window !== 'undefined' ? window.location.href : '',
+          version: APP_VERSION,
+          user: currentUser,
+        }).catch(err => console.warn('notifySystemCrash error:', err))
+      } catch {}
+    }
 
     // 3. Call optional external error handler (e.g. telemetry or custom hook)
     if (this.props.onError) {
@@ -92,6 +96,12 @@ export class ErrorBoundary extends React.Component {
   }
 
   handleReset = () => {
+    if (isChunkLoadError(this.state.error)) {
+      clearAppCaches().finally(() => {
+        window.location.reload()
+      })
+      return
+    }
     this.setState({ hasError: false, error: null, errorInfo: null, copied: false })
     if (this.props.onReset) {
       try {
@@ -103,7 +113,9 @@ export class ErrorBoundary extends React.Component {
   }
 
   handleReload = () => {
-    window.location.reload()
+    clearAppCaches().finally(() => {
+      window.location.reload()
+    })
   }
 
   handleGoHome = () => {
@@ -170,18 +182,26 @@ ${this.state.error?.stack || 'N/A'}`
       }
 
       // 3. Full-page / Route-level Error Screen (Next.js error.tsx pattern)
+      const isChunkError = isChunkLoadError(this.state.error)
+      const displayTitle = this.props.title || (isChunkError ? 'ระบบมีการอัปเดตเวอร์ชันใหม่' : 'เกิดข้อผิดพลาดในการแสดงผล')
+      const displayDesc = isChunkError
+        ? 'ตรวจพบเวอร์ชันใหม่ของระบบหรือการเชื่อมต่อสะดุดชั่วคราว กรุณากดปุ่มเพื่อรีโหลดข้อมูลล่าสุด'
+        : 'ระบบตรวจพบข้อผิดพลาดที่ไม่คาดคิด คุณสามารถลองใหม่อีกครั้ง หรือคัดลอกรายละเอียดแจ้งทีมงาน'
+
       return (
         <div className="min-h-[400px] flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-900/50">
           <div className="max-w-md w-full p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
-              <AlertTriangle size={32} />
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto ${
+              isChunkError ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'
+            }`}>
+              {isChunkError ? <RefreshCw size={32} /> : <AlertTriangle size={32} />}
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                {this.props.title || 'เกิดข้อผิดพลาดในการแสดงผล'}
+                {displayTitle}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                ระบบตรวจพบข้อผิดพลาดที่ไม่คาดคิด คุณสามารถลองใหม่อีกครั้ง หรือคัดลอกรายละเอียดแจ้งทีมงาน
+                {displayDesc}
               </p>
             </div>
 
@@ -199,8 +219,8 @@ ${this.state.error?.stack || 'N/A'}`
                 onClick={this.handleReset}
                 className="btn-primary px-3.5 py-2 text-xs flex items-center gap-1.5 cursor-pointer"
               >
-                <RotateCcw size={14} />
-                <span>ลองใหม่อีกครั้ง</span>
+                {isChunkError ? <RefreshCw size={14} /> : <RotateCcw size={14} />}
+                <span>{isChunkError ? 'รีโหลดเวอร์ชันใหม่' : 'ลองใหม่อีกครั้ง'}</span>
               </button>
               <button
                 type="button"

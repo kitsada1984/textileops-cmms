@@ -1,4 +1,4 @@
-const CACHE_NAME = 'textileops-v1.3.165'
+const CACHE_NAME = 'textileops-v1.3.167'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -58,6 +58,19 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request)
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          // GUARD: If a .js or .css asset was requested, but server returned HTML (due to SPA fallback on missing chunk),
+          // DO NOT cache it, and fail the request so dynamic import retry / auto-reload can kick in!
+          const contentType = networkResponse.headers.get('content-type') || ''
+          const isAsset = url.pathname.includes('/assets/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')
+          if (isAsset && contentType.includes('text/html')) {
+            console.warn('[SW] Mismatched HTML response received for static asset:', url.pathname)
+            return new Response('Asset not found / version mismatch', {
+              status: 404,
+              statusText: 'Not Found',
+              headers: { 'Content-Type': 'text/plain' },
+            })
+          }
+
           const responseToCache = networkResponse.clone()
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache)
