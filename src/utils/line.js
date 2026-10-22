@@ -38,7 +38,7 @@ export const DEFAULT_LINE_SETTINGS = {
   login_channel_id: '',
   login_channel_secret: '',
   login_callback_url: '',
-  login_default_role: 'user',
+  login_default_role: 'viewer',
 }
 
 export const loadLineSettings = () => {

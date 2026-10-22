@@ -1323,11 +1323,11 @@ export default function SettingsPage() {
                 <label className="label">สิทธิ์เริ่มต้นเมื่อเข้าสู่ระบบครั้งแรก (Default Role)</label>
                 <select
                   className="select text-xs"
-                  value={line.login_default_role || 'user'}
+                  value={line.login_default_role || 'viewer'}
                   onChange={(e) => setLine((p) => ({ ...p, login_default_role: e.target.value }))}
                 >
+                  <option value="viewer">Viewer (ดูได้เท่านั้น — ไม่สามารถเพิ่ม ลบ หรือแก้ไขได้)</option>
                   <option value="user">User (สิทธิ์ดูแดชบอร์ด/เครื่องจักร/งานซ่อม)</option>
-                  <option value="viewer">Viewer (สิทธิ์ดูข้อมูลทั่วไปอย่างเดียว)</option>
                   <option value="technician">Technician (ช่างซ่อมบำรุง)</option>
                   <option value="supervisor">Supervisor (หัวหน้างาน)</option>
                 </select>

@@ -124,7 +124,7 @@ describe('LINE Settings Persistence', () => {
     expect(s.login_enabled).toBe(true)
     expect(s.login_channel_id).toBe('')
     expect(s.login_channel_secret).toBe('')
-    expect(s.login_default_role).toBe('user')
+    expect(s.login_default_role).toBe('viewer')
   })
 
   it('saves and reloads settings with supervisors, technicians, and LINE login settings', () => {

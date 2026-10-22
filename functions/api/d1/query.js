@@ -121,6 +121,14 @@ export async function onRequestPost(context) {
       return jsonResponse({ data: null, error: 'Table not accessible' }, 403)
     }
 
+    // Defense-in-depth: บล็อกคำสั่งแก้ไข/ลบ/เพิ่ม สำหรับบทบาท viewer
+    if (auth.role === 'viewer' && ['insert', 'update', 'delete', 'upsert'].includes(action.toLowerCase())) {
+      return jsonResponse({
+        data: null,
+        error: 'ไม่อนุญาต: บัญชีผู้ใช้นี้มีสิทธิ์ดูข้อมูลเท่านั้น (View Only) ไม่สามารถ เพิ่ม แก้ไข หรือลบข้อมูลได้',
+      }, 403)
+    }
+
     const { whereSql, whereParams } = buildWhere(filters)
 
     const TABLE_MODULE_MAP = {

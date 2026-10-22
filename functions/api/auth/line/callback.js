@@ -19,6 +19,21 @@ async function getConfigValue(db, key) {
   }
 }
 
+const VIEWER_DEFAULT_PERMISSIONS = {
+  dashboard: ['view'],
+  machines: ['view'],
+  cylinders: ['view'],
+  workorders: ['view'],
+  pm: ['view'],
+  designbom: ['view'],
+  needlestock: ['view'],
+  spareparts: ['view'],
+  purchasing: ['view'],
+  stock: ['view'],
+  reports: ['view'],
+  logs: ['view'],
+}
+
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
 }
@@ -188,17 +203,36 @@ export async function onRequestGet(context) {
       }
     } else {
       // 2. New LINE User - Auto-provision account
-      const defaultRole = lineSettings.login_default_role || 'user'
+      const defaultRole = lineSettings.login_default_role || 'viewer'
       const defaultPerms =
         defaultRole === 'admin'
           ? {}
-          : {
-              dashboard: ['view'],
-              machines: ['view'],
-              cylinders: ['view'],
-              workorders: ['view'],
-              pm: ['view'],
+          : defaultRole === 'technician'
+          ? {
+              machines: ['view', 'add', 'edit'],
+              cylinders: ['view', 'add', 'edit'],
+              workorders: ['view', 'add', 'edit'],
+              pm: ['view', 'add', 'edit'],
+              needlestock: ['view', 'add', 'edit'],
+              spareparts: ['view', 'add', 'edit'],
+              stock: ['view', 'add', 'edit'],
             }
+          : defaultRole === 'supervisor'
+          ? {
+              dashboard: ['view', 'add', 'edit', 'delete'],
+              machines: ['view', 'add', 'edit', 'delete'],
+              cylinders: ['view', 'add', 'edit', 'delete'],
+              workorders: ['view', 'add', 'edit', 'delete'],
+              pm: ['view', 'add', 'edit', 'delete'],
+              designbom: ['view', 'add', 'edit', 'delete'],
+              needlestock: ['view', 'add', 'edit', 'delete'],
+              spareparts: ['view', 'add', 'edit', 'delete'],
+              purchasing: ['view', 'add', 'edit', 'delete'],
+              stock: ['view', 'add', 'edit', 'delete'],
+              reports: ['view', 'add', 'edit', 'delete'],
+              logs: ['view', 'add', 'edit', 'delete'],
+            }
+          : VIEWER_DEFAULT_PERMISSIONS
 
       const newId = `usr_${crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).slice(2, 18)}`
       let baseUsername = `line_${lineProfile.userId.slice(-6).toLowerCase()}`

@@ -103,4 +103,26 @@ describe('functions/api/d1/query.js - D1 & Batch Operations', () => {
     expect(json.data).toHaveLength(2)
     expect(mockBatch).toHaveBeenCalledTimes(1)
   })
+
+  it('blocks mutation actions (insert/update/delete/upsert) when auth.role is viewer', async () => {
+    vi.spyOn(authModule, 'verifyAuthToken').mockResolvedValueOnce({ user: 'viewer_user', role: 'viewer' })
+
+    const request = new Request('https://test/api/d1/query', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer viewer-token',
+      },
+      body: JSON.stringify({
+        table: 'machines',
+        action: 'insert',
+        data: { Mc: 'MC-99' },
+      }),
+    })
+
+    const response = await onRequestPost({ request, env: { DB: {} } })
+    expect(response.status).toBe(403)
+    const json = await response.json()
+    expect(json.error).toMatch(/View Only/)
+  })
 })
