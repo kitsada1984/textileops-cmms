@@ -5,8 +5,15 @@ import {
   buildTechnicianAssignedFlexMessage,
   buildRepairCompletedFlexMessage,
   buildTestFlexMessage,
+  buildWorkOrderAssignedFlexMessage,
 } from './lineFlexBuilder'
-import { loadLineSettings, saveLineSettings, DEFAULT_LINE_SETTINGS } from './line'
+import {
+  loadLineSettings,
+  saveLineSettings,
+  DEFAULT_LINE_SETTINGS,
+  resolveTechniciansLineIds,
+  notifyLineWorkOrderAssigned,
+} from './line'
 
 describe('LINE Flex Builder & Deep Linking', () => {
   it('builds PWA deep link with openExternalBrowser=1', () => {
@@ -146,5 +153,88 @@ describe('LINE Settings Persistence', () => {
     expect(loaded.login_channel_id).toBe('2009998888')
     expect(loaded.login_channel_secret).toBe('sec_test_12345')
     expect(loaded.login_default_role).toBe('technician')
+  })
+})
+
+
+describe('Work Order LINE Notifications', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  it('builds valid Work Order Flex Message with deep link and details', () => {
+    const job = {
+      Job_ID: 'JOB-20261022-0001',
+      MC: 'MC-01',
+      KI: 'KI-9012',
+      Design: 'Jacquard Pattern 01',
+      RollNo: '04',
+      JobType: 'REPAIR',
+      Comment: 'ผ้ามีรอยด่าง เข็มตก',
+      CreatedBy: 'Kitsada',
+      Status: 'IN_PROGRESS',
+      StartTimestamp: '2026-10-22T10:00:00.000Z',
+    }
+
+    const flex = buildWorkOrderAssignedFlexMessage(job, ['Mr. Prapat', 'Kitsada (กริช)'], 'https://cmms.gemmaknits.com')
+
+    expect(flex.type).toBe('flex')
+    expect(flex.altText).toContain('JOB-20261022-0001')
+    expect(flex.altText).toContain('MC-01')
+    expect(flex.altText).toContain('Mr. Prapat, Kitsada (กริช)')
+
+    // Check header
+    expect(flex.contents.header).toBeDefined()
+    expect(flex.contents.header.contents[1].text).toContain('ใบสั่งงานใหม่')
+
+    // Check CTA button
+    const ctaButton = flex.contents.footer.contents[0]
+    expect(ctaButton.action.type).toBe('uri')
+    expect(ctaButton.action.uri).toContain('/workorders?job=JOB-20261022-0001')
+    expect(ctaButton.action.uri).toContain('openExternalBrowser=1')
+  })
+
+  it('resolves technician LINE user IDs from config and localStorage', async () => {
+    const cfg = {
+      technicians: [
+        { name: 'ช่างหนึ่ง', user_id: 'U11111111111111111111111111111111' },
+      ],
+    }
+
+    // Put second technician in localStorage registry
+    localStorage.setItem(
+      'txops_tbl_technicians',
+      JSON.stringify([
+        { Name: 'Mr. Prapat', Line_ID: 'U22222222222222222222222222222222' },
+        { Name: 'Kitsada (กริช)', User_ID: 'U33333333333333333333333333333333' },
+      ])
+    )
+
+    const resolved = await resolveTechniciansLineIds(cfg, ['ช่างหนึ่ง', 'Mr. Prapat', 'Kitsada (กริช)', 'NonExistentTech'])
+    expect(resolved).toHaveLength(3)
+    expect(resolved.map(r => r.userId)).toEqual([
+      'U11111111111111111111111111111111',
+      'U22222222222222222222222222222222',
+      'U33333333333333333333333333333333',
+    ])
+  })
+
+  it('skips notification when work order has no technicians or is disabled', async () => {
+    const resNoTech = await notifyLineWorkOrderAssigned({ Job_ID: 'JOB-001', MC: 'MC-01' }, [])
+    expect(resNoTech.ok).toBe(false)
+    expect(resNoTech.skipped).toBe(true)
+
+    // When LINE is disabled
+    localStorage.setItem(
+      'line_settings',
+      JSON.stringify({ ...DEFAULT_LINE_SETTINGS, is_enabled: false })
+    )
+    const resDisabled = await notifyLineWorkOrderAssigned(
+      { Job_ID: 'JOB-001', MC: 'MC-01' },
+      ['ช่างหนึ่ง']
+    )
+    expect(resDisabled.ok).toBe(false)
+    expect(resDisabled.skipped).toBe(true)
   })
 })

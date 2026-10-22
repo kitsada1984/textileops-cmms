@@ -58,6 +58,7 @@ import RepairRequests from './RepairRequests'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { db } from '../api/dbClient'
 import { generateWorkOrderPdfProps } from '../utils/pdfDocGenerators'
+import { notifyLineWorkOrderAssigned } from '../utils/line'
 
 const DEFAULT_KPI_TARGETS = {
   REPAIR: 1.0,
@@ -537,6 +538,19 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [showDeleted, setShowDeleted] = useState(false)
+
+  // Deep Link support (?job=JOB-XXXX or ?wo=JOB-XXXX)
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.location?.search) {
+        const params = new URLSearchParams(window.location.search)
+        const jobParam = params.get('job') || params.get('wo') || params.get('id')
+        if (jobParam) {
+          setSearch(jobParam)
+        }
+      }
+    } catch {}
+  }, [])
 
   // New Work Order Form State
   const [mc, setMc] = useState('')
@@ -1031,6 +1045,15 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       await saveJob(payload)
       toast.success('เปิดใบสั่งงานสำเร็จ', `${jobId} (${mc} - ${ki})`)
 
+      // Notify assigned technicians via LINE (Non-blocking async background)
+      try {
+        notifyLineWorkOrderAssigned(payload, selectedTechs).catch((err) => {
+          console.warn('[WorkOrders] LINE notification background error:', err)
+        })
+      } catch (e) {
+        console.warn('[WorkOrders] LINE notification trigger error:', e)
+      }
+
       // Reset form
       setMc('')
       setKi('')
@@ -1186,6 +1209,16 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       }
       await saveJob(payload)
       toast.success('แก้ไขข้อมูลใบสั่งงานสำเร็จ', editJob.Job_ID || editJob['Job ID'])
+
+      // Notify assigned technicians via LINE (Non-blocking async background)
+      try {
+        notifyLineWorkOrderAssigned(payload, editTechs).catch((err) => {
+          console.warn('[WorkOrders] LINE notification background error:', err)
+        })
+      } catch (e) {
+        console.warn('[WorkOrders] LINE notification trigger error:', e)
+      }
+
       setEditModalOpen(false)
       setEditJob(null)
     } catch (err) {

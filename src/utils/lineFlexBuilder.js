@@ -893,3 +893,233 @@ export function buildSpareNeedleRequestFlexMessage(snr = {}, cylinder = {}, appB
   }
 }
 
+
+
+/**
+ * Builds Flex Bubble for Work Order (ใบสั่งงาน) when assigned to technicians
+ */
+export function buildWorkOrderAssignedFlexMessage(job = {}, assignedTechs = [], appBaseUrl = '') {
+  const jobId = job.Job_ID || job['Job ID'] || job.WO_ID || (job.id ? `JOB-${String(job.id).slice(0, 8)}` : 'JOB-NEW')
+  const machine = job.MC || job.mc || job.machine || '—'
+  const ki = (job.KI !== undefined && job.KI !== null && job.KI !== '') ? String(job.KI) : ''
+  const design = job.Design || job.design || ''
+  const rollNo = job.RollNo || job.roll_no || job.roll_number || ''
+  const jobType = job.JobType || job.job_type || 'REPAIR'
+  const problem = job.Comment || job.Details || job.details || job.Problem || job.Detail || 'ไม่มีรายละเอียดอาการหรือคำอธิบาย'
+  const createdBy = job.CreatedBy || job.created_by || 'เจ้าหน้าที่'
+  const status = job.Status || job.status || 'IN_PROGRESS'
+
+  // Normalize technician string
+  let techStr = ''
+  if (Array.isArray(assignedTechs) && assignedTechs.length > 0) {
+    techStr = assignedTechs.join(', ')
+  } else if (typeof assignedTechs === 'string' && assignedTechs.trim()) {
+    techStr = assignedTechs.trim()
+  } else {
+    techStr = job.Technicians || job.Tech || 'ช่างเทคนิค'
+  }
+
+  // Job Type label in Thai
+  const jobTypeLabels = {
+    REPAIR: '🔧 แก้ไข (Repair)',
+    DESIGN: '🎨 ปรับแบบ (Design)',
+    PM: '⚙️ PM / ล้างเครื่อง',
+  }
+  const jobTypeDisplay = jobTypeLabels[jobType] || jobType
+
+  // Status Badge
+  const statusMetaMap = {
+    IN_PROGRESS: { text: '🔵 กำลังทำ', color: '#38bdf8' },
+    WAITING_TECH: { text: '🟠 รอช่าง', color: '#f97316' },
+    WAITING_SUMMARY: { text: '🟣 รอสรุป', color: '#a855f7' },
+    WAITING_PARTS: { text: '🟡 รออะไหล่', color: '#eab308' },
+    COMPLETED: { text: '🟢 เสร็จสิ้น', color: '#10b981' },
+  }
+  const statusBadge = statusMetaMap[status] || { text: '📋 ใบสั่งงาน', color: '#38bdf8' }
+
+  let timeStr = '—'
+  try {
+    const rawTime = job.StartTimestamp || job.StartTime || job.DateStart || job.created_at || Date.now()
+    timeStr = new Date(rawTime).toLocaleString('th-TH', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  } catch {
+    timeStr = String(job.StartTime || job.StartDate || '—')
+  }
+
+  const actionUrl = buildPWALineUrl(appBaseUrl, '/workorders', {
+    job: jobId,
+  })
+  const dashboardUrl = buildPWALineUrl(appBaseUrl, '/workorders')
+
+  return {
+    type: 'flex',
+    altText: `📋 ใบสั่งงานใหม่: ${machine} (${jobId}) มอบหมายช่าง: ${techStr}`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0f172a',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'TextileOps', color: '#60a5fa', size: 'xs', weight: 'bold' },
+              { type: 'text', text: statusBadge.text, color: statusBadge.color, size: 'xs', align: 'end', weight: 'bold' },
+            ],
+          },
+          {
+            type: 'text',
+            text: '📋 ใบสั่งงานใหม่ (ได้รับมอบหมาย)',
+            weight: 'bold',
+            size: 'lg',
+            color: '#ffffff',
+            margin: 'sm',
+          },
+          {
+            type: 'text',
+            text: `เลขที่: ${jobId}`,
+            size: 'xs',
+            color: '#94a3b8',
+            margin: 'xs',
+          },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '18px',
+        backgroundColor: '#ffffff',
+        contents: [
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'ช่างผู้รับผิดชอบ:', color: '#0369a1', size: 'sm', weight: 'bold', flex: 4 },
+                  { type: 'text', text: techStr, wrap: true, color: '#0284c7', size: 'sm', weight: 'bold', flex: 6 },
+                ],
+              },
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เครื่องจักร (M/C):', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: machine, wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              },
+              ki ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'รหัสงาน (KI):', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: ki, wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
+              design ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'แบบ/ลาย (Design):', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: design, wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
+              rollNo ? {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เลขม้วน (Roll No):', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: rollNo, wrap: true, color: '#0f172a', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              } : null,
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'ประเภทงาน:', color: '#64748b', size: 'xs', flex: 4 },
+                  { type: 'text', text: jobTypeDisplay, wrap: true, color: '#475569', size: 'xs', weight: 'bold', flex: 6 },
+                ],
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                margin: 'md',
+                paddingAll: '10px',
+                backgroundColor: '#f1f5f9',
+                cornerRadius: '8px',
+                contents: [
+                  { type: 'text', text: '📝 รายละเอียด / ปัญหา:', color: '#475569', size: 'xxs', weight: 'bold' },
+                  { type: 'text', text: problem, color: '#0f172a', size: 'xs', wrap: true, margin: 'xs' },
+                ],
+              },
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                margin: 'sm',
+                contents: [
+                  { type: 'text', text: 'ผู้เปิดงาน:', color: '#94a3b8', size: 'xxs', flex: 4 },
+                  { type: 'text', text: createdBy, color: '#64748b', size: 'xxs', flex: 6 },
+                ],
+              },
+              {
+                type: 'box',
+                layout: 'baseline',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: 'เวลาเปิดงาน:', color: '#94a3b8', size: 'xxs', flex: 4 },
+                  { type: 'text', text: timeStr, color: '#94a3b8', size: 'xxs', flex: 6 },
+                ],
+              },
+            ].filter(Boolean),
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        backgroundColor: '#f8fafc',
+        paddingAll: '14px',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            height: 'sm',
+            color: '#2563eb',
+            action: {
+              type: 'uri',
+              label: '🚀 เปิดดูใบสั่งงาน (PWA App)',
+              uri: actionUrl,
+            },
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            height: 'sm',
+            action: {
+              type: 'uri',
+              label: '📊 หน้ารวมใบสั่งงานทั้งหมด',
+              uri: dashboardUrl,
+            },
+          },
+        ],
+      },
+    },
+  }
+}
