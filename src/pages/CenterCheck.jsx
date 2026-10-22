@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { format, differenceInCalendarDays, addDays } from 'date-fns'
 import useEntity from '../hooks/useEntity'
+import { useRealtimeTables } from '../api/realtimeSync'
 import {
   CenterCheckAPI,
   CenterCheckStandardsAPI,
@@ -242,6 +243,15 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       }
     }).catch((err) => console.warn('Failed to load standards:', err))
   }, [])
+
+  useRealtimeTables(['appconfigs'], () => {
+    CenterCheckStandardsAPI.getStandards().then((stds) => {
+      if (stds) {
+        setStandardsConfig(stds)
+        setStandardsDraft(stds)
+      }
+    }).catch(() => {})
+  })
 
   // Normalized list of records
   const records = useMemo(() => {

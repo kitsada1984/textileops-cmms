@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRealtimeTables } from '../api/realtimeSync'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { db } from '../api/dbClient'
 import { loadTelegramSettingsDB } from '../utils/telegram'
@@ -2158,67 +2159,72 @@ export default function RepairPage() {
   const [done, setDone] = useState(false)
   const [pdfItem, setPdfItem] = useState(null)
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
+    try {
+      let decodedSerial = String(serial || '').trim()
       try {
-        let decodedSerial = String(serial || '').trim()
-        try {
-          decodedSerial = decodeURIComponent(decodedSerial).trim()
-        } catch {}
+        decodedSerial = decodeURIComponent(decodedSerial).trim()
+      } catch {}
 
-        let cyl = null
-        let authFailed = false
-        const noteError = (error) => {
-          if (error && /unauthor|401/i.test(String(error.message || ''))) authFailed = true
-        }
-        if (decodedSerial) {
-          const { data: foundNow, error: errNow } = await db
+      let cyl = null
+      let authFailed = false
+      const noteError = (error) => {
+        if (error && /unauthor|401/i.test(String(error.message || ''))) authFailed = true
+      }
+      if (decodedSerial) {
+        const { data: foundNow, error: errNow } = await db
+          .from('cylinders')
+          .select('*')
+          .eq('Serial_NOW', decodedSerial)
+          .maybeSingle()
+        noteError(errNow)
+        cyl = foundNow
+        if (!cyl) {
+          const { data: foundOld, error: errOld } = await db
             .from('cylinders')
             .select('*')
-            .eq('Serial_NOW', decodedSerial)
+            .eq('Serial_OLD', decodedSerial)
             .maybeSingle()
-          noteError(errNow)
-          cyl = foundNow
-          if (!cyl) {
-            const { data: foundOld, error: errOld } = await db
-              .from('cylinders')
-              .select('*')
-              .eq('Serial_OLD', decodedSerial)
-              .maybeSingle()
-            noteError(errOld)
-            cyl = foundOld
-          }
+          noteError(errOld)
+          cyl = foundOld
         }
-        setCylinder(cyl)
-
-        if (reqId) {
-          const { data: req, error: reqErr } = await db
-            .from('repair_requests')
-            .select('*')
-            .eq('id', reqId)
-            .maybeSingle()
-          noteError(reqErr)
-          setRequest(req ? normalizeRepairRecord(req) : null)
-        }
-
-        if (needleReqId) {
-          try {
-            const snr = await SpareNeedleRequestAPI.getById(needleReqId)
-            setNeedleRequest(snr)
-          } catch (err) {
-            noteError(err)
-          }
-        }
-        setAuthMissing(authFailed)
-      } catch (e) {
-        console.error('Error loading repair data:', e)
-      } finally {
-        setLoading(false)
       }
+      setCylinder(cyl)
+
+      if (reqId) {
+        const { data: req, error: reqErr } = await db
+          .from('repair_requests')
+          .select('*')
+          .eq('id', reqId)
+          .maybeSingle()
+        noteError(reqErr)
+        setRequest(req ? normalizeRepairRecord(req) : null)
+      }
+
+      if (needleReqId) {
+        try {
+          const snr = await SpareNeedleRequestAPI.getById(needleReqId)
+          setNeedleRequest(snr)
+        } catch (err) {
+          noteError(err)
+        }
+      }
+      setAuthMissing(authFailed)
+    } catch (e) {
+      console.error('Error loading repair data:', e)
+    } finally {
+      if (!silent) setLoading(false)
     }
-    load()
   }, [serial, reqId, needleReqId])
+
+  useRealtimeTables(['cylinders', 'repair_requests', 'spare_needle_requests'], () => {
+    load({ silent: true })
+  })
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   const handleDone = (updated) => {
     setRequest(updated ? normalizeRepairRecord(updated) : null)

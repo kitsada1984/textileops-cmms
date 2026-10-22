@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useRealtimeTables } from '../api/realtimeSync'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Cpu,
@@ -180,14 +181,16 @@ export default function Dashboard() {
   const [selectedRepair, setSelectedRepair] = useState(null)
   const [selectedWO, setSelectedWO] = useState(null)
 
-  useEffect(() => {
-    Promise.allSettled([
-      MachineAPI.list(),
-      WorkOrderAPI.list(),
-      PMPlanAPI.list(),
-      SparePartAPI.list(),
-      RepairRequestAPI.list(),
-    ]).then(([m, w, p, s, r]) => {
+  const loadDashboardData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
+    try {
+      const [m, w, p, s, r] = await Promise.allSettled([
+        MachineAPI.list(),
+        WorkOrderAPI.list(),
+        PMPlanAPI.list(),
+        SparePartAPI.list(),
+        RepairRequestAPI.list(),
+      ])
       const machines       = m.status === 'fulfilled' ? (m.value?.data || m.value || []) : []
       const rawWO          = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
       const workorders     = rawWO.filter((x) => !isSystemWorkOrder(x))
@@ -221,9 +224,18 @@ export default function Dashboard() {
         pendingRepairsList: pendingRepairs,
         recentWO: workorders.slice(0, 5),
       })
-      setLoading(false)
-    })
+    } finally {
+      if (!silent) setLoading(false)
+    }
   }, [])
+
+  useRealtimeTables(['machines', 'workorders', 'pmplans', 'spareparts', 'repair_requests'], () => {
+    loadDashboardData({ silent: true })
+  })
+
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
 
   const syncAllSheets = async () => {
     setSyncingAll(true)

@@ -118,6 +118,22 @@ export async function onRequestGet(context) {
 
   // Mode 2: Standard JSON Poll (since_id)
   try {
+    // If client polls fresh without a prior lastEventId (since_id <= 0),
+    // initialize to current MAX(id) so it doesn't replay the entire history log
+    if (lastEventId <= 0) {
+      let maxSql = 'SELECT MAX(id) AS max_id FROM _d1_change_log'
+      const maxParams = []
+      if (filterTable) {
+        maxSql += ' WHERE table_name = ?'
+        maxParams.push(filterTable)
+      }
+      const maxRow = await db.prepare(maxSql).bind(...maxParams).first()
+      const currentMaxId = maxRow?.max_id || 0
+      return new Response(JSON.stringify({ events: [], last_id: currentMaxId }), {
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
+      })
+    }
+
     let sql = 'SELECT * FROM _d1_change_log WHERE id > ?'
     const params = [lastEventId]
 

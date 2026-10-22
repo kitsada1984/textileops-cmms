@@ -42,6 +42,8 @@ export const WorkOrderAPI = {
 }
 
 export const TechnicianAPI = {
+  tableName: 'appconfigs',
+  realtimeTables: ['appconfigs', 'workorders'],
   list: async () => {
     return getSystemConfig('technicians', {
       legacyWorkOrderId: 'SYS_TECHNICIANS',
@@ -191,6 +193,8 @@ const needleConditionBlob = () =>
   })
 
 export const NeedleConditionAPI = {
+  ...rawNeedleConditionClient,
+  realtimeTables: ['needle_conditions', 'appconfigs'],
   list: async () => {
     // Primary: dedicated needle_conditions table
     try {
@@ -1147,6 +1151,8 @@ export function normalizeSpareNeedleRequest(item = {}) {
 }
 
 export const SpareNeedleRequestAPI = {
+  tableName: 'spare_needle_requests',
+  realtimeTables: ['spare_needle_requests', 'appconfigs'],
   list: async () => {
     try {
       const { data, error } = await db

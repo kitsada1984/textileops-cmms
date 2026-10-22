@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { supabase } from '../supabase'
 import { d1, setAuthToken } from '../api/d1Client'
 import { getActiveDbProvider } from '../api/dbClient'
+import { useRealtimeTables } from '../api/realtimeSync'
 
 const AuthContext = createContext(null)
 
@@ -161,7 +162,11 @@ export function AuthProvider({ children }) {
     }
   }, [refreshUser])
 
-  // Sync latest permissions whenever user re-focuses the window / tab
+  // Sync latest permissions in real-time or when re-focusing
+  useRealtimeTables(['users'], () => {
+    refreshUser()
+  })
+
   useEffect(() => {
     let lastRefresh = Date.now()
     const handleFocus = () => {

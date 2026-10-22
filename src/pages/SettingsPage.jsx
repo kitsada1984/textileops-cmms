@@ -10,6 +10,7 @@ import { useAuth, hashPassword } from '../contexts/AuthContext'
 import { APP_VERSION, APP_BUILD_DATE } from '../version'
 import { fetchTelegramContacts, loadTelegramSettings, saveTelegramSettings, saveTelegramSettingsDB, loadTelegramSettingsDB, testTelegram } from '../utils/telegram'
 import { fetchLineContacts, loadLineSettings, saveLineSettingsDB, loadLineSettingsDB, testLineNotification, DEFAULT_LINE_SETTINGS } from '../utils/line'
+import { useRealtimeTables } from '../api/realtimeSync'
 import { useToast } from '../components/ui/Toast'
 import usePagePerms from '../hooks/usePagePerms'
 import { syncNotificationTechsToRegistry } from '../utils/technicianSync'
@@ -80,6 +81,33 @@ export default function SettingsPage() {
   const [lineContactLoading, setLineContactLoading] = useState(false)
   const [webhookCopied, setWebhookCopied] = useState(false)
 
+  const reloadSettings = async () => {
+    try {
+      const { data } = await db.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
+      if (data?.value) {
+        const cfg = JSON.parse(data.value)
+        if (!cfg.admins) cfg.admins = cfg.supervisors?.length ? cfg.supervisors : [{ name: 'กฤษดา (Admin)', chat_id: '6981653027' }]
+        if (!cfg.supervisors) cfg.supervisors = []
+        if (!cfg.technicians) cfg.technicians = []
+        setTg(cfg)
+      }
+      const lineCfg = await loadLineSettingsDB()
+      if (lineCfg) setLine(lineCfg)
+    } catch {}
+  }
+
+  const reloadCounts = () => {
+    Promise.allSettled(
+      TABLES.map(([tb]) => db.from(tb).select('id', { count: 'exact', head: true }))
+    ).then(results => {
+      const c = {}
+      results.forEach((r, i) => {
+        c[TABLES[i][0]] = r.status === 'fulfilled' ? (r.value.count ?? '—') : '—'
+      })
+      setCounts(c)
+    })
+  }
+
   useEffect(() => {
     ;(async () => {
       const { data } = await db.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
@@ -107,16 +135,16 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    Promise.allSettled(
-      TABLES.map(([tb]) => db.from(tb).select('id', { count: 'exact', head: true }))
-    ).then(results => {
-      const c = {}
-      results.forEach((r, i) => {
-        c[TABLES[i][0]] = r.status === 'fulfilled' ? (r.value.count ?? '—') : '—'
-      })
-      setCounts(c)
-    })
+    reloadCounts()
   }, [])
+
+  useRealtimeTables(['appconfigs'], () => {
+    reloadSettings()
+  })
+
+  useRealtimeTables(TABLES.map(t => t[0]), () => {
+    reloadCounts()
+  })
 
   const changePassword = async () => {
     setPwdMsg('')

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { AppConfigAPI } from '../api/entities'
+import { useRealtimeTables } from '../api/realtimeSync'
 
 const CONFIG_KEY = 'web_builder_config'
 
@@ -165,6 +166,10 @@ export function WebBuilderConfigProvider({ children }) {
   }, [])
 
   useEffect(() => { reload() }, [reload])
+
+  useRealtimeTables(['appconfigs'], () => {
+    reload()
+  })
 
   return (
     <Ctx.Provider value={{ menus, setMenus, configRecordId, setConfigRecordId, reload }}>

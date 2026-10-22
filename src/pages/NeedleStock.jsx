@@ -7,6 +7,7 @@ import {
   Edit3, History, Camera, Upload, ZoomIn, ZoomOut, RefreshCw, Check, Sparkles, MapPin,
   ChevronDown, Image as ImageIcon, Eye, Cloud, ExternalLink, CheckCircle
 } from 'lucide-react'
+import { useRealtimeTables } from '../api/realtimeSync'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
 import usePagePerms from '../hooks/usePagePerms'
@@ -197,10 +198,10 @@ export default function NeedleStock() {
   })
 
   // Load Data
-  const loadData = async (isManual = false) => {
+  const loadData = async (isManual = false, { silent = false } = {}) => {
     try {
       if (isManual) setRefreshing(true)
-      else setLoading(true)
+      else if (!silent) setLoading(true)
 
       const [setsData, logsData, spareData] = await Promise.all([
         NeedleSetAPI.list(),
@@ -239,12 +240,16 @@ export default function NeedleStock() {
       if (isManual) toast.success('รีเฟรชข้อมูลสต็อกเข็มสำเร็จ')
     } catch (err) {
       console.error('Failed to load needle stock data:', err)
-      toast.error('ไม่สามารถโหลดข้อมูลสต็อกเข็มได้: ' + err.message)
+      if (!silent) toast.error('ไม่สามารถโหลดข้อมูลสต็อกเข็มได้: ' + err.message)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
       setRefreshing(false)
     }
   }
+
+  useRealtimeTables(['needle_sets', 'needle_history_logs', 'spare_needle_requests', 'appconfigs'], () => {
+    loadData(false, { silent: true })
+  })
 
   useEffect(() => {
     loadData()

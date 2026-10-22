@@ -177,6 +177,8 @@ function matchLocalRecord(r, targetId) {
 
 export function createEntityClient(tableName) {
   return {
+    tableName,
+    realtimeTables: [tableName],
     list: async () => {
       try {
         const { data, error } = await db.from(tableName).select('*')

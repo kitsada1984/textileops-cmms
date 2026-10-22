@@ -221,6 +221,23 @@ class D1QueryBuilder {
         // Non-array mutation result (object) passes through unchanged
       }
 
+      // Broadcast mutation to same-browser tabs for 0ms multi-tab sync
+      if (['insert', 'update', 'delete', 'upsert'].includes(this.action)) {
+        try {
+          if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('txops_d1_realtime')
+            bc.postMessage({
+              table: this.table,
+              eventType: this.action.toUpperCase(),
+              recordId: Array.isArray(data) ? data[0]?.id : data?.id,
+              new: Array.isArray(data) ? data[0] : data,
+              time: Date.now()
+            })
+            bc.close()
+          }
+        } catch {}
+      }
+
       return { data, error: null }
     } catch (err) {
       return { data: null, error: { message: err.message } }
@@ -241,6 +258,8 @@ class D1RealtimeChannel {
     this.listeners = []
     this.pollInterval = null
     this.lastEventId = 0
+    this.isSubscribed = false
+    this.bc = null
   }
 
   on(type, filter, callback) {
@@ -254,6 +273,24 @@ class D1RealtimeChannel {
   subscribe(statusCallback) {
     const isBrowser = typeof window !== 'undefined'
     if (!isBrowser) return this
+
+    if (this.isSubscribed && (this.eventSource || this.pollInterval)) {
+      if (statusCallback) statusCallback('SUBSCRIBED')
+      return this
+    }
+    this.isSubscribed = true
+
+    // Multi-tab listener for 0ms same-device sync
+    if (typeof BroadcastChannel !== 'undefined' && !this.bc) {
+      try {
+        this.bc = new BroadcastChannel('txops_d1_realtime')
+        this.bc.onmessage = (e) => {
+          if (e?.data?.table && e?.data?.eventType) {
+            this._notifyListeners(e.data)
+          }
+        }
+      } catch {}
+    }
 
     const token = getAuthToken()
     const streamUrl = `${this.client.realtimeUrl}?stream=true&since_id=${this.lastEventId}${token ? `&token=${encodeURIComponent(token)}` : ''}`
@@ -345,9 +382,14 @@ class D1RealtimeChannel {
   }
 
   unsubscribe() {
+    this.isSubscribed = false
     if (this.eventSource) {
       this.eventSource.close()
       this.eventSource = null
+    }
+    if (this.bc) {
+      try { this.bc.close() } catch {}
+      this.bc = null
     }
     this._stopPolling()
   }

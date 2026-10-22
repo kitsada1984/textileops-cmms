@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
+import { useRealtimeTables } from '../api/realtimeSync'
 import { DesignBomAPI, MachineAPI } from '../api/entities'
 import useWebBuilderMenu from '../hooks/useWebBuilderMenu'
 import Modal from '../components/ui/Modal'
@@ -183,6 +184,15 @@ export default function DesignBom() {
       })
       .catch(() => {})
   }, [])
+
+  useRealtimeTables(['machines'], () => {
+    MachineAPI.list()
+      .then((res) => {
+        const rows = res?.data || res || []
+        setMachineList(rows)
+      })
+      .catch(() => {})
+  })
 
   // Summary statistics
   const stats = useMemo(() => {

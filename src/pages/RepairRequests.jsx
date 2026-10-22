@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
+import { useRealtimeTables } from '../api/realtimeSync'
 import { RepairRequestAPI, CylinderAPI, WorkOrderAPI, REPAIR_STATUS } from '../api/entities'
 import useWebBuilderMenu from '../hooks/useWebBuilderMenu'
 import SearchInput from '../components/ui/SearchInput'
@@ -71,6 +72,10 @@ export default function RepairRequests() {
   useEffect(() => {
     CylinderAPI.list().then(setCylinders).catch(() => setCylinders([]))
   }, [])
+
+  useRealtimeTables(['cylinders'], () => {
+    CylinderAPI.list().then(setCylinders).catch(() => setCylinders([]))
+  })
 
   const cylMap = useMemo(() => {
     const m = {}

@@ -22,6 +22,7 @@ import {
 import { format, parseISO, isValid } from 'date-fns'
 import { th } from 'date-fns/locale'
 import { MachineAPI, WorkOrderAPI, PMPlanAPI, SparePartAPI, isSystemWorkOrder } from '../api/entities'
+import { useRealtimeTables } from '../api/realtimeSync'
 import { useT } from '../contexts/LanguageContext'
 
 /* ─────────────────────────────────────────────────────────────
@@ -689,9 +690,9 @@ export default function Reports() {
   })
 
   // Fetch Data function
-  const fetchData = async (isManualRefresh = false) => {
+  const fetchData = async (isManualRefresh = false, { silent = false } = {}) => {
     if (isManualRefresh) setRefreshing(true)
-    else setLoading(true)
+    else if (!silent) setLoading(true)
 
     try {
       const [m, w, p, s] = await Promise.allSettled([
@@ -711,10 +712,14 @@ export default function Reports() {
     } catch (err) {
       console.error('Failed to load reports data:', err)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
       setRefreshing(false)
     }
   }
+
+  useRealtimeTables(['machines', 'workorders', 'pmplans', 'spareparts'], () => {
+    fetchData(false, { silent: true })
+  })
 
   useEffect(() => {
     fetchData()

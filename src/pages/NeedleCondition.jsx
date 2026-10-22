@@ -41,6 +41,7 @@ import {
   AuditLogAPI,
 } from '../api/entities'
 import { useAuth } from '../contexts/AuthContext'
+import { useRealtimeTables } from '../api/realtimeSync'
 import { useToast } from '../components/ui/Toast'
 import { useT } from '../contexts/LanguageContext'
 import usePagePerms from '../hooks/usePagePerms'
@@ -204,8 +205,8 @@ export default function NeedleCondition() {
   const [scanning, setScanning] = useState(false)
 
   // Load all initial data
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     try {
       const [ncData, cylData, mcData] = await Promise.allSettled([
         NeedleConditionAPI.list(),
@@ -221,11 +222,15 @@ export default function NeedleCondition() {
       setCylinders(cyls)
       setMachines(mcs)
     } catch (e) {
-      toast.error('โหลดข้อมูลสภาพเข็มไม่สำเร็จ', e.message)
+      if (!silent) toast.error('โหลดข้อมูลสภาพเข็มไม่สำเร็จ', e.message)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  useRealtimeTables(['needle_conditions', 'cylinders', 'machines', 'appconfigs'], () => {
+    loadData({ silent: true })
+  })
 
   useEffect(() => {
     loadData()
