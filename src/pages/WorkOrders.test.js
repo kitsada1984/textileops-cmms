@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getWorkOrderDetails } from './WorkOrders.jsx'
+import { getWorkOrderDetails, buildTechFromUser, getUnregisteredLineUsers } from './WorkOrders.jsx'
 
 describe('WorkOrders utilities', () => {
   describe('getWorkOrderDetails', () => {
@@ -44,6 +44,71 @@ describe('WorkOrders utilities', () => {
       expect(getWorkOrderDetails({ problem: 'ยางพลิก' })).toBe('ยางพลิก')
       expect(getWorkOrderDetails({ Detail: 'เช็คระดับน้ำมัน' })).toBe('เช็คระดับน้ำมัน')
       expect(getWorkOrderDetails({ Description: 'ตรวจระบบไฟ' })).toBe('ตรวจระบบไฟ')
+    })
+  })
+
+  describe('buildTechFromUser', () => {
+    it('auto-fills Name, Line_ID, Avatar_URL, and User_ID from a LINE user', () => {
+      const mockUser = {
+        id: 'usr_001',
+        username: 'line_user99',
+        full_name: 'สมชาย ช่างปรับ',
+        line_user_id: 'U66f2b207af94e739c10a3cf937af2965',
+        line_display_name: 'Somchai (LINE)',
+        line_picture_url: 'https://example.com/avatar.jpg',
+      }
+      const initialForm = {
+        Name: '',
+        Phone: '',
+        SkillLevel: 'Senior',
+        Specialization: '',
+        Status: 'ACTIVE',
+        Line_ID: '',
+        Telegram_ID: '',
+      }
+
+      const result = buildTechFromUser(mockUser, initialForm)
+      expect(result.Name).toBe('สมชาย ช่างปรับ')
+      expect(result.Line_ID).toBe('U66f2b207af94e739c10a3cf937af2965')
+      expect(result.Avatar_URL).toBe('https://example.com/avatar.jpg')
+      expect(result.User_ID).toBe('usr_001')
+      expect(result.SkillLevel).toBe('Senior')
+    })
+
+    it('preserves existing custom Name if already typed by admin', () => {
+      const mockUser = {
+        id: 'usr_002',
+        username: 'line_user12',
+        full_name: 'วิชัย',
+        line_user_id: 'U999888777',
+      }
+      const existingForm = {
+        Name: 'ช.วิชัย (หัวหน้ากะเช้า)',
+        Line_ID: '',
+      }
+
+      const result = buildTechFromUser(mockUser, existingForm)
+      expect(result.Name).toBe('ช.วิชัย (หัวหน้ากะเช้า)')
+      expect(result.Line_ID).toBe('U999888777')
+    })
+  })
+
+  describe('getUnregisteredLineUsers', () => {
+    it('returns only users who have line_user_id and are not in technicians', () => {
+      const systemUsers = [
+        { id: 'u1', full_name: 'ช่างหนึ่ง', line_user_id: 'U1111' }, // already in tech
+        { id: 'u2', full_name: 'ช่างสอง', line_user_id: 'U2222' }, // not in tech -> should return
+        { id: 'u3', full_name: 'ผู้ใช้ทั่วไปไม่มี LINE', line_user_id: null }, // no LINE ID -> excluded
+        { id: 'u4', full_name: 'ช่างสาม', line_user_id: '' }, // empty LINE ID -> excluded
+      ]
+      const technicians = [
+        { id: 'TECH-001', Name: 'ช่างหนึ่ง', Line_ID: 'U1111' },
+      ]
+
+      const unregistered = getUnregisteredLineUsers(systemUsers, technicians)
+      expect(unregistered).toHaveLength(1)
+      expect(unregistered[0].id).toBe('u2')
+      expect(unregistered[0].line_user_id).toBe('U2222')
     })
   })
 })

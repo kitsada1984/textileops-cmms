@@ -198,7 +198,36 @@ export async function onRequestGet({ env }) {
 
   try {
     const contacts = (await getConfigValue(db, 'line_contacts')) || []
-    return new Response(JSON.stringify({ ok: true, contacts }), {
+    const contactMap = new Map()
+    for (const c of contacts) {
+      if (c && c.user_id) contactMap.set(c.user_id, c)
+    }
+
+    try {
+      const { results } = await db
+        .prepare(
+          "SELECT id, username, full_name, line_user_id, line_display_name, line_picture_url, updated_at FROM users WHERE line_user_id IS NOT NULL AND line_user_id != ''"
+        )
+        .all()
+      if (Array.isArray(results)) {
+        for (const u of results) {
+          if (!contactMap.has(u.line_user_id)) {
+            contactMap.set(u.line_user_id, {
+              user_id: u.line_user_id,
+              name: u.line_display_name || u.full_name || u.username,
+              picture_url: u.line_picture_url || '',
+              type: 'user',
+              last_active: u.updated_at || new Date().toISOString(),
+            })
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to query users table for LINE contacts:', err)
+    }
+
+    const mergedContacts = Array.from(contactMap.values())
+    return new Response(JSON.stringify({ ok: true, contacts: mergedContacts }), {
       status: 200,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     })

@@ -32,6 +32,7 @@ import useEntity from '../hooks/useEntity'
 import {
   WorkOrderAPI,
   TechnicianAPI,
+  UserAPI,
   KpiSettingsAPI,
   AuditLogAPI,
   WO_JOB_TYPE,
@@ -186,6 +187,45 @@ export function TechSkillBar({ skillLevel = 'Senior' }) {
       </div>
     </div>
   )
+}
+
+/**
+ * Maps a system user (e.g. from LINE Login) into technician form fields.
+ */
+export function buildTechFromUser(user = {}, currentForm = {}) {
+  const lineId = user.line_user_id || ''
+  const displayName = user.full_name || user.line_display_name || user.username || ''
+  return {
+    ...currentForm,
+    Name: currentForm.Name?.trim() ? currentForm.Name : displayName,
+    Line_ID: lineId || currentForm.Line_ID || '',
+    Avatar_URL: user.line_picture_url || currentForm.Avatar_URL || '',
+    User_ID: user.id || currentForm.User_ID || '',
+  }
+}
+
+/**
+ * Finds users from the system who have logged in via LINE but are not yet registered as technicians.
+ */
+export function getUnregisteredLineUsers(systemUsers = [], technicians = []) {
+  if (!Array.isArray(systemUsers)) return []
+  const techLineIds = new Set(
+    (technicians || [])
+      .map((t) => (t.Line_ID || t.line_id || '').trim().toLowerCase())
+      .filter(Boolean)
+  )
+  const techNames = new Set(
+    (technicians || [])
+      .map((t) => (t.Name || t.name || '').trim().toLowerCase())
+      .filter(Boolean)
+  )
+
+  return systemUsers.filter((u) => {
+    if (!u || !u.line_user_id) return false
+    const normLineId = String(u.line_user_id).trim().toLowerCase()
+    const normName = String(u.full_name || u.line_display_name || u.username || '').trim().toLowerCase()
+    return !techLineIds.has(normLineId) && !techNames.has(normName)
+  })
 }
 
 function WorkOrderCard({
@@ -414,6 +454,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   // Technicians State
   const [technicians, setTechnicians] = useState(DEFAULT_TECHS)
   const [techLoading, setTechLoading] = useState(false)
+  const [systemUsers, setSystemUsers] = useState([])
+  const [selectedUserId, setSelectedUserId] = useState('')
 
   // KPI Settings State
   const [kpiTargets, setKpiTargets] = useState(DEFAULT_KPI_TARGETS)
@@ -619,10 +661,15 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const loadTechsAndSettings = async () => {
     setTechLoading(true)
     try {
-      const [techRes, kpiRes] = await Promise.allSettled([
+      const [techRes, kpiRes, usersRes] = await Promise.allSettled([
         TechnicianAPI.list(),
         KpiSettingsAPI.list(),
+        UserAPI.list(),
       ])
+
+      if (usersRes.status === 'fulfilled' && Array.isArray(usersRes.value)) {
+        setSystemUsers(usersRes.value)
+      }
 
       if (techRes.status === 'fulfilled' && Array.isArray(techRes.value)) {
         setTechnicians(techRes.value)
@@ -1030,14 +1077,15 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }
 
   // Add / Edit / Delete Technician
-  const openAddTech = () => {
+  const openAddTech = (userToPreFill = null) => {
     const maxNum = technicians.reduce((max, t) => {
       const match = String(t.Technician_ID || t.id || '').match(/TECH-(\d+)/i)
       return match ? Math.max(max, parseInt(match[1], 10)) : max
     }, 0)
     const nextId = `TECH-${String(maxNum + 1).padStart(3, '0')}`
     setEditingTechId(null)
-    setTechForm({
+    setSelectedUserId(userToPreFill?.id || '')
+    const baseForm = {
       id: nextId,
       Technician_ID: nextId,
       Name: '',
@@ -1047,13 +1095,20 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       Status: 'ACTIVE',
       Line_ID: '',
       Telegram_ID: '',
-    })
+      Avatar_URL: '',
+      User_ID: '',
+    }
+    setTechForm(userToPreFill ? buildTechFromUser(userToPreFill, baseForm) : baseForm)
     setTechModalOpen(true)
   }
 
   const openEditTech = (tech) => {
     const techId = tech.id || tech.Technician_ID
     setEditingTechId(techId)
+    const matchedUser = systemUsers.find(
+      (u) => (u.id && u.id === tech.User_ID) || (u.line_user_id && u.line_user_id === (tech.Line_ID || tech.line_id))
+    )
+    setSelectedUserId(matchedUser?.id || '')
     setTechForm({
       ...tech,
       id: techId,
@@ -1065,8 +1120,18 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       Status: tech.Status || 'ACTIVE',
       Line_ID: tech.Line_ID || tech.line_id || '',
       Telegram_ID: tech.Telegram_ID || tech.telegram_id || '',
+      Avatar_URL: tech.Avatar_URL || matchedUser?.line_picture_url || '',
+      User_ID: tech.User_ID || matchedUser?.id || '',
     })
     setTechModalOpen(true)
+  }
+
+  const handleSelectUserForTech = (userId) => {
+    setSelectedUserId(userId)
+    if (!userId) return
+    const userObj = systemUsers.find((u) => u.id === userId)
+    if (!userObj) return
+    setTechForm((prev) => buildTechFromUser(userObj, prev))
   }
 
   // Sync Technicians to LINE and Telegram notification settings in Supabase & LocalStorage
@@ -1175,6 +1240,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     setPrintJob(job)
     setPrintModalOpen(true)
   }
+
+  const unregisteredLineUsers = useMemo(
+    () => getUnregisteredLineUsers(systemUsers, technicians),
+    [systemUsers, technicians]
+  )
 
   const exportConfig = SHEET_EXPORTS.find((c) => c.key === 'workorders')
 
@@ -2133,12 +2203,65 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </p>
             </div>
             {canAdd && (
-              <button onClick={openAddTech} className="btn-primary">
+              <button onClick={() => openAddTech()} className="btn-primary">
                 <UserPlus size={15} />
                 <span>เพิ่มช่างใหม่</span>
               </button>
             )}
           </div>
+
+          {/* Quick-Add Panel for Users logged in with LINE who aren't in Technicians yet */}
+          {unregisteredLineUsers.length > 0 && canAdd && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="font-bold text-xs text-emerald-800 dark:text-emerald-300">
+                    พบบัญชี LINE Login ที่ยังไม่ได้เพิ่มในทะเบียนช่าง ({unregisteredLineUsers.length} บัญชี)
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  คลิก "+ เพิ่มเป็นช่าง" เพื่อดึงชื่อและ LINE User ID ให้อัตโนมัติ
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                {unregisteredLineUsers.map((u) => {
+                  const dispName = u.full_name || u.line_display_name || u.username
+                  return (
+                    <div
+                      key={u.id || u.line_user_id}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20 shadow-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-500/30 overflow-hidden flex items-center justify-center text-xs font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
+                          {u.line_picture_url ? (
+                            <img src={u.line_picture_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            dispName[0]?.toUpperCase()
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                            {dispName}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono truncate">
+                            LINE: {u.line_display_name || u.username}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openAddTech(u)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-800 shrink-0 transition-colors"
+                      >
+                        + เพิ่มเป็นช่าง
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {technicians.length === 0 ? (
             <div className="card p-12 text-center space-y-4 border-dashed border-2 border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 rounded-2xl">
@@ -2155,7 +2278,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
               <div>
                 <button
-                  onClick={openAddTech}
+                  onClick={() => openAddTech()}
                   className="btn-primary inline-flex items-center gap-2 px-6 py-2.5 shadow-md text-sm font-bold"
                 >
                   <UserPlus size={16} />
@@ -2178,8 +2301,12 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-black font-mono">
-                          {(tech?.Name || '?')[0]?.toUpperCase()}
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-black font-mono overflow-hidden">
+                          {tech.Avatar_URL ? (
+                            <img src={tech.Avatar_URL} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            (tech?.Name || '?')[0]?.toUpperCase()
+                          )}
                         </div>
                         <div>
                           <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
@@ -2659,6 +2786,49 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           title={editingTechId ? 'แก้ไขข้อมูลช่าง' : 'เพิ่มข้อมูลช่าง'}
         >
           <div className="space-y-4 text-xs pb-1">
+            {/* User Quick-Select from System Users (LINE Login) */}
+            {systemUsers.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-slate-50 to-slate-50 dark:from-emerald-950/20 dark:via-slate-900/60 dark:to-slate-900/60 border border-emerald-500/25 dark:border-emerald-500/20 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="label font-bold flex items-center gap-1.5 mb-0 text-slate-800 dark:text-slate-200">
+                    <span className="text-emerald-500 font-bold">🟢</span>
+                    <span>เลือกจากรายชื่อผู้ใช้งาน (ดึงชื่อ & LINE User ID อัตโนมัติ)</span>
+                  </label>
+                  {techForm.Line_ID && (
+                    <span className="text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
+                      ✓ ผูก LINE ID แล้ว
+                    </span>
+                  )}
+                </div>
+
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => handleSelectUserForTech(e.target.value)}
+                  className="select text-xs font-medium"
+                >
+                  <option value="">-- พิมพ์เอง หรือเลือกผู้ใช้เพื่อเติมข้อมูลอัตโนมัติ --</option>
+                  {systemUsers.map((u) => {
+                    const hasLine = Boolean(u.line_user_id)
+                    const isRegistered = technicians.some(
+                      (t) =>
+                        (t.id !== editingTechId && t.Technician_ID !== editingTechId) &&
+                        ((t.Line_ID && t.Line_ID === u.line_user_id) ||
+                         (t.Name && t.Name.toLowerCase() === (u.full_name || u.line_display_name || '').toLowerCase()))
+                    )
+                    const label = `${u.full_name || u.line_display_name || u.username} (${u.role || 'user'})${hasLine ? ' [🟢 LINE]' : ''}${isRegistered ? ' (มีในทะเบียนช่างแล้ว)' : ''}`
+                    return (
+                      <option key={u.id || u.username} value={u.id}>
+                        {label}
+                      </option>
+                    )
+                  })}
+                </select>
+                <p className="text-[10px] text-slate-400">
+                  เมื่อเลือกผู้ใช้ ระบบจะดึงชื่อและ LINE User ID มากรอกให้อัตโนมัติทันที
+                </p>
+              </div>
+            )}
+
             {/* 1. Name */}
             <div>
               <label className="label font-bold">ชื่อช่าง *</label>
