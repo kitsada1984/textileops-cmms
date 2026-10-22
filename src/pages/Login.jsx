@@ -17,7 +17,7 @@ function LineIcon({ size = 18, style = {} }) {
 
 export default function Login() {
   const { t } = useT()
-  const { login } = useAuth()
+  const { login, loginWithToken } = useAuth()
   const [mode, setMode]         = useState('password') // 'password' | 'qr'
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -25,9 +25,10 @@ export default function Login() {
   const [error, setError]       = useState('')
 
   // QR Login State
-  const [qrUrl, setQrUrl]             = useState('')
-  const [qrLoading, setQrLoading]     = useState(false)
-  const [qrError, setQrError]         = useState('')
+  const [qrUrl, setQrUrl]                   = useState('')
+  const [qrSessionCode, setQrSessionCode]   = useState('')
+  const [qrLoading, setQrLoading]           = useState(false)
+  const [qrError, setQrError]               = useState('')
 
   // Check URL parameters for LINE callback errors
   useEffect(() => {
@@ -44,6 +45,30 @@ export default function Login() {
     }
   }, [])
 
+  // Poll session status so scanning the QR code automatically logs in
+  useEffect(() => {
+    if (!qrSessionCode) return
+    let active = true
+    const timer = setInterval(async () => {
+      if (!active) return
+      try {
+        const res = await fetch(`/api/auth/line/login?check_session=${encodeURIComponent(qrSessionCode)}`)
+        const data = await res.json().catch(() => ({}))
+        if (data?.ok && data.status === 'authenticated' && data.token && data.user) {
+          clearInterval(timer)
+          if (typeof loginWithToken === 'function') {
+            loginWithToken(data.token, data.user)
+          }
+        }
+      } catch {}
+    }, 2000)
+
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [qrSessionCode, loginWithToken])
+
   const fetchLineQrUrl = async () => {
     setQrLoading(true)
     setQrError('')
@@ -54,8 +79,13 @@ export default function Login() {
         throw new Error(data.error || 'ไม่สามารถสร้างลิงก์สำหรับสแกน LINE QR ได้')
       }
       setQrUrl(data.url)
+      if (data.session_code) {
+        setQrSessionCode(data.session_code)
+      }
+      return data
     } catch (err) {
       setQrError(err.message || 'เกิดข้อผิดพลาดในการโหลด QR Code')
+      return null
     } finally {
       setQrLoading(false)
     }
@@ -69,8 +99,13 @@ export default function Login() {
     }
   }
 
-  const handleLineLoginRedirect = () => {
-    window.location.href = '/api/auth/line/login'
+  const handleLineLoginRedirect = async () => {
+    setMode('qr')
+    setError('')
+    const data = qrUrl ? { url: qrUrl, session_code: qrSessionCode } : await fetchLineQrUrl()
+    if (data?.url) {
+      window.location.href = data.url
+    }
   }
 
   const submit = async (e) => {
@@ -281,9 +316,16 @@ export default function Login() {
         {/* MODE: QR Code Scanner */}
         {mode === 'qr' && (
           <div className="flex flex-col items-center text-center py-2">
-            <div className="text-xs text-slate-300 font-medium mb-4 max-w-xs leading-relaxed">
-              เปิดกล้องหรือแอป <span className="text-[#06C755] font-bold">LINE</span> ในโทรศัพท์มือถือ แล้วสแกน QR Code ด้านล่างนี้เพื่อเข้าสู่ระบบทันที
+            <div className="text-xs text-slate-300 font-medium mb-3 max-w-xs leading-relaxed">
+              สแกน QR Code ด้านล่างด้วยกล้องหรือแอป <span className="text-[#06C755] font-bold">LINE</span> แล้วกด <span className="text-white font-bold">&quot;ส่งข้อความ&quot;</span> ในแชท ระบบจะเข้าใช้งานให้อัตโนมัติทันที
             </div>
+
+            {qrSessionCode && (
+              <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-[#06C755] animate-pulse" />
+                <span>รอรับการยืนยันจาก LINE (รหัส #{qrSessionCode})</span>
+              </div>
+            )}
 
             {/* QR Box */}
             <div
@@ -334,7 +376,7 @@ export default function Login() {
                 className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors"
               >
                 <RefreshCw size={12} className={qrLoading ? 'animate-spin' : ''} />
-                <span>รีเฟรช QR Code</span>
+                <span>สร้าง QR Code ใหม่</span>
               </button>
             </div>
 
@@ -344,7 +386,7 @@ export default function Login() {
               onClick={handleLineLoginRedirect}
               className="mt-4 w-full text-xs text-[#06C755] hover:underline font-semibold"
             >
-              หรือคลิกที่นี่เพื่อเปิดหน้า LINE Login บนอุปกรณ์นี้ →
+              หรือคลิกที่นี่เพื่อเปิดแอป LINE บนอุปกรณ์นี้ทันที →
             </button>
           </div>
         )}

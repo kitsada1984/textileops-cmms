@@ -1,6 +1,8 @@
 // functions/api/line-webhook.js
-// Cloudflare Pages Function: LINE Webhook to automatically capture Users/Contacts and Group IDs
-// Storage: Cloudflare D1 (appconfigs table)
+// Cloudflare Pages Function: LINE Webhook for Instant QR/LINE Login, Auto User Provisioning, and Contact Sync
+// Storage: Cloudflare D1 (users & appconfigs tables)
+
+import { createAuthToken } from './_auth.js'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -32,6 +34,118 @@ async function saveConfigValue(db, key, value) {
     .run()
 }
 
+function generateMagicCode(len = 10) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
+  let out = ''
+  for (let i = 0; i < len; i++) {
+    out += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return out
+}
+
+async function upsertLineUserInDb(db, lineProfile, lineSettings = {}) {
+  const userId = lineProfile.userId
+  const displayName = lineProfile.displayName || 'ผู้ใช้ LINE'
+  const pictureUrl = lineProfile.pictureUrl || null
+
+  const existing = await db
+    .prepare(
+      'SELECT id, username, full_name, role, status, permissions, line_user_id, line_display_name, line_picture_url FROM users WHERE line_user_id = ?'
+    )
+    .bind(userId)
+    .first()
+
+  if (existing) {
+    await db
+      .prepare(
+        "UPDATE users SET line_display_name = ?, line_picture_url = ?, updated_at = datetime('now') WHERE id = ?"
+      )
+      .bind(
+        displayName || existing.line_display_name,
+        pictureUrl || existing.line_picture_url,
+        existing.id
+      )
+      .run()
+
+    let permissions = {}
+    try {
+      permissions =
+        typeof existing.permissions === 'string'
+          ? JSON.parse(existing.permissions)
+          : existing.permissions || {}
+    } catch {}
+
+    return {
+      id: existing.id,
+      username: existing.username,
+      full_name: existing.full_name || displayName || existing.username,
+      role: existing.role || 'user',
+      status: existing.status || 'active',
+      permissions,
+      line_user_id: userId,
+      line_display_name: displayName || existing.line_display_name,
+      line_picture_url: pictureUrl || existing.line_picture_url,
+    }
+  }
+
+  // Check if user is a configured supervisor/admin
+  const supervisors = Array.isArray(lineSettings.supervisors) ? lineSettings.supervisors : []
+  const isSupervisorId =
+    userId === 'U66f2b207af94e739c10a3cf937af2965' ||
+    supervisors.some((s) => s.user_id === userId)
+
+  const defaultRole = isSupervisorId ? 'admin' : lineSettings.login_default_role || 'user'
+  const defaultPerms =
+    defaultRole === 'admin'
+      ? {}
+      : {
+          dashboard: ['view'],
+          machines: ['view'],
+          cylinders: ['view'],
+          workorders: ['view'],
+          pm: ['view'],
+        }
+
+  const newId = `usr_${crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '').slice(0, 16) : Math.random().toString(36).slice(2, 18)}`
+  let baseUsername = `line_${userId.slice(-6).toLowerCase()}`
+  const dup = await db.prepare('SELECT id FROM users WHERE username = ?').bind(baseUsername).first()
+  if (dup) {
+    baseUsername = `line_${userId.slice(-10).toLowerCase()}`
+  }
+
+  await db
+    .prepare(
+      `INSERT INTO users (
+        id, username, full_name, role, status, permissions,
+        line_user_id, line_display_name, line_picture_url,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    )
+    .bind(
+      newId,
+      baseUsername,
+      displayName || baseUsername,
+      defaultRole,
+      JSON.stringify(defaultPerms),
+      userId,
+      displayName,
+      pictureUrl
+    )
+    .run()
+
+  return {
+    id: newId,
+    username: baseUsername,
+    full_name: displayName || baseUsername,
+    role: defaultRole,
+    status: 'active',
+    permissions: defaultPerms,
+    line_user_id: userId,
+    line_display_name: displayName,
+    line_picture_url: pictureUrl,
+  }
+}
+
 export async function onRequestOptions() {
   return new Response(null, {
     status: 204,
@@ -54,7 +168,7 @@ export async function onRequestGet({ env }) {
       status: 200,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     })
-  } catch (e) {
+  } catch {
     return new Response(JSON.stringify({ ok: true, contacts: [] }), {
       status: 200,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
@@ -65,6 +179,7 @@ export async function onRequestGet({ env }) {
 export async function onRequestPost({ request, env }) {
   const jsonHeaders = { ...CORS_HEADERS, 'Content-Type': 'application/json' }
   const db = getDb(env)
+  const urlObj = new URL(request.url)
 
   if (!db) {
     return new Response(JSON.stringify({ ok: false, error: 'D1 Database binding not configured' }), {
@@ -89,14 +204,9 @@ export async function onRequestPost({ request, env }) {
       })
     }
 
-    // Load active token from line_settings
-    let channelToken = env?.LINE_CHANNEL_ACCESS_TOKEN || ''
-    try {
-      const settings = await getConfigValue(db, 'line_settings')
-      if (settings?.channel_access_token) channelToken = settings.channel_access_token
-    } catch {}
+    const settings = (await getConfigValue(db, 'line_settings')) || {}
+    let channelToken = settings.channel_access_token || env?.LINE_CHANNEL_ACCESS_TOKEN || ''
 
-    // Load existing contacts
     let contacts = []
     try {
       contacts = (await getConfigValue(db, 'line_contacts')) || []
@@ -109,6 +219,7 @@ export async function onRequestPost({ request, env }) {
       const userId = source.userId
       const groupId = source.groupId || source.roomId
       const replyToken = event.replyToken
+      const msgText = (event.message?.text || '').trim()
 
       if (userId) {
         let displayName = 'ผู้ใช้ LINE'
@@ -145,25 +256,184 @@ export async function onRequestPost({ request, env }) {
         }
         contactsUpdated = true
 
-        if (replyToken && channelToken && (event.type === 'follow' || event.type === 'message')) {
-          try {
-            await fetch('https://api.line.me/v2/bot/message/reply', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${channelToken.trim()}`,
-              },
-              body: JSON.stringify({
-                replyToken,
-                messages: [
-                  {
-                    type: 'text',
-                    text: `สวัสดีครับคุณ ${displayName} 👋\nระบบ TextileOps CMMS ได้บันทึกบัญชี LINE ของท่านเข้าสู่ระบบเรียบร้อยแล้วครับ!\n\n(User ID: ${userId})`,
-                  },
-                ],
-              }),
+        // Upsert user in D1 `users` table so they immediately appear in Users management page
+        let appUser = null
+        try {
+          appUser = await upsertLineUserInDb(
+            db,
+            { userId, displayName, pictureUrl },
+            settings
+          )
+        } catch (err) {
+          console.error('Upsert LINE user error:', err)
+        }
+
+        if (appUser && appUser.status !== 'inactive') {
+          const authToken = await createAuthToken(env, {
+            uid: appUser.id,
+            username: appUser.username,
+            role: appUser.role,
+            line_user_id: appUser.line_user_id,
+          })
+
+          // Check if message contains a specific QR session code (e.g. #A8K2M9)
+          const codeMatch = msgText.match(/#([A-Z0-9]{4,8})/i)
+          const matchedCode = codeMatch ? codeMatch[1].toUpperCase() : null
+
+          if (matchedCode) {
+            const existingSession = await getConfigValue(db, `line_login_session_${matchedCode}`)
+            await saveConfigValue(db, `line_login_session_${matchedCode}`, {
+              ...(existingSession || {}),
+              code: matchedCode,
+              status: 'authenticated',
+              token: authToken,
+              user: appUser,
+              created_at: existingSession?.created_at || Date.now(),
+              updated_at: Date.now(),
             })
-          } catch {}
+          }
+
+          // Also resolve the latest pending QR session if created within the last 5 minutes
+          const latestPending = await getConfigValue(db, 'line_latest_pending_session')
+          if (
+            latestPending?.code &&
+            latestPending.status === 'pending' &&
+            Date.now() - (latestPending.created_at || 0) < 5 * 60 * 1000
+          ) {
+            await saveConfigValue(db, `line_login_session_${latestPending.code}`, {
+              ...latestPending,
+              status: 'authenticated',
+              token: authToken,
+              user: appUser,
+              updated_at: Date.now(),
+            })
+            await saveConfigValue(db, 'line_latest_pending_session', {
+              ...latestPending,
+              status: 'authenticated',
+            })
+          }
+
+          // Create a 1-click Magic Link token for mobile direct login
+          const magicCode = generateMagicCode(10)
+          await saveConfigValue(db, `line_magic_${magicCode}`, {
+            token: authToken,
+            user: appUser,
+            returnTo: '/',
+            created_at: Date.now(),
+          })
+
+          const baseOrigin = settings.app_base_url || urlObj.origin || 'https://textileops-cmms.pages.dev'
+          const magicUrl = `${baseOrigin.replace(/\/$/, '')}/api/auth/line/login?magic_token=${magicCode}&openExternalBrowser=1`
+
+          if (replyToken && channelToken && (event.type === 'follow' || event.type === 'message')) {
+            const roleLabel =
+              appUser.role === 'admin'
+                ? 'ผู้ดูแลระบบ (Admin)'
+                : appUser.role === 'supervisor'
+                ? 'หัวหน้างาน (Supervisor)'
+                : appUser.role === 'viewer'
+                ? 'ผู้ชม (Viewer)'
+                : 'ผู้ใช้งาน (User)'
+
+            try {
+              await fetch('https://api.line.me/v2/bot/message/reply', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${channelToken.trim()}`,
+                },
+                body: JSON.stringify({
+                  replyToken,
+                  messages: [
+                    {
+                      type: 'flex',
+                      altText: `ยืนยันตัวตนสำเร็จ - เข้าสู่ระบบ TextileOps (${displayName})`,
+                      contents: {
+                        type: 'bubble',
+                        size: 'mega',
+                        header: {
+                          type: 'box',
+                          layout: 'vertical',
+                          backgroundColor: '#06C755',
+                          paddingAll: '16px',
+                          contents: [
+                            {
+                              type: 'text',
+                              text: '✅ ยืนยันตัวตน LINE สำเร็จ',
+                              color: '#ffffff',
+                              weight: 'bold',
+                              size: 'md',
+                            },
+                            {
+                              type: 'text',
+                              text: 'Gemma Knits - TextileOps CMMS',
+                              color: '#e2fbe8',
+                              size: 'xs',
+                              margin: 'xs',
+                            },
+                          ],
+                        },
+                        body: {
+                          type: 'box',
+                          layout: 'vertical',
+                          spacing: 'sm',
+                          paddingAll: '16px',
+                          contents: [
+                            {
+                              type: 'text',
+                              text: `สวัสดีคุณ ${displayName}`,
+                              weight: 'bold',
+                              size: 'md',
+                              color: '#0f172a',
+                            },
+                            {
+                              type: 'text',
+                              text: `สิทธิ์การใช้งาน: ${roleLabel}`,
+                              size: 'xs',
+                              color: '#059669',
+                              weight: 'bold',
+                            },
+                            {
+                              type: 'separator',
+                              margin: 'md',
+                            },
+                            {
+                              type: 'text',
+                              text: '• หากสแกนจากคอมพิวเตอร์ หน้าจอได้เข้าสู่ระบบให้อัตโนมัติแล้ว\n• หากใช้งานบนมือถือ กดปุ่มสีเขียวด้านล่างเพื่อเข้าสู่ระบบทันที',
+                              size: 'xs',
+                              color: '#475569',
+                              wrap: true,
+                              margin: 'md',
+                            },
+                          ],
+                        },
+                        footer: {
+                          type: 'box',
+                          layout: 'vertical',
+                          paddingAll: '12px',
+                          contents: [
+                            {
+                              type: 'button',
+                              style: 'primary',
+                              color: '#06C755',
+                              height: 'sm',
+                              action: {
+                                type: 'uri',
+                                label: '🚀 เข้าสู่ระบบบนมือถือทันที',
+                                uri: magicUrl,
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                }),
+              })
+            } catch (err) {
+              console.warn('Reply flex error:', err)
+            }
+          }
         }
       }
 
