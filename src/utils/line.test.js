@@ -281,4 +281,35 @@ describe('Work Order LINE Notifications', () => {
     expect(resDisabled.ok).toBe(false)
     expect(resDisabled.skipped).toBe(true)
   })
+
+  it('prioritizes exact name match over substring match and does not skip similar names', async () => {
+    const cfg = {}
+    const inMemoryUsers = [
+      { id: 'u1', full_name: 'kitsada', line_user_id: 'Uc25ed474096368484a90164c4403c98d' },
+      { id: 'u2', full_name: 'Kitsada (หนึ่ง)', line_user_id: 'U66f2b207af94e739c10a3cf937af2965' },
+      { id: 'u3', full_name: '🍓ต.ตั้ม.คนเพชรบูรณ์🍓', line_user_id: 'Ub378d0152701fafc1a3605cabf2e73e4' },
+    ]
+
+    // Searching specifically for 'Kitsada (หนึ่ง)' must match u2, not u1
+    const single = await resolveTechniciansLineIds(
+      cfg,
+      ['Kitsada (หนึ่ง)'],
+      { technicians: [], systemUsers: inMemoryUsers }
+    )
+    expect(single).toHaveLength(1)
+    expect(single[0].userId).toBe('U66f2b207af94e739c10a3cf937af2965')
+
+    // Searching for both 'kitsada' and 'Kitsada (หนึ่ง)' must resolve both without skipping the second
+    const both = await resolveTechniciansLineIds(
+      cfg,
+      ['kitsada', 'Kitsada (หนึ่ง)', '🍓ต.ตั้ม.คนเพชรบูรณ์🍓'],
+      { technicians: [], systemUsers: inMemoryUsers }
+    )
+    expect(both).toHaveLength(3)
+    expect(both.map((r) => r.userId)).toEqual([
+      'Uc25ed474096368484a90164c4403c98d',
+      'U66f2b207af94e739c10a3cf937af2965',
+      'Ub378d0152701fafc1a3605cabf2e73e4',
+    ])
+  })
 })

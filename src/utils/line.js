@@ -777,9 +777,64 @@ export function namesMatch(name1, name2) {
 }
 
 /**
+ * Finds the best matching item from a list by name:
+ * 1. Exact string match (trimmed)
+ * 2. Case-insensitive exact string match (trimmed)
+ * 3. Loose/fuzzy match via namesMatch
+ */
+export function findTechByName(list, targetName, getName = (t) => t?.Name || t?.name) {
+  if (!Array.isArray(list) || !targetName) return null
+  const target = String(targetName).trim()
+  if (!target) return null
+  const targetLower = target.toLowerCase()
+
+  // 1. Exact match
+  const exact = list.find((item) => String(getName(item) || '').trim() === target)
+  if (exact) return exact
+
+  // 2. Case-insensitive exact match
+  const exactCi = list.find((item) => String(getName(item) || '').trim().toLowerCase() === targetLower)
+  if (exactCi) return exactCi
+
+  // 3. Fuzzy match via namesMatch
+  return list.find((item) => namesMatch(getName(item), target)) || null
+}
+
+function findUserByName(users, targetName) {
+  if (!Array.isArray(users) || !targetName) return null
+  const target = String(targetName).trim()
+  if (!target) return null
+  const targetLower = target.toLowerCase()
+
+  // 1. Exact match on full_name, line_display_name, or username
+  const exact = users.find((u) =>
+    [u?.full_name, u?.line_display_name, u?.username].some((n) => String(n || '').trim() === target)
+  )
+  if (exact) return exact
+
+  // 2. Case-insensitive exact match
+  const exactCi = users.find((u) =>
+    [u?.full_name, u?.line_display_name, u?.username].some(
+      (n) => String(n || '').trim().toLowerCase() === targetLower
+    )
+  )
+  if (exactCi) return exactCi
+
+  // 3. Fuzzy match via namesMatch
+  return (
+    users.find(
+      (u) =>
+        namesMatch(u?.full_name, target) ||
+        namesMatch(u?.line_display_name, target) ||
+        namesMatch(u?.username, target)
+    ) || null
+  )
+}
+
+/**
  * Resolves an array of technician names to their LINE User IDs
  * Supports in-memory data (technicians, systemUsers) for instant 100% accuracy,
- * with fallbacks to line_settings, localStorage, and DB.
+ * with fallbacks to line_settings, localStorage, DB (technicians, users, line_contacts).
  */
 export async function resolveTechniciansLineIds(cfg, techNames = [], extra = {}) {
   if (!Array.isArray(techNames) || techNames.length === 0) return []
@@ -789,71 +844,68 @@ export async function resolveTechniciansLineIds(cfg, techNames = [], extra = {})
   const { technicians: inMemoryTechs = [], systemUsers: inMemoryUsers = [] } = extra
 
   const resolved = []
+  const resolvedNames = new Set()
   const foundUserIds = new Set()
+  const pendingAuthUserIdsByTechName = new Map()
 
   const addIfValid = (name, rawId) => {
     if (isValidLineTargetId(rawId)) {
       const id = rawId.trim()
+      resolvedNames.add(name)
       if (!foundUserIds.has(id)) {
         foundUserIds.add(id)
         resolved.push({ name, userId: id })
       }
+      return true
     }
+    return false
   }
 
   // 1. Check in-memory technicians passed directly from WorkOrders component
   if (Array.isArray(inMemoryTechs) && inMemoryTechs.length > 0) {
     for (const tName of targetNames) {
-      const matched = inMemoryTechs.find((t) => namesMatch(t.Name || t.name, tName))
+      if (resolvedNames.has(tName)) continue
+      const matched = findTechByName(inMemoryTechs, tName, (t) => t.Name || t.name)
       if (matched) {
-        // Direct Line_ID
         const directLineId = matched.Line_ID || matched.line_id
-        if (isValidLineTargetId(directLineId)) {
-          addIfValid(tName, directLineId)
-          continue
-        }
-        // If User_ID is a LINE User ID directly
+        if (addIfValid(tName, directLineId)) continue
+
         const rawUserId = matched.User_ID || matched.user_id
-        if (isValidLineTargetId(rawUserId)) {
-          addIfValid(tName, rawUserId)
-          continue
-        }
-        // If User_ID is an auth UUID, resolve against in-memory systemUsers
-        if (rawUserId && Array.isArray(inMemoryUsers)) {
-          const userObj = inMemoryUsers.find((u) => u.id === rawUserId || u.username === rawUserId)
-          if (userObj?.line_user_id && isValidLineTargetId(userObj.line_user_id)) {
-            addIfValid(tName, userObj.line_user_id)
-            continue
+        if (addIfValid(tName, rawUserId)) continue
+
+        if (rawUserId) {
+          pendingAuthUserIdsByTechName.set(tName, rawUserId)
+          if (Array.isArray(inMemoryUsers) && inMemoryUsers.length > 0) {
+            const userObj = inMemoryUsers.find((u) => u.id === rawUserId || u.username === rawUserId)
+            if (userObj?.line_user_id && addIfValid(tName, userObj.line_user_id)) {
+              continue
+            }
           }
         }
       }
     }
   }
 
-  // 2. Check in-memory systemUsers directly by name match
+  // 2. Check in-memory systemUsers directly by name match (exact first, then fuzzy)
   if (Array.isArray(inMemoryUsers) && inMemoryUsers.length > 0) {
+    const usersWithLine = inMemoryUsers.filter((u) => isValidLineTargetId(u?.line_user_id))
     for (const tName of targetNames) {
-      if (resolved.some((r) => namesMatch(r.name, tName))) continue
-      const matchedUser = inMemoryUsers.find(
-        (u) =>
-          namesMatch(u.full_name, tName) ||
-          namesMatch(u.line_display_name, tName) ||
-          namesMatch(u.username, tName)
-      )
-      if (matchedUser?.line_user_id && isValidLineTargetId(matchedUser.line_user_id)) {
+      if (resolvedNames.has(tName)) continue
+      const matchedUser = findUserByName(usersWithLine, tName)
+      if (matchedUser?.line_user_id) {
         addIfValid(tName, matchedUser.line_user_id)
       }
     }
   }
 
   // 3. Check cfg.technicians from line_settings
-  if (Array.isArray(cfg?.technicians)) {
-    for (const t of cfg.technicians) {
-      for (const tName of targetNames) {
-        if (resolved.some((r) => namesMatch(r.name, tName))) continue
-        if (namesMatch(t.name, tName) && isValidLineTargetId(t.user_id)) {
-          addIfValid(tName, t.user_id)
-        }
+  if (Array.isArray(cfg?.technicians) && cfg.technicians.length > 0) {
+    const validCfgTechs = cfg.technicians.filter((t) => isValidLineTargetId(t?.user_id))
+    for (const tName of targetNames) {
+      if (resolvedNames.has(tName)) continue
+      const matched = findTechByName(validCfgTechs, tName, (t) => t.name)
+      if (matched?.user_id) {
+        addIfValid(tName, matched.user_id)
       }
     }
   }
@@ -861,25 +913,25 @@ export async function resolveTechniciansLineIds(cfg, techNames = [], extra = {})
   // 4. Check localStorage 'txops_tbl_technicians'
   try {
     const stored = JSON.parse(localStorage.getItem('txops_tbl_technicians') || '[]')
-    if (Array.isArray(stored)) {
-      for (const t of stored) {
-        for (const tName of targetNames) {
-          if (resolved.some((r) => namesMatch(r.name, tName))) continue
-          if (namesMatch(t.Name || t.name, tName)) {
-            const directLine = t.Line_ID || t.line_id
-            const rawUser = t.User_ID || t.user_id
-            const uid = isValidLineTargetId(directLine) ? directLine : (isValidLineTargetId(rawUser) ? rawUser : null)
-            if (uid) {
-              addIfValid(tName, uid)
-            }
+    if (Array.isArray(stored) && stored.length > 0) {
+      for (const tName of targetNames) {
+        if (resolvedNames.has(tName)) continue
+        const matched = findTechByName(stored, tName, (t) => t.Name || t.name)
+        if (matched) {
+          const directLine = matched.Line_ID || matched.line_id
+          const rawUser = matched.User_ID || matched.user_id
+          if (addIfValid(tName, directLine)) continue
+          if (addIfValid(tName, rawUser)) continue
+          if (rawUser && !pendingAuthUserIdsByTechName.has(tName)) {
+            pendingAuthUserIdsByTechName.set(tName, rawUser)
           }
         }
       }
     }
   } catch {}
 
-  // 5. If still unresolved, query DB appconfigs ('technicians') and users table
-  const unresolvedNames = targetNames.filter((name) => !resolved.some((r) => namesMatch(r.name, name)))
+  // 5. If still unresolved, query DB appconfigs ('technicians', 'line_contacts') and users table
+  const unresolvedNames = targetNames.filter((name) => !resolvedNames.has(name))
   if (unresolvedNames.length > 0) {
     try {
       const { data: techConfig } = await db
@@ -890,17 +942,17 @@ export async function resolveTechniciansLineIds(cfg, techNames = [], extra = {})
 
       if (techConfig?.value) {
         const dbTechs = JSON.parse(techConfig.value)
-        if (Array.isArray(dbTechs)) {
-          for (const t of dbTechs) {
-            for (const tName of unresolvedNames) {
-              if (resolved.some((r) => namesMatch(r.name, tName))) continue
-              if (namesMatch(t.Name || t.name, tName)) {
-                const directLine = t.Line_ID || t.line_id
-                const rawUser = t.User_ID || t.user_id
-                const uid = isValidLineTargetId(directLine) ? directLine : (isValidLineTargetId(rawUser) ? rawUser : null)
-                if (uid) {
-                  addIfValid(tName, uid)
-                }
+        if (Array.isArray(dbTechs) && dbTechs.length > 0) {
+          for (const tName of unresolvedNames) {
+            if (resolvedNames.has(tName)) continue
+            const matched = findTechByName(dbTechs, tName, (t) => t.Name || t.name)
+            if (matched) {
+              const directLine = matched.Line_ID || matched.line_id
+              const rawUser = matched.User_ID || matched.user_id
+              if (addIfValid(tName, directLine)) continue
+              if (addIfValid(tName, rawUser)) continue
+              if (rawUser && !pendingAuthUserIdsByTechName.has(tName)) {
+                pendingAuthUserIdsByTechName.set(tName, rawUser)
               }
             }
           }
@@ -913,22 +965,51 @@ export async function resolveTechniciansLineIds(cfg, techNames = [], extra = {})
     try {
       const { data: dbUsers } = await db
         .from('users')
-        .select('id, username, full_name, line_user_id')
+        .select('id, username, full_name, line_user_id, line_display_name')
 
-      if (Array.isArray(dbUsers)) {
-        for (const u of dbUsers) {
-          if (u.line_user_id && isValidLineTargetId(u.line_user_id)) {
-            for (const tName of unresolvedNames) {
-              if (resolved.some((r) => namesMatch(r.name, tName))) continue
-              if (namesMatch(u.full_name, tName) || namesMatch(u.username, tName)) {
-                addIfValid(tName, u.line_user_id)
-              }
-            }
+      if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+        const usersWithLine = dbUsers.filter((u) => isValidLineTargetId(u?.line_user_id))
+        for (const tName of unresolvedNames) {
+          if (resolvedNames.has(tName)) continue
+          // First check if technician had a linked User_ID (UUID)
+          const pendingUid = pendingAuthUserIdsByTechName.get(tName)
+          if (pendingUid) {
+            const byId = usersWithLine.find((u) => u.id === pendingUid || u.username === pendingUid)
+            if (byId?.line_user_id && addIfValid(tName, byId.line_user_id)) continue
+          }
+          // Next match by name (exact first, then fuzzy)
+          const matchedUser = findUserByName(usersWithLine, tName)
+          if (matchedUser?.line_user_id) {
+            addIfValid(tName, matchedUser.line_user_id)
           }
         }
       }
     } catch (e) {
       console.warn('[resolveTechniciansLineIds] Error querying users table:', e)
+    }
+
+    // 6. Final fallback: Check auto-captured LINE contacts from Webhook ('line_contacts')
+    const stillUnresolved = targetNames.filter((name) => !resolvedNames.has(name))
+    if (stillUnresolved.length > 0) {
+      try {
+        const { contacts } = await fetchLineContacts()
+        if (Array.isArray(contacts) && contacts.length > 0) {
+          const validContacts = contacts.filter((c) => isValidLineTargetId(c?.user_id || c?.userId))
+          for (const tName of stillUnresolved) {
+            if (resolvedNames.has(tName)) continue
+            const matchedContact = findTechByName(
+              validContacts,
+              tName,
+              (c) => c.name || c.displayName
+            )
+            if (matchedContact) {
+              addIfValid(tName, matchedContact.user_id || matchedContact.userId)
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[resolveTechniciansLineIds] Error checking line_contacts:', e)
+      }
     }
   }
 
@@ -938,8 +1019,7 @@ export async function resolveTechniciansLineIds(cfg, techNames = [], extra = {})
 /**
  * Sends Work Order Assignment Notification to LINE
  * - Resolves LINE User IDs for all assigned technicians
- * - Pushes Flex Message directly to each assigned technician
- * - Fallbacks to Group or Supervisor so assignments are never lost
+ * - Pushes Flex Message directly to each assigned technician (plus target_group_id if configured)
  */
 export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [], extra = {}) {
   try {
@@ -986,22 +1066,19 @@ export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [
       const resolvedTechs = await resolveTechniciansLineIds(cfg, techList, extra)
       const recipientIds = new Set()
 
-      // Add individual technicians
+      // Add individual assigned technicians
       for (const t of resolvedTechs) {
         if (isValidLineTargetId(t.userId)) recipientIds.add(t.userId)
       }
 
       const individualCount = recipientIds.size
+      const techsWithoutLine = techList.filter(
+        (tName) => !resolvedTechs.some((r) => r.name === tName || namesMatch(r.name, tName))
+      )
 
-      // If any tech has no personal LINE ID or for general group visibility:
-      // Always include group or supervisors as fallback so assignment is not lost!
+      // Also include configured maintenance group if valid
       if (cfg.target_group_id && isValidLineTargetId(cfg.target_group_id)) {
         recipientIds.add(cfg.target_group_id.trim())
-      } else {
-        const supers = getSupervisorLineIds(cfg)
-        for (const sId of supers) {
-          if (isValidLineTargetId(sId)) recipientIds.add(sId)
-        }
       }
 
       if (recipientIds.size === 0) {
@@ -1029,6 +1106,7 @@ export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [
 
       const successCount = results.filter((r) => r.ok).length
       const failed = results.filter((r) => !r.ok)
+      const errors = failed.map((r) => r.error || r.details?.message).filter(Boolean)
       if (failed.length > 0) {
         console.warn('[notifyLineWorkOrderAssigned] Some pushes failed:', failed)
       }
@@ -1037,6 +1115,8 @@ export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [
         ok: successCount > 0,
         sentCount: successCount,
         individualCount,
+        techsWithoutLine,
+        errors,
         recipientsText: resolvedTechs.map((r) => r.name).join(', ') || 'กลุ่มซ่อมบำรุง',
         results,
       }
@@ -1060,6 +1140,7 @@ export async function notifyLineWorkOrderAssigned(jobData, assignedTechNames = [
       return {
         ok: res.ok,
         sentCount: res.ok ? 1 : 0,
+        errors: res.ok ? [] : [res.error || 'LINE Notify failed'],
         recipientsText: techStr,
         results: [res],
       }

@@ -1051,8 +1051,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           .then((res) => {
             if (res?.ok && res.sentCount > 0) {
               toast.success('แจ้งเตือน LINE สำเร็จ 📲', `ส่งไปยัง ${res.recipientsText}`)
+              if (res.techsWithoutLine?.length > 0) {
+                toast.info('ช่างบางท่านยังไม่ได้ผูก LINE ID', res.techsWithoutLine.join(', '))
+              }
             } else if (res?.reason === 'no_line_id') {
               toast.info('บันทึกใบสั่งงานแล้ว', `ช่างที่เลือก (${res.techsWithoutLine?.join(', ') || ''}) ยังไม่ได้ผูก LINE ID`)
+            } else if (res && !res.ok && !res.skipped) {
+              toast.error('ส่งแจ้งเตือน LINE ไม่สำเร็จ', res.errors?.[0] || res.error || 'กรุณาตรวจสอบการตั้งค่า LINE OA')
             }
           })
           .catch((err) => {
@@ -1215,24 +1220,37 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           CompletedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
         } : {}),
       }
+      const prevTechs = (editJob.Technicians || editJob.Tech || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const newlyAddedTechs = editTechs.filter((t) => !prevTechs.includes(t))
+
       await saveJob(payload)
       toast.success('แก้ไขข้อมูลใบสั่งงานสำเร็จ', editJob.Job_ID || editJob['Job ID'])
 
-      // Notify assigned technicians via LINE (Non-blocking async background)
-      try {
-        notifyLineWorkOrderAssigned(payload, editTechs, { technicians, systemUsers })
-          .then((res) => {
-            if (res?.ok && res.sentCount > 0) {
-              toast.success('แจ้งเตือน LINE สำเร็จ 📲', `ส่งไปยัง ${res.recipientsText}`)
-            } else if (res?.reason === 'no_line_id') {
-              toast.info('บันทึกใบสั่งงานแล้ว', `ช่างที่เลือก (${res.techsWithoutLine?.join(', ') || ''}) ยังไม่ได้ผูก LINE ID`)
-            }
-          })
-          .catch((err) => {
-            console.warn('[WorkOrders] LINE notification background error:', err)
-          })
-      } catch (e) {
-        console.warn('[WorkOrders] LINE notification trigger error:', e)
+      // Notify newly assigned technicians via LINE (Non-blocking async background)
+      if (newlyAddedTechs.length > 0) {
+        try {
+          notifyLineWorkOrderAssigned(payload, newlyAddedTechs, { technicians, systemUsers })
+            .then((res) => {
+              if (res?.ok && res.sentCount > 0) {
+                toast.success('แจ้งเตือน LINE สำเร็จ 📲', `ส่งไปยัง ${res.recipientsText}`)
+                if (res.techsWithoutLine?.length > 0) {
+                  toast.info('ช่างบางท่านยังไม่ได้ผูก LINE ID', res.techsWithoutLine.join(', '))
+                }
+              } else if (res?.reason === 'no_line_id') {
+                toast.info('บันทึกใบสั่งงานแล้ว', `ช่างที่เพิ่ม (${res.techsWithoutLine?.join(', ') || ''}) ยังไม่ได้ผูก LINE ID`)
+              } else if (res && !res.ok && !res.skipped) {
+                toast.error('ส่งแจ้งเตือน LINE ไม่สำเร็จ', res.errors?.[0] || res.error || 'กรุณาตรวจสอบการตั้งค่า LINE OA')
+              }
+            })
+            .catch((err) => {
+              console.warn('[WorkOrders] LINE notification background error:', err)
+            })
+        } catch (e) {
+          console.warn('[WorkOrders] LINE notification trigger error:', e)
+        }
       }
 
       setEditModalOpen(false)

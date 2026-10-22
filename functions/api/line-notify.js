@@ -57,7 +57,27 @@ export async function onRequestPost({ request, env }) {
       textMessage,   // Text string for LINE Notify or simple message
     } = body
 
-    const activeToken = token || env.LINE_CHANNEL_ACCESS_TOKEN
+    let activeToken = token || env.LINE_CHANNEL_ACCESS_TOKEN
+    let activeNotifyToken = notifyToken || env.LINE_NOTIFY_TOKEN
+
+    // Fallback: Read token from D1 appconfigs ('line_settings') if not passed by client or env
+    if ((!activeToken && (type === 'flex' || type === 'messaging' || type === 'text')) || (!activeNotifyToken && type === 'notify')) {
+      const db = env?.DB || env?.textileops_db
+      if (db) {
+        try {
+          const row = await db.prepare("SELECT value FROM appconfigs WHERE key = 'line_settings' LIMIT 1").first()
+          if (row?.value) {
+            const parsed = JSON.parse(row.value)
+            if (!activeToken && parsed.channel_access_token) {
+              activeToken = parsed.channel_access_token
+            }
+            if (!activeNotifyToken && parsed.notify_token) {
+              activeNotifyToken = parsed.notify_token
+            }
+          }
+        } catch {}
+      }
+    }
 
     // ── Mode 1: LINE Messaging API (Flex Message & Text to Group/User) ──
     if (type === 'flex' || type === 'messaging' || type === 'text') {
@@ -137,7 +157,6 @@ export async function onRequestPost({ request, env }) {
 
     // ── Mode 2: LINE Notify (Fallback) ──
     if (type === 'notify') {
-      const activeNotifyToken = notifyToken || env.LINE_NOTIFY_TOKEN
       if (!activeNotifyToken) {
         return new Response(
           JSON.stringify({ ok: false, error: 'ยังไม่ได้ระบุ LINE Notify Token' }),
