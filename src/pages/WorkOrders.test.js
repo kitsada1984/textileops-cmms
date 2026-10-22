@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { getWorkOrderDetails, buildTechFromUser, getUnregisteredLineUsers } from './WorkOrders.jsx'
+import {
+  getWorkOrderDetails,
+  buildTechFromUser,
+  getUnregisteredLineUsers,
+  WORK_ORDER_STATUS_OPTIONS,
+  getWorkOrderStatusMeta,
+  matchesWorkOrderStatusFilter,
+} from './WorkOrders.jsx'
 
 describe('WorkOrders utilities', () => {
   describe('getWorkOrderDetails', () => {
@@ -109,6 +116,39 @@ describe('WorkOrders utilities', () => {
       expect(unregistered).toHaveLength(1)
       expect(unregistered[0].id).toBe('u2')
       expect(unregistered[0].line_user_id).toBe('U2222')
+    })
+  })
+
+  describe('getWorkOrderStatusMeta & matchesWorkOrderStatusFilter', () => {
+    it('defines all 5 status options including รอช่าง, รอสรุป, รออะไหล่', () => {
+      const labels = WORK_ORDER_STATUS_OPTIONS.map((o) => o.label)
+      expect(labels).toEqual(['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'เสร็จสิ้น'])
+    })
+
+    it('normalizes both English codes and Thai labels accurately', () => {
+      expect(getWorkOrderStatusMeta('WAITING_TECH').label).toBe('รอช่าง')
+      expect(getWorkOrderStatusMeta('รอช่าง').value).toBe('WAITING_TECH')
+
+      expect(getWorkOrderStatusMeta('WAITING_PARTS').label).toBe('รออะไหล่')
+      expect(getWorkOrderStatusMeta('รออะไหล่').value).toBe('WAITING_PARTS')
+
+      expect(getWorkOrderStatusMeta('WAITING_SUMMARY').label).toBe('รอสรุป')
+      expect(getWorkOrderStatusMeta('รอสรุป').value).toBe('WAITING_SUMMARY')
+
+      expect(getWorkOrderStatusMeta('COMPLETED').isCompleted).toBe(true)
+      expect(getWorkOrderStatusMeta('เสร็จสิ้น').isCompleted).toBe(true)
+
+      expect(getWorkOrderStatusMeta('IN_PROGRESS').label).toBe('กำลังทำ')
+      expect(getWorkOrderStatusMeta(null).value).toBe('IN_PROGRESS')
+    })
+
+    it('matches status filter across English codes and Thai labels', () => {
+      expect(matchesWorkOrderStatusFilter('WAITING_TECH', 'ALL')).toBe(true)
+      expect(matchesWorkOrderStatusFilter('WAITING_TECH', 'WAITING_TECH')).toBe(true)
+      expect(matchesWorkOrderStatusFilter('รอช่าง', 'WAITING_TECH')).toBe(true)
+      expect(matchesWorkOrderStatusFilter('WAITING_PARTS', 'รออะไหล่')).toBe(true)
+      expect(matchesWorkOrderStatusFilter('WAITING_SUMMARY', 'รอสรุป')).toBe(true)
+      expect(matchesWorkOrderStatusFilter('IN_PROGRESS', 'WAITING_TECH')).toBe(false)
     })
   })
 })

@@ -87,6 +87,77 @@ export const QUICK_INTERRUPTION_PRESETS = [
   { label: '🧹 ทำความสะอาด / สลับกะ', template: 'ทำความสะอาด / สลับกะงาน' },
 ]
 
+export const WORK_ORDER_STATUS_OPTIONS = [
+  {
+    value: 'IN_PROGRESS',
+    label: 'กำลังทำ',
+    fullLabel: '🟡 กำลังทำ (In Progress)',
+    icon: '🟡',
+    badgeClass: 'badge-orange',
+  },
+  {
+    value: 'WAITING_TECH',
+    label: 'รอช่าง',
+    fullLabel: '🟠 รอช่าง (Waiting Tech)',
+    icon: '🟠',
+    badgeClass: 'badge-yellow',
+  },
+  {
+    value: 'WAITING_PARTS',
+    label: 'รออะไหล่',
+    fullLabel: '🟣 รออะไหล่ (Waiting Parts)',
+    icon: '🟣',
+    badgeClass: 'badge-purple',
+  },
+  {
+    value: 'WAITING_SUMMARY',
+    label: 'รอสรุป',
+    fullLabel: '🔵 รอสรุป (Waiting Summary)',
+    icon: '🔵',
+    badgeClass: 'badge-blue',
+  },
+  {
+    value: 'COMPLETED',
+    label: 'เสร็จสิ้น',
+    fullLabel: '🟢 เสร็จสิ้น (Completed)',
+    icon: '🟢',
+    badgeClass: 'badge-green',
+  },
+]
+
+/**
+ * Normalizes any work order status code or Thai label into a standard metadata object.
+ * Guarantees 100% backward compatibility with legacy 'IN_PROGRESS', 'COMPLETED', 'กำลังทำ', 'เสร็จสิ้น'.
+ */
+export function getWorkOrderStatusMeta(status) {
+  const raw = String(status || '').trim()
+  const upper = raw.toUpperCase()
+
+  if (upper === 'COMPLETED' || raw === 'เสร็จสิ้น') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[4], isCompleted: true }
+  }
+  if (upper === 'WAITING_TECH' || raw === 'รอช่าง') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[1], isCompleted: false }
+  }
+  if (upper === 'WAITING_PARTS' || raw === 'รออะไหล่') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[2], isCompleted: false }
+  }
+  if (upper === 'WAITING_SUMMARY' || raw === 'รอสรุป') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[3], isCompleted: false }
+  }
+  return { ...WORK_ORDER_STATUS_OPTIONS[0], isCompleted: false }
+}
+
+/**
+ * Checks whether a job's status matches the selected status filter value.
+ */
+export function matchesWorkOrderStatusFilter(jobStatus, filterValue = 'ALL') {
+  if (!filterValue || filterValue === 'ALL') return true
+  const jobMeta = getWorkOrderStatusMeta(jobStatus)
+  const filterMeta = getWorkOrderStatusMeta(filterValue)
+  return jobMeta.value === filterMeta.value
+}
+
 /**
  * Normalizes details text for work orders, safely extracting user-readable description
  * even if stored as JSON or under legacy column aliases (Problem, Detail, Details, etc.).
@@ -239,7 +310,8 @@ function WorkOrderCard({
   onEdit,
   onDelete,
 }) {
-  const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
+  const statusMeta = getWorkOrderStatusMeta(job.Status)
+  const isCompleted = statusMeta.isCompleted
   const sla = calculateSlaPerformance(job, kpiTargets)
   const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
   const detailsDisplay = getWorkOrderDetails(job)
@@ -273,8 +345,8 @@ function WorkOrderCard({
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className={`badge text-[10px] ${isCompleted ? 'badge-green' : 'badge-orange'}`}>
-            {isCompleted ? 'เสร็จสิ้น' : 'กำลังทำ'}
+          <span className={`badge text-[10px] ${statusMeta.badgeClass}`}>
+            {statusMeta.label}
           </span>
         </div>
       </div>
@@ -756,10 +828,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       if (showDeleted && !isDel) return false
 
       if (typeFilter !== 'ALL' && (job.JobType || 'REPAIR') !== typeFilter) return false
-      if (statusFilter !== 'ALL') {
-        if (statusFilter === 'กำลังทำ' && job.Status !== 'IN_PROGRESS') return false
-        if (statusFilter === 'เสร็จสิ้น' && job.Status !== 'COMPLETED') return false
-      }
+      if (!matchesWorkOrderStatusFilter(job.Status, statusFilter)) return false
 
       if (search.trim()) {
         const q = search.toLowerCase()
@@ -783,8 +852,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const kpiStats = useMemo(() => {
     const activeNonDeleted = allJobs.filter((j) => !j.IsDeleted)
     const total = activeNonDeleted.length
-    const active = activeNonDeleted.filter((j) => j.Status === 'IN_PROGRESS').length
-    const completed = activeNonDeleted.filter((j) => j.Status === 'COMPLETED').length
+    const completed = activeNonDeleted.filter((j) => getWorkOrderStatusMeta(j.Status).isCompleted).length
+    const active = activeNonDeleted.filter((j) => !getWorkOrderStatusMeta(j.Status).isCompleted).length
 
     const calcJobTypeKpi = (typeKey) => {
       const jobsOfType = activeNonDeleted.filter((j) => (j.JobType || 'REPAIR') === typeKey)
@@ -1012,11 +1081,12 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   // Open Edit Modal
   const openEditModal = (job) => {
     const detailsVal = getWorkOrderDetails(job)
+    const statusCode = getWorkOrderStatusMeta(job.Status).value
     setEditJob({
       ...job,
       Comment: detailsVal === '—' ? (job.Comment || '') : detailsVal,
       Details: detailsVal === '—' ? (job.Details || '') : detailsVal,
-      Status: job.Status || 'IN_PROGRESS',
+      Status: statusCode,
     })
     const techArray = (job.Technicians || '')
       .split(',')
@@ -1024,6 +1094,31 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       .filter(Boolean)
     setEditTechs(techArray)
     setEditModalOpen(true)
+  }
+
+  // Inline Quick Status Change from Table Column
+  const handleQuickStatusChange = async (job, nextStatusCode) => {
+    if (!job || !canEdit) return
+    const nextMeta = getWorkOrderStatusMeta(nextStatusCode)
+    const currentMeta = getWorkOrderStatusMeta(job.Status)
+    if (nextMeta.value === currentMeta.value) return
+
+    if (nextMeta.isCompleted && !currentMeta.isCompleted) {
+      openCompleteModal(job)
+      return
+    }
+
+    try {
+      const payload = {
+        ...job,
+        Status: nextMeta.value,
+        UpdatedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
+      }
+      await saveJob(payload)
+      toast.success(`อัปเดตสถานะเป็น "${nextMeta.label}" สำเร็จ`, job.Job_ID || job['Job ID'])
+    } catch (err) {
+      toast.error('ไม่สามารถอัปเดตสถานะใบสั่งงานได้', err.message)
+    }
   }
 
   // Submit Edit Job
@@ -1779,8 +1874,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       onChange={(e) => setStatus(e.target.value)}
                       className="select font-semibold"
                     >
-                      <option value="IN_PROGRESS">🟡 กำลังทำ</option>
-                      <option value="COMPLETED">🟢 เสร็จสิ้น</option>
+                      {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.icon} {opt.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1873,8 +1971,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 className="select py-1.5 px-3 text-xs"
               >
                 <option value="ALL">ทั้งหมด</option>
-                <option value="กำลังทำ">กำลังทำ (In Progress)</option>
-                <option value="เสร็จสิ้น">เสร็จสิ้น (Completed)</option>
+                {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.icon} {opt.label}
+                  </option>
+                ))}
               </select>
 
               <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 ml-2 cursor-pointer select-none">
@@ -1989,7 +2090,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 </thead>
                 <tbody>
                   {filteredJobs.map((job, idx) => {
-                    const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
+                    const statusMeta = getWorkOrderStatusMeta(job.Status)
+                    const isCompleted = statusMeta.isCompleted
                     const sla = calculateSlaPerformance(job, kpiTargets)
                     const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
                     const detailsDisplay = getWorkOrderDetails(job)
@@ -2045,9 +2147,28 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
                         {/* สถานะ */}
                         <td>
-                          <span className={`badge ${isCompleted ? 'badge-green' : 'badge-orange'}`}>
-                            {isCompleted ? 'เสร็จสิ้น' : 'กำลังทำ'}
-                          </span>
+                          {canEdit && !job.IsDeleted ? (
+                            <select
+                              value={statusMeta.value}
+                              onChange={(e) => handleQuickStatusChange(job, e.target.value)}
+                              className={`badge ${statusMeta.badgeClass} cursor-pointer font-bold border-0 pr-5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40`}
+                              title="คลิกเพื่อเปลี่ยนสถานะใบสั่งงาน"
+                            >
+                              {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
+                                <option
+                                  key={opt.value}
+                                  value={opt.value}
+                                  className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-semibold"
+                                >
+                                  {opt.icon} {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className={`badge ${statusMeta.badgeClass}`}>
+                              {statusMeta.label}
+                            </span>
+                          )}
                         </td>
 
                         {/* Technicians */}
@@ -2694,12 +2815,15 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               <div>
                 <label className="label">สถานะ (Status)</label>
                 <select
-                  value={editJob.Status || 'IN_PROGRESS'}
+                  value={getWorkOrderStatusMeta(editJob.Status).value}
                   onChange={(e) => setEditJob({ ...editJob, Status: e.target.value })}
                   className="select font-semibold"
                 >
-                  <option value="IN_PROGRESS">🟡 กำลังทำ (In Progress)</option>
-                  <option value="COMPLETED">🟢 เสร็จสิ้น (Completed)</option>
+                  {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.fullLabel}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
