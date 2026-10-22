@@ -786,6 +786,43 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   useEffect(() => {
     loadTechsAndSettings()
+  }, [currentTab])
+
+  // Real-time & Window Focus Sync for Technicians & KPI Settings across PC and Mobile
+  useEffect(() => {
+    let lastSync = Date.now()
+    const handleFocusSync = () => {
+      if (Date.now() - lastSync > 3000) {
+        lastSync = Date.now()
+        loadTechsAndSettings()
+      }
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') handleFocusSync()
+    }
+
+    window.addEventListener('focus', handleFocusSync)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    let channel = null
+    try {
+      if (db && typeof db.channel === 'function') {
+        channel = db
+          .channel('workorders_tech_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'appconfigs' }, () => {
+            loadTechsAndSettings()
+          })
+          .subscribe()
+      }
+    } catch {}
+
+    return () => {
+      window.removeEventListener('focus', handleFocusSync)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      try {
+        if (channel && typeof channel.unsubscribe === 'function') channel.unsubscribe()
+      } catch {}
+    }
   }, [])
 
   // Active jobs list filter with legacy and new column normalization
@@ -1285,16 +1322,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         toast.success('เพิ่มช่างใหม่เรียบร้อย', payload.Name)
       }
       setTechModalOpen(false)
-      syncTechToNotifications(nextList)
+      await syncTechToNotifications(nextList)
+      await loadTechsAndSettings()
     } catch (err) {
-      console.warn('Backend update failed, saving locally:', err)
-      const nextList = editingTechId
-        ? technicians.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
-        : [...technicians, payload]
-      setTechnicians(nextList)
-      toast.success('บันทึกข้อมูลช่างเรียบร้อย', payload.Name)
-      setTechModalOpen(false)
-      syncTechToNotifications(nextList)
+      console.warn('Backend update failed:', err)
+      toast.error('ไม่สามารถบันทึกข้อมูลช่างไปยังเซิร์ฟเวอร์ได้', err.message || 'กรุณาตรวจสอบสิทธิ์หรือการเชื่อมต่อ')
     }
   }
 
@@ -1303,13 +1335,15 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     if (!confirm(`ยืนยันการลบช่าง "${tech.Name}" ออกจากระบบหรือไม่?`)) return
     try {
       await TechnicianAPI.delete(techId)
+      const nextList = technicians.filter((t) => t.id !== techId && t.Technician_ID !== techId)
+      setTechnicians(nextList)
+      await syncTechToNotifications(nextList)
+      await loadTechsAndSettings()
+      toast.success('ลบข้อมูลช่างเรียบร้อย', tech.Name)
     } catch (e) {
-      console.warn('Backend delete fallback:', e)
+      console.warn('Backend delete error:', e)
+      toast.error('ไม่สามารถลบข้อมูลช่างได้', e.message || 'กรุณาตรวจสอบสิทธิ์หรือการเชื่อมต่อ')
     }
-    const nextList = technicians.filter((t) => t.id !== techId && t.Technician_ID !== techId)
-    setTechnicians(nextList)
-    syncTechToNotifications(nextList)
-    toast.success('ลบข้อมูลช่างเรียบร้อย', tech.Name)
   }
 
   // Save KPI Settings

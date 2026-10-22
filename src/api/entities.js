@@ -50,14 +50,8 @@ export const TechnicianAPI = {
     })
   },
   saveAll: async (techsList) => {
-    if (!techsList || techsList.length === 0) {
-      await deleteSystemConfig('technicians', {
-        legacyWorkOrderId: 'SYS_TECHNICIANS',
-        localCacheKey: 'txops_tbl_technicians',
-      })
-      return
-    }
-    await saveSystemConfig('technicians', techsList, {
+    const normalized = Array.isArray(techsList) ? techsList : []
+    await saveSystemConfig('technicians', normalized, {
       legacyWorkOrderId: 'SYS_TECHNICIANS',
       localCacheKey: 'txops_tbl_technicians',
     })

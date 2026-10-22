@@ -30,6 +30,7 @@ import { db } from '../../api/dbClient'
  */
 export async function getSystemConfig(configKey, options = {}) {
   const { legacyWorkOrderId, localCacheKey, defaultValue = null } = options
+  let cloudError = false
 
   // 1. Primary: Load from dedicated `appconfigs` table
   try {
@@ -39,7 +40,9 @@ export async function getSystemConfig(configKey, options = {}) {
       .eq('key', configKey)
       .maybeSingle()
 
-    if (!error && data?.value) {
+    if (error) {
+      cloudError = true
+    } else if (data?.value !== undefined && data?.value !== null) {
       let parsed = data.value
       if (typeof parsed === 'string') {
         try {
@@ -58,6 +61,7 @@ export async function getSystemConfig(configKey, options = {}) {
       }
     }
   } catch (err) {
+    cloudError = true
     console.warn(`[SystemConfig] Failed to fetch from appconfigs (${configKey}):`, err)
   }
 
@@ -70,7 +74,9 @@ export async function getSystemConfig(configKey, options = {}) {
         .eq('WO_ID', legacyWorkOrderId)
         .maybeSingle()
 
-      if (!error && data?.Comment) {
+      if (error) {
+        cloudError = true
+      } else if (data?.Comment) {
         let parsed = null
         try {
           parsed = JSON.parse(data.Comment)
@@ -102,12 +108,14 @@ export async function getSystemConfig(configKey, options = {}) {
         }
       }
     } catch (legacyErr) {
+      cloudError = true
       console.warn(`[SystemConfig] Legacy workorders fallback failed for ${legacyWorkOrderId}:`, legacyErr)
     }
   }
 
-  // 3. Local Cache Fallback
-  if (localCacheKey && typeof localStorage !== 'undefined') {
+  // 3. Local Cache Fallback — ONLY used when cloud queries failed (offline mode).
+  // When cloud is online and confirms the key is absent, clear stale local cache so all devices match.
+  if (cloudError && localCacheKey && typeof localStorage !== 'undefined') {
     try {
       const raw = localStorage.getItem(localCacheKey)
       if (raw) {
@@ -117,6 +125,10 @@ export async function getSystemConfig(configKey, options = {}) {
           return raw
         }
       }
+    } catch {}
+  } else if (!cloudError && localCacheKey && typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(localCacheKey)
     } catch {}
   }
 
@@ -144,7 +156,7 @@ export async function saveSystemConfig(configKey, value, options = {}) {
   // 1. Local Cache Save (Immediate)
   if (localCacheKey && typeof localStorage !== 'undefined') {
     try {
-      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+      if (value === null || value === undefined) {
         localStorage.removeItem(localCacheKey)
       } else {
         localStorage.setItem(localCacheKey, serialized)
@@ -154,7 +166,7 @@ export async function saveSystemConfig(configKey, value, options = {}) {
 
   // 2. Primary Cloud Save: `appconfigs` table
   try {
-    if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+    if (value === null || value === undefined) {
       await db.from('appconfigs').delete().eq('key', configKey)
     } else {
       await db.from('appconfigs').upsert(
@@ -173,7 +185,7 @@ export async function saveSystemConfig(configKey, value, options = {}) {
   // 3. Dual-Write to Legacy `workorders` row for zero-regression safety
   if (legacyWorkOrderId) {
     try {
-      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+      if (value === null || value === undefined) {
         await db.from('workorders').delete().eq('WO_ID', legacyWorkOrderId)
       } else {
         const { data: existing } = await db

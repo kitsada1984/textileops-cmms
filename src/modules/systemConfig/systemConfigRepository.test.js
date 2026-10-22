@@ -166,4 +166,25 @@ describe('System Configuration Repository & Seam', () => {
     expect(localStorage.getItem('txops_key')).toBeNull()
     expect(deleteSpy).toHaveBeenCalled()
   })
+
+  it('clears stale localStorage when cloud is online and confirms config is absent, preventing PC/Mobile drift', async () => {
+    localStorage.setItem('txops_tbl_technicians', JSON.stringify([{ id: 'TECH-OLD', Name: 'ช่างเก่าในแคช' }]))
+
+    vi.spyOn(supabase, 'from').mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }),
+      }),
+    }))
+
+    const result = await getSystemConfig('technicians', {
+      legacyWorkOrderId: 'SYS_TECHNICIANS',
+      localCacheKey: 'txops_tbl_technicians',
+      defaultValue: [],
+    })
+
+    expect(result).toEqual([])
+    expect(localStorage.getItem('txops_tbl_technicians')).toBeNull()
+  })
 })

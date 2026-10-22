@@ -410,11 +410,12 @@ export async function onRequestPost(context) {
         for (const source of records) {
           const rec = { ...source }
           delete rec._id
+          if (!rec.id) rec.id = crypto.randomUUID()
           const keys = Object.keys(rec)
           keys.forEach((k) => assertIdent(k, 'column name'))
           const cols = keys.map((k) => `"${k}"`).join(', ')
           const placeholders = keys.map(() => '?').join(', ')
-          const updateSets = keys.filter((k) => k !== conflictCol).map((k) => `"${k}" = excluded."${k}"`).join(', ')
+          const updateSets = keys.filter((k) => k !== conflictCol && k !== 'id').map((k) => `"${k}" = excluded."${k}"`).join(', ')
           const values = keys.map((k) => serialize(rec[k]))
 
           const upsertSql = updateSets
@@ -439,11 +440,12 @@ export async function onRequestPost(context) {
       for (const source of records) {
         const rec = { ...source }
         delete rec._id
+        if (!rec.id) rec.id = crypto.randomUUID()
         const keys = Object.keys(rec)
         keys.forEach((k) => assertIdent(k, 'column name'))
         const cols = keys.map((k) => `"${k}"`).join(', ')
         const placeholders = keys.map(() => '?').join(', ')
-        const updateSets = keys.filter((k) => k !== conflictCol).map((k) => `"${k}" = excluded."${k}"`).join(', ')
+        const updateSets = keys.filter((k) => k !== conflictCol && k !== 'id').map((k) => `"${k}" = excluded."${k}"`).join(', ')
         const values = keys.map((k) => serialize(rec[k]))
 
         const upsertSql = updateSets
