@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canAccess, hasPerm, hashPassword, PERM_ACTIONS } from './AuthContext'
+import { canAccess, hasPerm, hashPassword, PERM_ACTIONS, normalizeUser, parsePermissions } from './AuthContext'
 
 // ─── PERM_ACTIONS constant ────────────────────────────────────
 describe('PERM_ACTIONS', () => {
@@ -117,5 +117,40 @@ describe('hashPassword', () => {
       expect(hash).toHaveLength(64)
       expect(/^[0-9a-f]{64}$/.test(hash)).toBe(true)
     }
+  })
+})
+
+// ─── normalizeUser & LINE Support ────────────────────────────
+describe('normalizeUser with LINE attributes', () => {
+  it('returns null/undefined if passed null/undefined', () => {
+    expect(normalizeUser(null)).toBeNull()
+    expect(normalizeUser(undefined)).toBeUndefined()
+  })
+
+  it('preserves line_user_id, line_display_name, line_picture_url', () => {
+    const raw = {
+      id: 'usr_123',
+      username: 'line_kitsa',
+      full_name: 'กฤษดา',
+      role: 'user',
+      line_user_id: 'U66f2b207af94e739c10a3cf937af2965',
+      line_display_name: 'Kitsada LINE',
+      line_picture_url: 'https://profile.line-scdn.net/123',
+      permissions: '{"machines":["view","edit"]}',
+    }
+    const user = normalizeUser(raw)
+    expect(user.line_user_id).toBe('U66f2b207af94e739c10a3cf937af2965')
+    expect(user.line_display_name).toBe('Kitsada LINE')
+    expect(user.line_picture_url).toBe('https://profile.line-scdn.net/123')
+    expect(user.permissions).toEqual({ machines: ['view', 'edit'] })
+    expect(canAccess(user, 'machines')).toBe(true)
+    expect(hasPerm(user, 'machines', 'edit')).toBe(true)
+    expect(hasPerm(user, 'machines', 'delete')).toBe(false)
+  })
+
+  it('handles parsePermissions for invalid JSON or null safely', () => {
+    expect(parsePermissions(null)).toEqual({})
+    expect(parsePermissions('invalid-json')).toEqual({})
+    expect(parsePermissions({ test: ['view'] })).toEqual({ test: ['view'] })
   })
 })

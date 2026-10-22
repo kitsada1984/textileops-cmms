@@ -29,7 +29,7 @@ export async function onRequestPost(context) {
   try {
     const hash = await sha256Hex(password)
     const row = await db
-      .prepare('SELECT id, username, full_name, role, status, permissions FROM users WHERE username = ? AND password_hash = ?')
+      .prepare('SELECT id, username, full_name, role, status, permissions, line_user_id, line_display_name, line_picture_url FROM users WHERE username = ? AND password_hash = ?')
       .bind(username, hash)
       .first()
 
@@ -42,9 +42,12 @@ export async function onRequestPost(context) {
     const user = {
       id: row.id,
       username: row.username,
-      full_name: row.full_name || row.username,
+      full_name: row.full_name || row.line_display_name || row.username,
       role: row.role,
       permissions,
+      line_user_id: row.line_user_id || null,
+      line_display_name: row.line_display_name || null,
+      line_picture_url: row.line_picture_url || null,
     }
 
     const token = await createAuthToken(env, { uid: row.id, username: row.username, role: row.role })

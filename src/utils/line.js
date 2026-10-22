@@ -33,6 +33,12 @@ export const DEFAULT_LINE_SETTINGS = {
   notify_on_new_request: true,
   notify_on_approve: true,
   notify_on_complete: true,
+  // LINE Login (OAuth 2.1)
+  login_enabled: true,
+  login_channel_id: '',
+  login_channel_secret: '',
+  login_callback_url: '',
+  login_default_role: 'user',
 }
 
 export const loadLineSettings = () => {
@@ -47,6 +53,11 @@ export const loadLineSettings = () => {
       needle_keepers: saved.needle_keepers || [],
       needle_keeper_notify_token: saved.needle_keeper_notify_token || '',
       technicians: saved.technicians || DEFAULT_LINE_SETTINGS.technicians,
+      login_enabled: saved.login_enabled ?? DEFAULT_LINE_SETTINGS.login_enabled,
+      login_channel_id: saved.login_channel_id || '',
+      login_channel_secret: saved.login_channel_secret || '',
+      login_callback_url: saved.login_callback_url || '',
+      login_default_role: saved.login_default_role || DEFAULT_LINE_SETTINGS.login_default_role,
     }
   } catch {
     return { ...DEFAULT_LINE_SETTINGS }

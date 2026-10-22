@@ -330,27 +330,44 @@ function AppInner() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 12, flexShrink: 0,
-              background: dark
-                ? 'linear-gradient(135deg, rgba(59,130,246,0.22), rgba(99,102,241,0.1))'
-                : 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(79,70,229,0.06))',
-              border: dark ? '1px solid rgba(59,130,246,0.32)' : '1px solid rgba(37,99,235,0.2)',
+              background: user?.line_picture_url
+                ? 'transparent'
+                : dark
+                  ? 'linear-gradient(135deg, rgba(59,130,246,0.22), rgba(99,102,241,0.1))'
+                  : 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(79,70,229,0.06))',
+              border: user?.line_picture_url
+                ? '1.5px solid #06C755'
+                : dark ? '1px solid rgba(59,130,246,0.32)' : '1px solid rgba(37,99,235,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 12.5, fontWeight: 800,
               color: dark ? '#60a5fa' : '#2563eb',
+              overflow: 'hidden',
             }}>
-              {(user?.username || '?')[0].toUpperCase()}
+              {user?.line_picture_url ? (
+                <img src={user.line_picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                (user?.username || '?')[0].toUpperCase()
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
                 fontSize: 12, fontWeight: 600, lineHeight: 1.3,
                 color: dark ? '#f8fafc' : '#0f172a',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{user?.full_name || user?.username}</div>
+              }}>
+                {user?.full_name || user?.line_display_name || user?.username}
+              </div>
               <div style={{
                 fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
                 color: dark ? '#94a3b8' : '#64748b',
                 marginTop: 2,
-              }}>{user?.role || 'user'}</div>
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+                <span>{user?.role || 'user'}</span>
+                {user?.line_user_id && (
+                  <span style={{ color: '#06C755', fontSize: 9, fontWeight: 800 }}>• LINE</span>
+                )}
+              </div>
             </div>
             <button
               onClick={logout}
@@ -570,7 +587,7 @@ function AppInner() {
               display: 'none',
               letterSpacing: '0.01em',
             }} className="md:block flex-shrink-0">
-              {user?.full_name || user?.username}
+              {user?.full_name || user?.line_display_name || user?.username}
             </div>
 
             <div className="md:block hidden flex-shrink-0" style={{

@@ -73,6 +73,14 @@ const ROLE_META = {
   user:       { color: '#6b7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.25)' },
 }
 
+function LineIcon({ size = 12, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={style}>
+      <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.038 9.608.391.084.922.258 1.057.592.122.303.079.778.039 1.085l-.171 1.026c-.052.312-.246 1.22.844.665 1.09-.556 5.882-3.468 8.026-5.939C22.617 15.289 24 12.98 24 10.304z" />
+    </svg>
+  )
+}
+
 function RoleBadge({ role }) {
   const m = ROLE_META[role] || ROLE_META.user
   return (
@@ -340,13 +348,14 @@ export default function UsersPage() {
   )
 
   const filtered = users.filter(u =>
-    [u.username, u.full_name, u.role].some(v =>
+    [u.username, u.full_name, u.role, u.line_display_name, u.line_user_id].some(v =>
       String(v || '').toLowerCase().includes(search.toLowerCase())
     )
   )
   const FS_COLS = useMemo(() => buildFilterSortColumns([
     { field: 'username', label: 'ชื่อผู้ใช้', type: 'text' },
     { field: 'full_name', label: 'ชื่อ-นามสกุล', type: 'text' },
+    { field: 'line_display_name', label: 'ชื่อ LINE', type: 'text' },
     { field: 'role', label: 'บทบาท', type: 'select' },
     { field: 'status', label: 'สถานะ', type: 'select' },
   ], {
@@ -364,10 +373,16 @@ export default function UsersPage() {
   const submit = async () => {
     if (!form.username) return toast.error('ต้องระบุชื่อผู้ใช้')
     const isEdit = !!(form._id || form.id)
-    if (!isEdit && !form.password) return toast.error('ต้องระบุรหัสผ่านสำหรับผู้ใช้ใหม่')
+    if (!isEdit && !form.password && !form.line_user_id) return toast.error('ต้องระบุรหัสผ่านสำหรับผู้ใช้ใหม่')
     setSaving(true)
     try {
-      const payload = { ...form, username: form.username.trim().toLowerCase() }
+      const payload = {
+        ...form,
+        username: form.username.trim().toLowerCase(),
+        line_user_id: form.line_user_id || null,
+        line_display_name: form.line_display_name || null,
+        line_picture_url: form.line_picture_url || null,
+      }
       if (form.password) payload.password_hash = await hashPassword(form.password)
       delete payload.password
       // Guard: permissions must always be a plain object — if it ever arrives
@@ -430,15 +445,38 @@ export default function UsersPage() {
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{
-                        width: 30, height: 30, borderRadius: 9, flexShrink: 0,
-                        background: 'linear-gradient(135deg,rgba(99,102,241,0.18),rgba(99,102,241,0.06))',
-                        border: '1px solid rgba(99,102,241,0.2)',
+                        width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                        background: u.line_picture_url ? 'transparent' : 'linear-gradient(135deg,rgba(99,102,241,0.18),rgba(99,102,241,0.06))',
+                        border: u.line_picture_url ? '1px solid rgba(6,199,85,0.4)' : '1px solid rgba(99,102,241,0.2)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 12, fontWeight: 800, color: '#818cf8',
+                        overflow: 'hidden',
                       }}>
-                        {(u.username || '?')[0].toUpperCase()}
+                        {u.line_picture_url ? (
+                          <img src={u.line_picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          (u.username || '?')[0].toUpperCase()
+                        )}
                       </div>
-                      <span className="font-semibold">{u.username || '—'}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span className="font-semibold">{u.username || '—'}</span>
+                          {u.line_user_id && (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 3,
+                              padding: '1px 6px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                              color: '#06C755', background: 'rgba(6,199,85,0.12)', border: '1px solid rgba(6,199,85,0.3)',
+                            }}>
+                              <LineIcon size={10} /> LINE
+                            </span>
+                          )}
+                        </div>
+                        {u.line_display_name && (
+                          <span style={{ fontSize: 10.5, color: 'var(--text-400)' }}>
+                            LINE: {u.line_display_name}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td style={{color:'var(--text-600)'}}>{u.full_name || '—'}</td>
@@ -523,24 +561,59 @@ export default function UsersPage() {
 
         {/* ── Tab: Info ── */}
         {tab === 'info' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label">ชื่อผู้ใช้ *</label>
-              <input className="input" value={form.username}
-                placeholder="เช่น john, tech01"
-                onChange={e => setForm(p => ({...p, username: e.target.value}))} />
-            </div>
-            <div>
-              <label className="label">ชื่อ-นามสกุล</label>
-              <input className="input" value={form.full_name || ''}
-                placeholder="ชื่อจริง"
-                onChange={e => setForm(p => ({...p, full_name: e.target.value}))} />
-            </div>
+          <div className="space-y-4">
+            {/* LINE Account Link Info Box if user has LINE ID */}
+            {form.line_user_id && (
+              <div className="p-3.5 rounded-xl bg-[#06C755]/10 border border-[#06C755]/30 flex items-center gap-3.5">
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12, overflow: 'hidden', flexShrink: 0,
+                  border: '2px solid #06C755', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: '#06C755', color: '#fff',
+                }}>
+                  {form.line_picture_url ? (
+                    <img src={form.line_picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <LineIcon size={24} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                      {form.line_display_name || form.username}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#06C755] text-white">
+                      บัญชี LINE เชื่อมต่อแล้ว
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                    User ID: {form.line_user_id}
+                  </div>
+                </div>
+              </div>
+            )}
 
-            <div>
-              <label className="label">
-                รหัสผ่าน {form._id || form.id ? <span style={{fontWeight:400,opacity:.6}}>(เว้นว่างถ้าไม่เปลี่ยน)</span> : '*'}
-              </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">ชื่อผู้ใช้ *</label>
+                <input className="input" value={form.username}
+                  placeholder="เช่น john, tech01"
+                  onChange={e => setForm(p => ({...p, username: e.target.value}))} />
+              </div>
+              <div>
+                <label className="label">ชื่อ-นามสกุล</label>
+                <input className="input" value={form.full_name || ''}
+                  placeholder="ชื่อจริง"
+                  onChange={e => setForm(p => ({...p, full_name: e.target.value}))} />
+              </div>
+
+              <div>
+                <label className="label">
+                  รหัสผ่าน {form.line_user_id ? (
+                    <span style={{fontWeight:400,opacity:.8,color:'#06C755'}}>(ผู้ใช้ LINE สแกน QR เข้าได้ทันที เว้นว่างได้)</span>
+                  ) : form._id || form.id ? (
+                    <span style={{fontWeight:400,opacity:.6}}>(เว้นว่างถ้าไม่เปลี่ยน)</span>
+                  ) : '*'}
+                </label>
               <div style={{ position: 'relative' }}>
                 <input className="input"
                   type={showPw ? 'text' : 'password'}
@@ -599,6 +672,7 @@ export default function UsersPage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
 

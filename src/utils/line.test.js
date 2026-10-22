@@ -116,24 +116,35 @@ describe('LINE Settings Persistence', () => {
     localStorage.clear()
   })
 
-  it('loads default settings when empty', () => {
+  it('loads default settings when empty including LINE Login configuration', () => {
     const s = loadLineSettings()
     expect(s.provider).toBe('line_oa')
     expect(s.is_enabled).toBe(true)
     expect(s.channel_access_token).toBe('')
+    expect(s.login_enabled).toBe(true)
+    expect(s.login_channel_id).toBe('')
+    expect(s.login_channel_secret).toBe('')
+    expect(s.login_default_role).toBe('user')
   })
 
-  it('saves and reloads settings with supervisors and technicians', () => {
+  it('saves and reloads settings with supervisors, technicians, and LINE login settings', () => {
     const dummyToken = ['dummy', 'value'].join('-')
     saveLineSettings({
       ...DEFAULT_LINE_SETTINGS,
       channel_access_token: dummyToken,
       supervisors: [{ name: 'หัวหน้ากฤษดา', user_id: 'U11111' }],
       technicians: [{ name: 'ช่างหนึ่ง', user_id: 'U22222' }],
+      login_enabled: true,
+      login_channel_id: '2009998888',
+      login_channel_secret: 'sec_test_12345',
+      login_default_role: 'technician',
     })
     const loaded = loadLineSettings()
     expect(loaded.channel_access_token).toBe(dummyToken)
     expect(loaded.supervisors[0].user_id).toBe('U11111')
     expect(loaded.technicians[0].user_id).toBe('U22222')
+    expect(loaded.login_channel_id).toBe('2009998888')
+    expect(loaded.login_channel_secret).toBe('sec_test_12345')
+    expect(loaded.login_default_role).toBe('technician')
   })
 })

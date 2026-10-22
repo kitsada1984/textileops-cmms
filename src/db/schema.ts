@@ -384,11 +384,15 @@ export const users = sqliteTable('users', {
   status: text('status'),
   permissions: text('permissions'),
   password_salt: text('password_salt'),
+  line_user_id: text('line_user_id'),
+  line_display_name: text('line_display_name'),
+  line_picture_url: text('line_picture_url'),
   created_at: text('created_at').$defaultFn(() => new Date().toISOString()),
   updated_at: text('updated_at').$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
   usernameIdx: index('idx_users_username').on(table.username),
   emailIdx: index('idx_users_email').on(table.email),
+  lineUserIdIdx: index('idx_users_line_user_id').on(table.line_user_id),
 }))
 export type User = InferSelectModel<typeof users>
 export type NewUser = InferInsertModel<typeof users>

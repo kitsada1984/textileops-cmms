@@ -46,6 +46,34 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     try {
+      // Check for LINE login callback in URL query parameters
+      if (typeof window !== 'undefined' && window.location.search) {
+        const urlParams = new URLSearchParams(window.location.search)
+        const lineToken = urlParams.get('line_token')
+        const lineUserRaw = urlParams.get('line_user')
+
+        if (lineToken && lineUserRaw) {
+          try {
+            const rawUser = JSON.parse(lineUserRaw)
+            const normUser = normalizeUser(rawUser)
+            setAuthToken(lineToken)
+            localStorage.setItem('app_user', JSON.stringify(normUser))
+            setUser(normUser)
+
+            // Remove LINE auth parameters from URL without reloading
+            urlParams.delete('line_token')
+            urlParams.delete('line_user')
+            urlParams.delete('line_auth')
+            const cleanQuery = urlParams.toString()
+            const newUrl = window.location.pathname + (cleanQuery ? `?${cleanQuery}` : '') + window.location.hash
+            window.history.replaceState({}, document.title, newUrl)
+            return
+          } catch (e) {
+            console.error('Failed to parse LINE callback user:', e)
+          }
+        }
+      }
+
       const stored = localStorage.getItem('app_user')
       // Stale session from the pre-D1 version: has user profile but no auth
       // token — every API call would silently 401 and show empty pages.
@@ -58,6 +86,14 @@ export function AuthProvider({ children }) {
     } catch {
       setUser(null)
     }
+  }, [])
+
+  const loginWithToken = useCallback((token, userData) => {
+    setAuthToken(token)
+    const norm = normalizeUser(userData)
+    localStorage.setItem('app_user', JSON.stringify(norm))
+    setUser(norm)
+    return norm
   }, [])
 
   const login = useCallback(async (username, password) => {
@@ -150,7 +186,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, login, logout, refreshUser, loginWithToken }}>
       {children}
     </AuthContext.Provider>
   )

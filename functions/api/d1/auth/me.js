@@ -18,7 +18,7 @@ export async function onRequestGet(context) {
 
   try {
     const row = await db
-      .prepare('SELECT id, username, full_name, role, status, permissions FROM users WHERE id = ?')
+      .prepare('SELECT id, username, full_name, role, status, permissions, line_user_id, line_display_name, line_picture_url FROM users WHERE id = ?')
       .bind(payload.uid)
       .first()
 
@@ -32,9 +32,12 @@ export async function onRequestGet(context) {
       user: {
         id: row.id,
         username: row.username,
-        full_name: row.full_name || row.username,
+        full_name: row.full_name || row.line_display_name || row.username,
         role: row.role,
         permissions,
+        line_user_id: row.line_user_id || null,
+        line_display_name: row.line_display_name || null,
+        line_picture_url: row.line_picture_url || null,
       },
     })
   } catch (err) {
