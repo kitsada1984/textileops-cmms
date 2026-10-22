@@ -11,6 +11,7 @@ import { APP_VERSION, APP_BUILD_DATE } from '../version'
 import { fetchTelegramContacts, loadTelegramSettings, saveTelegramSettings, saveTelegramSettingsDB, loadTelegramSettingsDB, testTelegram } from '../utils/telegram'
 import { fetchLineContacts, loadLineSettings, saveLineSettingsDB, loadLineSettingsDB, testLineNotification, DEFAULT_LINE_SETTINGS } from '../utils/line'
 import { useToast } from '../components/ui/Toast'
+import usePagePerms from '../hooks/usePagePerms'
 import { syncNotificationTechsToRegistry } from '../utils/technicianSync'
 import Modal from '../components/ui/Modal'
 import { telegramAdminSchema } from '../schemas/telegramAdminSchema'
@@ -37,6 +38,7 @@ function SectionCard({ icon: Icon, title, children }) {
 export default function SettingsPage() {
   const { t } = useT()
   const { user, refreshUser } = useAuth()
+  const { canEdit, canDelete } = usePagePerms('settings')
   const toast = useToast()
   const [counts,     setCounts]     = useState({})
   const [newPwd,     setNewPwd]     = useState('')
@@ -143,6 +145,10 @@ export default function SettingsPage() {
   const isOk = pwdMsg.includes('✓') || pwdMsg.toLowerCase().includes('success') || pwdMsg.includes('สำเร็จ')
 
   const saveTg = async () => {
+    if (!canEdit) {
+      toast.error('ไม่มีสิทธิ์ดำเนินการ', 'บัญชีของคุณไม่มีสิทธิ์แก้ไขการตั้งค่าระบบ')
+      return
+    }
     try {
       await saveTelegramSettingsDB(tg)
       const syncResult = await syncNotificationTechsToRegistry(tg.technicians, 'TELEGRAM')
@@ -174,6 +180,10 @@ export default function SettingsPage() {
   }
 
   const saveLine = async () => {
+    if (!canEdit) {
+      toast.error('ไม่มีสิทธิ์ดำเนินการ', 'บัญชีของคุณไม่มีสิทธิ์แก้ไขการตั้งค่าระบบ')
+      return
+    }
     try {
       await saveLineSettingsDB(line)
       const syncResult = await syncNotificationTechsToRegistry(line.technicians, 'LINE')

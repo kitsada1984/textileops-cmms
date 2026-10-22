@@ -6,7 +6,8 @@ import Modal from '../components/ui/Modal'
 import SearchInput from '../components/ui/SearchInput'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import { useT } from '../contexts/LanguageContext'
-import { hashPassword, PERM_ACTIONS, parsePermissions } from '../contexts/AuthContext'
+import { hashPassword, PERM_ACTIONS, parsePermissions, useAuth } from '../contexts/AuthContext'
+import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 
@@ -326,12 +327,28 @@ function buildPreset(actions) {
   return out
 }
 
+function buildTechnicianPreset() {
+  const techKeys = ['machines', 'cylinders', 'workorders', 'pm', 'needlestock', 'spareparts', 'stock']
+  const out = {}
+  techKeys.forEach(k => { out[k] = ['view', 'add', 'edit'] })
+  return out
+}
+
+function buildSupervisorPreset() {
+  const supervisorKeys = ['dashboard', 'machines', 'cylinders', 'workorders', 'pm', 'designbom', 'needlestock', 'spareparts', 'purchasing', 'stock', 'reports', 'logs']
+  const out = {}
+  supervisorKeys.forEach(k => { out[k] = ['view', 'add', 'edit', 'delete'] })
+  return out
+}
+
 /* ─── Main page ───────────────────────────────────────────────────────── */
 const EMPTY = { username: '', password: '', full_name: '', role: 'user', status: 'active', permissions: {} }
 
 export default function UsersPage() {
   const { t } = useT()
   const toast  = useToast()
+  const { user: currentUser, refreshUser } = useAuth()
+  const { canAdd, canEdit, canDelete } = usePagePerms('users')
   const { data, loading, load, save, remove } = useEntity(UserAPI)
   const [search, setSearch] = useState('')
   const [modal,  setModal]  = useState(false)
@@ -390,6 +407,9 @@ export default function UsersPage() {
       payload.permissions = parsePermissions(payload.permissions)
       await save(payload)
       toast.success(isEdit ? 'แก้ไขผู้ใช้สำเร็จ' : 'เพิ่มผู้ใช้สำเร็จ', form.username)
+      if (currentUser?.id === (form._id || form.id) || currentUser?.username === form.username) {
+        if (typeof refreshUser === 'function') refreshUser()
+      }
       setModal(false)
     } catch (e) {
       toast.error('เกิดข้อผิดพลาด', e.message)
@@ -419,7 +439,7 @@ export default function UsersPage() {
         <SearchInput value={search} onChange={setSearch} placeholder="ค้นหาผู้ใช้..." />
         <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
         <button className="btn-outline ml-auto" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
-        <button className="btn-primary" onClick={openNew}><Plus size={15}/> เพิ่มผู้ใช้</button>
+        {canAdd && <button className="btn-primary" onClick={openNew}><Plus size={15}/> เพิ่มผู้ใช้</button>}
       </div>
 
       <div className="table-wrap">
@@ -518,8 +538,11 @@ export default function UsersPage() {
                   </td>
                   <td>
                     <div className="flex gap-2">
-                      <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(u)}><Pencil size={12}/></button>
-                      <button className="btn-danger py-1 px-2 text-xs" onClick={() => del(u._id || u.id)}><Trash2 size={12}/></button>
+                      {canEdit && <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(u)} title="แก้ไข"><Pencil size={12}/></button>}
+                      {canDelete && <button className="btn-danger py-1 px-2 text-xs" onClick={() => del(u._id || u.id)} title="ลบ"><Trash2 size={12}/></button>}
+                      {!canEdit && !canDelete && (
+                        <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -696,6 +719,14 @@ export default function UsersPage() {
                   <button className="btn-outline" style={{fontSize:11,padding:'4px 12px'}}
                     onClick={() => setForm(p => ({...p, permissions: buildPreset(['view','add','edit','delete'])}))}>
                     เต็มสิทธิ์ทุกเมนู
+                  </button>
+                  <button className="btn-outline" style={{fontSize:11,padding:'4px 12px'}}
+                    onClick={() => setForm(p => ({...p, permissions: buildTechnicianPreset()}))}>
+                    ช่างซ่อมบำรุง
+                  </button>
+                  <button className="btn-outline" style={{fontSize:11,padding:'4px 12px'}}
+                    onClick={() => setForm(p => ({...p, permissions: buildSupervisorPreset()}))}>
+                    หัวหน้างาน
                   </button>
                   <button className="btn-outline" style={{fontSize:11,padding:'4px 12px'}}
                     onClick={() => setForm(p => ({...p, permissions: buildPreset(['view'])}))}>

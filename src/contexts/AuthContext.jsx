@@ -44,6 +44,73 @@ export function hasPerm(user, menuKey, action = 'view') {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined)
 
+  const logout = useCallback(() => {
+    localStorage.removeItem('app_user')
+    setAuthToken('')
+    setUser(null)
+  }, [])
+
+  const refreshUser = useCallback(async () => {
+    const stored = localStorage.getItem('app_user')
+    if (!stored) return
+    let storedId = ''
+    try {
+      storedId = JSON.parse(stored)?.id || ''
+    } catch {
+      logout()
+      return
+    }
+
+    if (getActiveDbProvider() === 'd1') {
+      try {
+        const token = localStorage.getItem('textileops_auth_token') || ''
+        if (!token) {
+          logout()
+          return
+        }
+        const res = await fetch('/api/d1/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.status === 401) {
+          logout()
+          return
+        }
+        if (res.ok) {
+          const result = await res.json()
+          if (result.ok && result.user) {
+            const info = normalizeUser(result.user)
+            localStorage.setItem('app_user', JSON.stringify(info))
+            setUser(info)
+            return
+          }
+        }
+      } catch {}
+      return
+    }
+
+    if (!storedId) return
+    const { data } = await supabase
+      .from('users')
+      .select('id, username, full_name, role, status, permissions')
+      .eq('id', storedId)
+      .single()
+    if (data) {
+      if (data.status === 'inactive') {
+        logout()
+        return
+      }
+      const info = normalizeUser({
+        id: data.id,
+        username: data.username,
+        full_name: data.full_name || data.username,
+        role: data.role,
+        permissions: data.permissions,
+      })
+      localStorage.setItem('app_user', JSON.stringify(info))
+      setUser(info)
+    }
+  }, [logout])
+
   useEffect(() => {
     try {
       // Check for LINE login callback in URL query parameters
@@ -82,11 +149,36 @@ export function AuthProvider({ children }) {
         setUser(null)
         return
       }
-      setUser(stored ? normalizeUser(JSON.parse(stored)) : null)
+      if (stored) {
+        setUser(normalizeUser(JSON.parse(stored)))
+        // Sync latest permissions and active status from server in background
+        refreshUser()
+      } else {
+        setUser(null)
+      }
     } catch {
       setUser(null)
     }
-  }, [])
+  }, [refreshUser])
+
+  // Sync latest permissions whenever user re-focuses the window / tab
+  useEffect(() => {
+    let lastRefresh = Date.now()
+    const handleFocus = () => {
+      // Throttle to at most once per 10 seconds
+      if (Date.now() - lastRefresh > 10000) {
+        lastRefresh = Date.now()
+        refreshUser()
+      }
+    }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') handleFocus()
+    })
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [refreshUser])
 
   const loginWithToken = useCallback((token, userData) => {
     setAuthToken(token)
@@ -136,53 +228,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem('app_user', JSON.stringify(info))
     setUser(info)
     return info
-  }, [])
-
-  const logout = useCallback(() => {
-    localStorage.removeItem('app_user')
-    setAuthToken('')
-    setUser(null)
-  }, [])
-
-  const refreshUser = useCallback(async () => {
-    const stored = localStorage.getItem('app_user')
-    if (!stored) return
-    const { id } = JSON.parse(stored)
-
-    if (getActiveDbProvider() === 'd1') {
-      try {
-        const res = await fetch('/api/d1/auth/me', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('textileops_auth_token') || ''}` },
-        })
-        if (res.ok) {
-          const result = await res.json()
-          if (result.ok && result.user) {
-            const info = normalizeUser(result.user)
-            localStorage.setItem('app_user', JSON.stringify(info))
-            setUser(info)
-            return
-          }
-        }
-      } catch {}
-      return
-    }
-
-    const { data } = await supabase
-      .from('users')
-      .select('id, username, full_name, role, status, permissions')
-      .eq('id', id)
-      .single()
-    if (data) {
-      const info = normalizeUser({
-        id: data.id,
-        username: data.username,
-        full_name: data.full_name || data.username,
-        role: data.role,
-        permissions: data.permissions,
-      })
-      localStorage.setItem('app_user', JSON.stringify(info))
-      setUser(info)
-    }
   }, [])
 
   return (

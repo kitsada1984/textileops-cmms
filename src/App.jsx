@@ -1,4 +1,4 @@
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { APP_VERSION } from './version'
 import gemmaLogo from './assets/logo-gemma.png'
@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Cpu, Disc, ClipboardList, Calendar,
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
-  FileText, Monitor, Tablet, Smartphone, Sparkles, Target, Download, RefreshCw, Database
+  FileText, Monitor, Tablet, Smartphone, Sparkles, Target, Download, RefreshCw, Database,
+  ShieldAlert
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
@@ -87,32 +88,71 @@ const NAV_SECTIONS = [
 
 const ALL_NAV_ITEMS = NAV_SECTIONS.flatMap(s => s.items)
 
+function ProtectedRoute({ permKey, children }) {
+  const { user } = useAuth()
+  const allowed = canAccess(user, permKey)
+
+  if (allowed) return children
+
+  // If user lands on home / but has no dashboard perm, redirect to their first accessible menu
+  if (permKey === 'dashboard') {
+    const firstAccessible = ALL_NAV_ITEMS.find((n) => canAccess(user, n.permKey))
+    if (firstAccessible && firstAccessible.to !== '/') {
+      return <Navigate to={firstAccessible.to} replace />
+    }
+  }
+
+  const firstAccessible = ALL_NAV_ITEMS.find((n) => canAccess(user, n.permKey))
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mb-4">
+        <ShieldAlert size={32} />
+      </div>
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">
+        ไม่มีสิทธิ์เข้าถึงเมนูนี้
+      </h2>
+      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-6 leading-relaxed">
+        บัญชีของคุณไม่ได้รับอนุญาตให้เข้าใช้งานเมนูนี้ หากต้องการใช้งาน กรุณาติดต่อผู้ดูแลระบบ (Admin) เพื่อกำหนดสิทธิ์เพิ่มเติม
+      </p>
+      {firstAccessible && (
+        <NavLink
+          to={firstAccessible.to}
+          className="btn-primary inline-flex items-center gap-2 py-2 px-4 rounded-xl text-xs font-bold"
+        >
+          <span>ไปยังหน้าหลักที่คุณมีสิทธิ์เข้าถึง</span>
+        </NavLink>
+      )}
+    </div>
+  )
+}
+
 function PageRoutes() {
   const location = useLocation()
   return (
     <ErrorBoundary resetKey={location.pathname}>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
-          <Route path="/"           element={<Dashboard />} />
-          <Route path="/machines"   element={<Machines />} />
-          <Route path="/cylinders"  element={<Cylinders />} />
-          <Route path="/workorders"      element={<WorkOrders />} />
-          <Route path="/repair-requests" element={<WorkOrders defaultTab="repair_requests" />} />
-          <Route path="/pm"           element={<PMPlan />} />
-          <Route path="/pm-log"       element={<PMPlan defaultTab="log" />} />
-          <Route path="/center-check" element={<PMPlan defaultTab="center_check" />} />
-          <Route path="/needle-condition" element={<PMPlan defaultTab="needle" />} />
-          <Route path="/design-bom"   element={<DesignBom />} />
-          <Route path="/needle-stock" element={<NeedleStock />} />
-          <Route path="/spareparts" element={<SpareParts />} />
-          <Route path="/purchasing" element={<Purchasing />} />
-          <Route path="/stock"      element={<StockMovement />} />
-          <Route path="/reports"    element={<Reports />} />
-          <Route path="/logs"       element={<Logs />} />
-          <Route path="/users"      element={<UsersPage />} />
-          <Route path="/webbuilder" element={<WebBuilder />} />
-          <Route path="/settings"   element={<SettingsPage />} />
-          <Route path="/d1-test"    element={<D1TestPage />} />
+          <Route path="/"           element={<ProtectedRoute permKey="dashboard"><Dashboard /></ProtectedRoute>} />
+          <Route path="/machines"   element={<ProtectedRoute permKey="machines"><Machines /></ProtectedRoute>} />
+          <Route path="/cylinders"  element={<ProtectedRoute permKey="cylinders"><Cylinders /></ProtectedRoute>} />
+          <Route path="/workorders"      element={<ProtectedRoute permKey="workorders"><WorkOrders /></ProtectedRoute>} />
+          <Route path="/repair-requests" element={<ProtectedRoute permKey="workorders"><WorkOrders defaultTab="repair_requests" /></ProtectedRoute>} />
+          <Route path="/pm"           element={<ProtectedRoute permKey="pm"><PMPlan /></ProtectedRoute>} />
+          <Route path="/pm-log"       element={<ProtectedRoute permKey="pm"><PMPlan defaultTab="log" /></ProtectedRoute>} />
+          <Route path="/center-check" element={<ProtectedRoute permKey="pm"><PMPlan defaultTab="center_check" /></ProtectedRoute>} />
+          <Route path="/needle-condition" element={<ProtectedRoute permKey="pm"><PMPlan defaultTab="needle" /></ProtectedRoute>} />
+          <Route path="/design-bom"   element={<ProtectedRoute permKey="designbom"><DesignBom /></ProtectedRoute>} />
+          <Route path="/needle-stock" element={<ProtectedRoute permKey="needlestock"><NeedleStock /></ProtectedRoute>} />
+          <Route path="/spareparts" element={<ProtectedRoute permKey="spareparts"><SpareParts /></ProtectedRoute>} />
+          <Route path="/purchasing" element={<ProtectedRoute permKey="purchasing"><Purchasing /></ProtectedRoute>} />
+          <Route path="/stock"      element={<ProtectedRoute permKey="stock"><StockMovement /></ProtectedRoute>} />
+          <Route path="/reports"    element={<ProtectedRoute permKey="reports"><Reports /></ProtectedRoute>} />
+          <Route path="/logs"       element={<ProtectedRoute permKey="logs"><Logs /></ProtectedRoute>} />
+          <Route path="/users"      element={<ProtectedRoute permKey="users"><UsersPage /></ProtectedRoute>} />
+          <Route path="/webbuilder" element={<ProtectedRoute permKey="webbuilder"><WebBuilder /></ProtectedRoute>} />
+          <Route path="/settings"   element={<ProtectedRoute permKey="settings"><SettingsPage /></ProtectedRoute>} />
+          <Route path="/d1-test"    element={<ProtectedRoute permKey="settings"><D1TestPage /></ProtectedRoute>} />
         </Routes>
       </Suspense>
     </ErrorBoundary>

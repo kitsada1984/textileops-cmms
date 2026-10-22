@@ -17,6 +17,8 @@ vi.mock('../contexts/AuthContext', () => ({
     refreshUser: vi.fn(),
   }),
   hashPassword: vi.fn(),
+  hasPerm: () => true,
+  canAccess: () => true,
 }))
 
 vi.mock('../components/ui/Toast', () => ({

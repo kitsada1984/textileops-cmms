@@ -1,13 +1,18 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Cpu, ClipboardList, Calendar, Wrench, Menu } from 'lucide-react'
+import { LayoutDashboard, Cpu, ClipboardList, Calendar, Menu } from 'lucide-react'
+import { useAuth, canAccess } from '../../contexts/AuthContext'
 
 export default function MobileBottomNav({ onOpenMenu }) {
-  const navItems = [
-    { to: '/', label: 'แดชบอร์ด', icon: LayoutDashboard, end: true },
-    { to: '/machines', label: 'เครื่องจักร', icon: Cpu },
-    { to: '/workorders', label: 'ใบสั่งงาน', icon: ClipboardList },
-    { to: '/pm', label: 'แผน PM', icon: Calendar },
+  const { user } = useAuth()
+
+  const defaultNavItems = [
+    { to: '/', label: 'แดชบอร์ด', icon: LayoutDashboard, end: true, permKey: 'dashboard' },
+    { to: '/machines', label: 'เครื่องจักร', icon: Cpu, permKey: 'machines' },
+    { to: '/workorders', label: 'ใบสั่งงาน', icon: ClipboardList, permKey: 'workorders' },
+    { to: '/pm', label: 'แผน PM', icon: Calendar, permKey: 'pm' },
   ]
+
+  const visibleNavItems = defaultNavItems.filter((item) => canAccess(user, item.permKey))
 
   return (
     <nav
@@ -17,7 +22,7 @@ export default function MobileBottomNav({ onOpenMenu }) {
       }}
     >
       <div className="max-w-md mx-auto flex items-center justify-around py-1 px-1.5 sm:px-3">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}

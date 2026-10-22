@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
+import usePagePerms from '../hooks/usePagePerms'
 import {
   classifyNeedleAction,
   needleActionLabel,
@@ -122,6 +123,7 @@ function NeedleImage({ src, alt = '', className = '', style, size = 'w600', onCl
 export default function NeedleStock() {
   const toast = useToast()
   const { user } = useAuth()
+  const { canAdd, canEdit, canDelete } = usePagePerms('needlestock')
 
   // Main state
   const [needleSets, setNeedleSets] = useState([])
@@ -674,24 +676,28 @@ export default function NeedleStock() {
             <span>Export CSV</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => openStockModal(null)}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition shadow-blue-500/20 cursor-pointer"
-            title="ทำรายการสต็อกเข็ม (เบิกออก / รับเข้า / ตัดยอด / ตัดทิ้ง)"
-          >
-            <ArrowLeftRight className="w-4 h-4" />
-            <span>ทำรายการสต็อก</span>
-          </button>
+          {canAdd && (
+            <>
+              <button
+                type="button"
+                onClick={() => openStockModal(null)}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition shadow-blue-500/20 cursor-pointer"
+                title="ทำรายการสต็อกเข็ม (เบิกออก / รับเข้า / ตัดยอด / ตัดทิ้ง)"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                <span>ทำรายการสต็อก</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setAddModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition shadow-sky-600/30 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>เพิ่มชุดเข็มใหม่</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setAddModalOpen(true)}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition shadow-sky-600/30 cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>เพิ่มชุดเข็มใหม่</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
