@@ -58,6 +58,7 @@ import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
 import RepairRequests from './RepairRequests'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
+import WorkOrdersReportModal from '../components/workorder/WorkOrdersReportModal'
 import { db } from '../api/dbClient'
 import { generateWorkOrderPdfProps } from '../utils/pdfDocGenerators'
 import { notifyLineWorkOrderAssigned } from '../utils/line'
@@ -758,6 +759,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   const [printModalOpen, setPrintModalOpen] = useState(false)
   const [printJob, setPrintJob] = useState(null)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
 
   // Daily Work Progress (End of Day Update) Modal State
   const [dailyLogModalOpen, setDailyLogModalOpen] = useState(false)
@@ -1791,6 +1793,18 @@ export default function WorkOrders({ defaultTab = 'records' }) {
             />
           )}
           <button
+            type="button"
+            onClick={() => setReportModalOpen(true)}
+            className="btn btn-secondary text-xs flex items-center gap-1.5 shadow-2xs font-bold"
+            title="พิมพ์รายงานใบสั่งงานตามตัวกรองที่เลือก"
+          >
+            <Printer size={14} className="text-blue-500" />
+            <span className="hidden sm:inline">พิมพ์รายงาน</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px]">
+              {filteredJobs.length}
+            </span>
+          </button>
+          <button
             onClick={() => {
               loadJobs()
               loadTechsAndSettings()
@@ -2378,6 +2392,19 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
 
               <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors font-bold text-xs shadow-2xs"
+                  title="พิมพ์รายงานใบสั่งงานตามเงื่อนไขที่กรองบนหน้าเว็บ"
+                >
+                  <Printer size={13} />
+                  <span>พิมพ์รายงาน</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-blue-200/80 dark:bg-blue-900/70 text-[10px]">
+                    {filteredJobs.length}
+                  </span>
+                </button>
+
                 {(typeFilters.length > 0 || statusFilters.length > 0 || search.trim()) && (
                   <button
                     type="button"
@@ -4060,6 +4087,23 @@ export default function WorkOrders({ defaultTab = 'records' }) {
             StartTime: `${printJob.StartDate || ''} ${printJob.StartTime || ''}`.trim(),
             EndTime: printJob.EndDate ? `${printJob.EndDate} ${printJob.EndTime || ''}`.trim() : 'ยังไม่เสร็จสิ้น',
           })}
+        />
+      )}
+
+      {/* 6. Filtered Work Orders Print Report Modal */}
+      {reportModalOpen && (
+        <WorkOrdersReportModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          items={filteredJobs}
+          filterContext={{
+            typeFilters,
+            statusFilters,
+            search,
+            showDeleted,
+          }}
+          kpiTargets={kpiTargets}
+          currentUserName={user?.full_name || user?.line_display_name || user?.username || user?.Name || 'ช่างผู้ใช้งาน'}
         />
       )}
 
