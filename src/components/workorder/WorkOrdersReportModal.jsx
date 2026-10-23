@@ -17,6 +17,7 @@ import {
   Wrench,
   Percent,
   Download,
+  FileDown,
   Share2,
   Send,
   Copy,
@@ -24,6 +25,8 @@ import {
   ExternalLink,
   Loader2,
 } from 'lucide-react'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import { format } from 'date-fns'
 import gemmaLogo from '../../assets/logo-gemma.png'
 import {
@@ -58,6 +61,7 @@ export default function WorkOrdersReportModal({
   const [copied, setCopied] = useState(false)
   const [sendingLine, setSendingLine] = useState(false)
   const [lineSendStatus, setLineSendStatus] = useState(null)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
 
   const {
     typeFilters = [],
@@ -140,6 +144,64 @@ export default function WorkOrdersReportModal({
 
   if (showDeleted) {
     activeFilterLabels.push('รายการที่ลบ')
+  }
+
+  // ── PDF DOWNLOAD HANDLER (Direct .pdf file export) ─────────────────
+  const handleDownloadPdf = async () => {
+    if (!printRef.current || generatingPdf) return
+    setGeneratingPdf(true)
+    try {
+      const element = printRef.current
+      const isLandscape = orientation === 'landscape'
+
+      const html2canvasFn = typeof html2canvas === 'function' ? html2canvas : (html2canvas?.default || html2canvas)
+      const canvas = await html2canvasFn(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      })
+
+      if (!canvas || !canvas.width || !canvas.height) {
+        throw new Error('Canvas capture returned invalid output')
+      }
+
+      const pdf = new jsPDF({
+        orientation,
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      })
+
+      const pdfWidth = isLandscape ? 297 : 210
+      const pdfHeight = isLandscape ? 210 : 297
+
+      const imgWidth = pdfWidth
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width
+
+      let heightLeft = imgHeight
+      let position = 0
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST')
+      heightLeft -= pdfHeight
+
+      while (heightLeft > 0) {
+        position -= pdfHeight
+        pdf.addPage('a4', orientation)
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST')
+        heightLeft -= pdfHeight
+      }
+
+      const timestamp = format(new Date(), 'yyyyMMdd_HHmm')
+      pdf.save(`TextileOps_WorkOrders_Report_${timestamp}.pdf`)
+    } catch (err) {
+      console.error('PDF download error:', err)
+      window.print()
+    } finally {
+      setGeneratingPdf(false)
+    }
   }
 
   // ── CSV EXPORT HANDLER ─────────────────────────────────────────────
@@ -387,6 +449,23 @@ ${origin}`
             ช่องลงนาม: {showSignatures ? 'แสดง' : 'ซ่อน'}
           </button>
 
+          {/* Download PDF Button */}
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={generatingPdf}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/50 hover:bg-rose-900/60 disabled:opacity-50 text-rose-300 border border-rose-500/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
+            title="ดาวน์โหลดรายงานเป็นไฟล์ PDF (.pdf) ลงเครื่องทันที"
+          >
+            {generatingPdf ? (
+              <Loader2 size={14} className="animate-spin text-rose-400" />
+            ) : (
+              <FileDown size={14} className="text-rose-400" />
+            )}
+            <span className="hidden sm:inline">ดาวน์โหลด</span>
+            <span>PDF</span>
+          </button>
+
           {/* Download CSV Button */}
           <button
             type="button"
@@ -413,15 +492,15 @@ ${origin}`
             <span>แชร์ LINE</span>
           </button>
 
-          {/* Print / Save PDF Button */}
+          {/* Print Button */}
           <button
             type="button"
             onClick={handlePrint}
             className="btn btn-primary text-xs flex items-center gap-1.5 shadow-lg shadow-blue-500/25 px-3.5 py-1.5 font-bold cursor-pointer"
-            title="พิมพ์รายงาน หรือเลือกบันทึกเป็น PDF ขนาด A4"
+            title="พิมพ์รายงานทางเครื่องพิมพ์ หรือบันทึก PDF ผ่านเบราว์เซอร์"
           >
             <Printer size={15} />
-            <span>พิมพ์ / บันทึก PDF (A4)</span>
+            <span>พิมพ์รายงาน</span>
           </button>
 
           {/* Close Button */}

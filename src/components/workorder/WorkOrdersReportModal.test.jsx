@@ -2,11 +2,46 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import WorkOrdersReportModal from './WorkOrdersReportModal'
 
+const { mockPdfSave, mockHtml2Canvas, mockJsPDF } = vi.hoisted(() => {
+  const save = vi.fn()
+  const canvas = {
+    width: 1200,
+    height: 800,
+    toDataURL: vi.fn(() => 'data:image/jpeg;base64,mockdata'),
+  }
+  const h2c = vi.fn().mockResolvedValue(canvas)
+  const jspdf = vi.fn().mockImplementation(() => ({
+    addImage: vi.fn(),
+    addPage: vi.fn(),
+    save,
+  }))
+  return { mockPdfSave: save, mockHtml2Canvas: h2c, mockJsPDF: jspdf }
+})
+
+vi.mock('html2canvas', () => ({
+  default: mockHtml2Canvas,
+}))
+
+vi.mock('jspdf', () => ({
+  jsPDF: mockJsPDF,
+}))
+
 describe('WorkOrdersReportModal Component', () => {
   const originalPrint = window.print
 
   beforeEach(() => {
     window.print = vi.fn()
+    mockPdfSave.mockReset()
+    mockHtml2Canvas.mockReset().mockResolvedValue({
+      width: 1200,
+      height: 800,
+      toDataURL: vi.fn(() => 'data:image/jpeg;base64,mockdata'),
+    })
+    mockJsPDF.mockReset().mockImplementation(() => ({
+      addImage: vi.fn(),
+      addPage: vi.fn(),
+      save: mockPdfSave,
+    }))
   })
 
   afterEach(() => {
@@ -124,12 +159,34 @@ describe('WorkOrdersReportModal Component', () => {
       />
     )
 
-    const printBtn = screen.getByRole('button', { name: /พิมพ์ \/ บันทึก PDF/i })
+    const printBtn = screen.getByRole('button', { name: /พิมพ์รายงาน/i })
     fireEvent.click(printBtn)
     expect(window.print).toHaveBeenCalledTimes(1)
   })
 
-  it('triggers CSV download when clicking download button', () => {
+  it('triggers PDF download when clicking download PDF button', async () => {
+    mockPdfSave.mockClear()
+    render(
+      <WorkOrdersReportModal
+        open={true}
+        onClose={vi.fn()}
+        items={mockItems}
+        filterContext={mockFilterContext}
+        kpiTargets={mockKpiTargets}
+      />
+    )
+
+    const pdfBtn = screen.getByRole('button', { name: /PDF/i })
+    await act(async () => {
+      fireEvent.click(pdfBtn)
+    })
+
+    expect(mockPdfSave).toHaveBeenCalledWith(
+      expect.stringMatching(/TextileOps_WorkOrders_Report_.*\.pdf/)
+    )
+  })
+
+  it('triggers CSV download when clicking download CSV button', () => {
     const originalCreateObjectURL = URL.createObjectURL
     const originalRevokeObjectURL = URL.revokeObjectURL
     const mockCreateObjectURL = vi.fn(() => 'blob:mock-url')
@@ -149,7 +206,7 @@ describe('WorkOrdersReportModal Component', () => {
       />
     )
 
-    const downloadBtn = screen.getByRole('button', { name: /ดาวน์โหลด/i })
+    const downloadBtn = screen.getByRole('button', { name: /CSV/i })
     fireEvent.click(downloadBtn)
 
     expect(mockCreateObjectURL).toHaveBeenCalled()
