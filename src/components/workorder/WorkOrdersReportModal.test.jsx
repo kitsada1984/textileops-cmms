@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import WorkOrdersReportModal from './WorkOrdersReportModal'
 
 describe('WorkOrdersReportModal Component', () => {
@@ -124,9 +124,89 @@ describe('WorkOrdersReportModal Component', () => {
       />
     )
 
-    const printBtn = screen.getByRole('button', { name: /พิมพ์รายงาน \(Print A4\)/i })
+    const printBtn = screen.getByRole('button', { name: /พิมพ์ \/ บันทึก PDF/i })
     fireEvent.click(printBtn)
     expect(window.print).toHaveBeenCalledTimes(1)
+  })
+
+  it('triggers CSV download when clicking download button', () => {
+    const originalCreateObjectURL = URL.createObjectURL
+    const originalRevokeObjectURL = URL.revokeObjectURL
+    const mockCreateObjectURL = vi.fn(() => 'blob:mock-url')
+    const mockRevokeObjectURL = vi.fn()
+    URL.createObjectURL = mockCreateObjectURL
+    URL.revokeObjectURL = mockRevokeObjectURL
+
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    render(
+      <WorkOrdersReportModal
+        open={true}
+        onClose={vi.fn()}
+        items={mockItems}
+        filterContext={mockFilterContext}
+        kpiTargets={mockKpiTargets}
+      />
+    )
+
+    const downloadBtn = screen.getByRole('button', { name: /ดาวน์โหลด/i })
+    fireEvent.click(downloadBtn)
+
+    expect(mockCreateObjectURL).toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+
+    URL.createObjectURL = originalCreateObjectURL
+    URL.revokeObjectURL = originalRevokeObjectURL
+    clickSpy.mockRestore()
+  })
+
+  it('opens LINE share dialog and allows sharing to LINE app and copying text', async () => {
+    const originalOpen = window.open
+    const mockOpen = vi.fn()
+    window.open = mockOpen
+
+    const mockClipboard = {
+      writeText: vi.fn().mockResolvedValue(true),
+    }
+    Object.assign(navigator, { clipboard: mockClipboard })
+
+    render(
+      <WorkOrdersReportModal
+        open={true}
+        onClose={vi.fn()}
+        items={mockItems}
+        filterContext={mockFilterContext}
+        kpiTargets={mockKpiTargets}
+        currentUserName="สมศักดิ์ ช่างซ่อม"
+      />
+    )
+
+    // 1. Click "แชร์ LINE" to open submodal
+    const shareLineBtn = screen.getByRole('button', { name: /แชร์ LINE/i })
+    fireEvent.click(shareLineBtn)
+
+    // 2. Submodal opens with preview
+    expect(screen.getByText(/แชร์รายงานใบสั่งงานเข้า LINE/i)).toBeInTheDocument()
+    expect(screen.getByText(/ตัวอย่างข้อความสรุปที่จะส่ง/i)).toBeInTheDocument()
+
+    // 3. Click "เปิดแอป LINE"
+    const openLineBtn = screen.getByRole('button', { name: /เปิดแอป LINE/i })
+    fireEvent.click(openLineBtn)
+    expect(mockOpen).toHaveBeenCalledWith(
+      expect.stringContaining('https://line.me/R/msg/text/?'),
+      '_blank'
+    )
+
+    // 4. Click "คัดลอกข้อความ"
+    const copyBtn = screen.getByRole('button', { name: /คัดลอกข้อความ/i })
+    await act(async () => {
+      fireEvent.click(copyBtn)
+    })
+    expect(mockClipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining('รายงานสรุปใบสั่งงาน (TextileOps CMMS)')
+    )
+
+    window.open = originalOpen
   })
 
   it('allows toggling between landscape and portrait orientations', () => {

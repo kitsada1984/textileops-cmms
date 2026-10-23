@@ -16,6 +16,13 @@ import {
   User,
   Wrench,
   Percent,
+  Download,
+  Share2,
+  Send,
+  Copy,
+  Check,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import gemmaLogo from '../../assets/logo-gemma.png'
@@ -30,6 +37,11 @@ import {
   WORK_ORDER_TYPE_OPTIONS,
   WORK_ORDER_STATUS_OPTIONS,
 } from '../../pages/WorkOrders'
+import {
+  loadLineSettings,
+  getSupervisorLineIds,
+  sendLineNotification,
+} from '../../utils/line'
 
 export default function WorkOrdersReportModal({
   open = false,
@@ -42,6 +54,10 @@ export default function WorkOrdersReportModal({
   const printRef = useRef(null)
   const [orientation, setOrientation] = useState('landscape') // 'landscape' | 'portrait'
   const [showSignatures, setShowSignatures] = useState(true)
+  const [lineShareModalOpen, setLineShareModalOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [sendingLine, setSendingLine] = useState(false)
+  const [lineSendStatus, setLineSendStatus] = useState(null)
 
   const {
     typeFilters = [],
@@ -126,10 +142,193 @@ export default function WorkOrdersReportModal({
     activeFilterLabels.push('รายการที่ลบ')
   }
 
+  // ── CSV EXPORT HANDLER ─────────────────────────────────────────────
+  const handleDownloadCsv = () => {
+    const headers = [
+      'ลำดับ',
+      'Job ID',
+      'เครื่องจักร (M/C)',
+      'KI / แบบผ้า',
+      'ประเภทงาน',
+      'อาการเสีย / รายละเอียดงาน',
+      'ความคืบหน้าล่าสุด',
+      'สถานะ',
+      'ช่างผู้รับผิดชอบ',
+      'เวลาเริ่มงาน',
+      'ระยะเวลาดำเนินงาน',
+      'ประสิทธิภาพ SLA',
+      'เป้าหมาย SLA (ชม.)',
+      'ผู้บันทึก',
+      'วันที่บันทึก',
+    ]
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""'
+      const str = String(val).replace(/"/g, '""')
+      return `"${str}"`
+    }
+
+    const rows = items.map((job, idx) => {
+      const typeOpt = WORK_ORDER_TYPE_OPTIONS.find((t) => t.value === job.JobType)
+      const statusMeta = getWorkOrderStatusMeta(job.Status)
+      const details = getWorkOrderDetails(job)
+      const latestLog = getLatestDailyLog(job)
+      const sla = calculateSlaPerformance(job, kpiTargets)
+      const targetHours = kpiTargets[job.JobType] || 0
+      const startTimeStr = `${job.StartDate || ''} ${job.StartTime || ''}`.trim() || '—'
+      const durationStr = job.WorkingDurationText || (job.TotalDowntimeMinutes ? formatMinutesToThai(job.TotalDowntimeMinutes) : '—')
+      const slaStr = sla ? (sla.isOnTime ? `ทันกำหนด (${sla.actualHours} ชม.)` : `เกินกำหนด (+${sla.overdueHours} ชม.)`) : '—'
+
+      return [
+        idx + 1,
+        escapeCsv(job.Job_ID || job.id),
+        escapeCsv(job.MC || '—'),
+        escapeCsv(job.KI ? `${job.KI} ${job.Design ? `(${job.Design})` : ''}` : job.Design || '—'),
+        escapeCsv(typeOpt ? typeOpt.label : job.JobType || '—'),
+        escapeCsv(details || '—'),
+        escapeCsv(latestLog?.progress_note || '—'),
+        escapeCsv(statusMeta.label),
+        escapeCsv(job.Technicians || '—'),
+        escapeCsv(startTimeStr),
+        escapeCsv(durationStr),
+        escapeCsv(slaStr),
+        escapeCsv(targetHours ? `${targetHours} ชม.` : '—'),
+        escapeCsv(job.CreatedBy || '—'),
+        escapeCsv(job.created_at || '—'),
+      ].join(',')
+    })
+
+    const csvContent = '\uFEFF' + [headers.map((h) => `"${h}"`).join(','), ...rows].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const timestamp = format(new Date(), 'yyyyMMdd_HHmm')
+    link.href = url
+    link.download = `TextileOps_WorkOrders_Report_${timestamp}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  // ── LINE SHARE MESSAGE BUILDER ──────────────────────────────────────
+  const lineMessageText = useMemo(() => {
+    const filterSummary = activeFilterLabels.join(' | ')
+    const topJobs = items.slice(0, 8).map((job, idx) => {
+      const statusMeta = getWorkOrderStatusMeta(job.Status)
+      const details = getWorkOrderDetails(job)
+      const shortDetails = details ? (details.length > 25 ? details.slice(0, 25) + '...' : details) : '—'
+      return `${idx + 1}. ${job.Job_ID || job.id} | ${job.MC || '—'} | ${statusMeta.label} | ${shortDetails}`
+    }).join('\n')
+
+    const moreText = items.length > 8 ? `\n...และอีก ${items.length - 8} รายการ` : ''
+
+    const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://textileops-cmms.pages.dev'
+
+    return `📋 รายงานสรุปใบสั่งงาน (TextileOps CMMS)
+📅 วันที่: ${printDateStr}
+👤 ผู้จัดทำ: ${currentUserName || 'ผู้ใช้งาน'}
+🔍 ตัวกรอง: ${filterSummary}
+
+📊 สรุปผลงาน (${items.length} รายการ):
+• งานทั้งหมด: ${summary.total} รายการ
+• ⏳ กำลังซ่อม: ${summary.inProgress} รายการ
+• 🕒 รอดำเนินการ: ${summary.waiting} รายการ
+• ✅ ปิดงานแล้ว: ${summary.completed} รายการ
+• 🎯 อัตราทำตาม SLA: ${summary.slaComplianceRate}%
+
+📝 รายการใบสั่งงาน:
+${topJobs || 'ไม่มีรายการงาน'}${moreText}
+
+🔗 ตรวจสอบรายละเอียดเต็มในระบบ:
+${origin}`
+  }, [items, activeFilterLabels, printDateStr, currentUserName, summary])
+
+  const handleCopyLineMessage = async () => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(lineMessageText)
+      } else {
+        const input = document.createElement('textarea')
+        input.value = lineMessageText
+        document.body.appendChild(input)
+        input.select()
+        document.execCommand('copy')
+        document.body.removeChild(input)
+      }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.warn('Copy error:', err)
+    }
+  }
+
+  const handleOpenLineApp = () => {
+    const url = `https://line.me/R/msg/text/?${encodeURIComponent(lineMessageText)}`
+    window.open(url, '_blank')
+  }
+
+  const handlePushToSystemGroup = async () => {
+    setSendingLine(true)
+    setLineSendStatus(null)
+    try {
+      const cfg = loadLineSettings()
+      const targetIds = getSupervisorLineIds(cfg)
+
+      let res = null
+      if (cfg.channel_access_token && targetIds.length > 0) {
+        res = await sendLineNotification({
+          token: cfg.channel_access_token,
+          targetId: targetIds[0],
+          messages: [{ type: 'text', text: lineMessageText }],
+          type: 'text',
+        })
+      } else if (cfg.line_notify_token) {
+        res = await sendLineNotification({
+          notifyToken: cfg.line_notify_token,
+          textMessage: '\n' + lineMessageText,
+          type: 'notify',
+        })
+      } else if (targetIds.length > 0) {
+        res = await sendLineNotification({
+          targetId: targetIds[0],
+          messages: [{ type: 'text', text: lineMessageText }],
+          type: 'text',
+        })
+      } else {
+        setLineSendStatus({
+          ok: false,
+          message: 'ยังไม่ได้ระบุกลุ่ม LINE ซ่อมบำรุงในหน้าตั้งค่า หรือคุณสามารถกด "เปิดแอป LINE" เพื่อแชร์ได้ทันที',
+        })
+        setSendingLine(false)
+        return
+      }
+
+      if (res && (res.ok || res.status === 200)) {
+        setLineSendStatus({
+          ok: true,
+          message: 'ส่งสรุปรายงานเข้ากลุ่ม LINE เรียบร้อยแล้ว',
+        })
+      } else {
+        setLineSendStatus({
+          ok: false,
+          message: res?.error || 'ไม่สามารถส่งข้อความได้ กรุณาลองใช้ปุ่ม "เปิดแอป LINE" แทน',
+        })
+      }
+    } catch (e) {
+      setLineSendStatus({
+        ok: false,
+        message: e?.message || 'ส่งแจ้งเตือนไม่สำเร็จ กรุณากด "เปิดแอป LINE" เพื่อแชร์โดยตรง',
+      })
+    } finally {
+      setSendingLine(false)
+    }
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex flex-col items-center">
       {/* ── TOP ACTION BAR (Screen only, hidden on print) ─────────────── */}
-      <div className="sticky top-0 z-20 w-full bg-slate-900/95 border-b border-slate-800 px-4 py-3 flex items-center justify-between shadow-xl backdrop-blur-md print:hidden">
+      <div className="sticky top-0 z-20 w-full bg-slate-900/95 border-b border-slate-800 px-4 py-3 flex items-center justify-between shadow-xl backdrop-blur-md print:hidden flex-wrap gap-2.5">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold">
             <ClipboardList size={20} />
@@ -142,12 +341,12 @@ export default function WorkOrdersReportModal({
               </span>
             </h2>
             <p className="text-[11px] text-slate-400">
-              ตรวจสอบข้อมูลก่อนสั่งพิมพ์ หรือบันทึกเป็น PDF ขนาด A4
+              ตรวจสอบข้อมูล สั่งพิมพ์ บันทึก PDF ดาวน์โหลด CSV หรือแชร์สรุปเข้า LINE
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Orientation Toggle */}
           <div className="inline-flex rounded-xl bg-slate-800 p-1 border border-slate-700 text-xs">
             <button
@@ -178,7 +377,7 @@ export default function WorkOrdersReportModal({
           <button
             type="button"
             onClick={() => setShowSignatures(!showSignatures)}
-            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
               showSignatures
                 ? 'bg-slate-800 text-slate-200 border-slate-700'
                 : 'bg-transparent text-slate-400 border-slate-800 hover:text-slate-200'
@@ -188,21 +387,48 @@ export default function WorkOrdersReportModal({
             ช่องลงนาม: {showSignatures ? 'แสดง' : 'ซ่อน'}
           </button>
 
-          {/* Print Button */}
+          {/* Download CSV Button */}
+          <button
+            type="button"
+            onClick={handleDownloadCsv}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
+            title="ดาวน์โหลดข้อมูลเป็นไฟล์ Excel / CSV (.csv)"
+          >
+            <Download size={14} className="text-emerald-400" />
+            <span className="hidden sm:inline">ดาวน์โหลด</span>
+            <span>CSV</span>
+          </button>
+
+          {/* Share LINE Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setLineSendStatus(null)
+              setLineShareModalOpen(true)
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/70 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
+            title="แชร์สรุปรายงานเข้า LINE"
+          >
+            <Share2 size={14} className="text-[#06c755]" />
+            <span>แชร์ LINE</span>
+          </button>
+
+          {/* Print / Save PDF Button */}
           <button
             type="button"
             onClick={handlePrint}
-            className="btn btn-primary text-xs flex items-center gap-1.5 shadow-lg shadow-blue-500/25 px-4 py-2 font-bold"
+            className="btn btn-primary text-xs flex items-center gap-1.5 shadow-lg shadow-blue-500/25 px-3.5 py-1.5 font-bold cursor-pointer"
+            title="พิมพ์รายงาน หรือเลือกบันทึกเป็น PDF ขนาด A4"
           >
             <Printer size={15} />
-            <span>พิมพ์รายงาน (Print A4)</span>
+            <span>พิมพ์ / บันทึก PDF (A4)</span>
           </button>
 
           {/* Close Button */}
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
             title="ปิดหน้าต่าง"
           >
             <X size={18} />
@@ -495,6 +721,105 @@ export default function WorkOrdersReportModal({
           </div>
         </div>
       </div>
+
+      {/* ── LINE SHARE SUBMODAL ────────────────────────────────────── */}
+      {lineShareModalOpen && (
+        <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 print:hidden">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-5 text-slate-100 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-[#06c755] border border-emerald-500/30 flex items-center justify-center font-bold">
+                  <Share2 size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">แชร์รายงานใบสั่งงานเข้า LINE</h3>
+                  <p className="text-[11px] text-slate-400">เลือกรูปแบบการแชร์ข้อความสรุปและลิงก์รายงาน</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLineShareModalOpen(false)
+                  setLineSendStatus(null)
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                title="ปิด"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Message Preview */}
+            <div>
+              <label className="text-[11px] font-bold text-slate-400 mb-1.5 block">
+                ตัวอย่างข้อความสรุปที่จะส่ง ({items.length} รายการตามตัวกรอง):
+              </label>
+              <textarea
+                readOnly
+                value={lineMessageText}
+                rows={9}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 font-mono leading-relaxed resize-none focus:outline-none focus:border-emerald-500/50"
+              />
+            </div>
+
+            {/* Status banner if any */}
+            {lineSendStatus && (
+              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 border ${
+                lineSendStatus.ok 
+                  ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' 
+                  : 'bg-rose-950/60 text-rose-300 border-rose-800/60'
+              }`}>
+                {lineSendStatus.ok ? (
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                ) : (
+                  <AlertTriangle size={16} className="text-rose-400 shrink-0" />
+                )}
+                <span>{lineSendStatus.message}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2 pt-1">
+              {/* Direct LINE app share */}
+              <button
+                type="button"
+                onClick={handleOpenLineApp}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#06c755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+              >
+                <ExternalLink size={15} />
+                <span>เปิดแอป LINE (แชร์ไปยังแชท / กลุ่มใดก็ได้)</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Push to system group */}
+                <button
+                  type="button"
+                  onClick={handlePushToSystemGroup}
+                  disabled={sendingLine}
+                  className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 border border-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {sendingLine ? (
+                    <Loader2 size={14} className="animate-spin text-emerald-400" />
+                  ) : (
+                    <Send size={14} className="text-blue-400" />
+                  )}
+                  <span>ส่งเข้ากลุ่ม LINE ซ่อมบำรุง</span>
+                </button>
+
+                {/* Copy message */}
+                <button
+                  type="button"
+                  onClick={handleCopyLineMessage}
+                  className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                  <span>{copied ? 'คัดลอกเรียบร้อย!' : 'คัดลอกข้อความ'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Embedded CSS for Page Print Media */}
       <style>{`
