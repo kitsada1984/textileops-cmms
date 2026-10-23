@@ -4,8 +4,10 @@ import {
   buildTechFromUser,
   getUnregisteredLineUsers,
   WORK_ORDER_STATUS_OPTIONS,
+  WORK_ORDER_TYPE_OPTIONS,
   getWorkOrderStatusMeta,
   matchesWorkOrderStatusFilter,
+  matchesWorkOrderTypeFilter,
   getJobDailyLogs,
   getLatestDailyLog,
 } from './WorkOrders.jsx'
@@ -151,6 +153,46 @@ describe('WorkOrders utilities', () => {
       expect(matchesWorkOrderStatusFilter('WAITING_PARTS', 'รออะไหล่')).toBe(true)
       expect(matchesWorkOrderStatusFilter('WAITING_SUMMARY', 'รอสรุป')).toBe(true)
       expect(matchesWorkOrderStatusFilter('IN_PROGRESS', 'WAITING_TECH')).toBe(false)
+    })
+
+    it('supports multi-select status filter (array and Set)', () => {
+      // Empty array or 'ALL' matches everything
+      expect(matchesWorkOrderStatusFilter('WAITING_TECH', [])).toBe(true)
+      expect(matchesWorkOrderStatusFilter('WAITING_TECH', ['ALL'])).toBe(true)
+
+      // Multiple statuses selected
+      const multiFilters = ['WAITING_TECH', 'WAITING_PARTS']
+      expect(matchesWorkOrderStatusFilter('WAITING_TECH', multiFilters)).toBe(true)
+      expect(matchesWorkOrderStatusFilter('WAITING_PARTS', multiFilters)).toBe(true)
+      expect(matchesWorkOrderStatusFilter('รอช่าง', multiFilters)).toBe(true)
+      expect(matchesWorkOrderStatusFilter('รออะไหล่', multiFilters)).toBe(true)
+      expect(matchesWorkOrderStatusFilter('IN_PROGRESS', multiFilters)).toBe(false)
+      expect(matchesWorkOrderStatusFilter('COMPLETED', multiFilters)).toBe(false)
+
+      // Works with Set
+      const setFilters = new Set(['IN_PROGRESS', 'COMPLETED'])
+      expect(matchesWorkOrderStatusFilter('IN_PROGRESS', setFilters)).toBe(true)
+      expect(matchesWorkOrderStatusFilter('เสร็จสิ้น', setFilters)).toBe(true)
+      expect(matchesWorkOrderStatusFilter('WAITING_TECH', setFilters)).toBe(false)
+    })
+
+    it('supports multi-select job type filter', () => {
+      expect(WORK_ORDER_TYPE_OPTIONS).toHaveLength(3)
+      expect(WORK_ORDER_TYPE_OPTIONS.map((o) => o.value)).toEqual(['REPAIR', 'DESIGN', 'PM'])
+
+      // Single string matches (backward compatibility)
+      expect(matchesWorkOrderTypeFilter('REPAIR', 'ALL')).toBe(true)
+      expect(matchesWorkOrderTypeFilter('REPAIR', 'REPAIR')).toBe(true)
+      expect(matchesWorkOrderTypeFilter('DESIGN', 'REPAIR')).toBe(false)
+      expect(matchesWorkOrderTypeFilter(null, 'REPAIR')).toBe(true) // defaults to REPAIR
+
+      // Array multi-select
+      expect(matchesWorkOrderTypeFilter('REPAIR', [])).toBe(true)
+      expect(matchesWorkOrderTypeFilter('REPAIR', ['ALL'])).toBe(true)
+      expect(matchesWorkOrderTypeFilter('REPAIR', ['REPAIR', 'DESIGN'])).toBe(true)
+      expect(matchesWorkOrderTypeFilter('DESIGN', ['REPAIR', 'DESIGN'])).toBe(true)
+      expect(matchesWorkOrderTypeFilter('PM', ['REPAIR', 'DESIGN'])).toBe(false)
+      expect(matchesWorkOrderTypeFilter('PM', ['PM'])).toBe(true)
     })
   })
 

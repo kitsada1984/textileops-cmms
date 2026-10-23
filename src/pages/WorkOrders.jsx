@@ -27,6 +27,7 @@ import {
   Hourglass,
   Sparkles,
   CalendarClock,
+  Tag,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -89,6 +90,30 @@ export const QUICK_INTERRUPTION_PRESETS = [
   { label: '🧹 ทำความสะอาด / สลับกะ', template: 'ทำความสะอาด / สลับกะงาน' },
 ]
 
+export const WORK_ORDER_TYPE_OPTIONS = [
+  {
+    value: 'REPAIR',
+    label: 'แก้ไข',
+    fullLabel: '🛠️ แก้ไข (Repair)',
+    icon: '🛠️',
+    activeClass: 'bg-blue-600 text-white border-blue-600 shadow-xs',
+  },
+  {
+    value: 'DESIGN',
+    label: 'ปรับแบบ',
+    fullLabel: '🎨 ปรับแบบ (Design)',
+    icon: '🎨',
+    activeClass: 'bg-purple-600 text-white border-purple-600 shadow-xs',
+  },
+  {
+    value: 'PM',
+    label: 'PM / ล้างเครื่อง',
+    fullLabel: '🧹 PM / ล้างเครื่อง',
+    icon: '🧹',
+    activeClass: 'bg-amber-600 text-white border-amber-600 shadow-xs',
+  },
+]
+
 export const WORK_ORDER_STATUS_OPTIONS = [
   {
     value: 'IN_PROGRESS',
@@ -96,6 +121,7 @@ export const WORK_ORDER_STATUS_OPTIONS = [
     fullLabel: '🟡 กำลังทำ (In Progress)',
     icon: '🟡',
     badgeClass: 'badge-orange',
+    activeClass: 'bg-amber-500 text-white border-amber-500 shadow-xs',
   },
   {
     value: 'WAITING_TECH',
@@ -103,6 +129,7 @@ export const WORK_ORDER_STATUS_OPTIONS = [
     fullLabel: '🟠 รอช่าง (Waiting Tech)',
     icon: '🟠',
     badgeClass: 'badge-yellow',
+    activeClass: 'bg-orange-500 text-white border-orange-500 shadow-xs',
   },
   {
     value: 'WAITING_PARTS',
@@ -110,6 +137,7 @@ export const WORK_ORDER_STATUS_OPTIONS = [
     fullLabel: '🟣 รออะไหล่ (Waiting Parts)',
     icon: '🟣',
     badgeClass: 'badge-purple',
+    activeClass: 'bg-purple-600 text-white border-purple-600 shadow-xs',
   },
   {
     value: 'WAITING_SUMMARY',
@@ -117,6 +145,7 @@ export const WORK_ORDER_STATUS_OPTIONS = [
     fullLabel: '🔵 รอสรุป (Waiting Summary)',
     icon: '🔵',
     badgeClass: 'badge-blue',
+    activeClass: 'bg-blue-600 text-white border-blue-600 shadow-xs',
   },
   {
     value: 'COMPLETED',
@@ -124,6 +153,7 @@ export const WORK_ORDER_STATUS_OPTIONS = [
     fullLabel: '🟢 เสร็จสิ้น (Completed)',
     icon: '🟢',
     badgeClass: 'badge-green',
+    activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
   },
 ]
 
@@ -151,11 +181,34 @@ export function getWorkOrderStatusMeta(status) {
 }
 
 /**
- * Checks whether a job's status matches the selected status filter value.
+ * Checks whether a job's type matches the selected type filter (string or array/set of types).
+ * Supports multi-select, 100% backward compatible.
+ */
+export function matchesWorkOrderTypeFilter(jobType, filterValue = 'ALL') {
+  if (!filterValue || filterValue === 'ALL') return true
+  const norm = (jobType || 'REPAIR').toUpperCase()
+  if (Array.isArray(filterValue) || filterValue instanceof Set) {
+    const list = Array.isArray(filterValue) ? filterValue : Array.from(filterValue)
+    if (list.length === 0 || list.includes('ALL')) return true
+    return list.some((f) => (f || '').toUpperCase() === norm)
+  }
+  return (filterValue || '').toUpperCase() === norm
+}
+
+/**
+ * Checks whether a job's status matches the selected status filter (string or array/set of statuses).
+ * Supports multi-select, 100% backward compatible.
  */
 export function matchesWorkOrderStatusFilter(jobStatus, filterValue = 'ALL') {
   if (!filterValue || filterValue === 'ALL') return true
   const jobMeta = getWorkOrderStatusMeta(jobStatus)
+
+  if (Array.isArray(filterValue) || filterValue instanceof Set) {
+    const list = Array.isArray(filterValue) ? filterValue : Array.from(filterValue)
+    if (list.length === 0 || list.includes('ALL')) return true
+    return list.some((f) => getWorkOrderStatusMeta(f).value === jobMeta.value)
+  }
+
   const filterMeta = getWorkOrderStatusMeta(filterValue)
   return jobMeta.value === filterMeta.value
 }
@@ -626,9 +679,36 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Search & Filter State
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('ALL')
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [typeFilters, setTypeFilters] = useState([]) // [] = ALL, or ['REPAIR', 'DESIGN', ...]
+  const [statusFilters, setStatusFilters] = useState([]) // [] = ALL, or ['IN_PROGRESS', 'WAITING_TECH', ...]
   const [showDeleted, setShowDeleted] = useState(false)
+
+  // Multi-select toggle helpers for Job Type and Status Cards
+  const toggleTypeFilter = (val) => {
+    if (val === 'ALL') {
+      setTypeFilters([])
+      return
+    }
+    setTypeFilters((prev) => {
+      if (prev.includes(val)) {
+        return prev.filter((item) => item !== val)
+      }
+      return [...prev, val]
+    })
+  }
+
+  const toggleStatusFilter = (val) => {
+    if (val === 'ALL') {
+      setStatusFilters([])
+      return
+    }
+    setStatusFilters((prev) => {
+      if (prev.includes(val)) {
+        return prev.filter((item) => item !== val)
+      }
+      return [...prev, val]
+    })
+  }
 
   // Deep Link support (?job=JOB-XXXX or ?wo=JOB-XXXX)
   useEffect(() => {
@@ -977,14 +1057,39 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     })
   }, [rawJobs])
 
+  // Live counts for Job Types filter cards
+  const typeCounts = useMemo(() => {
+    const counts = { ALL: 0, REPAIR: 0, DESIGN: 0, PM: 0 }
+    const relevant = allJobs.filter((j) => (showDeleted ? Boolean(j.IsDeleted) : !j.IsDeleted))
+    counts.ALL = relevant.length
+    relevant.forEach((j) => {
+      const t = (j.JobType || 'REPAIR').toUpperCase()
+      if (counts[t] !== undefined) counts[t]++
+      else counts.REPAIR++
+    })
+    return counts
+  }, [allJobs, showDeleted])
+
+  // Live counts for Status filter cards
+  const statusCounts = useMemo(() => {
+    const counts = { ALL: 0, IN_PROGRESS: 0, WAITING_TECH: 0, WAITING_PARTS: 0, WAITING_SUMMARY: 0, COMPLETED: 0 }
+    const relevant = allJobs.filter((j) => (showDeleted ? Boolean(j.IsDeleted) : !j.IsDeleted))
+    counts.ALL = relevant.length
+    relevant.forEach((j) => {
+      const meta = getWorkOrderStatusMeta(j.Status)
+      if (counts[meta.value] !== undefined) counts[meta.value]++
+    })
+    return counts
+  }, [allJobs, showDeleted])
+
   const filteredJobs = useMemo(() => {
     return allJobs.filter((job) => {
       const isDel = Boolean(job.IsDeleted)
       if (!showDeleted && isDel) return false
       if (showDeleted && !isDel) return false
 
-      if (typeFilter !== 'ALL' && (job.JobType || 'REPAIR') !== typeFilter) return false
-      if (!matchesWorkOrderStatusFilter(job.Status, statusFilter)) return false
+      if (!matchesWorkOrderTypeFilter(job.JobType, typeFilters)) return false
+      if (!matchesWorkOrderStatusFilter(job.Status, statusFilters)) return false
 
       if (search.trim()) {
         const q = search.toLowerCase()
@@ -1002,7 +1107,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       }
       return true
     })
-  }, [allJobs, typeFilter, statusFilter, showDeleted, search])
+  }, [allJobs, typeFilters, statusFilters, showDeleted, search])
 
   // KPI Breakdown Calculations
   const kpiStats = useMemo(() => {
@@ -2260,52 +2365,174 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           )}
 
           {/* Search & Filter Toolbar */}
-          <div className="card p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex-1 min-w-[220px]">
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder="ค้นหา Job ID, M/C, KI, ช่าง, ผู้ทำรายการ..."
-                className="w-full"
-              />
+          <div className="card p-3.5 sm:p-4 space-y-3 text-xs shadow-xs">
+            {/* Top Row: Search Input + Deleted Items Checkbox + Reset Button */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex-1 min-w-[220px]">
+                <SearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="ค้นหา Job ID, M/C, KI, ช่าง, ผู้ทำรายการ..."
+                  className="w-full"
+                />
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {(typeFilters.length > 0 || statusFilters.length > 0 || search.trim()) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTypeFilters([])
+                      setStatusFilters([])
+                      setSearch('')
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-bold text-xs"
+                    title="ล้างตัวกรองทั้งหมดกลับเป็นค่าเริ่มต้น"
+                  >
+                    <RotateCcw size={12} />
+                    <span>ล้างตัวกรอง</span>
+                  </button>
+                )}
+
+                <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 cursor-pointer select-none px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium">
+                  <input
+                    type="checkbox"
+                    checked={showDeleted}
+                    onChange={(e) => setShowDeleted(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-0"
+                  />
+                  <span>รายการที่ลบ</span>
+                </label>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <span style={{ color: 'var(--text-500)' }}>ประเภท:</span>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="select py-1.5 px-3 text-xs"
-              >
-                <option value="ALL">ทุกประเภท</option>
-                <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
-                <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
-                <option value="PM">🧹 PM / ล้างเครื่อง</option>
-              </select>
+            {/* Filter Cards Section */}
+            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
+              {/* Row 1: ประเภทงาน (Job Type Cards) */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 font-bold text-slate-600 dark:text-slate-300 min-w-[70px] flex-shrink-0">
+                  <Tag size={13} className="text-blue-500" />
+                  <span>ประเภท:</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                  {/* All Types Card */}
+                  <button
+                    type="button"
+                    onClick={() => setTypeFilters([])}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      typeFilters.length === 0
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <span>ทุกประเภท</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        typeFilters.length === 0
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {typeCounts.ALL}
+                    </span>
+                  </button>
 
-              <span style={{ color: 'var(--text-500)' }} className="ml-1">สถานะ:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="select py-1.5 px-3 text-xs"
-              >
-                <option value="ALL">ทั้งหมด</option>
-                {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.icon} {opt.label}
-                  </option>
-                ))}
-              </select>
+                  {/* Individual Job Type Cards */}
+                  {WORK_ORDER_TYPE_OPTIONS.map((opt) => {
+                    const isSelected = typeFilters.includes(opt.value)
+                    const count = typeCounts[opt.value] || 0
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => toggleTypeFilter(opt.value)}
+                        className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                          isSelected
+                            ? opt.activeClass
+                            : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        }`}
+                        title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 ประเภท)"
+                      >
+                        {isSelected && <Check size={12} strokeWidth={3} />}
+                        <span>{opt.icon}</span>
+                        <span>{opt.label}</span>
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                            isSelected
+                              ? 'bg-white/25 text-white'
+                              : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-              <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 ml-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showDeleted}
-                  onChange={(e) => setShowDeleted(e.target.checked)}
-                  className="rounded text-blue-600 focus:ring-0"
-                />
-                <span>รายการที่ลบ</span>
-              </label>
+              {/* Row 2: สถานะงาน (Status Cards) */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 font-bold text-slate-600 dark:text-slate-300 min-w-[70px] flex-shrink-0">
+                  <Clock size={13} className="text-amber-500" />
+                  <span>สถานะ:</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                  {/* All Statuses Card */}
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilters([])}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      statusFilters.length === 0
+                        ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <span>ทั้งหมด</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        statusFilters.length === 0
+                          ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
+                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {statusCounts.ALL}
+                    </span>
+                  </button>
+
+                  {/* Individual Status Cards */}
+                  {WORK_ORDER_STATUS_OPTIONS.map((opt) => {
+                    const isSelected = statusFilters.includes(opt.value)
+                    const count = statusCounts[opt.value] || 0
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => toggleStatusFilter(opt.value)}
+                        className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                          isSelected
+                            ? opt.activeClass
+                            : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        }`}
+                        title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 สถานะ)"
+                      >
+                        {isSelected && <Check size={12} strokeWidth={3} />}
+                        <span>{opt.icon}</span>
+                        <span>{opt.label}</span>
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                            isSelected
+                              ? 'bg-white/25 text-white'
+                              : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 
