@@ -201,9 +201,9 @@ export async function onRequestPost(context) {
           'INSERT INTO _d1_change_log (table_name, action, record_id, data, created_at) VALUES (?, ?, ?, ?, datetime(\'now\'))'
         ).bind(table, act.toUpperCase(), String(recId || ''), payloadStr).run()
 
-        // Probabilistic prune: keep change log at ~7 days
-        if (Math.random() < 0.02) {
-          await db.prepare("DELETE FROM _d1_change_log WHERE created_at < datetime('now', '-7 days')").run()
+        // Probabilistic prune: keep ephemeral change log at ~48 hours to preserve table size & quota
+        if (Math.random() < 0.05) {
+          await db.prepare("DELETE FROM _d1_change_log WHERE created_at < datetime('now', '-48 hours')").run()
         }
       } catch (logErr) {
         console.warn('Change log write failed:', logErr.message)

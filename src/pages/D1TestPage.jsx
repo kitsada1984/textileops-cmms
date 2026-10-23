@@ -323,18 +323,24 @@ export default function D1TestPage() {
         <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '13px', fontWeight: '600', color: '#64748b' }}>REALTIME SSE STATUS</span>
-            <Radio size={18} style={{ color: realtimeStatus === 'SUBSCRIBED' ? '#10b981' : '#f59e0b' }} />
+            <Radio size={18} style={{ color: realtimeStatus === 'SUBSCRIBED' ? '#10b981' : realtimeStatus === 'PAUSED_IDLE' ? '#94a3b8' : '#f59e0b' }} />
           </div>
           <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '8px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{
               display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%',
-              backgroundColor: realtimeStatus === 'SUBSCRIBED' ? '#10b981' : '#f59e0b',
+              backgroundColor: realtimeStatus === 'SUBSCRIBED' ? '#10b981' : realtimeStatus === 'PAUSED_IDLE' ? '#94a3b8' : '#f59e0b',
               boxShadow: realtimeStatus === 'SUBSCRIBED' ? '0 0 8px #10b981' : 'none'
             }} />
-            {realtimeStatus === 'SUBSCRIBED' ? 'เชื่อมต่อแล้ว (Connected)' : realtimeStatus}
+            {realtimeStatus === 'SUBSCRIBED'
+              ? 'เชื่อมต่อแล้ว (Connected)'
+              : realtimeStatus === 'PAUSED_IDLE'
+              ? 'พักการทำงาน (แท็บไม่ได้ใช้งาน)'
+              : realtimeStatus}
           </div>
           <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
-            Server-Sent Events (SSE) Stream จาก Cloudflare Edge
+            {realtimeStatus === 'PAUSED_IDLE'
+              ? 'หยุดสตรีมชั่วคราวขณะสลับแท็บเพื่อประหยัดโควต้า Cloudflare'
+              : 'Server-Sent Events (SSE) Stream จาก Cloudflare Edge'}
           </p>
         </div>
 

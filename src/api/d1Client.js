@@ -274,11 +274,26 @@ class D1RealtimeChannel {
     const isBrowser = typeof window !== 'undefined'
     if (!isBrowser) return this
 
+    this.statusCallback = statusCallback
+
     if (this.isSubscribed && (this.eventSource || this.pollInterval)) {
       if (statusCallback) statusCallback('SUBSCRIBED')
       return this
     }
     this.isSubscribed = true
+
+    // Quota Saver: Auto-suspend realtime stream when tab is hidden/minimized
+    if (typeof document !== 'undefined' && !this._visibilityHandler) {
+      this._visibilityHandler = () => {
+        if (document.visibilityState === 'hidden') {
+          this._suspendStream()
+          if (this.statusCallback) this.statusCallback('PAUSED_IDLE')
+        } else if (document.visibilityState === 'visible' && this.isSubscribed) {
+          this._resumeStream()
+        }
+      }
+      document.addEventListener('visibilitychange', this._visibilityHandler)
+    }
 
     // Multi-tab listener for 0ms same-device sync
     if (typeof BroadcastChannel !== 'undefined' && !this.bc) {
@@ -292,6 +307,12 @@ class D1RealtimeChannel {
       } catch {}
     }
 
+    this._connectSSE(statusCallback)
+    return this
+  }
+
+  _connectSSE(statusCallback) {
+    const cb = statusCallback || this.statusCallback
     const token = getAuthToken()
     const streamUrl = `${this.client.realtimeUrl}?stream=true&since_id=${this.lastEventId}${token ? `&token=${encodeURIComponent(token)}` : ''}`
 
@@ -309,7 +330,7 @@ class D1RealtimeChannel {
               this.lastEventId = info.max_id
             }
           } catch {}
-          if (statusCallback) statusCallback('SUBSCRIBED')
+          if (cb) cb('SUBSCRIBED')
         })
 
         this.eventSource.addEventListener('change', (e) => {
@@ -335,8 +356,19 @@ class D1RealtimeChannel {
     } else {
       this._startPolling()
     }
+  }
 
-    return this
+  _suspendStream() {
+    if (this.eventSource) {
+      this.eventSource.close()
+      this.eventSource = null
+    }
+    this._stopPolling()
+  }
+
+  _resumeStream() {
+    if (!this.isSubscribed || this.eventSource || this.pollInterval) return
+    this._connectSSE(this.statusCallback)
   }
 
   _startPolling() {
@@ -383,6 +415,10 @@ class D1RealtimeChannel {
 
   unsubscribe() {
     this.isSubscribed = false
+    if (typeof document !== 'undefined' && this._visibilityHandler) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler)
+      this._visibilityHandler = null
+    }
     if (this.eventSource) {
       this.eventSource.close()
       this.eventSource = null

@@ -60,8 +60,13 @@ export async function onRequestGet(context) {
       await db.prepare('CREATE INDEX IF NOT EXISTS idx_d1_change_log_id ON _d1_change_log (id)').run()
     } catch {}
 
-    // Stream loop using setInterval (2500ms balanced for fast realtime + optimal quota usage)
-    const interval = setInterval(async () => {
+    // Stream loop using adaptive backoff (2000ms active, 4000ms moderate idle, 7000ms prolonged idle)
+    let idleCycles = 0
+    let timer = null
+    let isAborted = false
+
+    const pollNext = async () => {
+      if (isAborted) return
       try {
         let sql = 'SELECT * FROM _d1_change_log WHERE id > ?'
         const params = [currentSinceId]
@@ -76,6 +81,7 @@ export async function onRequestGet(context) {
         const rows = res.results || []
 
         if (rows.length > 0) {
+          idleCycles = 0
           for (const row of rows) {
             currentSinceId = Math.max(currentSinceId, row.id)
             let parsedData = null
@@ -97,17 +103,33 @@ export async function onRequestGet(context) {
             writer.write(encoder.encode(`id: ${row.id}\nevent: change\ndata: ${JSON.stringify(payload)}\n\n`))
           }
         } else {
-          // Heartbeat ping every cycle
+          idleCycles++
+          // Heartbeat ping
           writer.write(encoder.encode(': heartbeat\n\n'))
         }
       } catch (err) {
         console.error('SSE Stream Loop Error:', err.message)
       }
-    }, 2500)
+
+      if (isAborted) return
+
+      // Adaptive delay: 2000ms active, 4000ms moderate idle, 7000ms prolonged idle
+      let delay = 2000
+      if (idleCycles > 45) {
+        delay = 7000
+      } else if (idleCycles > 15) {
+        delay = 4000
+      }
+
+      timer = setTimeout(pollNext, delay)
+    }
+
+    timer = setTimeout(pollNext, 1000)
 
     // Handle client disconnect
     request.signal.addEventListener('abort', () => {
-      clearInterval(interval)
+      isAborted = true
+      if (timer) clearTimeout(timer)
       try { writer.close() } catch {}
     })
 
