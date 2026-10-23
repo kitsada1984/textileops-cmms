@@ -46,7 +46,7 @@ const HEIGHTS = ['1','2','3','4','5','6']
 
 const EMPTY_MENU = { id:'', label:'', icon:'LayoutDashboard', route:'', order:0, columns:[] }
 const EMPTY_COL  = { id:'', field:'', label:'', type:'text', width:'150px', height:'1', required:false, order:0, options:[] }
-const CATEGORY_OPTIONS = ['อะไหล่', 'เครื่องมือช่าง']
+const CATEGORY_OPTIONS = ['เครื่องมือช่าง', 'บอร์ดนอก', 'บอร์ดใน', 'บอร์ดรุ่นใหม่', 'ลูกปืน', 'สายพานส่งด้าย', 'อะไหล่']
 
 // ─── Default app menus with real DB columns ──────────────────
 

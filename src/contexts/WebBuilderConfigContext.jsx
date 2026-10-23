@@ -105,8 +105,13 @@ const COLUMN_LABEL_BY_ROUTE = {
 }
 
 const CATEGORY_OPTIONS = [
-  { id: 'category_spare_part', label: 'อะไหล่', value: 'อะไหล่' },
   { id: 'category_tool', label: 'เครื่องมือช่าง', value: 'เครื่องมือช่าง' },
+  { id: 'category_outer_board', label: 'บอร์ดนอก', value: 'บอร์ดนอก' },
+  { id: 'category_inner_board', label: 'บอร์ดใน', value: 'บอร์ดใน' },
+  { id: 'category_new_board', label: 'บอร์ดรุ่นใหม่', value: 'บอร์ดรุ่นใหม่' },
+  { id: 'category_bearing', label: 'ลูกปืน', value: 'ลูกปืน' },
+  { id: 'category_belt', label: 'สายพานส่งด้าย', value: 'สายพานส่งด้าย' },
+  { id: 'category_spare_part', label: 'อะไหล่', value: 'อะไหล่' },
 ]
 
 function normalizeMenus(menus = []) {

@@ -43,6 +43,7 @@ import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
 import MachinePartsHistoryModal from '../components/inventory/MachinePartsHistoryModal'
+import { useSparePartCategories, DEFAULT_SPARE_PART_CATEGORIES } from '../modules/sparePart'
 import {
   getMovementMC,
   appendMCMetaToNote,
@@ -88,16 +89,16 @@ const HIDDEN_IMAGE_NOTE_PREFIXES = [
   MACHINE_MC_NOTE_PREFIX,
   DATE_NOTE_PREFIX,
 ]
-const CATEGORY_OPTIONS = ['อะไหล่', 'เครื่องมือช่าง']
+const CATEGORY_OPTIONS = DEFAULT_SPARE_PART_CATEGORIES
 const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
 
-const getSMFallbackCols = (t) => [
+const getSMFallbackCols = (t, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) => [
   { field: 'created_date', label: t('sm_th_date'), type: 'datetime' },
   { field: 'TXN_ID', label: 'เลขรายการ', type: 'text' },
   { field: 'TXN_Type', label: t('sm_th_type'), type: 'select' },
   { field: 'Part_Code', label: 'รหัสอะไหล่', type: 'text' },
   { field: 'Part_Name_EN', label: t('sm_th_name'), type: 'text' },
-  { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: CATEGORY_OPTIONS },
+  { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: categoryOpts },
   { field: 'MC', label: 'M/C', type: 'text', width: '110px' },
   { field: 'Qty_Before', label: t('sm_th_before'), type: 'number' },
   { field: 'Qty_Change', label: t('sm_th_change'), type: 'number' },
@@ -152,8 +153,8 @@ const EMPTY = {
   Note: '',
 }
 
-function resolveSMColumns(wbCols, t) {
-  const fallbackCols = getSMFallbackCols(t)
+function resolveSMColumns(wbCols, t, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) {
+  const fallbackCols = getSMFallbackCols(t, categoryOpts)
   const requiredCols = getSMRequiredCols(t)
   const sourceCols = (wbCols && wbCols.length > 0) ? wbCols : fallbackCols
   const resolvedCols = requiredCols.map((requiredCol) => {
@@ -166,6 +167,9 @@ function resolveSMColumns(wbCols, t) {
   })
   const urlWidth = resolvedCols.find((c) => c.field === 'ImageUrl')?.width || '220px'
   return resolvedCols.map((col) => {
+    if (col.field === 'Category') {
+      return { ...col, type: 'select', options: categoryOpts }
+    }
     if (col.field === 'Location_Store') {
       return { ...col, type: 'select', options: WAREHOUSE_OPTIONS }
     }
@@ -357,14 +361,36 @@ export default function StockMovement() {
     )
   }, [data, parts, search])
 
+  const { categories: sparePartCategories } = useSparePartCategories(parts)
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set(sparePartCategories || DEFAULT_SPARE_PART_CATEGORIES)
+    if (Array.isArray(parts)) {
+      parts.forEach((p) => {
+        if (p?.Category && typeof p.Category === 'string' && p.Category.trim()) {
+          set.add(p.Category.trim())
+        }
+      })
+    }
+    if (Array.isArray(data)) {
+      data.forEach((row) => {
+        const cat = getStockCategory ? getStockCategory(row) : (row?.Category || '')
+        if (cat && cat !== '—') set.add(cat.trim())
+      })
+    }
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, 'th', { numeric: true, sensitivity: 'base' })
+    )
+  }, [sparePartCategories, parts, data])
+
   const wbCols = useWebBuilderMenu('/stock-movement')
-  const cols = resolveSMColumns(wbCols, t)
+  const cols = useMemo(() => resolveSMColumns(wbCols, t, categoryOptions), [wbCols, t, categoryOptions])
 
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
     include: SM_FILTER_KEYS,
     selectOptions: {
       TXN_Type: SM_TXN_TYPE_OPTIONS,
-      Category: CATEGORY_OPTIONS,
+      Category: categoryOptions,
       MC: mcFilterOptions,
       Part_Code: partCodeOptions,
       Part_Name_EN: partNameOptions,
@@ -382,7 +408,7 @@ export default function StockMovement() {
       Part_Code: (row) => row.Part_Code,
       Part_Name_EN: (row) => row.Part_Name_EN || row.Part_Name_TH,
     },
-  }), [cols, mcFilterOptions, partCodeOptions, partNameOptions])
+  }), [cols, categoryOptions, mcFilterOptions, partCodeOptions, partNameOptions])
 
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
@@ -1025,7 +1051,7 @@ export default function StockMovement() {
                 <span className="text-[10px] text-slate-400 mt-0.5 block">ใส่อัตโนมัติ (แก้ไขได้)</span>
               </div>
               <F form={form} setForm={setForm} label="ประเภทรายการ" id="TXN_Type" opts={TXN_TYPE} />
-              <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
+              <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={categoryOptions} />
               <div>
                 <SearchableDropdown
                   id="Part_Code"

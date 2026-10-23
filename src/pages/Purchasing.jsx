@@ -38,6 +38,7 @@ import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { uploadMedia } from '../modules/media'
 import { generateStockTxnId, getPartStockStatus, toNumber } from '../utils/inventory'
 import { appendSparePartImageMeta, getSparePartImageUrl } from '../utils/sparePartImage'
+import { useSparePartCategories, DEFAULT_SPARE_PART_CATEGORIES } from '../modules/sparePart'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generatePurchasingPdfProps } from '../utils/pdfDocGenerators'
@@ -50,7 +51,7 @@ const STATUS_CFG = {
   CANCELLED: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)', color: '#dc2626', dot: '#dc2626' },
 }
 const STATUS_TH = Object.fromEntries(PO_STATUS.map((s) => [s.value, s.label]))
-const CATEGORY_OPTIONS = ['อะไหล่', 'เครื่องมือช่าง']
+const CATEGORY_OPTIONS = DEFAULT_SPARE_PART_CATEGORIES
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'purchaseorders'/i
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
 const CATEGORY_NOTE_PREFIX = 'Category:'
@@ -86,14 +87,14 @@ function StatusPill({ value }) {
   )
 }
 
-const getPOFallbackCols = () => [
+const getPOFallbackCols = (categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) => [
   { field: 'PO_Number', label: 'เลข PO', type: 'text' },
   { field: 'Order_Date', label: 'วันที่สั่ง', type: 'date' },
   { field: 'Received_Date', label: 'วันที่รับ', type: 'date' },
   { field: 'Status', label: 'สถานะ', type: 'select' },
   { field: 'Part_Code', label: 'รหัสอะไหล่', type: 'text', width: '130px' },
   { field: 'Part_Name_EN', label: 'ชื่ออะไหล่', type: 'text', width: '180px' },
-  { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: CATEGORY_OPTIONS },
+  { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: categoryOpts },
   { field: 'Detail', label: 'รายละเอียด', type: 'text' },
   { field: 'Qty', label: 'จำนวน', type: 'number' },
   { field: 'UnitPrice', label: 'ราคาต่อหน่วย', type: 'number' },
@@ -130,8 +131,8 @@ const REQUIRED_PO_COLUMNS = [
   { field: 'LastUpdated', label: 'อัปเดตล่าสุด' },
 ]
 
-function resolvePOColumns(wbCols) {
-  const fallbackCols = getPOFallbackCols()
+function resolvePOColumns(wbCols, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) {
+  const fallbackCols = getPOFallbackCols(categoryOpts)
   const sourceCols = (wbCols && wbCols.length > 0) ? wbCols : fallbackCols
   const resolvedCols = REQUIRED_PO_COLUMNS.map((requiredCol) => {
     const match = sourceCols.find((c) =>
@@ -142,9 +143,11 @@ function resolvePOColumns(wbCols) {
     return fallback || { ...requiredCol, type: 'text' }
   })
   const urlWidth = resolvedCols.find((c) => c.field === 'ImageUrl')?.width || '220px'
-  return resolvedCols.map((col) =>
-    (col.field === 'Note' ? { ...col, width: urlWidth } : col)
-  )
+  return resolvedCols.map((col) => {
+    if (col.field === 'Category') return { ...col, type: 'select', options: categoryOpts }
+    if (col.field === 'Note') return { ...col, width: urlWidth }
+    return col
+  })
 }
 
 function getColumnWidthStyle(col) {
@@ -299,10 +302,32 @@ export default function Purchasing() {
     )
   }, [data, search])
 
+  const { categories: sparePartCategories } = useSparePartCategories(parts)
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set(sparePartCategories || DEFAULT_SPARE_PART_CATEGORIES)
+    if (Array.isArray(parts)) {
+      parts.forEach((p) => {
+        if (p?.Category && typeof p.Category === 'string' && p.Category.trim()) {
+          set.add(p.Category.trim())
+        }
+      })
+    }
+    if (Array.isArray(data)) {
+      data.forEach((row) => {
+        const cat = getPOCategory ? getPOCategory(row) : (row?.Category || '')
+        if (cat && cat !== '—') set.add(cat.trim())
+      })
+    }
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, 'th', { numeric: true, sensitivity: 'base' })
+    )
+  }, [sparePartCategories, parts, data])
+
   const wbCols = useWebBuilderMenu('/purchasing')
-  const cols = resolvePOColumns(wbCols)
+  const cols = useMemo(() => resolvePOColumns(wbCols, categoryOptions), [wbCols, categoryOptions])
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
-    selectOptions: { Status: PO_STATUS, Category: CATEGORY_OPTIONS },
+    selectOptions: { Status: PO_STATUS, Category: categoryOptions },
     valueGetters: {
       Part_Code: getPOPartCode,
       Part_Name_EN: getPOPartName,
@@ -311,7 +336,7 @@ export default function Purchasing() {
       ImagePreview: getPOImageUrl,
       Note: (row) => stripHiddenNoteMeta(row.Note),
     },
-  }), [cols])
+  }), [cols, categoryOptions])
 
   const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
@@ -1024,7 +1049,7 @@ export default function Purchasing() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <F form={form} setForm={setForm} label="รหัสอะไหล่" id="Part_Code" placeholder="เช่น SP-001" />
               <F form={form} setForm={setForm} label="ชื่ออะไหล่" id="Part_Name_EN" placeholder="ชื่ออะไหล่" />
-              <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={CATEGORY_OPTIONS} />
+              <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={categoryOptions} />
               <F form={form} setForm={setForm} label="จำนวน" id="Qty" type="number" placeholder="0" />
               <F form={form} setForm={setForm} label="ราคาต่อหน่วย" id="UnitPrice" type="number" placeholder="0" />
               <F form={form} setForm={setForm} label="ราคารวม" id="Total_Amount" type="number" placeholder="0" />
