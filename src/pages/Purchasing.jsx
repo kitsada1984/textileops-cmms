@@ -16,6 +16,8 @@ import {
   X,
   Layers,
   Sparkles,
+  Tag,
+  Package,
   Phone,
   Mail,
   User,
@@ -33,12 +35,18 @@ import usePagePerms from '../hooks/usePagePerms'
 import DetailDrawer from '../components/ui/DetailDrawer'
 import { useToast } from '../components/ui/Toast'
 import F from '../components/ui/FormField'
+import SearchableDropdown from '../components/ui/SearchableDropdown'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { uploadMedia } from '../modules/media'
-import { generateStockTxnId, getPartStockStatus, toNumber } from '../utils/inventory'
+import { generateStockTxnId, getPartStockStatus, toNumber, generatePartCode } from '../utils/inventory'
 import { appendSparePartImageMeta, getSparePartImageUrl } from '../utils/sparePartImage'
 import { useSparePartCategories, DEFAULT_SPARE_PART_CATEGORIES } from '../modules/sparePart'
+import {
+  buildStockMovementPartCodeOptions,
+  buildStockMovementPartNameOptions,
+  findMatchingSparePart,
+} from '../utils/stockMovementMC'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generatePurchasingPdfProps } from '../utils/pdfDocGenerators'
@@ -324,6 +332,16 @@ export default function Purchasing() {
     )
   }, [sparePartCategories, parts, data])
 
+  const partCodeOptions = useMemo(
+    () => buildStockMovementPartCodeOptions(parts, data),
+    [parts, data]
+  )
+
+  const partNameOptions = useMemo(
+    () => buildStockMovementPartNameOptions(parts, data),
+    [parts, data]
+  )
+
   const wbCols = useWebBuilderMenu('/purchasing')
   const cols = useMemo(() => resolvePOColumns(wbCols, categoryOptions), [wbCols, categoryOptions])
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
@@ -402,24 +420,67 @@ export default function Purchasing() {
   }
 
   const applyPartToForm = (partCode) => {
-    const part = parts.find((item) => String(item.Part_Code || '').toLowerCase() === String(partCode || '').toLowerCase())
+    const code = String(partCode || '').trim()
+    const part = code
+      ? (findMatchingSparePart(parts, code) || parts.find((item) => String(item.Part_Code || '').toLowerCase() === code.toLowerCase()))
+      : null
+
     setForm((prev) => ({
       ...prev,
-      Part_Code: partCode,
-      Part_Name_EN: part?.Part_Name_EN || prev.Part_Name_EN,
+      Part_Code: code,
+      Part_Name_EN: part ? (part.Part_Name_EN || part.Part_Name_TH || prev.Part_Name_EN) : prev.Part_Name_EN,
       Category: part?.Category || prev.Category,
-      Detail: part?.Part_Name_EN || prev.Detail,
-      UnitPrice: prev.UnitPrice || part?.Unit_Price || '',
+      Detail: prev.Detail || (part ? (part.Part_Name_EN || part.Part_Name_TH || '') : ''),
+      UnitPrice: prev.UnitPrice || (part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : ''),
       Supplier: prev.Supplier || part?.Supplier || '',
       Note: appendPOMetaToNote(prev.Note, {
         imageUrl: getPOImageUrl(prev),
         category: part?.Category || prev.Category,
-        partCode,
-        partName: part?.Part_Name_EN || prev.Part_Name_EN || prev.Detail,
+        partCode: code,
+        partName: part ? (part.Part_Name_EN || part.Part_Name_TH || prev.Part_Name_EN) : (prev.Part_Name_EN || prev.Detail),
         appliedQty: getPOAppliedQty(prev),
         appliedPartCode: getPOAppliedPartCode(prev),
       }),
     }))
+  }
+
+  const applyPartNameToForm = (partName) => {
+    const name = String(partName || '').trim()
+    const part = name ? findMatchingSparePart(parts, name) : null
+
+    setForm((prev) => {
+      let code = part?.Part_Code || prev.Part_Code
+      // If user enters a new part name without an existing part code, auto-generate next code
+      if (!part && !code && name) {
+        code = generatePartCode(parts)
+      }
+      return {
+        ...prev,
+        Part_Name_EN: name,
+        Part_Code: code,
+        Category: part?.Category || prev.Category,
+        Detail: prev.Detail || name,
+        UnitPrice: prev.UnitPrice || (part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : ''),
+        Supplier: prev.Supplier || part?.Supplier || '',
+        Note: appendPOMetaToNote(prev.Note, {
+          imageUrl: getPOImageUrl(prev),
+          category: part?.Category || prev.Category,
+          partCode: code,
+          partName: name,
+          appliedQty: getPOAppliedQty(prev),
+          appliedPartCode: getPOAppliedPartCode(prev),
+        }),
+      }
+    })
+  }
+
+  const handleGenerateNextPartCode = () => {
+    const nextCode = generatePartCode(parts)
+    setForm((prev) => ({
+      ...prev,
+      Part_Code: nextCode,
+    }))
+    toast.success('สร้างรหัสอะไหล่ใหม่', `กำหนดรหัส ${nextCode} สำหรับอะไหล่ใหม่เรียบร้อย`)
   }
 
   const onPickImageFile = async (file) => {
@@ -601,6 +662,46 @@ export default function Purchasing() {
     const isEdit = !!(form._id || form.id)
     const currentRecord = isEdit ? data.find((item) => (item.id || item._id) === (form.id || form._id)) : null
     try {
+      let targetPartCode = String(form.Part_Code || '').trim()
+      const targetPartName = String(form.Part_Name_EN || form.Detail || '').trim()
+
+      // If user entered part name but left Part_Code empty, auto-assign running code
+      if (!targetPartCode && targetPartName) {
+        targetPartCode = generatePartCode(parts)
+        form.Part_Code = targetPartCode
+      }
+
+      // Auto-register spare part in SparePartAPI if it doesn't exist yet
+      if (targetPartCode) {
+        const allParts = await SparePartAPI.list()
+        const existing = (allParts || []).find((p) =>
+          String(p.Part_Code || '').trim().toLowerCase() === targetPartCode.toLowerCase()
+        )
+
+        if (!existing) {
+          const category = getPOCategory(form) || 'อะไหล่'
+          const poImageUrl = getPOImageUrl(form)
+          await SparePartAPI.create({
+            Part_Code: targetPartCode,
+            Part_Name_TH: '',
+            Part_Name_EN: targetPartName || targetPartCode,
+            Category: category,
+            Unit: '',
+            Stock_Qty: 0,
+            Min_Qty: 0,
+            Location_Store: '',
+            Supplier: form.Supplier || '',
+            Unit_Price: toNumber(form.UnitPrice),
+            Compatible_Machines: [],
+            Status: 'OUT_OF_STOCK',
+            Remark: appendSparePartImageMeta(`สร้างอัตโนมัติจากใบสั่งซื้อ ${form.PO_Number || ''}`, {
+              imageUrl: poImageUrl,
+            }),
+          })
+          await loadParts()
+        }
+      }
+
       const syncedForm = await syncInventoryOnStatusChange(form, currentRecord)
       const payload = buildPurchasePayload({
         ...syncedForm,
@@ -1047,8 +1148,55 @@ export default function Purchasing() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <F form={form} setForm={setForm} label="รหัสอะไหล่" id="Part_Code" placeholder="เช่น SP-001" />
-              <F form={form} setForm={setForm} label="ชื่ออะไหล่" id="Part_Name_EN" placeholder="ชื่ออะไหล่" />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    <Tag size={12} className="text-blue-500" />
+                    <span>รหัสอะไหล่</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateNextPartCode}
+                    className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors"
+                    title="สร้างรหัสอะไหล่ใหม่ถัดไปอัตโนมัติ"
+                  >
+                    <Sparkles size={11} className="text-amber-500" />
+                    <span>สร้างรหัสอัตโนมัติ</span>
+                  </button>
+                </div>
+                <SearchableDropdown
+                  id="Part_Code"
+                  value={form.Part_Code || ''}
+                  onChange={(val) => applyPartToForm(val)}
+                  options={partCodeOptions}
+                  placeholder="เช่น SP-001 หรือเลือกจากดรอปดาวน์..."
+                  inputClassName="font-mono font-bold text-blue-600 dark:text-blue-400"
+                  helperText="เลือกจากอะไหล่เดิม หรือพิมพ์รหัสใหม่"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    <Package size={12} className="text-indigo-500" />
+                    <span>ชื่ออะไหล่</span>
+                  </label>
+                  {!parts?.some((p) => String(p.Part_Name_EN || '').toLowerCase() === String(form.Part_Name_EN || '').trim().toLowerCase()) && form.Part_Name_EN?.trim() && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                      อะไหล่ใหม่
+                    </span>
+                  )}
+                </div>
+                <SearchableDropdown
+                  id="Part_Name_EN"
+                  value={form.Part_Name_EN || ''}
+                  onChange={(val) => applyPartNameToForm(val)}
+                  options={partNameOptions}
+                  placeholder="ชื่ออะไหล่ หรือเลือกจากดรอปดาวน์..."
+                  helperText="เลือกจากอะไหล่เดิม หรือพิมพ์ชื่อใหม่"
+                />
+              </div>
+
               <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={categoryOptions} />
               <F form={form} setForm={setForm} label="จำนวน" id="Qty" type="number" placeholder="0" />
               <F form={form} setForm={setForm} label="ราคาต่อหน่วย" id="UnitPrice" type="number" placeholder="0" />
