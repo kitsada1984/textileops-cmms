@@ -14,7 +14,12 @@ import {
   FileText,
   AlertCircle,
   ArrowRight,
-  Filter
+  Filter,
+  Copy,
+  Check,
+  CheckCircle2,
+  Tag,
+  Sparkles,
 } from 'lucide-react'
 import { format, isToday, subDays, parseISO } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -39,6 +44,9 @@ const MODULE_DEFINITIONS = {
   SYSTEM: { label: 'ตั้งค่าระบบ', color: '#475569', bg: 'rgba(71,85,105,0.12)', border: 'rgba(71,85,105,0.3)' },
   DESIGN_BOM: { label: 'Design/BOM', color: '#4f46e5', bg: 'rgba(79,70,229,0.12)', border: 'rgba(79,70,229,0.3)' },
   AUTH: { label: 'ความปลอดภัย/เข้าสู่ระบบ', color: '#06C755', bg: 'rgba(6,199,85,0.12)', border: 'rgba(6,199,85,0.3)' },
+  REPAIR_REQUESTS: { label: 'ใบแจ้งซ่อม', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
+  REPAIR: { label: 'งานซ่อมบำรุง', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
+  SPARE_NEEDLE: { label: 'เบิก-คืนเข็ม', color: '#f97316', bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.3)' },
 }
 
 const ACTION_DEFINITIONS = {
@@ -48,6 +56,233 @@ const ACTION_DEFINITIONS = {
   LOGIN: { label: 'เข้าสู่ระบบ (LOGIN)', color: '#06C755', bg: 'rgba(6,199,85,0.12)', border: 'rgba(6,199,85,0.3)', icon: LogIn },
   SWAP: { label: 'สลับกระบอก (SWAP)', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.3)', icon: Activity },
   CHECK_PLAN: { label: 'ตรวจเช็ค (CHECK)', color: '#06b6d4', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.3)', icon: FileText },
+}
+
+const FIELD_NAME_TH = {
+  // Repair Requests (ใบแจ้งซ่อม)
+  status: 'สถานะ',
+  technician_name: 'ช่างผู้รับผิดชอบ',
+  approval_notes: 'บันทึกคำสั่งหัวหน้างาน',
+  approved_at: 'เวลาที่อนุมัติ',
+  approved_by: 'ผู้อนุมัติ',
+  reported_by: 'ผู้แจ้งซ่อม',
+  repair_type: 'ประเภทงานซ่อม',
+  machine_mc: 'เครื่องจักร (MC)',
+  cylinder_serial: 'ซีเรียลกระบอก',
+  Design: 'แบบผ้า (Design)',
+  problem_details: 'รายละเอียดอาการเสีย',
+  problem_cause: 'สาเหตุของปัญหา',
+  repair_details: 'รายละเอียดการซ่อม',
+  parts_used: 'อะไหล่ที่ใช้',
+  downtime_minutes: 'เวลาเครื่องหยุด (นาที)',
+  completed_at: 'เวลาที่ซ่อมเสร็จ',
+  created_at: 'เวลาที่สร้าง / แจ้งงาน',
+  created_date: 'วันที่บันทึก',
+  request_no: 'เลขที่ใบแจ้งซ่อม',
+  request_id: 'รหัสคำขอแจ้งซ่อม',
+  priority: 'ระดับความเร่งด่วน',
+  mc: 'รหัสเครื่องจักร (MC)',
+  notes: 'หมายเหตุเพิ่มเติม',
+
+  // Work Orders (ใบสั่งงาน)
+  Job_ID: 'เลขที่ใบสั่งงาน',
+  MC: 'รหัสเครื่องจักร (MC)',
+  KI: 'รหัสผ้า (KI)',
+  JobType: 'ประเภทใบสั่งงาน',
+  Status: 'สถานะใบสั่งงาน',
+  Technicians: 'ช่างผู้รับผิดชอบ',
+  StartDate: 'วันที่เริ่มงาน',
+  StartTime: 'เวลาเริ่มงาน',
+  EndDate: 'วันที่จบงาน',
+  EndTime: 'เวลาจบงาน',
+  Comment: 'หมายเหตุ / รายละเอียด',
+  TotalDowntimeMinutes: 'เวลาหยุดงานรวม (นาที)',
+  CreatedBy: 'ผู้บันทึกข้อมูล',
+
+  // Cylinders (กระบอก)
+  Serial_NOW: 'ซีเรียลปัจจุบัน',
+  Serial_OLD: 'ซีเรียลเดิม',
+  Location: 'สถานที่จัดเก็บ',
+  NewMC: 'เครื่องปัจจุบัน (MC)',
+  Machine_Ref: 'สถานะเครื่องจักร',
+  Standard: 'มาตรฐานเครื่อง',
+  Feeder: 'ฟีดเดอร์ (Feeder)',
+  Type: 'ประเภทกระบอก',
+  Diameter: 'ขนาดเส้นผ่านศูนย์กลาง (Dia)',
+  Gauge: 'เกจ (Gauge)',
+  Needle: 'จำนวนเข็ม (Needle)',
+  Manufacturer: 'ผู้ผลิต',
+  Status_Now: 'สถานะปัจจุบัน',
+  Last_Check_Date: 'วันที่ตรวจเช็คล่าสุด',
+
+  // Machines (เครื่องจักร)
+  brand: 'ยี่ห้อเครื่องจักร',
+  model: 'รุ่นเครื่องจักร',
+  year: 'ปีที่ผลิต',
+  speed: 'ความเร็วรอบ',
+  zone: 'โซน / แผนก',
+
+  // Spare Parts & Purchasing (อะไหล่และจัดซื้อ)
+  Part_Code: 'รหัสอะไหล่',
+  Part_Name_EN: 'ชื่ออะไหล่ (อังกฤษ)',
+  Part_Name_TH: 'ชื่ออะไหล่ (ไทย)',
+  Category: 'หมวดหมู่อะไหล่',
+  Quantity: 'จำนวน',
+  Stock: 'สต็อกคงเหลือ',
+  MinStock: 'สต็อกขั้นต่ำ',
+  MaxStock: 'สต็อกสูงสุด',
+  UnitPrice: 'ราคาต่อหน่วย',
+  TotalPrice: 'ราคารวม',
+  Supplier: 'ผู้จัดจำหน่าย',
+  PO_Number: 'เลขที่ใบสั่งซื้อ (PO)',
+  Unit: 'หน่วยนับ',
+  Txn_Type: 'ประเภทการเคลื่อนไหวสต็อก',
+  Doc_Ref: 'เอกสารอ้างอิง',
+
+  // Users (ผู้ใช้งาน)
+  username: 'ชื่อผู้ใช้',
+  full_name: 'ชื่อ-นามสกุล',
+  role: 'สิทธิ์การใช้งาน (Role)',
+  email: 'อีเมล',
+  phone: 'เบอร์โทรศัพท์',
+  line_user_id: 'LINE User ID',
+  line_display_name: 'ชื่อที่แสดงใน LINE',
+  is_active: 'สถานะการใช้งาน',
+  updated_at: 'เวลาที่อัปเดตล่าสุด',
+  is_deleted: 'สถานะการลบ',
+}
+
+const STATUS_VALUE_TH = {
+  PENDING: { label: 'รอดำเนินการ / รออนุมัติ (PENDING)', color: 'amber' },
+  APPROVED: { label: 'อนุมัติแล้ว (APPROVED)', color: 'emerald' },
+  REJECTED: { label: 'ไม่อนุมัติ / ปฏิเสธ (REJECTED)', color: 'rose' },
+  IN_PROGRESS: { label: 'กำลังซ่อม / ดำเนินการ (IN_PROGRESS)', color: 'blue' },
+  WAITING_PARTS: { label: 'รออะไหล่ (WAITING_PARTS)', color: 'amber' },
+  COMPLETED: { label: 'ปิดงาน / เสร็จสิ้น (COMPLETED)', color: 'emerald' },
+  CANCELLED: { label: 'ยกเลิกแล้ว (CANCELLED)', color: 'slate' },
+  ORDERED: { label: 'สั่งซื้อแล้ว (ORDERED)', color: 'blue' },
+  RECEIVED: { label: 'รับของแล้ว (RECEIVED)', color: 'emerald' },
+  ACTIVE: { label: 'เปิดใช้งาน (ACTIVE)', color: 'emerald' },
+  INACTIVE: { label: 'ปิดใช้งาน (INACTIVE)', color: 'slate' },
+  STANDARD: { label: 'มาตรฐานปกติ (STANDARD)', color: 'emerald' },
+  SERVICE: { label: 'ต้องตรวจเช็ค (SERVICE)', color: 'amber' },
+  REPAIR: { label: 'งานซ่อม (REPAIR)', color: 'rose' },
+  EASY: { label: 'งานง่าย (EASY)', color: 'blue' },
+  URGENT: { label: 'เร่งด่วน (URGENT)', color: 'rose' },
+  NORMAL: { label: 'ปกติ (NORMAL)', color: 'slate' },
+}
+
+function formatLogValue(val, key = '') {
+  if (val === null || val === undefined) {
+    return {
+      type: 'empty',
+      text: 'ไม่มีข้อมูล (ว่าง)',
+      display: <span className="text-slate-400 dark:text-slate-500 italic text-xs">ไม่มีข้อมูล (ว่าง)</span>,
+    }
+  }
+
+  if (typeof val === 'string' && val.trim() === '') {
+    return {
+      type: 'empty',
+      text: '(เว้นว่าง)',
+      display: <span className="text-slate-400 dark:text-slate-500 italic text-xs">(เว้นว่าง)</span>,
+    }
+  }
+
+  if (typeof val === 'boolean') {
+    return {
+      type: 'boolean',
+      text: val ? 'ใช่ (True)' : 'ไม่ใช่ (False)',
+      display: (
+        <span
+          className={`px-2 py-0.5 rounded-md text-xs font-bold inline-block ${
+            val
+              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+          }`}
+        >
+          {val ? 'ใช่ / เปิดใช้งาน (True)' : 'ไม่ใช่ / ปิดใช้งาน (False)'}
+        </span>
+      ),
+    }
+  }
+
+  // Check if value is a known status code
+  if (typeof val === 'string' && STATUS_VALUE_TH[val.trim()]) {
+    const meta = STATUS_VALUE_TH[val.trim()]
+    const colorClasses = {
+      emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800',
+      blue: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800',
+      amber: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800',
+      rose: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800',
+      slate: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    }[meta.color] || 'bg-slate-100 text-slate-700'
+
+    return {
+      type: 'status',
+      text: meta.label,
+      display: (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${colorClasses}`}>
+          {meta.label}
+        </span>
+      ),
+    }
+  }
+
+  // Check if string is an ISO timestamp (e.g. 2026-10-23T06:32:29.695Z)
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+    try {
+      const d = new Date(val)
+      if (!isNaN(d.getTime())) {
+        const thaiDate = format(d, 'dd/MM/yyyy HH:mm:ss')
+        return {
+          type: 'date',
+          text: thaiDate,
+          display: (
+            <span className="font-semibold text-slate-800 dark:text-slate-200 block text-xs">
+              {thaiDate}
+              <span className="block text-[10px] text-slate-400 font-mono font-normal mt-0.5">
+                (เวลาสากล: {val})
+              </span>
+            </span>
+          ),
+        }
+      }
+    } catch {}
+  }
+
+  // Object / JSON
+  if (typeof val === 'object') {
+    return {
+      type: 'json',
+      text: JSON.stringify(val),
+      display: (
+        <pre className="font-mono text-[11px] bg-slate-50 dark:bg-slate-950 p-2 rounded-lg border border-slate-200 dark:border-slate-800 max-h-36 overflow-auto">
+          {JSON.stringify(val, null, 2)}
+        </pre>
+      ),
+    }
+  }
+
+  // Standard Text / Number
+  return {
+    type: 'text',
+    text: String(val),
+    display: <span className="font-semibold text-slate-800 dark:text-slate-100 break-words">{String(val)}</span>,
+  }
+}
+
+function formatLogComment(comment) {
+  if (!comment) return 'ไม่มีคำอธิบายเพิ่มเติม'
+
+  return comment
+    .replace(/\brepair_requests\b/gi, 'ใบแจ้งซ่อม (repair_requests)')
+    .replace(/\bworkorders\b/gi, 'ใบสั่งงาน (workorders)')
+    .replace(/\bcylinders\b/gi, 'กระบอก (cylinders)')
+    .replace(/\bmachines\b/gi, 'เครื่องจักร (machines)')
+    .replace(/\bspare_parts\b/gi, 'อะไหล่ (spare_parts)')
+    .replace(/\busers\b/gi, 'ผู้ใช้งาน (users)')
+    .replace(/\bneedle_stock\b/gi, 'สต็อกเข็ม (needle_stock)')
 }
 
 function parseMaybeJson(val) {
@@ -69,6 +304,7 @@ export default function Logs() {
   const [selectedUser, setSelectedUser] = useState('ALL')
   const [dateRange, setDateRange] = useState('all') // 'all' | 'today' | '7d' | '30d'
   const [inspectLog, setInspectLog] = useState(null)
+  const [copiedRecordId, setCopiedRecordId] = useState(false)
 
   // Sort logs: newest first
   const sortedLogs = useMemo(() => {
@@ -566,50 +802,156 @@ export default function Logs() {
           }
         >
           <div className="space-y-4">
-            {/* Meta Header Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <div>
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">วัน-เวลา</span>
-                <span className="text-xs font-semibold font-mono text-slate-800 dark:text-slate-200 mt-0.5 block">
-                  {(inspectLog.created_date || inspectLog.created_at) ? format(new Date(inspectLog.created_date || inspectLog.created_at), 'dd/MM/yyyy HH:mm:ss') : '—'}
-                </span>
-              </div>
-              <div>
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">ผู้ดำเนินการ</span>
-                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5 block truncate">
-                  {inspectLog.User || '—'}
-                </span>
-              </div>
-              <div>
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">การกระทำ</span>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 block">
-                  {inspectLog.ActionType || '—'}
-                </span>
-              </div>
-              <div>
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">โมดูล / เมนู</span>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 block">
-                  {MODULE_DEFINITIONS[inspectLog.Module]?.label || inspectLog.Module || '—'}
-                </span>
+            {/* 1. Meta Header Grid */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/70 dark:from-slate-800/80 dark:to-slate-900/80 border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* 1. วัน-เวลา */}
+                <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 shadow-2xs">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <Clock size={13} className="text-blue-500" />
+                    วัน-เวลาที่ทำรายการ
+                  </span>
+                  <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-100 mt-1 block">
+                    {(inspectLog.created_date || inspectLog.created_at)
+                      ? format(new Date(inspectLog.created_date || inspectLog.created_at), 'dd/MM/yyyy HH:mm:ss')
+                      : '—'}
+                  </span>
+                </div>
+
+                {/* 2. ผู้ดำเนินการ */}
+                <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 shadow-2xs">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <User size={13} className="text-purple-500" />
+                    ผู้ดำเนินการ
+                  </span>
+                  <div className="mt-1">
+                    {inspectLog.User?.startsWith('line_') ? (
+                      <span className="inline-flex items-center gap-1.5 font-bold text-xs text-emerald-600 dark:text-emerald-400 truncate max-w-full">
+                        <span className="w-2 h-2 rounded-full bg-[#06c755] shrink-0" />
+                        LINE: {inspectLog.User}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 block truncate">
+                        {inspectLog.User || '—'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. การกระทำ */}
+                <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 shadow-2xs">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <Activity size={13} className="text-amber-500" />
+                    การกระทำ
+                  </span>
+                  <div className="mt-1">
+                    {(() => {
+                      const act = ACTION_DEFINITIONS[inspectLog.ActionType]
+                      return (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold"
+                          style={{
+                            color: act?.color || '#f59e0b',
+                            backgroundColor: act?.bg || 'rgba(245,158,11,0.12)',
+                          }}
+                        >
+                          {act?.label || inspectLog.ActionType || '—'}
+                        </span>
+                      )
+                    })()}
+                  </div>
+                </div>
+
+                {/* 4. โมดูล / เมนู */}
+                <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 shadow-2xs">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <Layers size={13} className="text-indigo-500" />
+                    โมดูล / เมนู
+                  </span>
+                  <div className="mt-1">
+                    {(() => {
+                      const mod = MODULE_DEFINITIONS[inspectLog.Module]
+                      return (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold"
+                          style={{
+                            color: mod?.color || '#3b82f6',
+                            backgroundColor: mod?.bg || 'rgba(59,130,246,0.12)',
+                          }}
+                        >
+                          {mod?.label || inspectLog.Module || '—'}
+                        </span>
+                      )
+                    })()}
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Record ID & Comment */}
-            <div className="space-y-1">
-              <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            {/* 2. คำอธิบาย / รหัสอ้างอิง */}
+            <div className="space-y-1.5">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <FileText size={13} />
                 คำอธิบาย / รหัสอ้างอิง
               </span>
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
-                {inspectLog.Comment || 'ไม่มีหมายเหตุเพิ่มเติม'}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                  {formatLogComment(inspectLog.Comment)}
+                </div>
+
                 {inspectLog.RecordID && (
-                  <span className="ml-2 font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px]">
-                    ID: {inspectLog.RecordID}
-                  </span>
+                  <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold text-slate-400">รหัสอ้างอิง (Record ID):</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (navigator?.clipboard?.writeText) {
+                            navigator.clipboard.writeText(inspectLog.RecordID)
+                          }
+                          setCopiedRecordId(true)
+                          setTimeout(() => setCopiedRecordId(false), 2000)
+                        }}
+                        className="inline-flex items-center gap-1 font-mono px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                        title="คลิกเพื่อคัดลอกรหัสอ้างอิง"
+                      >
+                        {copiedRecordId ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                        <span>{copiedRecordId ? 'คัดลอกรหัสแล้ว!' : inspectLog.RecordID}</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
+
+                {/* Extracted changed fields tags */}
+                {(() => {
+                  const match = inspectLog.Comment?.match(/\(([^)]+)\)/)
+                  if (!match) return null
+                  const fields = match[1]
+                    .split(',')
+                    .map((f) => f.trim())
+                    .filter((f) => FIELD_NAME_TH[f] && !f.startsWith('รหัส'))
+                  if (fields.length === 0) return null
+
+                  return (
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-slate-500">
+                        ฟิลด์ที่ได้รับการแก้ไข ({fields.length}):
+                      </span>
+                      {fields.map((f) => (
+                        <span
+                          key={f}
+                          className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 text-[11px] font-bold"
+                        >
+                          {FIELD_NAME_TH[f] || f}
+                        </span>
+                      ))}
+                    </div>
+                  )
+                })()}
               </div>
             </div>
 
-            {/* Diff / Comparison Section */}
+            {/* 3. Diff / Comparison Section */}
             {(() => {
               const oldVal = parseMaybeJson(inspectLog.OldValue)
               const newVal = parseMaybeJson(inspectLog.NewValue)
@@ -623,40 +965,61 @@ export default function Logs() {
                   .filter((k) => k !== '_id' && k !== 'password' && k !== 'password_hash')
 
                 return (
-                  <div className="space-y-1.5">
-                    <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      การเปรียบเทียบข้อมูล (Before vs After)
-                    </span>
-                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden text-xs">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        การเปรียบเทียบข้อมูล (Before vs After)
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        แสดงข้อมูล {allKeys.length} ฟิลด์
+                      </span>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs text-xs bg-white dark:bg-slate-900">
                       <table className="w-full border-collapse">
                         <thead>
-                          <tr className="bg-slate-100 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[11px]">
-                            <th className="p-2 text-left font-bold w-1/3">ชื่อฟิลด์ (Field)</th>
-                            <th className="p-2 text-left font-bold w-1/3 text-rose-600 dark:text-rose-400">ค่าเดิม (Before)</th>
-                            <th className="p-2 text-left font-bold w-1/3 text-emerald-600 dark:text-emerald-400">ค่าใหม่ (After)</th>
+                          <tr className="bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[11px]">
+                            <th className="p-3 text-left font-bold w-1/3">ชื่อฟิลด์ (Field)</th>
+                            <th className="p-3 text-left font-bold w-1/3 text-rose-600 dark:text-rose-400">ค่าเดิม (Before)</th>
+                            <th className="p-3 text-left font-bold w-1/3 text-emerald-600 dark:text-emerald-400">ค่าใหม่ (After)</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          {allKeys.map((key, idx) => {
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                          {allKeys.map((key) => {
                             const o = oldVal[key]
                             const n = newVal[key]
                             const changed = JSON.stringify(o) !== JSON.stringify(n)
+                            const thaiName = FIELD_NAME_TH[key] || key
+                            const formattedOld = formatLogValue(o, key)
+                            const formattedNew = formatLogValue(n, key)
 
                             return (
                               <tr
                                 key={key}
-                                className={`border-b border-slate-100 dark:border-slate-800/50 ${
-                                  changed ? 'bg-amber-50/40 dark:bg-amber-950/20 font-semibold' : ''
+                                className={`transition-colors ${
+                                  changed
+                                    ? 'bg-amber-50/40 dark:bg-amber-950/20 hover:bg-amber-50/70 dark:hover:bg-amber-950/30 font-semibold'
+                                    : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
                                 }`}
                               >
-                                <td className="p-2 font-mono text-[11px] text-slate-700 dark:text-slate-300">
-                                  {key}
+                                <td className="p-3 align-top">
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
+                                    {thaiName}
+                                  </span>
+                                  <span className="font-mono text-[10px] text-slate-400 block mt-0.5">
+                                    {key}
+                                  </span>
+                                  {changed && (
+                                    <span className="inline-block mt-1 px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                                      แก้ไขแล้ว
+                                    </span>
+                                  )}
                                 </td>
-                                <td className="p-2 font-mono text-[11px] text-rose-600 dark:text-rose-400 break-all">
-                                  {o !== undefined ? (typeof o === 'object' ? JSON.stringify(o) : String(o)) : '—'}
+                                <td className="p-3 align-top bg-rose-50/20 dark:bg-rose-950/10">
+                                  {formattedOld.display}
                                 </td>
-                                <td className="p-2 font-mono text-[11px] text-emerald-600 dark:text-emerald-400 break-all">
-                                  {n !== undefined ? (typeof n === 'object' ? JSON.stringify(n) : String(n)) : '—'}
+                                <td className="p-3 align-top bg-emerald-50/20 dark:bg-emerald-950/10">
+                                  {formattedNew.display}
                                 </td>
                               </tr>
                             )
@@ -676,9 +1039,9 @@ export default function Logs() {
                       <span className="block text-[11px] font-bold text-rose-600 uppercase tracking-wider">
                         ค่าเดิม (Before)
                       </span>
-                      <pre className="p-3 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-[11px] font-mono text-rose-700 dark:text-rose-300 overflow-x-auto max-h-48 whitespace-pre-wrap">
-                        {typeof oldVal === 'object' ? JSON.stringify(oldVal, null, 2) : String(inspectLog.OldValue)}
-                      </pre>
+                      <div className="p-3 rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-xs">
+                        {formatLogValue(inspectLog.OldValue).display}
+                      </div>
                     </div>
                   )}
 
@@ -687,9 +1050,9 @@ export default function Logs() {
                       <span className="block text-[11px] font-bold text-emerald-600 uppercase tracking-wider">
                         ค่าใหม่ (After)
                       </span>
-                      <pre className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-[11px] font-mono text-emerald-700 dark:text-emerald-300 overflow-x-auto max-h-48 whitespace-pre-wrap">
-                        {typeof newVal === 'object' ? JSON.stringify(newVal, null, 2) : String(inspectLog.NewValue)}
-                      </pre>
+                      <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-xs">
+                        {formatLogValue(inspectLog.NewValue).display}
+                      </div>
                     </div>
                   )}
                 </div>

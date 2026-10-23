@@ -41,6 +41,18 @@ const mockLogs = [
     Comment: 'ลบข้อมูลใน ใบสั่งงาน (รหัส: WO-999)',
     created_at: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
   },
+  {
+    id: 'log-4',
+    Module: 'REPAIR_REQUESTS',
+    ActionType: 'UPDATE',
+    RecordID: 'RR-2026-001',
+    User: 'admin',
+    FieldName: 'status, technician_name',
+    OldValue: JSON.stringify({ status: 'PENDING', technician_name: null }),
+    NewValue: JSON.stringify({ status: 'APPROVED', technician_name: 'สมชาย' }),
+    Comment: 'แก้ไขข้อมูลใน repair_requests (รหัส: RR-2026-001)',
+    created_at: '2026-10-23T06:32:29.695Z',
+  },
 ]
 
 vi.mock('../hooks/useEntity', () => ({
@@ -68,8 +80,8 @@ describe('Logs - Enterprise Audit Log System', () => {
     expect(screen.getAllByText('แก้ไข (UPDATE)')[0]).toBeInTheDocument()
     expect(screen.getAllByText('ลบข้อมูล (DELETE)')[0]).toBeInTheDocument()
 
-    // 3 total items in mock
-    expect(screen.getByText('3')).toBeInTheDocument()
+    // 4 total items in mock
+    expect(screen.getByText('4')).toBeInTheDocument()
   })
 
   it('renders all audit log table rows with badges and user info', () => {
@@ -78,6 +90,7 @@ describe('Logs - Enterprise Audit Log System', () => {
     expect(screen.getByText('MC-101')).toBeInTheDocument()
     expect(screen.getByText('68757')).toBeInTheDocument()
     expect(screen.getByText('WO-999')).toBeInTheDocument()
+    expect(screen.getByText('RR-2026-001')).toBeInTheDocument()
     expect(screen.getAllByText('kitsada (LINE)')[0]).toBeInTheDocument()
   })
 
@@ -102,5 +115,20 @@ describe('Logs - Enterprise Audit Log System', () => {
     expect(screen.getByText('การเปรียบเทียบข้อมูล (Before vs After)')).toBeInTheDocument()
     expect(screen.getByText('DB-307M')).toBeInTheDocument()
     expect(screen.getByText('DB-302M')).toBeInTheDocument()
+    expect(screen.getByText('เครื่องปัจจุบัน (MC)')).toBeInTheDocument()
+  })
+
+  it('displays Thai field labels, module name, and formatted status badges in modal for repair requests', () => {
+    render(<Logs />)
+
+    fireEvent.click(screen.getByText('RR-2026-001'))
+
+    expect(screen.getByText('รายละเอียดบันทึกกิจกรรม (Audit Log Detail)')).toBeInTheDocument()
+    expect(screen.getByText('สถานะ')).toBeInTheDocument()
+    expect(screen.getByText('ช่างผู้รับผิดชอบ')).toBeInTheDocument()
+    expect(screen.getByText('อนุมัติแล้ว (APPROVED)')).toBeInTheDocument()
+    expect(screen.getByText('รอดำเนินการ / รออนุมัติ (PENDING)')).toBeInTheDocument()
+    expect(screen.getByText('สมชาย')).toBeInTheDocument()
+    expect(screen.getByText('ไม่มีข้อมูล (ว่าง)')).toBeInTheDocument()
   })
 })
