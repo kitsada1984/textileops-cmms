@@ -55,7 +55,12 @@ export async function onRequestGet(context) {
     // Write initial connected event with current max_id
     writer.write(encoder.encode(`event: connected\ndata: ${JSON.stringify({ status: 'connected', max_id: currentSinceId, time: new Date().toISOString() })}\n\n`))
 
-    // Stream loop using setInterval
+    // Ensure index on _d1_change_log(id) exists to protect against table scans and quota drain
+    try {
+      await db.prepare('CREATE INDEX IF NOT EXISTS idx_d1_change_log_id ON _d1_change_log (id)').run()
+    } catch {}
+
+    // Stream loop using setInterval (2500ms balanced for fast realtime + optimal quota usage)
     const interval = setInterval(async () => {
       try {
         let sql = 'SELECT * FROM _d1_change_log WHERE id > ?'
@@ -98,7 +103,7 @@ export async function onRequestGet(context) {
       } catch (err) {
         console.error('SSE Stream Loop Error:', err.message)
       }
-    }, 1500)
+    }, 2500)
 
     // Handle client disconnect
     request.signal.addEventListener('abort', () => {
