@@ -26,6 +26,7 @@ import {
   Play,
   Hourglass,
   Sparkles,
+  CalendarClock,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -175,6 +176,34 @@ export function getWorkOrderDetails(job = {}) {
   return job.Details || job.details || job.Problem || job.problem || job.Detail || job.Description || '—'
 }
 
+/**
+ * Safely parses and returns daily work progress logs from a work order record.
+ * Supports JSON string or array, returns [] on empty or invalid data.
+ */
+export function getJobDailyLogs(job = {}) {
+  if (!job) return []
+  const raw = job.DailyLogs || job.daily_logs || job.dailyLogs
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+/**
+ * Returns the most recent daily work log entry, or null if none exist.
+ */
+export function getLatestDailyLog(job = {}) {
+  const logs = getJobDailyLogs(job)
+  return logs.length > 0 ? logs[logs.length - 1] : null
+}
+
 export function getTechSkillInfo(skillLevel = 'Senior') {
   const norm = String(skillLevel || '').trim().toLowerCase()
   if (norm.includes('master')) {
@@ -310,12 +339,15 @@ function WorkOrderCard({
   onPrint,
   onEdit,
   onDelete,
+  onDailyLog,
 }) {
   const statusMeta = getWorkOrderStatusMeta(job.Status)
   const isCompleted = statusMeta.isCompleted
   const sla = calculateSlaPerformance(job, kpiTargets)
   const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
   const detailsDisplay = getWorkOrderDetails(job)
+  const dailyLogs = getJobDailyLogs(job)
+  const latestDailyLog = getLatestDailyLog(job)
 
   return (
     <div
@@ -368,8 +400,8 @@ function WorkOrderCard({
       </div>
 
       {/* Design and Details */}
-      {(job.Design || detailsDisplay !== '—') && (
-        <div className="text-xs space-y-1 py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 mb-2">
+      {(job.Design || detailsDisplay !== '—' || latestDailyLog) && (
+        <div className="text-xs space-y-1.5 py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 mb-2">
           {job.Design && (
             <div className="font-semibold text-slate-700 dark:text-slate-200 truncate">
               {job.Design}
@@ -378,6 +410,25 @@ function WorkOrderCard({
           {detailsDisplay !== '—' && (
             <div className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">
               {detailsDisplay}
+            </div>
+          )}
+          {latestDailyLog && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation()
+                onDailyLog?.(job)
+              }}
+              className="mt-1 flex items-center gap-1.5 p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-[11px] text-indigo-800 dark:text-indigo-300 font-semibold cursor-pointer active:scale-[0.98] transition-transform"
+              title={`อัปเดตงานล่าสุด (${latestDailyLog.date}): ${latestDailyLog.details} (แตะเพื่อดูประวัติหรืออัปเดต)`}
+            >
+              <CalendarClock size={12} className="flex-shrink-0 text-indigo-600 dark:text-indigo-400" />
+              <span className="flex-shrink-0">ล่าสุด ({latestDailyLog.date}):</span>
+              <span className="truncate flex-1 font-normal text-slate-700 dark:text-slate-300">{latestDailyLog.details}</span>
+              {dailyLogs.length > 1 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 dark:bg-indigo-900 text-[10px] flex-shrink-0">
+                  +{dailyLogs.length - 1}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -454,6 +505,27 @@ function WorkOrderCard({
             >
               <CheckCircle2 size={14} />
               <span>จบงาน</span>
+            </button>
+          )}
+
+          {/* Daily Work Progress Update Button */}
+          {!job.IsDeleted && canEdit && (
+            <button
+              type="button"
+              onClick={() => onDailyLog?.(job)}
+              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[36px] ${
+                dailyLogs.length > 0
+                  ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600'
+              }`}
+              title="อัปเดตงานแต่ละวัน / บันทึกจบวัน (ความคืบหน้า & สถานะ)"
+            >
+              <CalendarClock size={15} />
+              {dailyLogs.length > 0 && (
+                <span className="text-[10px] font-mono px-1 rounded-full bg-indigo-600 text-white">
+                  {dailyLogs.length}
+                </span>
+              )}
             </button>
           )}
 
@@ -587,6 +659,16 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   const [printModalOpen, setPrintModalOpen] = useState(false)
   const [printJob, setPrintJob] = useState(null)
+
+  // Daily Work Progress (End of Day Update) Modal State
+  const [dailyLogModalOpen, setDailyLogModalOpen] = useState(false)
+  const [dailyLogJob, setDailyLogJob] = useState(null)
+  const [dailyLogDate, setDailyLogDate] = useState('')
+  const [dailyLogStatus, setDailyLogStatus] = useState('IN_PROGRESS')
+  const [dailyLogDetails, setDailyLogDetails] = useState('')
+  const [dailyLogHours, setDailyLogHours] = useState('')
+  const [dailyLogTechs, setDailyLogTechs] = useState([])
+  const [dailyLogSubmitting, setDailyLogSubmitting] = useState(false)
 
   // Interruption / Lost Time Modal State
   const [interruptionModalOpen, setInterruptionModalOpen] = useState(false)
@@ -1191,6 +1273,89 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       toast.success(`อัปเดตสถานะเป็น "${nextMeta.label}" สำเร็จ`, job.Job_ID || job['Job ID'])
     } catch (err) {
       toast.error('ไม่สามารถอัปเดตสถานะใบสั่งงานได้', err.message)
+    }
+  }
+
+  // Open Daily Work Progress (End of Day Update) Modal
+  const openDailyLogModal = (job) => {
+    setDailyLogJob(job)
+    const now = new Date()
+    setDailyLogDate(format(now, 'yyyy-MM-dd'))
+    const currentMeta = getWorkOrderStatusMeta(job.Status)
+    setDailyLogStatus(currentMeta.value)
+    setDailyLogDetails('')
+    setDailyLogHours('')
+    const currentTechs = (job.Technicians || job.Tech || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    setDailyLogTechs(currentTechs)
+    setDailyLogModalOpen(true)
+  }
+
+  // Submit Daily Work Progress Update (Saves in existing record, 100% backward compatible)
+  const handleSaveDailyLog = async () => {
+    if (!dailyLogJob) return
+    const details = dailyLogDetails.trim()
+    if (!details) {
+      toast.warning('กรุณาระบุรายละเอียดงานประจำวัน / สิ่งที่ทำได้ในวันนี้')
+      return
+    }
+    setDailyLogSubmitting(true)
+    try {
+      const existingLogs = getJobDailyLogs(dailyLogJob)
+      const newEntry = {
+        id: `DLOG-${Date.now()}`,
+        date: dailyLogDate || format(new Date(), 'yyyy-MM-dd'),
+        timestamp: new Date().toISOString(),
+        status: dailyLogStatus,
+        details,
+        hours: dailyLogHours ? parseFloat(dailyLogHours) : null,
+        techs: dailyLogTechs,
+        recorded_by: user?.username || user?.full_name || 'ช่างประจำกะ',
+      }
+      const updatedLogs = [...existingLogs, newEntry]
+      const nextMeta = getWorkOrderStatusMeta(dailyLogStatus)
+
+      const payload = {
+        ...dailyLogJob,
+        DailyLogs: JSON.stringify(updatedLogs),
+        Status: nextMeta.value,
+        UpdatedBy: user?.username || user?.full_name || 'ผู้บันทึกรายวัน',
+        updated_at: new Date().toISOString(),
+      }
+
+      await saveJob(payload)
+      toast.success(
+        'บันทึกความคืบหน้ารายวันสำเร็จ',
+        `${dailyLogJob.Job_ID || dailyLogJob['Job ID']} • สถานะ: ${nextMeta.label}`
+      )
+      setDailyLogModalOpen(false)
+      setDailyLogJob(null)
+    } catch (err) {
+      toast.error('บันทึกความคืบหน้าไม่สำเร็จ', err.message)
+    } finally {
+      setDailyLogSubmitting(false)
+    }
+  }
+
+  // Delete a Daily Log Entry (admin / correction)
+  const handleDeleteDailyLog = async (logId) => {
+    if (!dailyLogJob || !canDelete) return
+    const existingLogs = getJobDailyLogs(dailyLogJob)
+    const updatedLogs = existingLogs.filter((l) => l.id !== logId)
+    const payload = {
+      ...dailyLogJob,
+      DailyLogs: JSON.stringify(updatedLogs),
+      UpdatedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
+      updated_at: new Date().toISOString(),
+    }
+    try {
+      await saveJob(payload)
+      setDailyLogJob(payload)
+      toast.success('ลบรายการบันทึกรายวันเรียบร้อย')
+    } catch (err) {
+      toast.error('ลบรายการไม่สำเร็จ', err.message)
     }
   }
 
@@ -2107,6 +2272,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   onPrint={openPrintModal}
                   onEdit={openEditModal}
                   onDelete={handleDeleteJob}
+                  onDailyLog={openDailyLogModal}
                 />
               ))}
 
@@ -2152,6 +2318,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     onPrint={openPrintModal}
                     onEdit={openEditModal}
                     onDelete={handleDeleteJob}
+                    onDailyLog={openDailyLogModal}
                   />
                 ))}
               </div>
@@ -2196,6 +2363,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     const sla = calculateSlaPerformance(job, kpiTargets)
                     const jobIdDisplay = job.Job_ID || job['Job ID'] || `JOB-${job.id?.slice(0, 8)}`
                     const detailsDisplay = getWorkOrderDetails(job)
+                    const dailyLogs = getJobDailyLogs(job)
+                    const latestDailyLog = getLatestDailyLog(job)
 
                     return (
                       <tr key={job.id || idx}>
@@ -2240,10 +2409,28 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                         </td>
 
                         {/* รายละเอียด */}
-                        <td className="max-w-[220px] min-w-[130px]" style={{ color: 'var(--text-700)' }}>
+                        <td className="max-w-[240px] min-w-[130px]" style={{ color: 'var(--text-700)' }}>
                           <div className="truncate text-xs font-medium" title={detailsDisplay}>
                             {detailsDisplay}
                           </div>
+                          {latestDailyLog && (
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openDailyLogModal(job)
+                              }}
+                              className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/25 cursor-pointer transition-colors max-w-full truncate"
+                              title={`อัปเดตงานล่าสุด (${latestDailyLog.date}): ${latestDailyLog.details} (คลิกเพื่อดูประวัติหรืออัปเดต)`}
+                            >
+                              <span className="flex-shrink-0">📝 {latestDailyLog.date?.slice(5) || latestDailyLog.date}:</span>
+                              <span className="truncate font-normal text-slate-600 dark:text-slate-300">{latestDailyLog.details}</span>
+                              {dailyLogs.length > 1 && (
+                                <span className="px-1 rounded-full bg-indigo-200 dark:bg-indigo-900/60 text-[9px] flex-shrink-0">
+                                  +{dailyLogs.length - 1}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         {/* สถานะ */}
@@ -2357,6 +2544,28 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                               >
                                 <CheckCircle2 size={13} />
                                 <span>จบงาน</span>
+                              </button>
+                            )}
+
+                            {/* Daily Work Progress Update Button */}
+                            {!job.IsDeleted && canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => openDailyLogModal(job)}
+                                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                                  dailyLogs.length > 0
+                                    ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25'
+                                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600'
+                                }`}
+                                title="อัปเดตงานประจำวัน / บันทึกจบวัน (ความคืบหน้า & สถานะ)"
+                              >
+                                <CalendarClock size={14} />
+                                <span className="hidden xl:inline text-[11px]">อัปเดต</span>
+                                {dailyLogs.length > 0 && (
+                                  <span className="text-[10px] font-mono px-1 rounded-full bg-indigo-600 text-white">
+                                    {dailyLogs.length}
+                                  </span>
+                                )}
                               </button>
                             )}
 
@@ -3573,6 +3782,239 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           })}
         />
       )}
+
+      {/* 6. Daily Progress Update Modal (อัปเดตงานประจำวัน / บันทึกจบวัน) */}
+      {dailyLogModalOpen && dailyLogJob && (() => {
+        const jobLogs = getJobDailyLogs(dailyLogJob)
+        const jobStatusMeta = getWorkOrderStatusMeta(dailyLogJob.Status)
+        const currentDetails = getWorkOrderDetails(dailyLogJob)
+
+        return (
+          <Modal
+            open={dailyLogModalOpen}
+            onClose={() => setDailyLogModalOpen(false)}
+            title={`อัปเดตความคืบหน้างานประจำวัน • ${dailyLogJob.Job_ID || dailyLogJob['Job ID']}`}
+          >
+            <div className="space-y-4 text-xs">
+              {/* Job Summary Banner */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">
+                      {dailyLogJob.Job_ID || dailyLogJob['Job ID']}
+                    </span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-100">
+                      {dailyLogJob.MC}
+                    </span>
+                    <span className="text-slate-500">
+                      (KI: {dailyLogJob.KI || '—'}{dailyLogJob.Design ? ` • ${dailyLogJob.Design}` : ''})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">สถานะปัจจุบัน:</span>
+                    <span className={`badge ${jobStatusMeta.badgeClass}`}>
+                      {jobStatusMeta.label}
+                    </span>
+                  </div>
+                </div>
+                {currentDetails !== '—' && (
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">อาการ/รายละเอียดตั้งต้น: </span>
+                    {currentDetails}
+                  </div>
+                )}
+              </div>
+
+              {/* Previous Daily Updates Timeline */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <CalendarClock size={14} className="text-indigo-500" />
+                    <span>ประวัติความคืบหน้าแต่ละวัน ({jobLogs.length} รายการ)</span>
+                  </h4>
+                  <span className="text-[11px] text-slate-400">
+                    อัปเดตเฉพาะเมื่อมีความเคลื่อนไหว
+                  </span>
+                </div>
+
+                {jobLogs.length === 0 ? (
+                  <div className="text-center py-5 text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30">
+                    ยังไม่มีบันทึกความคืบหน้ารายวันสำหรับใบสั่งงานนี้
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {[...jobLogs].reverse().map((entry, idx) => {
+                      const entryMeta = getWorkOrderStatusMeta(entry.status)
+                      return (
+                        <div
+                          key={entry.id || idx}
+                          className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
+                                📅 {entry.date}
+                              </span>
+                              <span className={`badge text-[10px] ${entryMeta.badgeClass}`}>
+                                {entryMeta.label}
+                              </span>
+                              {entry.hours && (
+                                <span className="font-mono text-slate-500 text-[11px]">
+                                  ⏱️ {entry.hours} ชม.
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                              <span>บันทึกโดย: {entry.recorded_by || '—'}</span>
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDailyLog(entry.id)}
+                                  className="text-slate-400 hover:text-red-500 p-0.5"
+                                  title="ลบรายการนี้"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-xs text-slate-700 dark:text-slate-300 font-medium pl-1">
+                            {entry.details}
+                          </div>
+
+                          {Array.isArray(entry.techs) && entry.techs.length > 0 && (
+                            <div className="text-[10px] text-slate-500 pl-1">
+                              ช่าง: {entry.techs.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* New Progress Update Form */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                    <span>➕ บันทึกความคืบหน้าใหม่ (เมื่อจบวัน / มีการเปลี่ยนแปลง)</span>
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="label text-[11px]">วันที่ *</label>
+                    <input
+                      type="date"
+                      value={dailyLogDate}
+                      onChange={(e) => setDailyLogDate(e.target.value)}
+                      className="input font-mono text-xs"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label text-[11px]">สถานะ ณ สิ้นวัน *</label>
+                    <select
+                      value={dailyLogStatus}
+                      onChange={(e) => setDailyLogStatus(e.target.value)}
+                      className="select text-xs font-semibold"
+                    >
+                      {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.fullLabel}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="label text-[11px]">ชั่วโมงทำงานวันนี้ (ถ้ามี)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      placeholder="เช่น 4 ชม."
+                      value={dailyLogHours}
+                      onChange={(e) => setDailyLogHours(e.target.value)}
+                      className="input font-mono text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Technicians Checklist */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="label text-[11px] mb-0">ช่างที่ปฏิบัติงานในวันนี้</label>
+                    <span className="text-[10px] text-slate-400">คลิกเลือกหรือยกเลิก</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                    {technicians.map((t, i) => {
+                      const isSel = dailyLogTechs.includes(t.Name)
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            setDailyLogTechs((prev) =>
+                              prev.includes(t.Name)
+                                ? prev.filter((name) => name !== t.Name)
+                                : [...prev, t.Name]
+                            )
+                          }}
+                          className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 border ${
+                            isSel
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                              : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-400'
+                          }`}
+                        >
+                          {isSel && <Check size={11} strokeWidth={3} />}
+                          <span>{t.Name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Details Textarea */}
+                <div>
+                  <label className="label text-[11px]">รายละเอียดความคืบหน้า / สิ่งที่ทำได้ในวันนี้ *</label>
+                  <textarea
+                    rows={3}
+                    placeholder="เช่น ตรวจเช็คระบบไฟเสร็จแล้ว มอเตอร์ไหม้ รออะไหล่เข้าวันพรุ่งนี้..."
+                    value={dailyLogDetails}
+                    onChange={(e) => setDailyLogDetails(e.target.value)}
+                    className="input text-xs w-full resize-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDailyLogModalOpen(false)}
+                  className="btn-outline px-4"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDailyLog}
+                  disabled={dailyLogSubmitting || !dailyLogDetails.trim()}
+                  className="btn-primary px-5"
+                >
+                  <Check size={14} />
+                  <span>{dailyLogSubmitting ? 'กำลังบันทึก...' : '💾 บันทึกความคืบหน้า'}</span>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
     </div>
   )
 }

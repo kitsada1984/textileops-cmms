@@ -6,6 +6,8 @@ import {
   WORK_ORDER_STATUS_OPTIONS,
   getWorkOrderStatusMeta,
   matchesWorkOrderStatusFilter,
+  getJobDailyLogs,
+  getLatestDailyLog,
 } from './WorkOrders.jsx'
 
 describe('WorkOrders utilities', () => {
@@ -149,6 +151,49 @@ describe('WorkOrders utilities', () => {
       expect(matchesWorkOrderStatusFilter('WAITING_PARTS', 'รออะไหล่')).toBe(true)
       expect(matchesWorkOrderStatusFilter('WAITING_SUMMARY', 'รอสรุป')).toBe(true)
       expect(matchesWorkOrderStatusFilter('IN_PROGRESS', 'WAITING_TECH')).toBe(false)
+    })
+  })
+
+  describe('getJobDailyLogs & getLatestDailyLog', () => {
+    it('returns empty array when work order has no daily logs', () => {
+      expect(getJobDailyLogs(null)).toEqual([])
+      expect(getJobDailyLogs(undefined)).toEqual([])
+      expect(getJobDailyLogs({})).toEqual([])
+      expect(getJobDailyLogs({ DailyLogs: null })).toEqual([])
+      expect(getJobDailyLogs({ DailyLogs: '' })).toEqual([])
+      expect(getLatestDailyLog({})).toBeNull()
+    })
+
+    it('safely parses DailyLogs when stored as JSON string', () => {
+      const mockLogs = [
+        { id: '1', date: '2026-10-22', status: 'WAITING_PARTS', details: 'รอสั่งมอเตอร์ใหม่', hours: 3 },
+        { id: '2', date: '2026-10-23', status: 'IN_PROGRESS', details: 'ใส่มอเตอร์เรียบร้อย', hours: 2 },
+      ]
+      const job = { DailyLogs: JSON.stringify(mockLogs) }
+
+      const parsed = getJobDailyLogs(job)
+      expect(parsed).toHaveLength(2)
+      expect(parsed[0].details).toBe('รอสั่งมอเตอร์ใหม่')
+      expect(parsed[1].details).toBe('ใส่มอเตอร์เรียบร้อย')
+
+      const latest = getLatestDailyLog(job)
+      expect(latest).not.toBeNull()
+      expect(latest.id).toBe('2')
+      expect(latest.date).toBe('2026-10-23')
+      expect(latest.details).toBe('ใส่มอเตอร์เรียบร้อย')
+      expect(latest.status).toBe('IN_PROGRESS')
+    })
+
+    it('handles already parsed array or alternate column names safely', () => {
+      const arrayJob = { daily_logs: [{ id: 'a', details: 'เช็คสภาพรอบเครื่อง' }] }
+      expect(getJobDailyLogs(arrayJob)).toHaveLength(1)
+      expect(getLatestDailyLog(arrayJob).details).toBe('เช็คสภาพรอบเครื่อง')
+    })
+
+    it('handles malformed JSON without crashing', () => {
+      const brokenJob = { DailyLogs: '{broken_json' }
+      expect(getJobDailyLogs(brokenJob)).toEqual([])
+      expect(getLatestDailyLog(brokenJob)).toBeNull()
     })
   })
 })
