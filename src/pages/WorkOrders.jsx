@@ -178,16 +178,28 @@ export function getWorkOrderDetails(job = {}) {
 
 /**
  * Safely parses and returns daily work progress logs from a work order record.
- * Supports JSON string or array, returns [] on empty or invalid data.
+ * Supports JSON string or array, double-stringified JSON, and fallback metadata in Comment.
  */
 export function getJobDailyLogs(job = {}) {
   if (!job) return []
   const raw = job.DailyLogs || job.daily_logs || job.dailyLogs
-  if (!raw) return []
+  if (!raw) {
+    const comment = job.Comment || job.comment || ''
+    if (typeof comment === 'string' && comment.trim().startsWith('{') && comment.includes('daily_logs')) {
+      try {
+        const parsed = JSON.parse(comment)
+        if (Array.isArray(parsed.daily_logs)) return parsed.daily_logs
+      } catch {}
+    }
+    return []
+  }
   if (Array.isArray(raw)) return raw
   if (typeof raw === 'string') {
     try {
-      const parsed = JSON.parse(raw)
+      let parsed = JSON.parse(raw)
+      if (typeof parsed === 'string') {
+        try { parsed = JSON.parse(parsed) } catch {}
+      }
       return Array.isArray(parsed) ? parsed : []
     } catch {
       return []
@@ -198,10 +210,17 @@ export function getJobDailyLogs(job = {}) {
 
 /**
  * Returns the most recent daily work log entry, or null if none exist.
+ * Sorts chronologically so the latest date/timestamp is consistently returned.
  */
 export function getLatestDailyLog(job = {}) {
   const logs = getJobDailyLogs(job)
-  return logs.length > 0 ? logs[logs.length - 1] : null
+  if (!Array.isArray(logs) || logs.length === 0) return null
+  const sorted = [...logs].sort((a, b) => {
+    const tA = new Date(a.timestamp || a.date).getTime() || 0
+    const tB = new Date(b.timestamp || b.date).getTime() || 0
+    return tA - tB
+  })
+  return sorted[sorted.length - 1]
 }
 
 export function getTechSkillInfo(skillLevel = 'Senior') {
@@ -930,6 +949,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       const jobId = r.Job_ID || r['Job ID'] || r.WO_ID || (r.id ? `JOB-${String(r.id).slice(0, 8)}` : 'JOB-00000000-0000')
       const technicians = r.Technicians || r['Technicians'] || r.Tech || ''
       const comment = r.Comment || r['Comment'] || r.Problem || r.Detail || ''
+      const rawDailyLogs = r.DailyLogs || r.daily_logs || r['Daily Logs'] || r.dailyLogs || null
+      const normalizedDailyLogs = typeof rawDailyLogs === 'object' && rawDailyLogs !== null ? JSON.stringify(rawDailyLogs) : (rawDailyLogs || '')
       const startTimestamp = r.StartTimestamp || r['Start Timestamp'] || r.DateStart || r.StartTime || ''
       const endTimestamp = r.EndTimestamp || r['End Timestamp'] || r.DateEnd || r.EndTime || ''
       const startDate = r.StartDate || r['Start Date'] || (typeof startTimestamp === 'string' && startTimestamp.includes('T') ? startTimestamp.slice(0, 10) : (r.StartDate || ''))
@@ -943,6 +964,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         Job_ID: jobId,
         Technicians: technicians,
         Comment: comment,
+        DailyLogs: normalizedDailyLogs,
+        daily_logs: normalizedDailyLogs,
         StartDate: startDate,
         StartTime: startTime,
         StartTimestamp: startTimestamp,
@@ -1278,14 +1301,22 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Open Daily Work Progress (End of Day Update) Modal
   const openDailyLogModal = (job) => {
-    setDailyLogJob(job)
+    const freshJob =
+      allJobs.find(
+        (j) =>
+          (j.id && j.id === job.id) ||
+          (j.WO_ID && j.WO_ID === (job.WO_ID || job.Job_ID)) ||
+          (j.Job_ID && j.Job_ID === (job.Job_ID || job.WO_ID))
+      ) || job
+
+    setDailyLogJob(freshJob)
     const now = new Date()
     setDailyLogDate(format(now, 'yyyy-MM-dd'))
-    const currentMeta = getWorkOrderStatusMeta(job.Status)
+    const currentMeta = getWorkOrderStatusMeta(freshJob.Status)
     setDailyLogStatus(currentMeta.value)
     setDailyLogDetails('')
     setDailyLogHours('')
-    const currentTechs = (job.Technicians || job.Tech || '')
+    const currentTechs = (freshJob.Technicians || freshJob.Tech || '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
@@ -1303,7 +1334,15 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     }
     setDailyLogSubmitting(true)
     try {
-      const existingLogs = getJobDailyLogs(dailyLogJob)
+      const currentJob =
+        allJobs.find(
+          (j) =>
+            (j.id && j.id === dailyLogJob.id) ||
+            (j.WO_ID && j.WO_ID === (dailyLogJob.WO_ID || dailyLogJob.Job_ID)) ||
+            (j.Job_ID && j.Job_ID === (dailyLogJob.Job_ID || dailyLogJob.WO_ID))
+        ) || dailyLogJob
+
+      const existingLogs = getJobDailyLogs(currentJob)
       const newEntry = {
         id: `DLOG-${Date.now()}`,
         date: dailyLogDate || format(new Date(), 'yyyy-MM-dd'),
@@ -1316,11 +1355,16 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       }
       const updatedLogs = [...existingLogs, newEntry]
       const nextMeta = getWorkOrderStatusMeta(dailyLogStatus)
+      const logsJson = JSON.stringify(updatedLogs)
+      const techStr = Array.isArray(dailyLogTechs) && dailyLogTechs.length > 0 ? dailyLogTechs.join(', ') : (currentJob.Technicians || currentJob.Tech || '')
 
       const payload = {
-        ...dailyLogJob,
-        DailyLogs: JSON.stringify(updatedLogs),
+        ...currentJob,
+        DailyLogs: logsJson,
+        daily_logs: logsJson,
         Status: nextMeta.value,
+        Tech: techStr,
+        Technicians: techStr,
         UpdatedBy: user?.username || user?.full_name || 'ผู้บันทึกรายวัน',
         updated_at: new Date().toISOString(),
       }
@@ -1328,7 +1372,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       await saveJob(payload)
       toast.success(
         'บันทึกความคืบหน้ารายวันสำเร็จ',
-        `${dailyLogJob.Job_ID || dailyLogJob['Job ID']} • สถานะ: ${nextMeta.label}`
+        `${currentJob.Job_ID || currentJob['Job ID'] || currentJob.WO_ID} • สถานะ: ${nextMeta.label}`
       )
       setDailyLogModalOpen(false)
       setDailyLogJob(null)
@@ -1342,11 +1386,20 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   // Delete a Daily Log Entry (admin / correction)
   const handleDeleteDailyLog = async (logId) => {
     if (!dailyLogJob || !canDelete) return
-    const existingLogs = getJobDailyLogs(dailyLogJob)
+    const currentJob =
+      allJobs.find(
+        (j) =>
+          (j.id && j.id === dailyLogJob.id) ||
+          (j.WO_ID && j.WO_ID === (dailyLogJob.WO_ID || dailyLogJob.Job_ID)) ||
+          (j.Job_ID && j.Job_ID === (dailyLogJob.Job_ID || dailyLogJob.WO_ID))
+      ) || dailyLogJob
+    const existingLogs = getJobDailyLogs(currentJob)
     const updatedLogs = existingLogs.filter((l) => l.id !== logId)
+    const logsJson = JSON.stringify(updatedLogs)
     const payload = {
-      ...dailyLogJob,
-      DailyLogs: JSON.stringify(updatedLogs),
+      ...currentJob,
+      DailyLogs: logsJson,
+      daily_logs: logsJson,
       UpdatedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
       updated_at: new Date().toISOString(),
     }
@@ -3785,15 +3838,23 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
       {/* 6. Daily Progress Update Modal (อัปเดตงานประจำวัน / บันทึกจบวัน) */}
       {dailyLogModalOpen && dailyLogJob && (() => {
-        const jobLogs = getJobDailyLogs(dailyLogJob)
-        const jobStatusMeta = getWorkOrderStatusMeta(dailyLogJob.Status)
-        const currentDetails = getWorkOrderDetails(dailyLogJob)
+        const currentJob =
+          allJobs.find(
+            (j) =>
+              (j.id && j.id === dailyLogJob.id) ||
+              (j.WO_ID && j.WO_ID === (dailyLogJob.WO_ID || dailyLogJob.Job_ID)) ||
+              (j.Job_ID && j.Job_ID === (dailyLogJob.Job_ID || dailyLogJob.WO_ID))
+          ) || dailyLogJob
+        const jobLogs = getJobDailyLogs(currentJob)
+        const jobStatusMeta = getWorkOrderStatusMeta(currentJob.Status)
+        const currentDetails = getWorkOrderDetails(currentJob)
+        const jobIdDisplay = currentJob.Job_ID || currentJob['Job ID'] || currentJob.WO_ID
 
         return (
           <Modal
             open={dailyLogModalOpen}
             onClose={() => setDailyLogModalOpen(false)}
-            title={`อัปเดตความคืบหน้างานประจำวัน • ${dailyLogJob.Job_ID || dailyLogJob['Job ID']}`}
+            title={`อัปเดตความคืบหน้างานประจำวัน • ${jobIdDisplay}`}
           >
             <div className="space-y-4 text-xs">
               {/* Job Summary Banner */}
@@ -3801,13 +3862,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">
-                      {dailyLogJob.Job_ID || dailyLogJob['Job ID']}
+                      {jobIdDisplay}
                     </span>
                     <span className="font-mono font-bold text-slate-800 dark:text-slate-100">
-                      {dailyLogJob.MC}
+                      {currentJob.MC}
                     </span>
                     <span className="text-slate-500">
-                      (KI: {dailyLogJob.KI || '—'}{dailyLogJob.Design ? ` • ${dailyLogJob.Design}` : ''})
+                      (KI: {currentJob.KI || '—'}{currentJob.Design ? ` • ${currentJob.Design}` : ''})
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

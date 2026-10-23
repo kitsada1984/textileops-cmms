@@ -48,8 +48,29 @@ export default function useEntity(api) {
   }, [load])
 
   const save = async (item) => {
-    const res = item._id || item.id
-      ? await api.update(item._id || item.id, item)
+    const isUpdate = Boolean(item._id || item.id)
+    const targetId = item._id || item.id
+
+    // Optimistic local update so UI reflects immediately without lag
+    if (isUpdate && targetId) {
+      setData((prev) => {
+        if (!Array.isArray(prev)) return prev
+        return prev.map((r) => {
+          if (
+            (r.id && r.id === targetId) ||
+            (r._id && r._id === targetId) ||
+            (r.WO_ID && r.WO_ID === targetId) ||
+            (r.Job_ID && r.Job_ID === targetId)
+          ) {
+            return { ...r, ...item }
+          }
+          return r
+        })
+      })
+    }
+
+    const res = isUpdate
+      ? await api.update(targetId, item)
       : await api.create(item)
     await load({ silent: true })
     return res

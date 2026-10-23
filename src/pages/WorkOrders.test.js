@@ -195,5 +195,33 @@ describe('WorkOrders utilities', () => {
       expect(getJobDailyLogs(brokenJob)).toEqual([])
       expect(getLatestDailyLog(brokenJob)).toBeNull()
     })
+
+    it('handles double-stringified JSON safely', () => {
+      const logs = [{ id: '1', date: '2026-10-23', details: 'อัปเดตงาน' }]
+      const doubleEncodedJob = { DailyLogs: JSON.stringify(JSON.stringify(logs)) }
+      expect(getJobDailyLogs(doubleEncodedJob)).toHaveLength(1)
+      expect(getLatestDailyLog(doubleEncodedJob).details).toBe('อัปเดตงาน')
+    })
+
+    it('falls back to Comment metadata when DailyLogs column is absent', () => {
+      const jobWithCommentFallback = {
+        Comment: JSON.stringify({
+          synced_from_repair: true,
+          daily_logs: [{ id: 'fb-1', date: '2026-10-23', details: 'บันทึกใน Comment สำรอง' }],
+        }),
+      }
+      expect(getJobDailyLogs(jobWithCommentFallback)).toHaveLength(1)
+      expect(getLatestDailyLog(jobWithCommentFallback).details).toBe('บันทึกใน Comment สำรอง')
+    })
+
+    it('returns the latest log by date even if stored out of order', () => {
+      const outOfOrderJob = {
+        DailyLogs: JSON.stringify([
+          { id: '2', date: '2026-10-23', details: 'วันที่ 23 ล่าสุด' },
+          { id: '1', date: '2026-10-21', details: 'วันที่ 21 เริ่มต้น' },
+        ]),
+      }
+      expect(getLatestDailyLog(outOfOrderJob).details).toBe('วันที่ 23 ล่าสุด')
+    })
   })
 })
