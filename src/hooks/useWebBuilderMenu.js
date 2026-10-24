@@ -7,6 +7,11 @@ const FIELD_ALIASES = {
   },
 }
 
+const ROUTE_ALIASES = {
+  '/stock-movement': '/stock',
+  '/stock': '/stock-movement',
+}
+
 function normalizeRoute(route = '') {
   const path = String(route).split('?')[0].replace(/\/+$/, '')
   return path || '/'
@@ -14,7 +19,11 @@ function normalizeRoute(route = '') {
 
 function findMenu(menus, route) {
   const target = normalizeRoute(route)
-  return menus.find(m => normalizeRoute(m.route) === target)
+  const alias = ROUTE_ALIASES[target]
+  return menus.find(m => {
+    const r = normalizeRoute(m.route)
+    return r === target || (alias && r === alias)
+  })
 }
 
 function findColumn(menu, route, field) {

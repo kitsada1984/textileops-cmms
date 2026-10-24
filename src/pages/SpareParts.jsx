@@ -113,26 +113,26 @@ function buildSparePartFilterOptions(rows = [], key, fallbackOptions = []) {
   )
 }
 
-const getSPFallbackCols = (t) => [
+export const getSPFallbackCols = (t) => [
   { field: 'Part_Code', label: t('sp_th_code'), type: 'text', width: '130px' },
-  { field: 'Category', label: t('sp_th_cat'), type: 'select', width: '130px', options: CATEGORY_OPTIONS },
+  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
   { field: 'Part_Name_EN', label: t('sp_th_name_en'), type: 'text', width: '180px' },
-  { field: 'Unit', label: t('field_unit'), type: 'text', width: '80px' },
+  { field: 'Category', label: t('sp_th_cat'), type: 'select', width: '130px', options: CATEGORY_OPTIONS },
   { field: 'Status', label: t('status'), type: 'select', width: '130px' },
   { field: 'Stock_Qty', label: t('sp_th_stock'), type: 'number', width: '90px' },
   { field: 'Min_Qty', label: t('sp_th_min'), type: 'number', width: '90px' },
+  { field: 'Unit', label: t('field_unit'), type: 'text', width: '80px' },
   { field: 'Unit_Price', label: t('sp_th_price'), type: 'number', width: '120px' },
   { field: 'Location_Store', label: t('field_warehouse'), type: 'select', width: '130px', options: WAREHOUSE_OPTIONS },
   { field: 'Supplier', label: t('field_supplier'), type: 'text', width: '150px' },
   { field: 'Compatible_Machines', label: 'เครื่องที่ใช้ได้', type: 'text', width: '180px' },
   { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
-  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
   { field: 'Remark', label: t('remark'), type: 'textarea', width: '220px' },
 ]
 
-const getSPRequiredCols = (t) => getSPFallbackCols(t).map(({ field, label, width }) => ({ field, label, width }))
+export const getSPRequiredCols = (t) => getSPFallbackCols(t).map(({ field, label, width }) => ({ field, label, width }))
 
-function resolveSPColumns(wbCols, t) {
+export function resolveSPColumns(wbCols, t) {
   const fallbackCols = getSPFallbackCols(t)
   const sourceCols = (wbCols && wbCols.length > 0) ? wbCols : fallbackCols
   return getSPRequiredCols(t).map((requiredCol) => {

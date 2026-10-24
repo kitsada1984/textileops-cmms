@@ -95,51 +95,51 @@ function StatusPill({ value }) {
   )
 }
 
-const getPOFallbackCols = (categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) => [
-  { field: 'PO_Number', label: 'เลข PO', type: 'text' },
-  { field: 'Order_Date', label: 'วันที่สั่ง', type: 'date' },
-  { field: 'Received_Date', label: 'วันที่รับ', type: 'date' },
-  { field: 'Status', label: 'สถานะ', type: 'select' },
+export const getPOFallbackCols = (categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) => [
   { field: 'Part_Code', label: 'รหัสอะไหล่', type: 'text', width: '130px' },
+  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
   { field: 'Part_Name_EN', label: 'ชื่ออะไหล่', type: 'text', width: '180px' },
   { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: categoryOpts },
-  { field: 'Detail', label: 'รายละเอียด', type: 'text' },
+  { field: 'PO_Number', label: 'เลข PO', type: 'text' },
+  { field: 'Status', label: 'สถานะ', type: 'select' },
   { field: 'Qty', label: 'จำนวน', type: 'number' },
   { field: 'UnitPrice', label: 'ราคาต่อหน่วย', type: 'number' },
   { field: 'Total_Amount', label: 'ราคารวม', type: 'number' },
+  { field: 'Order_Date', label: 'วันที่สั่ง', type: 'date' },
+  { field: 'Received_Date', label: 'วันที่รับ', type: 'date' },
   { field: 'Supplier', label: 'แหล่งที่มา', type: 'text' },
+  { field: 'Detail', label: 'รายละเอียด', type: 'text' },
   { field: 'Phone', label: 'โทรศัพท์', type: 'text' },
   { field: 'Email', label: 'อีเมล', type: 'text' },
   { field: 'Line', label: 'ไลน์', type: 'text' },
   { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
-  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
   { field: 'Note', label: 'หมายเหตุ', type: 'text', width: '220px' },
   { field: 'LastUpdated', label: 'อัปเดตล่าสุด', type: 'date' },
 ]
 
-const REQUIRED_PO_COLUMNS = [
-  { field: 'PO_Number', label: 'เลข PO' },
-  { field: 'Order_Date', label: 'วันที่สั่ง' },
-  { field: 'Received_Date', label: 'วันที่รับ' },
-  { field: 'Status', label: 'สถานะ' },
+export const REQUIRED_PO_COLUMNS = [
   { field: 'Part_Code', label: 'รหัสอะไหล่', width: '130px' },
+  { field: 'ImagePreview', label: 'รูป', width: '110px' },
   { field: 'Part_Name_EN', label: 'ชื่ออะไหล่', width: '180px' },
   { field: 'Category', label: 'หมวดหมู่', width: '140px' },
-  { field: 'Detail', label: 'รายละเอียด' },
+  { field: 'PO_Number', label: 'เลข PO' },
+  { field: 'Status', label: 'สถานะ' },
   { field: 'Qty', label: 'จำนวน' },
   { field: 'UnitPrice', label: 'ราคาต่อหน่วย' },
   { field: 'Total_Amount', label: 'ราคารวม' },
+  { field: 'Order_Date', label: 'วันที่สั่ง' },
+  { field: 'Received_Date', label: 'วันที่รับ' },
   { field: 'Supplier', label: 'แหล่งที่มา' },
+  { field: 'Detail', label: 'รายละเอียด' },
   { field: 'Phone', label: 'โทรศัพท์' },
   { field: 'Email', label: 'อีเมล' },
   { field: 'Line', label: 'ไลน์' },
   { field: 'ImageUrl', label: 'URL', width: '220px' },
-  { field: 'ImagePreview', label: 'รูป', width: '110px' },
   { field: 'Note', label: 'หมายเหตุ', width: '220px' },
   { field: 'LastUpdated', label: 'อัปเดตล่าสุด' },
 ]
 
-function resolvePOColumns(wbCols, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) {
+export function resolvePOColumns(wbCols, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) {
   const fallbackCols = getPOFallbackCols(categoryOpts)
   const sourceCols = (wbCols && wbCols.length > 0) ? wbCols : fallbackCols
   const resolvedCols = REQUIRED_PO_COLUMNS.map((requiredCol) => {

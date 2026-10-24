@@ -92,45 +92,45 @@ const HIDDEN_IMAGE_NOTE_PREFIXES = [
 const CATEGORY_OPTIONS = DEFAULT_SPARE_PART_CATEGORIES
 const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
 
-const getSMFallbackCols = (t, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) => [
-  { field: 'created_date', label: t('sm_th_date'), type: 'datetime' },
-  { field: 'TXN_ID', label: 'เลขรายการ', type: 'text' },
-  { field: 'TXN_Type', label: t('sm_th_type'), type: 'select' },
+export const getSMFallbackCols = (t, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) => [
   { field: 'Part_Code', label: 'รหัสอะไหล่', type: 'text' },
+  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
   { field: 'Part_Name_EN', label: t('sm_th_name'), type: 'text' },
   { field: 'Category', label: 'หมวดหมู่', type: 'select', width: '140px', options: categoryOpts },
-  { field: 'MC', label: 'M/C', type: 'text', width: '110px' },
-  { field: 'Qty_Before', label: t('sm_th_before'), type: 'number' },
+  { field: 'TXN_Type', label: t('sm_th_type'), type: 'select' },
   { field: 'Qty_Change', label: t('sm_th_change'), type: 'number' },
+  { field: 'Qty_Before', label: t('sm_th_before'), type: 'number' },
   { field: 'Qty_After', label: t('sm_th_after'), type: 'number' },
   { field: 'Unit', label: t('field_unit'), type: 'text', width: '80px' },
+  { field: 'MC', label: 'M/C', type: 'text', width: '110px' },
+  { field: 'Location_Store', label: t('field_warehouse'), type: 'select', width: '130px', options: WAREHOUSE_OPTIONS },
+  { field: 'created_date', label: t('sm_th_date'), type: 'datetime' },
+  { field: 'TXN_ID', label: 'เลขรายการ', type: 'text' },
   { field: 'Unit_Price', label: 'ราคาต่อหน่วย', type: 'number', width: '110px' },
   { field: 'Reference', label: t('sm_th_ref'), type: 'text' },
-  { field: 'Location_Store', label: t('field_warehouse'), type: 'select', width: '130px', options: WAREHOUSE_OPTIONS },
   { field: 'Performed_By', label: t('sm_th_by'), type: 'text' },
   { field: 'ImageUrl', label: 'URL', type: 'text', width: '220px' },
-  { field: 'ImagePreview', label: 'รูป', type: 'text', width: '110px' },
   { field: 'Note', label: 'หมายเหตุ', type: 'text', width: '220px' },
 ]
 
-const getSMRequiredCols = (t) => [
-  { field: 'created_date', label: t('sm_th_date') },
-  { field: 'TXN_ID', label: 'เลขรายการ' },
-  { field: 'TXN_Type', label: t('sm_th_type') },
+export const getSMRequiredCols = (t) => [
   { field: 'Part_Code', label: 'รหัสอะไหล่' },
+  { field: 'ImagePreview', label: 'รูป', width: '110px' },
   { field: 'Part_Name_EN', label: t('sm_th_name') },
   { field: 'Category', label: 'หมวดหมู่', width: '140px' },
-  { field: 'MC', label: 'M/C', width: '110px' },
-  { field: 'Qty_Before', label: t('sm_th_before') },
+  { field: 'TXN_Type', label: t('sm_th_type') },
   { field: 'Qty_Change', label: t('sm_th_change') },
+  { field: 'Qty_Before', label: t('sm_th_before') },
   { field: 'Qty_After', label: t('sm_th_after') },
   { field: 'Unit', label: t('field_unit'), width: '80px' },
+  { field: 'MC', label: 'M/C', width: '110px' },
+  { field: 'Location_Store', label: t('field_warehouse'), width: '130px' },
+  { field: 'created_date', label: t('sm_th_date') },
+  { field: 'TXN_ID', label: 'เลขรายการ' },
   { field: 'Unit_Price', label: 'ราคาต่อหน่วย', width: '110px' },
   { field: 'Reference', label: t('sm_th_ref') },
-  { field: 'Location_Store', label: t('field_warehouse'), width: '130px' },
   { field: 'Performed_By', label: t('sm_th_by') },
   { field: 'ImageUrl', label: 'URL', width: '220px' },
-  { field: 'ImagePreview', label: 'รูป', width: '110px' },
   { field: 'Note', label: 'หมายเหตุ', width: '220px' },
 ]
 
@@ -153,7 +153,7 @@ const EMPTY = {
   Note: '',
 }
 
-function resolveSMColumns(wbCols, t, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) {
+export function resolveSMColumns(wbCols, t, categoryOpts = DEFAULT_SPARE_PART_CATEGORIES) {
   const fallbackCols = getSMFallbackCols(t, categoryOpts)
   const requiredCols = getSMRequiredCols(t)
   const sourceCols = (wbCols && wbCols.length > 0) ? wbCols : fallbackCols
