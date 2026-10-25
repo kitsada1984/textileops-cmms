@@ -19,6 +19,7 @@ import {
   FileText,
   ShoppingCart,
   Printer,
+  Camera,
 } from 'lucide-react'
 import useEntity from '../hooks/useEntity'
 import { SparePartAPI, PART_STATUS } from '../api/entities'
@@ -48,6 +49,7 @@ import { uploadMedia } from '../modules/media'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import SparePartsReportModal from '../components/inventory/SparePartsReportModal'
+import VisualSparePartSearchModal from '../components/inventory/VisualSparePartSearchModal'
 import { generateSparePartPdfProps } from '../utils/pdfDocGenerators'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
@@ -217,6 +219,7 @@ export default function SpareParts() {
   const [filterSort, setFilterSort] = useState(SP_INIT_FS)
   const [detailRec, setDetailRec] = useState(null)
   const [pdfItem, setPdfItem] = useState(null)
+  const [visualSearchOpen, setVisualSearchOpen] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
@@ -811,6 +814,16 @@ export default function SpareParts() {
             placeholder={t('sp_search')}
             className="w-full sm:w-80"
           />
+          <button
+            type="button"
+            onClick={() => setVisualSearchOpen(true)}
+            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5 border-blue-200 dark:border-blue-800 hover:border-blue-400 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/30 shadow-xs font-semibold rounded-xl transition-all"
+            title="ค้นหาอะไหล่ด้วยภาพถ่าย (Visual Reverse Image Search)"
+            aria-label="ค้นหาอะไหล่ด้วยภาพถ่าย"
+          >
+            <Camera size={14} className="text-blue-600 dark:text-blue-400" />
+            <span>ค้นหาด้วยรูป</span>
+          </button>
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
           <GoogleSheetSyncButton
             sheetName="อะไหล่"
@@ -1472,6 +1485,28 @@ export default function SpareParts() {
           items={displayRows}
           filterContext={reportFilterContext}
           currentUserName={user?.name || user?.username || ''}
+        />
+      )}
+
+      {/* ── VISUAL PRODUCT SEARCH (REVERSE IMAGE & VECTOR SEARCH) ── */}
+      {visualSearchOpen && (
+        <VisualSparePartSearchModal
+          isOpen={visualSearchOpen}
+          onClose={() => setVisualSearchOpen(false)}
+          spareParts={data}
+          onSelectPart={(part) => {
+            setSearch(part?.Part_Code || '')
+            setVisualSearchOpen(false)
+            toast.info('กรองข้อมูลอะไหล่สำเร็จ', `แสดงเฉพาะ ${part?.Part_Code} - ${getSparePartName(part)}`)
+          }}
+          onViewDetail={(part) => {
+            setVisualSearchOpen(false)
+            setDetailRec(part)
+          }}
+          onOrderPart={(part) => {
+            setVisualSearchOpen(false)
+            handle1ClickPR(part)
+          }}
         />
       )}
     </div>
