@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus,
@@ -50,6 +50,7 @@ import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import SparePartsReportModal from '../components/inventory/SparePartsReportModal'
 import VisualSparePartSearchModal from '../components/inventory/VisualSparePartSearchModal'
+import { prewarmSparePartEmbeddings } from '../utils/imageSearch'
 import { generateSparePartPdfProps } from '../utils/pdfDocGenerators'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
@@ -210,6 +211,22 @@ export default function SpareParts() {
     resetToDefaults,
     isDefaultCategory,
   } = useSparePartCategories(data)
+
+  // Idle background pre-warming for Visual Product Search vectors
+  useEffect(() => {
+    if (data && data.length > 0 && typeof window !== 'undefined') {
+      const timer = setTimeout(() => {
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(() => {
+            prewarmSparePartEmbeddings(data, { concurrency: 4 }).catch(() => {})
+          }, { timeout: 4000 })
+        } else {
+          prewarmSparePartEmbeddings(data, { concurrency: 4 }).catch(() => {})
+        }
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [data])
 
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)

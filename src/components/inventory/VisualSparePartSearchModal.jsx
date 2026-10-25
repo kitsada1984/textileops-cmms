@@ -18,11 +18,16 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  Zap,
 } from 'lucide-react'
 import Modal from '../ui/Modal'
 import StatusBadge from '../ui/StatusBadge'
 import { getDirectImageUrl } from '../../utils/imageUrlUtils'
-import { searchSimilarSparePartsByImage } from '../../utils/imageSearch'
+import {
+  searchSimilarSparePartsByImage,
+  getVectorCacheStats,
+  prewarmSparePartEmbeddings,
+} from '../../utils/imageSearch'
 
 export default function VisualSparePartSearchModal({
   isOpen,
@@ -40,10 +45,30 @@ export default function VisualSparePartSearchModal({
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraFacing, setCameraFacing] = useState('environment') // 'environment' (back) | 'user' (front)
   const [showVectorInspector, setShowVectorInspector] = useState(false)
+  const [cacheStats, setCacheStats] = useState({ cached: 0, total: 0, isReady: false })
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  // ─── Background Pre-Warming on Modal Open ──────────────────
+  useEffect(() => {
+    if (isOpen && spareParts && spareParts.length > 0) {
+      const stats = getVectorCacheStats(spareParts)
+      setCacheStats(stats)
+      if (!stats.isReady) {
+        prewarmSparePartEmbeddings(spareParts, {
+          concurrency: 6,
+          timeoutMs: 2500,
+          onProgress: ({ ready, total }) => {
+            setCacheStats({ cached: ready, total, isReady: ready >= total })
+          },
+        }).then((res) => {
+          setCacheStats({ cached: res.readyCount, total: res.total, isReady: true })
+        }).catch(() => {})
+      }
+    }
+  }, [isOpen, spareParts])
 
   // ─── Camera Management ─────────────────────────────────────
 
@@ -197,11 +222,23 @@ export default function VisualSparePartSearchModal({
             <Camera size={18} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 flex-wrap">
               <span>ค้นหาอะไหล่ด้วยภาพ (Visual Reverse Image Search)</span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
                 Vector Search 128-D
               </span>
+              {cacheStats.total > 0 && (
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 border ${
+                  cacheStats.isReady
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                    : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300 dark:border-amber-700 animate-pulse'
+                }`}>
+                  <Zap size={10} className={cacheStats.isReady ? 'text-emerald-500' : 'text-amber-500'} />
+                  {cacheStats.isReady
+                    ? `แคชพร้อม (${cacheStats.cached}/${cacheStats.total})`
+                    : `เตรียมแคช (${cacheStats.cached}/${cacheStats.total})...`}
+                </span>
+              )}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               ถ่ายรูปหรืออัปโหลดภาพอะไหล่ เพื่อค้นหาเวกเตอร์ที่มีลักษณะใกล้เคียงที่สุดในคลัง
@@ -586,7 +623,7 @@ export default function VisualSparePartSearchModal({
 
               {showVectorInspector && (
                 <div className="p-3 bg-slate-900 text-slate-300 font-mono text-[11px] space-y-2 border-t border-slate-800">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div>
                       <span className="text-slate-500 block">Vector Dimensions:</span>
                       <span className="text-emerald-400 font-bold">128-D (L2 Unit Norm)</span>
@@ -598,6 +635,12 @@ export default function VisualSparePartSearchModal({
                     <div>
                       <span className="text-slate-500 block">Search Latency:</span>
                       <span className="text-amber-400 font-bold">{searchResult.latencyMs} ms</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Cache Status:</span>
+                      <span className="text-purple-400 font-bold">
+                        {searchResult.fromCacheCount ?? searchResult.totalScanned} / {searchResult.totalScanned} Cached
+                      </span>
                     </div>
                   </div>
 

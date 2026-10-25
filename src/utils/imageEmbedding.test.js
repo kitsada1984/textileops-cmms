@@ -1,8 +1,17 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   extractVectorFromImageData,
   cosineSimilarity,
   vectorSearch,
+  setCachedVector,
+  getCachedVector,
+  clearVectorCache,
+  savePersistedVectorCache,
+  loadPersistedVectorCache,
+  runConcurrentBatch,
+  getVectorCacheStats,
+  searchSimilarSparePartsByImage,
+  PERSISTED_VECTOR_CACHE_KEY,
 } from './imageSearch'
 
 function createSyntheticImage(width, height, colorFn) {
@@ -21,6 +30,13 @@ function createSyntheticImage(width, height, colorFn) {
 }
 
 describe('Image Embedding & Vector Search Engine', () => {
+  beforeEach(() => {
+    clearVectorCache()
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear()
+    }
+  })
+
   it('extracts exactly 128 dimensions from image data', () => {
     const img = createSyntheticImage(32, 32, () => [20, 20, 20])
     const vector = extractVectorFromImageData(img)
@@ -89,5 +105,109 @@ describe('Image Embedding & Vector Search Engine', () => {
     expect(vectorSearch([], [])).toEqual([])
     expect(vectorSearch([1, 2], null)).toEqual([])
     expect(vectorSearch(null, [{ id: '1', vector: [1, 2] }])).toEqual([])
+  })
+
+  it('caches vectors and invalidates when image URL changes', () => {
+    const dummyVector = new Array(128).fill(0.01)
+    setCachedVector('SP-001', 'https://example.com/img1.jpg', dummyVector)
+
+    const cached1 = getCachedVector('SP-001', 'https://example.com/img1.jpg')
+    expect(cached1).toBeDefined()
+    expect(cached1?.length).toBe(128)
+
+    // Different URL should invalidate
+    const cachedDiff = getCachedVector('SP-001', 'https://example.com/img2-changed.jpg')
+    expect(cachedDiff).toBeNull()
+
+    // And now the old key is cleared
+    expect(getCachedVector('SP-001', 'https://example.com/img1.jpg')).toBeNull()
+  })
+
+  it('persists vector cache to localStorage and recovers it', () => {
+    const dummyVector = new Array(128).fill(0.02)
+    setCachedVector('SP-002', 'https://example.com/img2.jpg', dummyVector)
+    savePersistedVectorCache()
+
+    const raw = localStorage.getItem(PERSISTED_VECTOR_CACHE_KEY)
+    expect(raw).toBeTruthy()
+    expect(raw).toContain('SP-002')
+
+    // Simulate session reload without storage loss
+    clearVectorCache({ clearStorage: false })
+    loadPersistedVectorCache({ force: true })
+    const recovered = getCachedVector('SP-002', 'https://example.com/img2.jpg')
+    expect(recovered).toBeDefined()
+    expect(recovered?.length).toBe(128)
+  })
+
+  it('executes runConcurrentBatch with pool limits and gathers all results', async () => {
+    const items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    let activeWorkers = 0
+    let maxConcurrent = 0
+
+    const results = await runConcurrentBatch(items, 3, async (item) => {
+      activeWorkers += 1
+      maxConcurrent = Math.max(maxConcurrent, activeWorkers)
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      activeWorkers -= 1
+      return item * 2
+    })
+
+    expect(results).toEqual([2, 4, 6, 8, 10, 12, 14, 16, 18, 20])
+    expect(maxConcurrent).toBeLessThanOrEqual(3)
+  })
+
+  it('calculates cache readiness stats via getVectorCacheStats', () => {
+    const parts = [
+      { Part_Code: 'SP-10', ImageUrl: 'https://example.com/10.jpg' },
+      { Part_Code: 'SP-20', ImageUrl: 'https://example.com/20.jpg' },
+      { Part_Code: 'SP-30', ImageUrl: '' }, // No image
+    ]
+
+    const statsInitial = getVectorCacheStats(parts)
+    expect(statsInitial.total).toBe(2)
+    expect(statsInitial.cached).toBe(0)
+    expect(statsInitial.isReady).toBe(false)
+
+    setCachedVector('SP-10', 'https://example.com/10.jpg', new Array(128).fill(0.05))
+    const statsPartial = getVectorCacheStats(parts)
+    expect(statsPartial.cached).toBe(1)
+    expect(statsPartial.isReady).toBe(false)
+
+    setCachedVector('SP-20', 'https://example.com/20.jpg', new Array(128).fill(0.05))
+    const statsFull = getVectorCacheStats(parts)
+    expect(statsFull.cached).toBe(2)
+    expect(statsFull.isReady).toBe(true)
+  })
+
+  it('searchSimilarSparePartsByImage performs ultra-fast search using cached candidate vectors', async () => {
+    const queryImg = createSyntheticImage(32, 32, () => [50, 50, 50])
+    const candidateParts = [
+      {
+        Part_Code: 'SP-BELT',
+        Part_Name_EN: 'Timing Belt 500',
+        ImageUrl: 'https://example.com/belt.png',
+      },
+      {
+        Part_Code: 'SP-BEAR',
+        Part_Name_EN: 'Deep Groove Bearing',
+        ImageUrl: 'https://example.com/bearing.png',
+      },
+    ]
+
+    // Pre-cache candidate vectors
+    const vBelt = new Array(128).fill(0.0883) // unit length norm ≈ 1.0
+    const vBearing = new Array(128).fill(0.01)
+    vBearing[0] = 0.99
+    setCachedVector('SP-BELT', 'https://example.com/belt.png', vBelt)
+    setCachedVector('SP-BEAR', 'https://example.com/bearing.png', vBearing)
+
+    const result = await searchSimilarSparePartsByImage(queryImg, candidateParts)
+
+    expect(result).toBeDefined()
+    expect(result.bestMatch).toBeDefined()
+    expect(result.totalScanned).toBe(2)
+    expect(result.fromCacheCount).toBe(2)
+    expect(result.latencyMs).toBeLessThan(1000) // In test environment without network, should be sub-second
   })
 })
