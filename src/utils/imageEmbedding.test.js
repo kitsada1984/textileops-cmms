@@ -210,4 +210,43 @@ describe('Image Embedding & Vector Search Engine', () => {
     expect(result.fromCacheCount).toBe(2)
     expect(result.latencyMs).toBeLessThan(1000) // In test environment without network, should be sub-second
   })
+
+  it('automatically ingests pre-computed 128-D vector from DB record without network fetch', () => {
+    const dbVector = new Array(128).fill(0.088)
+    const partFromDb = {
+      Part_Code: 'SP-DB-1',
+      ImageUrl: 'https://example.com/db1.png',
+      ImageEmbedding: dbVector,
+    }
+
+    // Cache should initially not have it
+    expect(getCachedVector('SP-DB-1', 'https://example.com/db1.png')).toBeNull()
+
+    // getVectorCacheStats should auto-ingest it into cache
+    const stats = getVectorCacheStats([partFromDb])
+    expect(stats.cached).toBe(1)
+    expect(stats.isReady).toBe(true)
+
+    // Now vector is in local cache
+    const cached = getCachedVector('SP-DB-1', 'https://example.com/db1.png')
+    expect(cached).toBeDefined()
+    expect(cached?.length).toBe(128)
+  })
+
+  it('automatically ingests 128-D vector from Remark fallback string', () => {
+    const dbVector = new Array(128).fill(0.077)
+    const partWithRemark = {
+      Part_Code: 'SP-REMARK-1',
+      ImageUrl: 'https://example.com/rmk.png',
+      Remark: `คำอธิบายทั่วไป\nImageEmbedding: ${JSON.stringify(dbVector)}`,
+    }
+
+    const stats = getVectorCacheStats([partWithRemark])
+    expect(stats.cached).toBe(1)
+    expect(stats.isReady).toBe(true)
+
+    const cached = getCachedVector('SP-REMARK-1', 'https://example.com/rmk.png')
+    expect(cached).toBeDefined()
+    expect(cached?.length).toBe(128)
+  })
 })

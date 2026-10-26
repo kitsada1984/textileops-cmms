@@ -46,15 +46,20 @@ export function getSparePartImageEmbedding(row = {}) {
 }
 
 export function buildSparePartImagePayload(form = {}) {
+  const embedding = parseEmbedding(getSparePartImageEmbedding(form))
   const imageMeta = {
     imageUrl: getSparePartImageUrl(form),
     fingerprint: getSparePartImageFingerprint(form),
-    embedding: parseEmbedding(getSparePartImageEmbedding(form)),
+    embedding,
   }
-  return {
+  const payload = {
     ...form,
     Remark: appendSparePartImageMeta(form.Remark, imageMeta),
   }
+  if (embedding.length > 0) {
+    payload.ImageEmbedding = JSON.stringify(embedding)
+  }
+  return payload
 }
 
 export function preserveRemarkWithSparePartImageMeta(remark = '', form = {}) {

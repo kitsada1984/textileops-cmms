@@ -86,6 +86,13 @@ export function parseEmbedding(value) {
   return []
 }
 
+export function getEmbeddingFromRemark(remark = '') {
+  if (!remark || typeof remark !== 'string') return []
+  const line = remark.split('\n').find((item) => item.trim().startsWith('ImageEmbedding:'))
+  const raw = line?.trim().slice('ImageEmbedding:'.length).trim() || ''
+  return parseEmbedding(raw)
+}
+
 // ─── High-Dimensional Visual Feature Extraction (128-D Vector) ───
 
 function rgbToHsv(r, g, b) {
@@ -474,6 +481,7 @@ export async function runConcurrentBatch(items, concurrency = 6, taskFn) {
 
 /**
  * Checks cache status of spare parts.
+ * Automatically ingests pre-computed embeddings from database records if present.
  * Returns { cached: number, total: number, isReady: boolean }
  */
 export function getVectorCacheStats(sparePartsList = []) {
@@ -484,13 +492,31 @@ export function getVectorCacheStats(sparePartsList = []) {
   })
 
   let cachedCount = 0
+  let dirty = false
+
   partsWithImages.forEach((part) => {
     const partKey = part._id || part.id || part.Part_Code
     const imgUrl = part.ImageUrl || getDirectImageUrl(part.Remark || '')
-    if (getCachedVector(partKey, imgUrl)) {
+    let cached = getCachedVector(partKey, imgUrl)
+
+    // Check if vector is already pre-computed in database record
+    if (!cached) {
+      const dbVector = parseEmbedding(part.ImageEmbedding || getEmbeddingFromRemark(part.Remark))
+      if (Array.isArray(dbVector) && dbVector.length === 128) {
+        setCachedVector(partKey, imgUrl, dbVector)
+        cached = dbVector
+        dirty = true
+      }
+    }
+
+    if (cached) {
       cachedCount += 1
     }
   })
+
+  if (dirty) {
+    savePersistedVectorCache()
+  }
 
   return {
     cached: cachedCount,
@@ -501,7 +527,7 @@ export function getVectorCacheStats(sparePartsList = []) {
 
 /**
  * Pre-warms candidate image embeddings in the background.
- * Checks localStorage first; only uncached parts are fetched in parallel batches.
+ * Checks localStorage first, then database ImageEmbedding; only uncached parts are fetched in parallel batches.
  */
 export async function prewarmSparePartEmbeddings(sparePartsList = [], { concurrency = 6, timeoutMs = 2500, onProgress } = {}) {
   loadPersistedVectorCache()
@@ -517,11 +543,23 @@ export async function prewarmSparePartEmbeddings(sparePartsList = [], { concurre
 
   const uncachedParts = []
   let readyCount = 0
+  let dirty = false
 
   for (const part of partsWithImages) {
     const partKey = part._id || part.id || part.Part_Code
     const imgUrl = part.ImageUrl || getDirectImageUrl(part.Remark || '')
-    const cached = getCachedVector(partKey, imgUrl)
+    let cached = getCachedVector(partKey, imgUrl)
+
+    // Check if vector is already pre-computed in database record
+    if (!cached) {
+      const dbVector = parseEmbedding(part.ImageEmbedding || getEmbeddingFromRemark(part.Remark))
+      if (Array.isArray(dbVector) && dbVector.length === 128) {
+        setCachedVector(partKey, imgUrl, dbVector)
+        cached = dbVector
+        dirty = true
+      }
+    }
+
     if (cached) {
       readyCount += 1
     } else if (imgUrl) {
@@ -532,10 +570,12 @@ export async function prewarmSparePartEmbeddings(sparePartsList = [], { concurre
   onProgress?.({ ready: readyCount, total: partsWithImages.length, pending: uncachedParts.length })
 
   if (uncachedParts.length === 0) {
+    if (dirty) {
+      savePersistedVectorCache()
+    }
     return { readyCount, total: partsWithImages.length }
   }
 
-  let dirty = false
   await runConcurrentBatch(uncachedParts, concurrency, async ({ partKey, imgUrl }) => {
     try {
       const pixels = await loadPixelsFromImageSource(imgUrl, { timeoutMs })
@@ -627,16 +667,31 @@ export async function searchSimilarSparePartsByImage(queryImageSource, sparePart
   const candidateVectors = []
   const uncachedList = []
 
+  let dirtyDb = false
   for (const part of partsWithImages) {
     const partKey = part._id || part.id || part.Part_Code
     const imgUrl = part.ImageUrl || getDirectImageUrl(part.Remark || '')
-    const vector = getCachedVector(partKey, imgUrl)
+    let vector = getCachedVector(partKey, imgUrl)
+
+    // Check if pre-computed in database record
+    if (!vector) {
+      const dbVector = parseEmbedding(part.ImageEmbedding || getEmbeddingFromRemark(part.Remark))
+      if (Array.isArray(dbVector) && dbVector.length === 128) {
+        setCachedVector(partKey, imgUrl, dbVector)
+        vector = dbVector
+        dirtyDb = true
+      }
+    }
 
     if (vector) {
       candidateVectors.push({ part, id: partKey, vector })
     } else if (imgUrl) {
       uncachedList.push({ part, partKey, imgUrl })
     }
+  }
+
+  if (dirtyDb) {
+    savePersistedVectorCache()
   }
 
   const initialCacheHitCount = candidateVectors.length

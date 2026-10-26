@@ -50,7 +50,13 @@ import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import SparePartsReportModal from '../components/inventory/SparePartsReportModal'
 import VisualSparePartSearchModal from '../components/inventory/VisualSparePartSearchModal'
-import { prewarmSparePartEmbeddings } from '../utils/imageSearch'
+import {
+  prewarmSparePartEmbeddings,
+  computeImageEmbedding,
+  setCachedVector,
+  savePersistedVectorCache,
+  parseEmbedding,
+} from '../utils/imageSearch'
 import { generateSparePartPdfProps } from '../utils/pdfDocGenerators'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
@@ -528,11 +534,31 @@ export default function SpareParts() {
     if (!file) return
     setUploadingImage(true)
     try {
+      // 1. Calculate 128-D vector locally immediately (< 15ms)
+      let localVector = null
+      try {
+        localVector = await computeImageEmbedding(file)
+      } catch (embErr) {
+        console.warn('Local image embedding computation warning:', embErr)
+      }
+
+      // 2. Upload media to cloud
       const { imageUrl } = await uploadMedia(file, { folderName: SPARE_PART_IMAGE_FOLDER })
+
+      // 3. Pre-cache vector locally in memory & localStorage
+      if (localVector && form.Part_Code) {
+        setCachedVector(form.Part_Code, imageUrl, localVector)
+        savePersistedVectorCache()
+      }
+
       setForm((prev) => ({
         ...prev,
         ImageUrl: imageUrl,
-        Remark: appendSparePartImageMeta(prev.Remark, { imageUrl }),
+        ImageEmbedding: localVector || prev.ImageEmbedding,
+        Remark: appendSparePartImageMeta(prev.Remark, {
+          imageUrl,
+          embedding: localVector || parseEmbedding(prev.ImageEmbedding),
+        }),
       }))
       toast.success('อัปโหลดรูปสำเร็จ', `บันทึกไว้ในโฟลเดอร์ ${SPARE_PART_IMAGE_FOLDER}`)
     } catch (e) {
@@ -556,6 +582,17 @@ export default function SpareParts() {
           nextPayload = {
             ...omitKeys(nextPayload, ['ImageUrl']),
             Remark: appendSparePartImageMeta(nextPayload.Remark, { imageUrl: nextPayload.ImageUrl }),
+          }
+          continue
+        }
+        if (missingColumn === 'ImageEmbedding') {
+          removedColumns.push(missingColumn)
+          nextPayload = {
+            ...omitKeys(nextPayload, ['ImageEmbedding']),
+            Remark: appendSparePartImageMeta(nextPayload.Remark, {
+              imageUrl: getSparePartImageUrl(nextPayload),
+              embedding: parseEmbedding(nextPayload.ImageEmbedding),
+            }),
           }
           continue
         }
@@ -601,6 +638,14 @@ export default function SpareParts() {
     const isEdit = !!(form._id || form.id)
     try {
       const removedColumns = await saveWithColumnFallback(payload)
+
+      // Ensure local vector cache is updated for this spare part
+      const finalVector = parseEmbedding(payload.ImageEmbedding || form.ImageEmbedding)
+      if (Array.isArray(finalVector) && finalVector.length === 128 && form.Part_Code) {
+        setCachedVector(form.Part_Code, form.ImageUrl || getSparePartImageUrl(form), finalVector)
+        savePersistedVectorCache()
+      }
+
       if (form.Category) {
         addCategory(form.Category).catch(() => {})
       }
