@@ -41,6 +41,7 @@ import { syncRowsToGoogleSheet } from '../utils/googleSheetsSync'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
 import { getAppBaseUrl, normalizeRepairRecord } from '../utils/telegram'
 import DetailDrawer from '../components/ui/DetailDrawer'
+import { getWorkOrderDetails } from './WorkOrders'
 
 const ICON_BG = {
   slate:   'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -171,6 +172,18 @@ function formatDateTime(val) {
   }
 }
 
+export function isRepairSyncedWorkOrder(wo = {}) {
+  if (!wo) return false
+  const woId = String(wo.WO_ID || wo.Job_ID || wo['Job ID'] || '').toUpperCase()
+  if (woId.startsWith('WO-RR')) return true
+  if (wo.JobType === 'REPAIR') return true
+  const comment = String(wo.Comment || wo.comment || '')
+  if (comment.includes('synced_from_repair') || (comment.includes('"request_no"') && comment.includes('"req_id"'))) return true
+  const problem = String(wo.Problem || wo.problem || '')
+  if (problem.includes('synced_from_repair')) return true
+  return false
+}
+
 export default function Dashboard() {
   const { t } = useT()
   const navigate = useNavigate()
@@ -193,7 +206,8 @@ export default function Dashboard() {
       ])
       const machines       = m.status === 'fulfilled' ? (m.value?.data || m.value || []) : []
       const rawWO          = w.status === 'fulfilled' ? (w.value?.data || w.value || []) : []
-      const workorders     = rawWO.filter((x) => !isSystemWorkOrder(x))
+      const validWorkorders = rawWO.filter((x) => !isSystemWorkOrder(x))
+      const dashboardWorkorders = validWorkorders.filter((x) => !isRepairSyncedWorkOrder(x))
       const pm             = p.status === 'fulfilled' ? (p.value?.data || p.value || []) : []
       const parts          = s.status === 'fulfilled' ? (s.value?.data || s.value || []) : []
       const rawRepairRequests = r.status === 'fulfilled' ? (r.value?.data || r.value || []) : []
@@ -211,8 +225,8 @@ export default function Dashboard() {
         totalMachines: machines.length,
         breakdown: machines.filter((x) => x.Status === 'BREAKDOWN').length,
         running: machines.filter((x) => x.Status === 'RUNNING').length,
-        openWO: workorders.filter((x) => ['OPEN', 'IN_PROGRESS'].includes(x.Status)).length,
-        overdueWO: workorders.filter((x) => x.Status === 'OVERDUE').length,
+        openWO: dashboardWorkorders.filter((x) => ['OPEN', 'IN_PROGRESS'].includes(x.Status)).length,
+        overdueWO: dashboardWorkorders.filter((x) => x.Status === 'OVERDUE').length,
         pmScheduled: pm.filter((x) => x.Status === 'SCHEDULED').length,
         pmOverdue: pm.filter((x) => x.Status === 'OVERDUE').length,
         lowStock: parts.filter((x) => x.Status === 'LOW_STOCK').length,
@@ -222,7 +236,7 @@ export default function Dashboard() {
         inProgressRepairs,
         waitPartsRepairs,
         pendingRepairsList: pendingRepairs,
-        recentWO: workorders.slice(0, 5),
+        recentWO: dashboardWorkorders.slice(0, 5),
       })
     } finally {
       if (!silent) setLoading(false)
@@ -598,7 +612,7 @@ export default function Dashboard() {
                     {wo.Job_ID || wo['Job ID'] || wo.WO_ID || (wo.id ? `JOB-${wo.id.slice(0, 8)}` : '—')}
                   </td>
                   <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">{wo.MC}</td>
-                  <td className="py-2.5 px-3 max-w-xs truncate text-slate-600 dark:text-slate-300">{wo.Comment || wo.Problem || wo.Design || '—'}</td>
+                  <td className="py-2.5 px-3 max-w-xs truncate text-slate-600 dark:text-slate-300">{getWorkOrderDetails(wo) || wo.Design || '—'}</td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
                     <span className={`badge ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':'badge-blue'}`}>
                       {wo.JobType==='DESIGN'?'🎨 ปรับแบบ':wo.JobType==='PM'?'🧹 PM':wo.JobType==='REPAIR'?'🛠️ แก้ไข':(statusLabel(wo.Priority) || '🛠️ แก้ไข')}
