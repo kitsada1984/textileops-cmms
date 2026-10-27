@@ -44,6 +44,7 @@ import SearchInput from '../components/ui/SearchInput'
 import { useT } from '../contexts/LanguageContext'
 import { useAuth } from '../contexts/AuthContext'
 import usePagePerms from '../hooks/usePagePerms'
+import { useDeviceView } from '../contexts/DeviceViewContext'
 import { useToast } from '../components/ui/Toast'
 import GoogleSheetSyncButton from '../components/ui/GoogleSheetSyncButton'
 import { uploadImageToGoogleDrive } from '../utils/googleDriveUpload'
@@ -155,6 +156,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
   const { user } = useAuth()
   const toast = useToast()
   const { canAdd, canEdit, canDelete } = usePagePerms('pm')
+  const { isMobile } = useDeviceView()
 
   // Center Checks Entity
   const {
@@ -1208,7 +1210,123 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
             />
           </div>
 
-          {/* Records Table */}
+          {/* Records Presentation (Tri-View ADR-0002) */}
+          {isMobile ? (
+            <div className="space-y-3 pb-24">
+              {filteredRecords.length === 0 ? (
+                <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+                  <Layers size={36} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                  <p className="font-semibold text-sm text-slate-600 dark:text-slate-400">ยังไม่มีประวัติการเช็คศูนย์</p>
+                  <p className="text-xs mt-0.5">กดปุ่ม "เช็คศูนย์ Single" หรือ "Double" ด้านบนเพื่อบันทึกรายการแรก</p>
+                </div>
+              ) : (
+                filteredRecords.map((r) => {
+                  const isPassed = r.status === 'ผ่าน'
+                  return (
+                    <div
+                      key={r.id || r._id}
+                      onClick={() => setViewRecord(r)}
+                      className="card p-3.5 border-l-4 border-l-blue-500 border-slate-200 dark:border-slate-800 transition-all active:scale-[0.99] cursor-pointer shadow-xs"
+                    >
+                      {/* Header: Doc No + Status */}
+                      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-base font-black text-blue-600 dark:text-blue-400 truncate">
+                            {r.doc_no}
+                          </span>
+                          <span
+                            className={`badge text-xs font-bold px-2 py-0.5 ${
+                              r.type === 'Double'
+                                ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30'
+                                : 'bg-blue-500/10 text-blue-600 border border-blue-500/30'
+                            }`}
+                          >
+                            {r.type} Jersey
+                          </span>
+                        </div>
+                        <span
+                          className={`badge text-xs font-bold px-2.5 py-1 ${
+                            isPassed ? 'badge-green' : 'badge-red'
+                          }`}
+                        >
+                          {isPassed ? '✅ ผ่าน' : '❌ ไม่ผ่าน'}
+                        </span>
+                      </div>
+
+                      {/* Body: MC + Counter Stats */}
+                      <div className="grid grid-cols-2 gap-2 my-2.5 text-xs">
+                        <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                          <span className="text-slate-400 text-xs block mb-0.5 font-medium">เครื่อง / Serial</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                            {r.mc || '—'}
+                          </span>
+                          {r.serial && (
+                            <span className="text-xs font-mono text-slate-500 block truncate">({r.serial})</span>
+                          )}
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                          <span className="text-slate-400 text-xs block mb-0.5 font-medium">Counter / ผลต่าง</span>
+                          <div className="font-mono font-bold text-sm text-slate-800 dark:text-slate-200">
+                            {r.counter_latest ? Number(r.counter_latest).toLocaleString() : '—'}
+                          </div>
+                          {r.counter_total && (
+                            <div className="font-mono text-xs font-bold text-teal-600 dark:text-teal-400">
+                              +{Number(r.counter_total).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Footer: Date / Mechanic / Actions */}
+                      <div
+                        className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="text-slate-500 font-medium truncate max-w-[140px]">
+                          {r.doc_date || '—'} · {r.mechanic || '—'}
+                        </span>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPrintRecord(r)}
+                            className="p-2 min-h-[38px] px-3 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 flex items-center gap-1 font-bold text-xs active:scale-95"
+                            title="ดู PDF / พิมพ์รายงานตรวจเช็คศูนย์"
+                          >
+                            <FileText size={14} />
+                            <span>PDF</span>
+                          </button>
+
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => handleEditRecord(r)}
+                              className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-600 dark:text-slate-300 hover:text-amber-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-95"
+                              title="แก้ไขข้อมูล"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          )}
+
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRecord(r)}
+                              className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-400 hover:text-red-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-95"
+                              title="ลบข้อมูล"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          ) : (
           <div className="card overflow-hidden border border-slate-200 dark:border-slate-800">
             <div className="overflow-x-auto">
               <table className="table w-full text-xs">
@@ -1336,6 +1454,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
 

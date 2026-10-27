@@ -10,6 +10,7 @@ import {
 import { useRealtimeTables } from '../api/realtimeSync'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
+import { useDeviceView } from '../contexts/DeviceViewContext'
 import usePagePerms from '../hooks/usePagePerms'
 import {
   classifyNeedleAction,
@@ -125,6 +126,7 @@ export default function NeedleStock() {
   const toast = useToast()
   const { user } = useAuth()
   const { canAdd, canEdit, canDelete } = usePagePerms('needlestock')
+  const { isMobile } = useDeviceView()
 
   // Main state
   const [needleSets, setNeedleSets] = useState([])
@@ -1087,7 +1089,7 @@ export default function NeedleStock() {
                 <h4 className="text-base font-semibold text-slate-700">ไม่พบข้อมูลชุดเข็ม</h4>
                 <p className="text-xs text-slate-400 mt-1">ลองปรับเปลี่ยนตัวกรอง หรือคลิก "เพิ่มชุดเข็มใหม่"</p>
               </div>
-            ) : viewMode === 'grid' ? (
+            ) : (isMobile || viewMode === 'grid') ? (
               /* GRID CARDS VIEW */
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4">
                 {filteredSets.map(item => {

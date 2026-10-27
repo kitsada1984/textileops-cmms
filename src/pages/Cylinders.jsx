@@ -318,7 +318,7 @@ function CylinderCard({
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {c.Machine_Ref && (
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
               isInUse
                 ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20'
                 : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20'
@@ -326,7 +326,7 @@ function CylinderCard({
               {c.Machine_Ref}
             </span>
           )}
-          {clean ? <StatusBadge value={display} /> : <span className="font-mono text-xs text-slate-500">{display}</span>}
+          {clean ? <StatusBadge value={display} /> : <span className="font-mono text-xs font-bold text-slate-500">{display}</span>}
         </div>
       </div>
 
@@ -337,21 +337,21 @@ function CylinderCard({
             <ImageThumbnail
               url={imageUrl}
               alt={c.Serial_NOW || 'กระบอก'}
-              size={48}
+              size={52}
               onClick={() => onPreviewImage({ url: imageUrl, title: `กระบอก ${c.Serial_NOW || ''}` })}
             />
           </div>
         )}
 
-        <div className="flex-1 min-w-0 text-xs space-y-1">
-          <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+        <div className="flex-1 min-w-0 text-sm space-y-1.5">
+          <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200 text-sm">
             <span className="font-bold">{formatCylType(c.Type)}</span>
             <span className="text-slate-400">·</span>
-            <span className="text-slate-500 truncate">{c.Manufacturer || c.Standard || '—'}</span>
+            <span className="text-slate-600 dark:text-slate-300 truncate">{c.Manufacturer || c.Standard || '—'}</span>
           </div>
 
-          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
-            <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold text-slate-700 dark:text-slate-300">
+          <div className="font-mono text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+            <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md font-bold text-slate-800 dark:text-slate-200">
               {c.Diameter ? `${c.Diameter}"` : '—'} · {c.Gauge ? `${c.Gauge}G` : '—'}
             </span>
             {c.Needle && <span>เข็ม: {c.Needle}</span>}
@@ -361,31 +361,31 @@ function CylinderCard({
         </div>
       </div>
 
-      {/* Footer: Serial OLD + Action Buttons */}
+      {/* Footer: Serial OLD + Action Buttons (Min 38-40px touch targets) */}
       <div
-        className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between"
+        className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between"
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="text-[10px] font-mono text-slate-400 truncate max-w-[150px]">
+        <span className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
           {c.Serial_OLD ? `OLD: ${c.Serial_OLD}` : ''}
         </span>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => onPdf(c)}
-            className="p-1.5 rounded-lg text-rose-600 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 transition-colors border border-rose-200 dark:border-rose-900/50"
+            className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-rose-600 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 transition-colors border border-rose-200 dark:border-rose-900/50 flex items-center justify-center active:scale-95"
             title="พิมพ์ PDF"
           >
-            <FileText size={14} />
+            <FileText size={15} />
           </button>
           <button
             type="button"
             onClick={(e) => onQr(c, e)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 transition-colors"
+            className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-600 dark:text-slate-300 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 transition-colors flex items-center justify-center active:scale-95"
             title="QR Code"
           >
-            <QrCode size={14} />
+            <QrCode size={15} />
           </button>
           {onHistory && (
             <button
@@ -394,30 +394,30 @@ function CylinderCard({
                 e.stopPropagation()
                 onHistory(c)
               }}
-              className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors border border-indigo-200 dark:border-indigo-800/60"
+              className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center active:scale-95"
               title="ประวัติการเปลี่ยนกระบอก"
             >
-              <History size={14} />
+              <History size={15} />
             </button>
           )}
           {canEdit && (
             <button
               type="button"
               onClick={() => onEdit(c)}
-              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 transition-colors"
+              className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-700 dark:text-slate-200 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 transition-colors flex items-center justify-center active:scale-95"
               title="แก้ไข"
             >
-              <Pencil size={14} />
+              <Pencil size={15} />
             </button>
           )}
           {canDelete && (
             <button
               type="button"
               onClick={() => onDelete(c._id || c.id)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 bg-slate-100 dark:bg-slate-800 transition-colors"
+              className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-400 hover:text-red-600 bg-slate-100 dark:bg-slate-800 transition-colors flex items-center justify-center active:scale-95"
               title="ลบ"
             >
-              <Trash2 size={14} />
+              <Trash2 size={15} />
             </button>
           )}
         </div>

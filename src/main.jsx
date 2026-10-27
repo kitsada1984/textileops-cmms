@@ -38,6 +38,11 @@ if (typeof window !== 'undefined') {
       } catch {}
     }, 3000)
   })
+
+  // Prevent accidental pinch/gesture zoom on mobile touch devices (Native App Standard)
+  document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false })
+  document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false })
+  document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false })
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

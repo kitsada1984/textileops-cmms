@@ -113,7 +113,7 @@ export function DetailDrawerHeader({
             }}>{title}</div>
             {subtitle && (
               <div style={{
-                fontSize: 11.5, color: 'var(--text-500)',
+                fontSize: 13, color: 'var(--text-500)',
                 fontWeight: 600, marginBottom: badge ? 10 : 0,
                 letterSpacing: '0.02em',
               }}>{subtitle}</div>
@@ -174,11 +174,11 @@ export function DetailDrawerSection({ label, single = false, children, className
           marginBottom: 8, paddingLeft: 2,
         }}>
           <div style={{
-            width: 3, height: 12, borderRadius: 2,
+            width: 3.5, height: 14, borderRadius: 2,
             background: accentColor,
           }} />
           <span style={{
-            fontSize: 9.5, fontWeight: 800, letterSpacing: '0.12em',
+            fontSize: 12.5, fontWeight: 800, letterSpacing: '0.08em',
             textTransform: 'uppercase', color: accentColor,
           }}>{label}</span>
         </div>
@@ -223,7 +223,7 @@ export function DetailDrawerField({
     <div
       style={{
         ...(full ? { gridColumn: '1 / -1' } : {}),
-        padding: '11px 15px',
+        padding: '12px 15px',
         borderBottom: !isLast ? '1px solid var(--border-subtle)' : 'none',
         borderRight: (!full && isEven && !isLast) ? '1px solid var(--border-subtle)' : 'none',
         ...style,
@@ -233,7 +233,7 @@ export function DetailDrawerField({
     >
       {label && (
         <div style={{
-          fontSize: 9.5, fontWeight: 700, letterSpacing: '0.09em',
+          fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
           textTransform: 'uppercase', color: 'var(--text-400)',
           marginBottom: 4,
         }}>
@@ -241,7 +241,7 @@ export function DetailDrawerField({
         </div>
       )}
       <div style={{
-        fontSize: 13, fontWeight: 600, color: 'var(--text-800)',
+        fontSize: 14.5, fontWeight: 600, color: 'var(--text-800)',
         fontFamily: mono ? '"SF Mono","Fira Code",monospace' : 'inherit',
         wordBreak: 'break-word', lineHeight: 1.5,
       }}>

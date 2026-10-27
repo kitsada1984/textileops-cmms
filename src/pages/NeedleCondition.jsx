@@ -43,6 +43,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { useRealtimeTables } from '../api/realtimeSync'
 import { useToast } from '../components/ui/Toast'
+import { useDeviceView } from '../contexts/DeviceViewContext'
 import { useT } from '../contexts/LanguageContext'
 import usePagePerms from '../hooks/usePagePerms'
 import DetailDrawer from '../components/ui/DetailDrawer'
@@ -152,6 +153,7 @@ export default function NeedleCondition() {
   const { user } = useAuth()
   const toast = useToast()
   const { canAdd, canEdit, canDelete } = usePagePerms('pm')
+  const { isMobile } = useDeviceView()
 
   const [records, setRecords] = useState([])
   const [cylinders, setCylinders] = useState([])
@@ -779,7 +781,7 @@ export default function NeedleCondition() {
             value={search}
             onChange={setSearch}
             placeholder="ค้นหา Serial, เครื่อง MC, ตำแหน่ง, ช่างผู้ตรวจ..."
-            className="w-full sm:w-80"
+            className={isMobile ? "w-full" : "w-full sm:w-80"}
           />
 
           {/* Type Filter */}
@@ -851,8 +853,174 @@ export default function NeedleCondition() {
         </div>
       </div>
 
-      {/* ── DATA TABLE: LATEST INSPECTION PER CYLINDER ────────────── */}
-      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+      {/* ── DATA PRESENTATION (Tri-View ADR-0002) ────────────────── */}
+      {isMobile ? (
+        <div className="space-y-3 pb-24">
+          {loading && (
+            <div className="text-center py-16 text-slate-400">
+              <RefreshCw size={26} className="animate-spin mx-auto mb-2 opacity-50 text-blue-500" />
+              <span>กำลังโหลดข้อมูลสภาพเข็ม...</span>
+            </div>
+          )}
+          {!loading && displayRows.map((row, idx) => {
+            const key = normalizeSerial(row.serial) || normalizeMachine(row.machine_mc) || row.id
+            const historyList = historyMap.get(key) || []
+            const imagesList = Array.isArray(row.images) ? row.images : (row.images ? [row.images] : [])
+            const firstImage = imagesList[0] || ''
+            const diff = computeCounterDiff(row.counter, row.counter_prev ?? row.counter_total)
+
+            return (
+              <div
+                key={row.id || idx}
+                onClick={() => setDetailItem(row)}
+                className="card p-3.5 border-l-4 border-l-blue-500 border-slate-200 dark:border-slate-800 transition-all active:scale-[0.99] cursor-pointer shadow-xs"
+              >
+                {/* Header: Serial + Machine MC + Status */}
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono text-base font-black text-blue-600 dark:text-blue-400 truncate">
+                      {row.serial || '—'}
+                    </span>
+                    {row.machine_mc && (
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50">
+                        {row.machine_mc}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    {renderStatusBadge(row.status)}
+                  </div>
+                </div>
+
+                {/* Body: Thumbnail + Specs */}
+                <div className="flex items-start gap-3 my-2.5">
+                  {firstImage ? (
+                    <div className="flex-shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                      <ImageThumbnail
+                        url={firstImage}
+                        alt="Needle condition"
+                        size={52}
+                        onClick={() =>
+                          setPreviewImageModal({
+                            url: firstImage,
+                            title: 'สภาพเข็ม: ' + (row.serial || row.machine_mc || ''),
+                          })
+                        }
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-[52px] h-[52px] rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400 flex-shrink-0">
+                      <Disc size={22} className="opacity-40" />
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-xs">
+                        {row.location || '—'}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                        {row.type || 'Single Jersey'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 font-mono">
+                      <div>
+                        <span className="text-slate-400 font-bold block">Counter:</span>
+                        <span className="font-bold text-teal-600 dark:text-teal-400 text-sm">
+                          {row.counter ? Number(row.counter).toLocaleString() : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 font-bold block">ผลต่างรอบ:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                          {diff > 0 ? ('+' + diff.toLocaleString()) : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer: Date, Inspector & Action Buttons */}
+                <div
+                  className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className="text-slate-500 font-medium truncate max-w-[140px]">
+                    {row.doc_date ? format(new Date(row.doc_date), 'dd/MM/yyyy') : '—'} · {row.inspector || '—'}
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPdfItem(row)}
+                      className="p-2 min-h-[38px] px-3 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 flex items-center gap-1 font-bold text-xs active:scale-95"
+                      title="ดูเอกสาร PDF และพิมพ์รายงานสภาพเข็ม"
+                    >
+                      <FileText size={14} />
+                      <span>PDF</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setHistoryDrawerItem({ key, serial: row.serial, list: historyList })}
+                      className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center active:scale-95"
+                      title="ประวัติการตรวจสภาพเข็มย้อนหลัง"
+                    >
+                      <History size={15} />
+                    </button>
+
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(row)}
+                        className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-700 dark:text-slate-200 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-95"
+                        title="แก้ไขข้อมูลสภาพเข็ม"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    )}
+
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => deleteInspection(row)}
+                        className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-400 hover:text-red-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-95"
+                        title="ลบรายการ"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {!loading && !displayRows.length && (
+            <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+              <Sparkles size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+              <p className="font-semibold text-slate-600 dark:text-slate-400 text-sm">ยังไม่มีข้อมูลสภาพเข็ม</p>
+              <p className="text-xs mt-0.5 text-slate-400">
+                กดปุ่ม "สแกน QR บันทึกสภาพเข็ม" เพื่อเริ่มบันทึกรายการแรก
+              </p>
+            </div>
+          )}
+
+          {/* Floating Action Button (FAB) for Mobile Scan */}
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openQrScanner}
+              className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+              title="สแกน QR บันทึกสภาพเข็ม"
+              aria-label="สแกน QR บันทึกสภาพเข็ม"
+            >
+              <QrCode size={26} strokeWidth={2.5} />
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="overflow-x-auto">
           <table className="table w-full text-xs">
             <thead>
@@ -1040,6 +1208,7 @@ export default function NeedleCondition() {
           </table>
         </div>
       </div>
+      )}
 
       {/* ── MODAL 1: LIVE QR CAMERA SCANNER ───────────────────────── */}
       <Modal

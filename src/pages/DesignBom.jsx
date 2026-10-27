@@ -22,6 +22,7 @@ import {
   Copy,
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { useDeviceView } from '../contexts/DeviceViewContext'
 import useEntity from '../hooks/useEntity'
 import { useRealtimeTables } from '../api/realtimeSync'
 import { DesignBomAPI, MachineAPI } from '../api/entities'
@@ -157,6 +158,7 @@ const EMPTY = {
 }
 
 export default function DesignBom() {
+  const { isMobile } = useDeviceView()
   const { t } = useT()
   const { canAdd, canEdit, canDelete } = usePagePerms('designbom')
   const toast = useToast()
@@ -579,7 +581,7 @@ export default function DesignBom() {
             value={search}
             onChange={setSearch}
             placeholder="ค้นหา MC / แบบงาน / KI / BOM..."
-            className="w-full sm:w-80"
+            className={isMobile ? 'w-full' : 'w-full sm:w-80'}
           />
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
           <GoogleSheetSyncButton
@@ -621,8 +623,153 @@ export default function DesignBom() {
         </div>
       </div>
 
-      {/* ── DATA TABLE ────────────────────────────────────────── */}
-      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+      {/* ── DATA PRESENTATION (Tri-View ADR-0002) ────────────────── */}
+      {isMobile ? (
+        <div className="space-y-3 pb-24">
+          {loading && (
+            <div className="text-center py-16 text-slate-400">
+              <RefreshCw size={26} className="animate-spin mx-auto mb-2 opacity-50 text-blue-500" />
+              <span>กำลังโหลดข้อมูล Design/BOM...</span>
+            </div>
+          )}
+          {!loading && displayRows.map((r, i) => {
+            const coverUrl = getDesignCoverImageUrl(r)
+            const appUrl = getDesignAppImageUrl(r)
+            const masterUrl = getDesignMasterImageUrl(r)
+
+            return (
+              <div
+                key={r._id || r.id || i}
+                onClick={() => setDetailRec(r)}
+                className="card p-3.5 border-l-4 border-l-purple-500 border-slate-200 dark:border-slate-800 transition-all active:scale-[0.99] cursor-pointer shadow-xs hover:shadow-md"
+              >
+                {/* Header: Design Name + Machine MC */}
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-bold text-base text-slate-900 dark:text-slate-100 tracking-tight truncate">
+                      {r.Design || '—'}
+                    </span>
+                    {r.MC && (
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 flex-shrink-0">
+                        {r.MC}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {r.KI && (
+                      <span className="px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        KI: {r.KI}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* BOM Code & Thumbnails */}
+                <div className="flex items-start gap-3 my-2.5">
+                  <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {coverUrl && (
+                      <ImageThumbnail
+                        url={coverUrl}
+                        alt="Cover"
+                        size={52}
+                        onClick={() => setPreviewImageModal({ url: coverUrl, title: `ใบปะหน้า: ${r.Design || r.MC}` })}
+                      />
+                    )}
+                    {appUrl && (
+                      <ImageThumbnail
+                        url={appUrl}
+                        alt="App"
+                        size={52}
+                        onClick={() => setPreviewImageModal({ url: appUrl, title: `ใบ App: ${r.Design || r.MC}` })}
+                      />
+                    )}
+                    {masterUrl && (
+                      <ImageThumbnail
+                        url={masterUrl}
+                        alt="Master"
+                        size={52}
+                        onClick={() => setPreviewImageModal({ url: masterUrl, title: `Master: ${r.Design || r.MC}` })}
+                      />
+                    )}
+                    {!coverUrl && !appUrl && !masterUrl && (
+                      <div className="w-[52px] h-[52px] rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-400">
+                        <Palette size={22} className="opacity-40" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    {r.BOM && (
+                      <div className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-400">
+                        BOM: <span className="font-bold text-slate-800 dark:text-slate-200">{r.BOM}</span>
+                      </div>
+                    )}
+                    {/* Parameters tags */}
+                    <div className="flex items-center gap-1.5 flex-wrap text-xs font-mono">
+                      {r.CL1 && <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300 font-semibold">CL1: {r.CL1}</span>}
+                      {r.CL2 && <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300 font-semibold">CL2: {r.CL2}</span>}
+                      {r.SP && <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded font-bold">SP: {r.SP}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div
+                  className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className="text-xs text-blue-500 font-bold">
+                    แตะเพื่อดูรายละเอียดทั้งหมด →
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => openEdit(r)}
+                        className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-700 dark:text-slate-200 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-95"
+                        title="แก้ไข Design/BOM"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => del(r._id || r.id)}
+                        className="p-2 min-h-[38px] min-w-[38px] rounded-xl text-slate-400 hover:text-red-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center active:scale-95"
+                        title="ลบรายการ"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {!loading && !displayRows.length && (
+            <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+              <Palette size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+              <p className="font-semibold text-slate-600 dark:text-slate-400 text-sm">ไม่พบรายการ Design/BOM</p>
+              <p className="text-xs mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่ม Design/BOM" เพื่อเริ่มต้นบันทึก</p>
+            </div>
+          )}
+
+          {/* Floating Action Button (FAB) for Mobile */}
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+              title="เพิ่ม Design/BOM"
+              aria-label="เพิ่ม Design/BOM"
+            >
+              <Plus size={26} strokeWidth={2.5} />
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="overflow-x-auto">
           <table className="table w-full text-xs">
             <thead>
@@ -694,6 +841,7 @@ export default function DesignBom() {
           </table>
         </div>
       </div>
+      )}
 
       {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
       <DetailDrawer

@@ -758,8 +758,9 @@ html.dark .glass-panel {
 }
 .is-mobile-view .table-wrap th,
 .is-mobile-view .table-wrap td {
-  padding: 0.6rem 0.75rem !important;
-  font-size: 11.5px !important;
+  padding: 0.75rem 0.85rem !important;
+  font-size: 13.5px !important;
+  line-height: 1.4 !important;
 }
 
 @media (max-width: 640px) {
@@ -770,8 +771,9 @@ html.dark .glass-panel {
   }
   .table-wrap th,
   .table-wrap td {
-    padding: 0.6rem 0.75rem !important;
-    font-size: 11.5px !important;
+    padding: 0.75rem 0.85rem !important;
+    font-size: 13.5px !important;
+    line-height: 1.4 !important;
   }
 }
 
@@ -805,8 +807,39 @@ html.dark .glass-panel {
 }
 
 .is-mobile-view {
-  font-size: 14.5px;
+  font-size: 15px;
   -webkit-tap-highlight-color: transparent;
+  touch-action: pan-x pan-y;
+}
+
+/* ── Mobile Native Typography Scales (Eliminates Microscopic Fonts on 390px Viewports) ── */
+.is-mobile-view [class*="text-[8px]"],
+.is-mobile-view [class*="text-[8.5px]"],
+.is-mobile-view [class*="text-[9px]"],
+.is-mobile-view [class*="text-[9.5px]"],
+.is-mobile-view [class*="text-[10px]"],
+.is-mobile-view [class*="text-[10.5px]"] {
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+}
+
+.is-mobile-view [class*="text-[11px]"],
+.is-mobile-view [class*="text-[11.5px]"] {
+  font-size: 13.5px !important;
+  line-height: 1.4 !important;
+}
+
+.is-mobile-view .badge {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  padding: 0.2rem 0.65rem !important;
+  letter-spacing: 0.01em !important;
+}
+
+.is-mobile-view .label {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
 }
 
 /* ── Universal Instant Tactile Action (Aligned with ORDEO POS Design System) ── */

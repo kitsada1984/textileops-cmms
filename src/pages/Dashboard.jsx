@@ -501,11 +501,11 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">
+                      <span className="font-mono font-black text-base text-blue-600 dark:text-blue-400">
                         {req.request_no || (req.id ? `REQ-${req.id.slice(0, 8)}` : '—')}
                       </span>
                       {causeMeta && (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${causeMeta.badgeClass}`}>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${causeMeta.badgeClass}`}>
                           <span>{causeMeta.icon}</span>
                           <span>{causeMeta.label}</span>
                         </span>
@@ -514,7 +514,7 @@ export default function Dashboard() {
                     <RepairStatusBadge status={req.status} />
                   </div>
 
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <div className="text-[13px] text-slate-500 dark:text-slate-400 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="font-bold text-slate-800 dark:text-slate-200">
                       🏭 {req.machine_mc || 'ไม่ระบุเครื่อง'}
                     </span>
@@ -538,13 +538,13 @@ export default function Dashboard() {
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                  <div className="flex items-center justify-between text-[13px] text-slate-500 pt-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
                         👨‍🔧 {req.technician_name || <span className="italic text-slate-400">ยังไม่มอบหมาย</span>}
                       </span>
                       <span>•</span>
-                      <span className="text-[11.5px]">{formatDateTime(req.created_at)}</span>
+                      <span className="text-xs font-medium">{formatDateTime(req.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <a
@@ -691,21 +691,21 @@ export default function Dashboard() {
                 onClick={() => setSelectedWO(wo)}
                 className="p-3.5 sm:p-4 active:bg-blue-50/60 dark:active:bg-slate-800/80 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
               >
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="font-mono text-sm font-black text-blue-600 dark:text-blue-400">
                     {wo.Job_ID || wo['Job ID'] || wo.WO_ID || (wo.id ? `JOB-${wo.id.slice(0, 8)}` : '—')}
                   </span>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`badge text-[11px] font-bold ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':'badge-blue'}`}>
+                    <span className={`badge text-xs font-bold px-2 py-0.5 ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':'badge-blue'}`}>
                       {wo.JobType==='DESIGN'?'🎨 ปรับแบบ':wo.JobType==='PM'?'🧹 PM':wo.JobType==='REPAIR'?'🛠️ แก้ไข':(statusLabel(wo.Priority) || '🛠️ แก้ไข')}
                     </span>
-                    <span className={`badge text-[11px] font-bold ${wo.Status==='COMPLETED'?'badge-green':wo.Status==='IN_PROGRESS'?'badge-orange':wo.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
+                    <span className={`badge text-xs font-bold px-2 py-0.5 ${wo.Status==='COMPLETED'?'badge-green':wo.Status==='IN_PROGRESS'?'badge-orange':wo.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
                       {wo.Status==='COMPLETED'?'เสร็จสิ้น':wo.Status==='IN_PROGRESS'?'กำลังทำ':(statusLabel(wo.Status) || wo.Status)}
                     </span>
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-semibold">
+                <div className="text-[13px] text-slate-500 dark:text-slate-400 mb-1.5 font-semibold">
                   🏭 เครื่องจักร: <span className="text-slate-800 dark:text-slate-200 font-bold">{wo.MC || '—'}</span>
                 </div>
 
@@ -714,8 +714,8 @@ export default function Dashboard() {
                 </p>
 
                 <div className="flex items-center justify-end text-xs text-slate-400 mt-2">
-                  <span className="text-[11.5px] text-blue-500 font-semibold mr-1">แตะเพื่อดูรายละเอียด</span>
-                  <ChevronRight size={14} className="text-slate-400 dark:text-slate-500" />
+                  <span className="text-xs text-blue-500 font-bold mr-1">แตะเพื่อดูรายละเอียด</span>
+                  <ChevronRight size={15} className="text-slate-400 dark:text-slate-500" />
                 </div>
               </div>
             ))}

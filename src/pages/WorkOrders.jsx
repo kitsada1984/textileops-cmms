@@ -509,13 +509,13 @@ function WorkOrderCard({
       }`}
     >
       {/* Header: Job ID + Type Badge + Status Badge */}
-      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-sm font-black text-blue-600 dark:text-blue-400 tracking-tight truncate">
+          <span className="font-mono text-base font-black text-blue-600 dark:text-blue-400 tracking-tight truncate">
             {jobIdDisplay}
           </span>
           <span
-            className={`badge text-[10px] ${
+            className={`badge text-xs font-bold py-1 px-2.5 ${
               job.JobType === 'DESIGN'
                 ? 'badge-purple'
                 : job.JobType === 'PM'
@@ -528,14 +528,14 @@ function WorkOrderCard({
           {(job.ProblemCause || job.problem_cause) && (() => {
             const causeMeta = getProblemCauseMeta(job.ProblemCause || job.problem_cause)
             return (
-              <span className={`badge text-[10px] font-bold ${causeMeta.badgeClass}`} title={`สาเหตุปัญหา: ${causeMeta.label}`}>
+              <span className={`badge text-xs font-bold py-1 px-2.5 ${causeMeta.badgeClass}`} title={`สาเหตุปัญหา: ${causeMeta.label}`}>
                 {causeMeta.icon} {causeMeta.label}
               </span>
             )
           })()}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className={`badge text-[10px] ${statusMeta.badgeClass}`}>
+          <span className={`badge text-xs font-bold py-1 px-2.5 ${statusMeta.badgeClass}`}>
             {statusMeta.label}
           </span>
         </div>
@@ -544,28 +544,28 @@ function WorkOrderCard({
       {/* Machine & Production Info */}
       <div className="flex items-center justify-between gap-2 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-black text-slate-800 dark:text-slate-100 font-mono">
+          <span className="text-base font-black text-slate-900 dark:text-slate-100 font-mono">
             {job.MC || '—'}
           </span>
-          <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+          <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
             KI: {job.KI || '—'}
           </span>
         </div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+        <div className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">
           {job.RollNo ? `ม้วน #${job.RollNo}` : ''}
         </div>
       </div>
 
       {/* Design and Details */}
       {(job.Design || detailsDisplay !== '—' || latestDailyLog) && (
-        <div className="text-xs space-y-1.5 py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 mb-2">
+        <div className="text-sm space-y-1.5 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 mb-2">
           {job.Design && (
-            <div className="font-semibold text-slate-700 dark:text-slate-200 truncate">
+            <div className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">
               {job.Design}
             </div>
           )}
           {detailsDisplay !== '—' && (
-            <div className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">
+            <div className="text-slate-600 dark:text-slate-300 line-clamp-2 text-[13.5px] leading-relaxed">
               {detailsDisplay}
             </div>
           )}
@@ -575,14 +575,14 @@ function WorkOrderCard({
                 e.stopPropagation()
                 onDailyLog?.(job)
               }}
-              className="mt-1 flex items-center gap-1.5 p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-[11px] text-indigo-800 dark:text-indigo-300 font-semibold cursor-pointer active:scale-[0.98] transition-transform"
+              className="mt-1 flex items-center gap-1.5 p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-xs text-indigo-800 dark:text-indigo-300 font-semibold cursor-pointer active:scale-[0.98] transition-transform"
               title={`อัปเดตงานล่าสุด (${latestDailyLog.date}): ${latestDailyLog.details} (แตะเพื่อดูประวัติหรืออัปเดต)`}
             >
-              <CalendarClock size={12} className="flex-shrink-0 text-indigo-600 dark:text-indigo-400" />
-              <span className="flex-shrink-0">ล่าสุด ({latestDailyLog.date}):</span>
+              <CalendarClock size={14} className="flex-shrink-0 text-indigo-600 dark:text-indigo-400" />
+              <span className="flex-shrink-0 font-bold">ล่าสุด ({latestDailyLog.date}):</span>
               <span className="truncate flex-1 font-normal text-slate-700 dark:text-slate-300">{latestDailyLog.details}</span>
               {dailyLogs.length > 1 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 dark:bg-indigo-900 text-[10px] flex-shrink-0">
+                <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 dark:bg-indigo-900 text-xs font-bold flex-shrink-0">
                   +{dailyLogs.length - 1}
                 </span>
               )}
@@ -592,20 +592,20 @@ function WorkOrderCard({
       )}
 
       {/* Technicians, Time & SLA */}
-      <div className="grid grid-cols-2 gap-2 text-xs py-1.5 text-slate-600 dark:text-slate-400">
+      <div className="grid grid-cols-2 gap-2 text-sm py-2 text-slate-700 dark:text-slate-300">
         <div className="min-w-0">
-          <div className="text-[10px] text-slate-400 font-medium">ช่างผู้ปฏิบัติงาน:</div>
-          <div className="font-semibold truncate text-slate-700 dark:text-slate-300">
+          <div className="text-xs text-slate-500 dark:text-slate-400 font-bold">ช่างผู้ปฏิบัติงาน:</div>
+          <div className="font-bold truncate text-slate-800 dark:text-slate-200 text-sm mt-0.5">
             {job.Technicians || '—'}
           </div>
         </div>
         <div>
-          <div className="text-[10px] text-slate-400 font-medium">ระยะเวลา & SLA:</div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+          <div className="text-xs text-slate-500 dark:text-slate-400 font-bold">ระยะเวลา & SLA:</div>
+          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+            <span className="font-mono font-black text-slate-900 dark:text-slate-100 text-sm">
               {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังทำ...')}
             </span>
-            <span className={`badge text-[9px] px-1.5 py-0 ${sla.badgeClass}`}>
+            <span className={`badge text-xs font-bold px-2 py-0.5 ${sla.badgeClass}`}>
               {sla.label}
             </span>
           </div>
@@ -614,41 +614,41 @@ function WorkOrderCard({
 
       {/* Interruption banner if active */}
       {sla.activeInterruption && (
-        <div className="mt-1 p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-xs text-amber-700 dark:text-amber-300">
-          <div className="flex items-center gap-1.5 font-bold">
-            <Pause size={12} className="animate-pulse" />
+        <div className="mt-1 p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-sm text-amber-700 dark:text-amber-300 font-bold">
+          <div className="flex items-center gap-1.5">
+            <Pause size={14} className="animate-pulse" />
             <span>พักงาน: {sla.activeInterruption.task_name}</span>
           </div>
-          <span className="text-[10px] font-mono">กำลังจับเวลาแทรก</span>
+          <span className="text-xs font-mono font-bold">กำลังจับเวลาแทรก</span>
         </div>
       )}
 
-      {/* Footer: Quick Action Buttons (min 40-44px touch target) */}
+      {/* Footer: Quick Action Buttons (min 38-44px touch target) */}
       <div
         className="pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap"
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="text-[10px] font-mono text-slate-400">
+        <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
           {job.StartDate ? `${job.StartDate} ${job.StartTime || ''}` : ''}
         </span>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {/* Interruption / Lost Time */}
           {!job.IsDeleted && (
             <button
               type="button"
               onClick={() => onInterruption(job)}
-              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[36px] ${
+              className={`p-2 min-h-[38px] rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 ${
                 sla.activeInterruption
                   ? 'bg-amber-500 text-white animate-pulse shadow-md shadow-amber-500/30'
                   : sla.lostHoursDecimal > 0
                   ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-amber-600'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-600'
               }`}
               title={sla.activeInterruption ? 'คลิกเพื่อจบงานแทรก' : 'บันทึกงานแทรก'}
             >
-              {sla.activeInterruption ? <Pause size={14} /> : <Clock size={14} />}
-              {sla.activeInterruption && <span className="text-[11px]">พักงาน</span>}
+              {sla.activeInterruption ? <Pause size={15} /> : <Clock size={15} />}
+              {sla.activeInterruption && <span className="text-xs font-bold">พักงาน</span>}
             </button>
           )}
 
@@ -657,10 +657,10 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onComplete(job)}
-              className="btn-success px-3 py-1.5 text-xs font-bold flex items-center gap-1 rounded-xl min-h-[36px]"
+              className="btn-success px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 rounded-xl min-h-[38px] active:scale-95"
               title="บันทึกจบงาน"
             >
-              <CheckCircle2 size={14} />
+              <CheckCircle2 size={15} />
               <span>จบงาน</span>
             </button>
           )}
@@ -670,16 +670,16 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onDailyLog?.(job)}
-              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[36px] ${
+              className={`p-2 min-h-[38px] rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 ${
                 dailyLogs.length > 0
                   ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600'
               }`}
               title="อัปเดตงานแต่ละวัน / บันทึกจบวัน (ความคืบหน้า & สถานะ)"
             >
-              <CalendarClock size={15} />
+              <CalendarClock size={16} />
               {dailyLogs.length > 0 && (
-                <span className="text-[10px] font-mono px-1 rounded-full bg-indigo-600 text-white">
+                <span className="text-xs font-mono font-bold px-1.5 rounded-full bg-indigo-600 text-white">
                   {dailyLogs.length}
                 </span>
               )}
@@ -690,10 +690,10 @@ function WorkOrderCard({
           <button
             type="button"
             onClick={() => onPrint(job)}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 min-h-[36px]"
+            className="p-2 min-h-[38px] min-w-[38px] rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 flex items-center justify-center active:scale-95"
             title="พิมพ์ใบสั่งงาน A4"
           >
-            <Printer size={15} />
+            <Printer size={16} />
           </button>
 
           {/* Edit */}
@@ -701,10 +701,10 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onEdit(job)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-600 min-h-[36px]"
+              className="p-2 min-h-[38px] min-w-[38px] rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-600 flex items-center justify-center active:scale-95"
               title="แก้ไข"
             >
-              <Pencil size={15} />
+              <Pencil size={16} />
             </button>
           )}
 
@@ -713,10 +713,10 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onDelete(job)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-600 min-h-[36px]"
+              className="p-2 min-h-[38px] min-w-[38px] rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-600 flex items-center justify-center active:scale-95"
               title="ลบ"
             >
-              <Trash2 size={15} />
+              <Trash2 size={16} />
             </button>
           )}
         </div>

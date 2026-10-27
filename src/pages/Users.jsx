@@ -7,6 +7,7 @@ import SearchInput from '../components/ui/SearchInput'
 import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
 import { useT } from '../contexts/LanguageContext'
 import { hashPassword, PERM_ACTIONS, parsePermissions, useAuth } from '../contexts/AuthContext'
+import { useDeviceView } from '../contexts/DeviceViewContext'
 import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
@@ -345,6 +346,7 @@ function buildSupervisorPreset() {
 const EMPTY = { username: '', password: '', full_name: '', role: 'user', status: 'active', permissions: {} }
 
 export default function UsersPage() {
+  const { isMobile } = useDeviceView()
   const { t } = useT()
   const toast  = useToast()
   const { user: currentUser, refreshUser } = useAuth()
@@ -436,13 +438,158 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder="ค้นหาผู้ใช้..." />
+        <SearchInput value={search} onChange={setSearch} placeholder="ค้นหาผู้ใช้..." className={isMobile ? "w-full" : "w-full sm:w-72"} />
         <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
         <button className="btn-outline ml-auto" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
         {canAdd && <button className="btn-primary" onClick={openNew}><Plus size={15}/> เพิ่มผู้ใช้</button>}
       </div>
 
-      <div className="table-wrap">
+      {isMobile ? (
+        <div className="space-y-3 pb-24">
+          {loading && (
+            <div className="text-center py-16 text-slate-400">
+              <RefreshCw size={26} className="animate-spin mx-auto mb-2 opacity-50 text-blue-500" />
+              <span>{t('loading')}</span>
+            </div>
+          )}
+          {!loading && displayRows.map((u, i) => {
+            const cnt = permSummary(u)
+            return (
+              <div
+                key={u._id || u.id || i}
+                className="card p-3.5 border-l-4 border-l-indigo-500 border-slate-200 dark:border-slate-800 transition-all active:scale-[0.99] shadow-xs"
+              >
+                {/* User Header: Avatar + Username + Role */}
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                      background: u.line_picture_url ? 'transparent' : 'linear-gradient(135deg,rgba(99,102,241,0.18),rgba(99,102,241,0.06))',
+                      border: u.line_picture_url ? '1.5px solid rgba(6,199,85,0.4)' : '1px solid rgba(99,102,241,0.2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 14, fontWeight: 800, color: '#818cf8',
+                      overflow: 'hidden',
+                    }}>
+                      {u.line_picture_url ? (
+                        <img src={u.line_picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        (u.username || '?')[0].toUpperCase()
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-base text-slate-900 dark:text-slate-100 truncate">
+                          {u.username || '—'}
+                        </span>
+                        {u.line_user_id && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            padding: '1px 6px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                            color: '#06C755', background: 'rgba(6,199,85,0.12)', border: '1px solid rgba(6,199,85,0.3)',
+                          }}>
+                            <LineIcon size={10} /> LINE
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                        {u.full_name || '—'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <RoleBadge role={u.role || 'user'} />
+                    <StatusDot status={u.status || 'active'} />
+                  </div>
+                </div>
+
+                {/* Permissions Summary */}
+                <div className="py-2.5 text-xs">
+                  <div className="text-slate-400 font-bold mb-1">สิทธิ์การเข้าใช้งาน:</div>
+                  {u.role === 'admin' ? (
+                    <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: 12,
+                      display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <ShieldCheck size={14}/> ทุกเมนู (ผู้ดูแลระบบ)
+                    </span>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                      {cnt > 0 ? (
+                        <>
+                          {PERM_ACTIONS.map(action => {
+                            const m = ACTION_META[action]
+                            const hasAny = ALL_MENU_KEYS.some(k =>
+                              Array.isArray(u.permissions?.[k]) && u.permissions[k].includes(action)
+                            )
+                            if (!hasAny) return null
+                            return (
+                              <span key={action} style={{
+                                fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                                fontWeight: 700, color: m.color, background: m.bg,
+                                border: `1px solid ${m.border}`,
+                              }}>{m.label}</span>
+                            )
+                          })}
+                          <span style={{ fontSize: 11, color: 'var(--text-400)', fontWeight: 600 }}>
+                            ({cnt}/{ALL_MENU_KEYS.length} เมนู)
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 12, color: 'var(--text-400)' }}>ไม่มีสิทธิ์</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => openEdit(u)}
+                      className="p-2 min-h-[38px] px-3.5 rounded-xl text-slate-700 dark:text-slate-200 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 flex items-center gap-1.5 text-xs font-bold active:scale-95"
+                      title="แก้ไขผู้ใช้"
+                    >
+                      <Pencil size={15} />
+                      <span>แก้ไข</span>
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => del(u._id || u.id)}
+                      className="p-2 min-h-[38px] px-3.5 rounded-xl text-rose-600 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 border border-rose-200/50 dark:border-rose-900/50 flex items-center gap-1.5 text-xs font-bold active:scale-95"
+                      title="ลบผู้ใช้"
+                    >
+                      <Trash2 size={15} />
+                      <span>ลบ</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {!loading && !displayRows.length && (
+            <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+              <p className="font-semibold text-slate-600 dark:text-slate-400 text-sm">{t('no_data')}</p>
+            </div>
+          )}
+
+          {/* Floating Action Button (FAB) for Mobile */}
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+              title="เพิ่มผู้ใช้"
+              aria-label="เพิ่มผู้ใช้"
+            >
+              <Plus size={26} strokeWidth={2.5} />
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="table-wrap">
         <table>
           <thead>
             <tr>
@@ -554,6 +701,7 @@ export default function UsersPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* ── Modal ── */}
       <Modal

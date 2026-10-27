@@ -170,7 +170,7 @@ export default function Login() {
             <h2 className="text-xl font-extrabold tracking-tight text-white">
               Gemma Knits
             </h2>
-            <div className="text-[10px] mt-0.5 font-bold tracking-[0.2em] uppercase" style={{color:'#60a5fa'}}>
+            <div className="text-xs mt-1 font-bold tracking-[0.16em] uppercase" style={{color:'#60a5fa'}}>
               CMMS Platform
             </div>
           </div>
@@ -218,10 +218,10 @@ export default function Login() {
             <form onSubmit={submit} className="space-y-4">
               {/* Username */}
               <div>
-                <label htmlFor="login-username" className="block text-[10.5px] font-bold mb-2 tracking-[0.12em] uppercase"
-                  style={{color:'rgba(248,250,252,0.6)'}}>ชื่อผู้ใช้</label>
+                <label htmlFor="login-username" className="block text-xs font-bold mb-2 tracking-wide uppercase"
+                  style={{color:'rgba(248,250,252,0.7)'}}>ชื่อผู้ใช้</label>
                 <div className="relative">
-                  <User size={15} className="absolute left-4 top-1/2 -translate-y-1/2"
+                  <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2"
                     style={{color:'#60a5fa'}}/>
                   <input
                     id="login-username"
@@ -234,7 +234,7 @@ export default function Login() {
                     className="input"
                     style={{
                       display:'block', width:'100%', paddingLeft:'42px', paddingRight:'16px',
-                      paddingTop:'11px', paddingBottom:'11px', borderRadius:'14px', fontSize:'14px',
+                      paddingTop:'12px', paddingBottom:'12px', borderRadius:'14px', fontSize:'16px',
                       background:'rgba(15,23,42,0.6)', border:'1px solid rgba(51,65,85,0.7)',
                       color:'#f8fafc', outline:'none',
                     }}
@@ -244,10 +244,10 @@ export default function Login() {
 
               {/* Password */}
               <div>
-                <label htmlFor="login-password" className="block text-[10.5px] font-bold mb-2 tracking-[0.12em] uppercase"
-                  style={{color:'rgba(248,250,252,0.6)'}}>รหัสผ่าน</label>
+                <label htmlFor="login-password" className="block text-xs font-bold mb-2 tracking-wide uppercase"
+                  style={{color:'rgba(248,250,252,0.7)'}}>รหัสผ่าน</label>
                 <div className="relative">
-                  <Lock size={15} className="absolute left-4 top-1/2 -translate-y-1/2"
+                  <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2"
                     style={{color:'#60a5fa'}}/>
                   <input
                     id="login-password"
@@ -259,7 +259,7 @@ export default function Login() {
                     className="input"
                     style={{
                       display:'block', width:'100%', paddingLeft:'42px', paddingRight:'16px',
-                      paddingTop:'11px', paddingBottom:'11px', borderRadius:'14px', fontSize:'14px',
+                      paddingTop:'12px', paddingBottom:'12px', borderRadius:'14px', fontSize:'16px',
                       background:'rgba(15,23,42,0.6)', border:'1px solid rgba(51,65,85,0.7)',
                       color:'#f8fafc', outline:'none',
                     }}
@@ -272,7 +272,7 @@ export default function Login() {
                 className="btn-primary w-full"
                 style={{
                   display:'flex', alignItems:'center', justifyContent:'center', gap:'8px',
-                  padding:'12px 0', borderRadius:'14px', fontSize:'14px', fontWeight:700,
+                  padding:'12px 0', borderRadius:'14px', fontSize:'15px', fontWeight:700,
                   cursor:loading?'not-allowed':'pointer',
                   opacity: loading ? 0.6 : 1,
                   marginTop:'14px',
@@ -292,7 +292,7 @@ export default function Login() {
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-700/60" />
               </div>
-              <span className="relative px-3 text-[11px] font-bold uppercase tracking-wider bg-[#1b263b] text-slate-400 rounded-full">
+              <span className="relative px-3 text-xs font-bold uppercase tracking-wider bg-[#1b263b] text-slate-300 rounded-full">
                 หรือ
               </span>
             </div>
@@ -393,10 +393,10 @@ export default function Login() {
 
         {/* Footer */}
         <div className="mt-6 flex items-center justify-between" style={{borderTop:'1px solid rgba(51,65,85,0.6)', paddingTop:'14px'}}>
-          <div className="text-[11px] tracking-wide" style={{color:'rgba(248,250,252,0.45)'}}>
+          <div className="text-xs tracking-wide" style={{color:'rgba(248,250,252,0.5)'}}>
             Gemma Knits CMMS {APP_VERSION}
           </div>
-          <div className="text-[11px] font-semibold" style={{color:'#60a5fa'}}>
+          <div className="text-xs font-semibold" style={{color:'#60a5fa'}}>
             {getActiveDbProvider() === 'd1' ? 'Cloudflare D1' : 'Supabase DB'}
           </div>
         </div>
