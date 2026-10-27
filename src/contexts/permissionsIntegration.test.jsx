@@ -29,14 +29,14 @@ describe('Permission Enforcement Integration', () => {
       </MemoryRouter>
     )
 
-    // Should show ใบสั่งงาน and เมนูอื่น
+    // Should show ใบสั่งงาน, แจ้งซ่อม and เมนูอื่น
     expect(screen.getByText('ใบสั่งงาน')).toBeInTheDocument()
+    expect(screen.getByText('แจ้งซ่อม')).toBeInTheDocument()
     expect(screen.getByText('เมนูอื่น')).toBeInTheDocument()
 
-    // Should NOT show แดชบอร์ด, เครื่องจักร, แผน PM
+    // Should NOT show แดชบอร์ด, เครื่องจักร
     expect(screen.queryByText('แดชบอร์ด')).not.toBeInTheDocument()
     expect(screen.queryByText('เครื่องจักร')).not.toBeInTheDocument()
-    expect(screen.queryByText('แผน PM')).not.toBeInTheDocument()
   })
 
   it('allows admin full access to all MobileBottomNav buttons', () => {
@@ -55,8 +55,9 @@ describe('Permission Enforcement Integration', () => {
     )
 
     expect(screen.getByText('แดชบอร์ด')).toBeInTheDocument()
-    expect(screen.getByText('เครื่องจักร')).toBeInTheDocument()
+    expect(screen.getByText('แจ้งซ่อม')).toBeInTheDocument()
     expect(screen.getByText('ใบสั่งงาน')).toBeInTheDocument()
-    expect(screen.getByText('แผน PM')).toBeInTheDocument()
+    expect(screen.getByText('เครื่องจักร')).toBeInTheDocument()
+    expect(screen.getByText('เมนูอื่น')).toBeInTheDocument()
   })
 })

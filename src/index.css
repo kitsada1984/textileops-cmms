@@ -786,6 +786,33 @@ html.dark .glass-panel {
   }
 }
 
+/* ── iOS / Android Native Bottom Sheet & Mobile App Polish ───── */
+.bottom-sheet-handle {
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  background-color: var(--text-400);
+  opacity: 0.45;
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.is-mobile-view {
+  font-size: 13px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.is-mobile-view .btn,
+.is-mobile-view button {
+  touch-action: manipulation;
+}
+
+.is-mobile-view .card,
+.is-mobile-view .stat-card {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
 /* ── Accessibility: Reduced Motion (WCAG 2.3.3) ─────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -458,20 +458,24 @@ function AppInner() {
           position: 'relative',
           zIndex: 10,
         }}>
-          <button className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => setSideOpen(true)}
+          {/* Hamburger Menu - Shown on Tablet & Desktop small viewports, hidden on Mobile view since bottom tab has App Launcher */}
+          <button
+            className={`${device === 'mobile' ? 'hidden' : 'lg:hidden'} p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors`}
+            onClick={() => setSideOpen(true)}
             title="เปิดเมนูหลัก"
-            aria-label="เปิดเมนูหลัก">
+            aria-label="เปิดเมนูหลัก"
+          >
             <Menu size={20}/>
           </button>
 
-          {/* Breadcrumb */}
+          {/* Breadcrumb / Top App Bar Title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             {currentNav?.icon && (
-              <div className="hidden sm:flex" style={{
-                width: 32, height: 32, borderRadius: 10,
+              <div style={{
+                width: 30, height: 30, borderRadius: 10,
                 background: dark ? 'linear-gradient(135deg, rgba(59,130,246,0.18), rgba(99,102,241,0.08))' : '#f1f5f9',
                 border: dark ? '1px solid rgba(59,130,246,0.28)' : '1px solid #e2e8f0',
-                alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
                 <currentNav.icon size={14} style={{ color: dark ? '#60a5fa' : '#2563eb' }}/>
               </div>
@@ -703,7 +707,7 @@ function AppInner() {
         {device === 'mobile' ? (
           <div className="flex-1 overflow-y-auto p-0 sm:p-2 lg:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70 w-full overflow-x-hidden">
             <div
-              className="w-full max-w-full lg:max-w-[460px] min-h-full lg:min-h-[calc(100vh-100px)] lg:rounded-3xl overflow-y-auto shadow-none lg:shadow-2xl border-0 lg:border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 is-mobile-view pb-24 lg:pb-6"
+              className="w-full max-w-full lg:max-w-[390px] lg:w-[390px] min-h-full lg:min-h-[calc(100vh-100px)] lg:rounded-3xl overflow-y-auto shadow-none lg:shadow-2xl border-0 lg:border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 is-mobile-view pb-24 lg:pb-6"
               style={{
                 background: 'var(--bg-page)',
               }}
@@ -733,8 +737,8 @@ function AppInner() {
         )}
       </div>
 
-      {/* Mobile Bottom Navigation Bar (Visible on mobile/tablet screens) */}
-      <MobileBottomNav onOpenMenu={() => setSideOpen(true)} />
+      {/* Mobile Bottom Navigation Bar & Bottom Sheet App Launcher (iOS / Android Native App Experience) */}
+      <MobileBottomNav onOpenPwaModal={() => setPwaModalOpen(true)} />
 
       <PWAInstallPrompt open={pwaModalOpen} onClose={() => setPwaModalOpen(false)} />
     </div>

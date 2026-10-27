@@ -2,6 +2,7 @@ import { useEffect, createContext, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import useDeviceView from '../../hooks/useDeviceView'
 
 const ModalContext = createContext(null)
 
@@ -88,6 +89,8 @@ export default function Modal({
   size = 'md',
   className = '',
 }) {
+  const { isMobile } = useDeviceView()
+
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
     return () => {
@@ -109,27 +112,34 @@ export default function Modal({
   return createPortal(
     <AnimatePresence>
       {open && (
-        <ModalContext.Provider value={{ open, onClose, size }}>
+        <ModalContext.Provider value={{ open, onClose, size, isMobile }}>
           <motion.div
             key="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="modal-overlay"
+            className={`modal-overlay ${isMobile ? 'items-end p-0' : ''}`}
             onClick={(e) => e.target === e.currentTarget && onClose?.()}
           >
             <motion.div
               key="modal-box"
-              initial={{ opacity: 0, scale: 0.95, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 12 }}
+              animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+              exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
               role="dialog"
               aria-modal="true"
-              className={`modal-box w-full ${maxW} ${className}`}
-              style={{ margin: '0 auto' }}
+              className={`modal-box w-full ${isMobile ? 'rounded-t-[28px] rounded-b-none max-h-[90vh]' : `${maxW}`} ${className}`}
+              style={{ margin: isMobile ? '0' : '0 auto' }}
             >
+              {/* Native iOS/Android Bottom Sheet Drag Handle */}
+              {isMobile && (
+                <div className="pt-3 pb-1 flex-shrink-0 flex justify-center cursor-pointer" onClick={onClose}>
+                  <div className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                </div>
+              )}
+
               {hasLegacyProps ? (
                 <>
                   <div className="modal-header">

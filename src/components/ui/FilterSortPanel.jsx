@@ -11,6 +11,7 @@ import {
   Hash,
 } from 'lucide-react'
 import { EMPTY_FILTER_SORT, getActiveFilterCount, isFilterValueActive, optionLabel, optionValue } from '../../utils/filterSort'
+import useDeviceView from '../../hooks/useDeviceView'
 
 export const INIT_FS = EMPTY_FILTER_SORT
 const MOBILE_QUERY = '(max-width: 640px)'
@@ -31,19 +32,21 @@ function cloneFilterSort(next = INIT_FS) {
 
 export default function FilterSortPanel({ cols, columns, value = INIT_FS, onChange }) {
   const panelCols = cols ?? columns ?? []
+  const { isMobile: ctxMobile } = useDeviceView()
   const [open, setOpen] = useState(false)
   const [draftValue, setDraftValue] = useState(() => cloneFilterSort(value))
-  const [isMobile, setIsMobile] = useState(() =>
+  const [mediaMobile, setMediaMobile] = useState(() =>
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia(MOBILE_QUERY).matches
       : false
   )
+  const isMobile = ctxMobile || mediaMobile
   const ref = useRef(null)
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined
     const mq = window.matchMedia(MOBILE_QUERY)
-    const update = () => setIsMobile(mq.matches)
+    const update = () => setMediaMobile(mq.matches)
     update()
     mq.addEventListener?.('change', update)
     return () => mq.removeEventListener?.('change', update)
@@ -169,6 +172,11 @@ export default function FilterSortPanel({ cols, columns, value = INIT_FS, onChan
 
       {open && (
         <div style={panelStyle(isMobile)}>
+          {isMobile && (
+            <div className="pt-3 pb-1 flex-shrink-0 flex justify-center cursor-pointer" onClick={cancelChanges}>
+              <div className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+            </div>
+          )}
           <div style={{ height: 3, background: 'var(--accent-gradient)' }} />
 
           <div style={{
@@ -444,17 +452,17 @@ function panelStyle(isMobile) {
   if (isMobile) {
     return {
       position: 'fixed',
-      left: 12,
-      right: 12,
-      bottom: 12,
-      maxHeight: 'calc(100dvh - 24px)',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      maxHeight: '88dvh',
       zIndex: 999,
       display: 'flex',
       flexDirection: 'column',
       background: 'var(--bg-card)',
-      border: '1px solid var(--border)',
-      borderRadius: 22,
-      boxShadow: '0 26px 72px rgba(0,0,0,0.34), 0 8px 22px rgba(15,23,42,0.12)',
+      borderTop: '1px solid var(--border)',
+      borderRadius: '28px 28px 0 0',
+      boxShadow: '0 -10px 40px rgba(0,0,0,0.35)',
       overflow: 'hidden',
     }
   }

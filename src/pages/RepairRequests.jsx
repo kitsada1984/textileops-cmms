@@ -15,6 +15,7 @@ import usePagePerms from '../hooks/usePagePerms'
 import { useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
 import { getAppBaseUrl } from '../utils/telegram'
+import useDeviceView from '../hooks/useDeviceView'
 import {
   createRepairRequest,
   updateRepairRequest,
@@ -56,6 +57,7 @@ function fmt(dt) {
 }
 
 export default function RepairRequests() {
+  const { isMobile } = useDeviceView()
   const { t } = useT()
   const { user } = useAuth()
   const { canAdd, canEdit, canDelete } = usePagePerms('workorders')
@@ -475,7 +477,8 @@ export default function RepairRequests() {
       </div>
 
       {/* Mobile Card List View (Visible on small screens < md) */}
-      <div className="block md:hidden space-y-3">
+      {/* Mobile Card List View (Visible when isMobile) */}
+      <div className={isMobile ? "space-y-3 pb-24" : "hidden"}>
         {loading && (
           <div className="text-center py-8 text-slate-400 text-sm">
             <RefreshCw size={20} className="animate-spin mx-auto mb-2 text-indigo-500" />
@@ -502,6 +505,11 @@ export default function RepairRequests() {
                   <span className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-md">
                     {r.request_no || (r._id || r.id ? `REQ-${String(r._id || r.id).slice(0, 6)}` : 'REQ')}
                   </span>
+                  {r.problem_cause && (
+                    <span className="font-bold text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                      🔍 {r.problem_cause}
+                    </span>
+                  )}
                   {((r.repair_type === 'EASY') || (!r.repair_type && (r.approved_by?.includes('งานง่าย') || (r.status === 'APPROVED' && r.technician_name)))) ? (
                     <span className="font-bold text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                       ⚡ งานง่าย
@@ -632,10 +640,22 @@ export default function RepairRequests() {
             </div>
           )
         })}
-      </div>
+          {/* Floating Action Button (FAB) for Mobile */}
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openAdd}
+              className="fixed bottom-20 right-4 z-20 w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+              title="แจ้งซ่อมใหม่"
+              aria-label="แจ้งซ่อมใหม่"
+            >
+              <Plus size={24} className="stroke-[2.5]" />
+            </button>
+          )}
+        </div>
 
       {/* Desktop Table (Hidden on small screens < md) */}
-      <div className="table-wrap hidden md:block">
+      <div className={isMobile ? "hidden" : "table-wrap"}>
         <table>
           <thead>
             <tr>

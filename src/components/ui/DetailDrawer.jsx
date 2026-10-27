@@ -2,6 +2,7 @@ import { useEffect, createContext, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Pencil, Trash2, Printer } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import useDeviceView from '../../hooks/useDeviceView'
 
 /* ── Context ─────────────────────────────────────────────────────────────── */
 const DetailDrawerContext = createContext(null)
@@ -271,6 +272,8 @@ export default function DetailDrawer({
   extraActions,
   children,
 }) {
+  const { isMobile } = useDeviceView()
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && open) onClose?.() }
     document.addEventListener('keydown', onKey)
@@ -304,37 +307,46 @@ export default function DetailDrawer({
             }}
           />
 
-          {/* Centering wrapper */}
+          {/* Centering / Bottom Sheet wrapper */}
           <div
             style={{
               position: 'fixed', inset: 0, zIndex: 301,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '24px 16px',
+              display: 'flex',
+              alignItems: isMobile ? 'flex-end' : 'center',
+              justifyContent: 'center',
+              padding: isMobile ? 0 : '24px 16px',
             }}
             onClick={onClose}
           >
             {/* Panel card */}
             <motion.div
               key="drawer-panel"
-              initial={{ opacity: 0, scale: 0.95, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+              initial={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 16 }}
+              animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+              exit={isMobile ? { y: '100%', opacity: 0 } : { opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
               role="dialog"
               aria-modal="true"
               aria-label={title || 'รายละเอียด'}
               style={{
-                width: 560, maxWidth: '100%',
-                maxHeight: '100%',
+                width: isMobile ? '100%' : 560,
+                maxWidth: '100%',
+                maxHeight: isMobile ? '90vh' : '100%',
                 display: 'flex', flexDirection: 'column',
                 background: 'var(--bg-card)',
-                borderRadius: 20,
+                borderRadius: isMobile ? '28px 28px 0 0' : 20,
                 overflow: 'hidden',
                 border: '1px solid var(--border)',
                 boxShadow: 'var(--shadow-modal)',
               }}
               onClick={e => e.stopPropagation()}
             >
+              {/* Native iOS/Android Drag Handle Pill */}
+              {isMobile && (
+                <div className="pt-3 pb-1 flex-shrink-0 flex justify-center cursor-pointer" onClick={onClose}>
+                  <div className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                </div>
+              )}
           {children && !hasLegacyProps ? (
             children
           ) : (
