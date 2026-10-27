@@ -28,6 +28,7 @@ import {
   getVectorCacheStats,
   prewarmSparePartEmbeddings,
 } from '../../utils/imageSearch'
+import { isGeminiConfigured } from '../../utils/geminiVision'
 
 export default function VisualSparePartSearchModal({
   isOpen,
@@ -224,9 +225,21 @@ export default function VisualSparePartSearchModal({
           <div>
             <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 flex-wrap">
               <span>ค้นหาอะไหล่ด้วยภาพ (Visual Reverse Image Search)</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
-                Vector Search 128-D
-              </span>
+              {searchResult?.aiPowered ? (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                  <Sparkles size={11} className="text-amber-500" />
+                  <span>AI Vision (Gemini 1.5 Flash)</span>
+                </span>
+              ) : isGeminiConfigured() ? (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                  <Sparkles size={10} className="text-purple-500" />
+                  <span>AI Vision Ready</span>
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
+                  Vector Search 128-D
+                </span>
+              )}
               {cacheStats.total > 0 && (
                 <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 border ${
                   cacheStats.isReady
@@ -389,7 +402,11 @@ export default function VisualSparePartSearchModal({
             <div>
               <p className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center justify-center gap-1.5">
                 <Sparkles size={16} className="text-amber-500 animate-spin" />
-                <span>กำลังวิเคราะห์ลักษณะทางสายตาและค้นหาเวกเตอร์ (Vector Search)...</span>
+                <span>
+                  {isGeminiConfigured()
+                    ? 'กำลังให้ AI Vision (Gemini 1.5 Flash) วิเคราะห์ประเภทอะไหล่และจับคู่สินค้า...'
+                    : 'กำลังวิเคราะห์ลักษณะทางสายตาและค้นหาเวกเตอร์ (Vector Search)...'}
+                </span>
               </p>
               <p className="text-xs text-slate-400 mt-1">
                 สร้าง 128-D Image Embedding และคำนวณ Cosine Similarity เทียบกับอะไหล่ในคลัง
@@ -404,7 +421,12 @@ export default function VisualSparePartSearchModal({
             {/* Top Toolbar: Retake button & Status badge */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                {bestMatch && bestMatch.percent >= 60 ? (
+                {searchResult?.aiPowered ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    <Sparkles size={13} className="text-purple-500" />
+                    <span>AI Vision วิเคราะห์ตรงกัน ({bestMatch?.percent || 0}%)</span>
+                  </span>
+                ) : bestMatch && bestMatch.percent >= 60 ? (
                   <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                     <CheckCircle2 size={13} />
                     <span>พบอะไหล่ที่เวกเตอร์ตรงกัน ({bestMatch.percent}%)</span>
@@ -438,7 +460,11 @@ export default function VisualSparePartSearchModal({
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
                     <Sparkles size={14} />
-                    <span>ผลลัพธ์ที่เวกเตอร์ใกล้เคียงที่สุด (Nearest Neighbor)</span>
+                    <span>
+                      {searchResult?.aiPowered
+                        ? 'ผลลัพธ์ที่ AI วิเคราะห์ตรงกันมากที่สุด (Gemini Vision)'
+                        : 'ผลลัพธ์ที่เวกเตอร์ใกล้เคียงที่สุด (Nearest Neighbor)'}
+                    </span>
                   </span>
                   <span className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-full bg-blue-500 text-white shadow-xs">
                     ความคล้าย {bestMatch.percent}%
@@ -475,6 +501,28 @@ export default function VisualSparePartSearchModal({
                     </div>
                   </div>
                 </div>
+
+                {/* AI Vision Insights (When Gemini Active) */}
+                {searchResult.aiPowered && (
+                  <div className="mb-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs space-y-1.5">
+                    <div className="flex items-center gap-1.5 font-bold text-purple-700 dark:text-purple-300">
+                      <Sparkles size={14} className="text-purple-500" />
+                      <span>AI วิเคราะห์พบ: {searchResult.identifiedObject}</span>
+                    </div>
+                    {searchResult.identifiedFeatures && (
+                      <div className="text-[11.5px] text-slate-600 dark:text-slate-300">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">ลักษณะเด่น: </span>
+                        {searchResult.identifiedFeatures}
+                      </div>
+                    )}
+                    {bestMatch.aiReason && (
+                      <div className="text-[11.5px] text-purple-900 dark:text-purple-200 bg-white/70 dark:bg-slate-900/60 p-2 rounded-lg border border-purple-200/50 dark:border-purple-800/40">
+                        <span className="font-bold text-purple-700 dark:text-purple-300">เหตุผลที่ตรงกัน: </span>
+                        {bestMatch.aiReason}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Spare Part Information Details */}
                 <div className="bg-white/80 dark:bg-slate-850/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-800 mb-4 backdrop-blur-xs space-y-2">
@@ -599,6 +647,11 @@ export default function VisualSparePartSearchModal({
                         <p className="text-[11px] text-slate-400 truncate">
                           สต๊อก: {Number(candidate.part?.Stock_Qty || 0).toLocaleString()} | {candidate.part?.Location_Store || 'Store'}
                         </p>
+                        {candidate.aiReason && (
+                          <p className="text-[10px] text-purple-600 dark:text-purple-400 truncate">
+                            {candidate.aiReason}
+                          </p>
+                        )}
                       </div>
                       <ArrowRight size={14} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                     </div>

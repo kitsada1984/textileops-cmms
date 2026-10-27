@@ -2,6 +2,7 @@
 // Visual Product Search / Reverse Image Search Engine with Image Embedding & Vector Search
 import jsQR from 'jsqr'
 import { getDirectImageUrl } from './imageUrlUtils'
+import { isGeminiConfigured, identifySparePartWithGemini } from './geminiVision'
 
 const OPENAI_BASE_URL = 'https://api.openai.com/v1'
 const VISION_MODEL = import.meta.env.VITE_OPENAI_VISION_MODEL || 'gpt-4.1-mini'
@@ -151,11 +152,12 @@ export function extractVectorFromImageData(imageData) {
     sumSqLuminance += lum * lum
 
     const [h, s, v] = rgbToHsv(r, g, b)
-    const hBin = Math.min(23, Math.floor(h * 24))
+    if (s > 0.12 && v > 0.12) {
+      const hBin = Math.min(23, Math.floor(h * 24))
+      vector[64 + hBin] += 1
+    }
     const sBin = Math.min(11, Math.floor(s * 12))
     const vBin = Math.min(11, Math.floor(v * 12))
-
-    vector[64 + hBin] += 1
     vector[88 + sBin] += 1
     vector[100 + vBin] += 1
   }
@@ -656,6 +658,81 @@ export async function searchSimilarSparePartsByImage(queryImageSource, sparePart
     } catch {}
   }
 
+  // 3. Try AI Vision (Google Gemini 1.5 Flash) if configured
+  if (isGeminiConfigured() && !options.disableAI) {
+    try {
+      const aiResult = await identifySparePartWithGemini(queryImageSource, sparePartsList, {
+        timeoutMs: options.aiTimeoutMs || 10000,
+      })
+
+      if (aiResult?.bestMatchCode) {
+        const partMap = new Map()
+        sparePartsList.forEach((p) => {
+          const code = String(p.Part_Code || p.id || '').toUpperCase()
+          partMap.set(code, p)
+        })
+
+        const candidates = []
+        const seenCodes = new Set()
+
+        if (Array.isArray(aiResult.rankedCandidates)) {
+          aiResult.rankedCandidates.forEach((item) => {
+            const code = String(item.part_code || '').toUpperCase()
+            const part = partMap.get(code)
+            if (part && !seenCodes.has(code)) {
+              seenCodes.add(code)
+              const sim = Math.max(0, Math.min(1, (Number(item.similarity) || 0) / 100))
+              candidates.push({
+                part,
+                id: part.Part_Code || part.id,
+                similarity: sim,
+                percent: Math.round(Number(item.similarity) || 0),
+                aiReason: item.reason || '',
+                aiPowered: true,
+              })
+            }
+          })
+        }
+
+        const bestCode = String(aiResult.bestMatchCode).toUpperCase()
+        const bestPart = partMap.get(bestCode)
+        if (bestPart && !seenCodes.has(bestCode)) {
+          seenCodes.add(bestCode)
+          const conf = Math.max(0, Math.min(100, Number(aiResult.confidence) || 95))
+          candidates.unshift({
+            part: bestPart,
+            id: bestPart.Part_Code || bestPart.id,
+            similarity: conf / 100,
+            percent: Math.round(conf),
+            aiReason: aiResult.reasoning || '',
+            aiPowered: true,
+          })
+        }
+
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => b.similarity - a.similarity)
+          const latencyMs = Math.round(performance.now() - startTime)
+          return {
+            bestMatch: candidates[0] || null,
+            candidates: candidates.slice(0, options.topK || 5),
+            queryVector,
+            latencyMs,
+            qrCode,
+            totalScanned: sparePartsList.length,
+            fromCacheCount: 0,
+            aiPowered: true,
+            identifiedObject: aiResult.identifiedObject,
+            identifiedFeatures: aiResult.identifiedFeatures,
+            aiReason: aiResult.reasoning,
+            modelUsed: aiResult.modelUsed,
+          }
+        }
+      }
+    } catch (aiErr) {
+      console.warn('[imageSearch] Gemini Vision attempt failed, falling back to local vector search:', aiErr?.message || aiErr)
+    }
+  }
+
   // 3. Filter parts with images
   const partsWithImages = (sparePartsList || []).filter((p) => {
     const url = p?.ImageUrl || (typeof p?.Remark === 'string' && p.Remark.includes('ImageUrl:'))
@@ -746,5 +823,6 @@ export async function searchSimilarSparePartsByImage(queryImageSource, sparePart
     qrCode,
     totalScanned: candidateVectors.length,
     fromCacheCount: initialCacheHitCount,
+    aiPowered: false,
   }
 }
