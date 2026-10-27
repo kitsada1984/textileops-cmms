@@ -61,6 +61,15 @@ html.dark {
 
 /* ── Base ──────────────────────────────────────────────────── */
 @layer base {
+  html, body, #root {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior-y: contain;
+  }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     background-color: var(--bg-page);
@@ -766,6 +775,15 @@ html.dark .glass-panel {
 
 .is-mobile-view .card-body {
   padding: 0.85rem 1rem !important;
+}
+
+/* ── Mobile Input Focus Anti-Zoom (Prevents iOS Safari auto-zoom on font-size < 16px) ── */
+@media screen and (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* ── Accessibility: Reduced Motion (WCAG 2.3.3) ─────────────── */

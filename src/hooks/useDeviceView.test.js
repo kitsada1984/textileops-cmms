@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getAutoDevice, BREAKPOINTS } from '../contexts/DeviceViewContext'
+import { getAutoDevice, getEffectiveDevice, BREAKPOINTS } from '../contexts/DeviceViewContext'
 
 describe('DeviceViewContext Breakpoints', () => {
   it('identifies mobile screens (< 640px)', () => {
@@ -25,5 +25,25 @@ describe('DeviceViewContext Breakpoints', () => {
     expect(BREAKPOINTS.MOBILE_MAX).toBe(639)
     expect(BREAKPOINTS.TABLET_MIN).toBe(640)
     expect(BREAKPOINTS.TABLET_MAX).toBe(1024)
+  })
+
+  it('enforces native mobile view on physical smartphone screens (< 640px) regardless of stale simulatorMode', () => {
+    // Even if localStorage previously had 'desktop', smartphone screens must never render desktop micro-tables
+    expect(getEffectiveDevice(390, 'desktop')).toBe('mobile')
+    expect(getEffectiveDevice(375, 'tablet')).toBe('mobile')
+    expect(getEffectiveDevice(414, 'auto')).toBe('mobile')
+  })
+
+  it('honors simulator modes on tablet and desktop screens (ADR-0002 Tri-View)', () => {
+    // On tablet
+    expect(getEffectiveDevice(768, 'auto')).toBe('tablet')
+    expect(getEffectiveDevice(768, 'mobile')).toBe('mobile')
+    expect(getEffectiveDevice(768, 'desktop')).toBe('desktop')
+
+    // On desktop
+    expect(getEffectiveDevice(1280, 'auto')).toBe('desktop')
+    expect(getEffectiveDevice(1280, 'mobile')).toBe('mobile')
+    expect(getEffectiveDevice(1280, 'tablet')).toBe('tablet')
+    expect(getEffectiveDevice(1280, 'desktop')).toBe('desktop')
   })
 })

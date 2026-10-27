@@ -18,6 +18,18 @@ export function getAutoDevice(width) {
   return 'desktop'
 }
 
+/**
+ * Resolves the effective device mode.
+ * On physical mobile devices (width < 640px), enforces native 'mobile' view
+ * to prevent accidental desktop simulator locks on small smartphone screens.
+ * On Tablet (>= 640) and Desktop (>= 1025), simulatorMode is fully honored (ADR-0002).
+ */
+export function getEffectiveDevice(width, simulatorMode = 'auto') {
+  if (width < BREAKPOINTS.TABLET_MIN) return 'mobile'
+  const auto = getAutoDevice(width)
+  return simulatorMode === 'auto' ? auto : simulatorMode
+}
+
 export function DeviceViewProvider({ children }) {
   const [windowWidth, setWindowWidth] = useState(() => 
     typeof window !== 'undefined' ? window.innerWidth : 1280
@@ -46,7 +58,7 @@ export function DeviceViewProvider({ children }) {
   }, [simulatorMode])
 
   const autoDevice = getAutoDevice(windowWidth)
-  const effectiveDevice = simulatorMode === 'auto' ? autoDevice : simulatorMode
+  const effectiveDevice = getEffectiveDevice(windowWidth, simulatorMode)
 
   const value = {
     windowWidth,
@@ -71,15 +83,16 @@ export function useDeviceView() {
   if (!ctx) {
     const width = typeof window !== 'undefined' ? window.innerWidth : 1280
     const auto = getAutoDevice(width)
+    const effective = getEffectiveDevice(width, 'auto')
     return {
       windowWidth: width,
       autoDevice: auto,
       simulatorMode: 'auto',
       setSimulatorMode: () => {},
-      device: auto,
-      isMobile: auto === 'mobile',
-      isTablet: auto === 'tablet',
-      isDesktop: auto === 'desktop',
+      device: effective,
+      isMobile: effective === 'mobile',
+      isTablet: effective === 'tablet',
+      isDesktop: effective === 'desktop',
     }
   }
   return ctx

@@ -499,9 +499,8 @@ function AppInner() {
           >
             {/* Tri-View Device Simulator Toggle (Auto / PC / Tablet / Mobile - ADR-0002) */}
             <div
+              className="hidden md:flex items-center"
               style={{
-                display: 'flex',
-                alignItems: 'center',
                 background: dark ? '#1e293b' : '#f1f5f9',
                 borderRadius: 12,
                 padding: 2,
@@ -701,7 +700,7 @@ function AppInner() {
         </header>
 
         {/* Page content - Device Adaptive Container (ADR-0002) */}
-        {device === 'mobile' && simulatorMode === 'mobile' ? (
+        {device === 'mobile' ? (
           <div className="flex-1 overflow-y-auto p-0 sm:p-2 lg:p-4 flex justify-center items-start bg-slate-100/70 dark:bg-slate-950/70 w-full overflow-x-hidden">
             <div
               className="w-full max-w-full lg:max-w-[460px] min-h-full lg:min-h-[calc(100vh-100px)] lg:rounded-3xl overflow-y-auto shadow-none lg:shadow-2xl border-0 lg:border border-slate-300 dark:border-slate-700 flex flex-col transition-all duration-300 is-mobile-view pb-24 lg:pb-6"
