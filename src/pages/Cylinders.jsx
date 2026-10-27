@@ -62,7 +62,7 @@ import {
 
 const CYLINDER_IMAGE_FOLDER = 'รูปกระบอก'
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'cylinders'|column cylinders\.([^ ]+) does not exist/i
-const MACHINE_REF_OPTIONS = ['In-use-GMK1', 'Spare-GMK1', 'In-use-GMK3', 'Spare-GMK3']
+export const MACHINE_REF_OPTIONS = ['In-use-GMK1', 'Spare-GMK1', 'In-use-GMK3', 'Spare-GMK3']
 
 const EMPTY = {
   ITEM: '',
@@ -124,11 +124,16 @@ function buildCylinderSummary(rows = []) {
   )
 }
 
-function buildMachineRefSummary(rows = []) {
+export function buildMachineRefSummary(rows = []) {
   return MACHINE_REF_OPTIONS.map((value) => ({
     value,
     count: rows.filter((row) => String(row.Machine_Ref || '').trim() === value).length,
   }))
+}
+
+export function filterCylindersByMachineRef(cylinders = [], selectedRef = '') {
+  if (!selectedRef) return cylinders
+  return cylinders.filter((c) => String(c.Machine_Ref || '').trim() === selectedRef)
 }
 
 const CYL_FIELD_KEYS = {
@@ -676,7 +681,15 @@ export default function Cylinders() {
     })
   }, [FS_COLS])
 
-  const displayRows = useMemo(() => applyFilterSort(searched, FS_COLS, filterSort), [searched, FS_COLS, filterSort])
+  const [selectedMachineRef, setSelectedMachineRef] = useState('')
+
+  const handleToggleMachineRef = (val) => {
+    setSelectedMachineRef((prev) => (prev === val ? '' : val))
+  }
+
+  const machineRefFiltered = useMemo(() => filterCylindersByMachineRef(searched, selectedMachineRef), [searched, selectedMachineRef])
+
+  const displayRows = useMemo(() => applyFilterSort(machineRefFiltered, FS_COLS, filterSort), [machineRefFiltered, FS_COLS, filterSort])
 
   const [detailRec, setDetailRec] = useState(null)
   const [qrRec, setQrRec] = useState(null)
@@ -1076,11 +1089,22 @@ export default function Cylinders() {
       {/* ── MACHINE REF SUMMARY CARDS ─────────────────────────── */}
       <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center justify-between p-3.5 bg-slate-50/80 dark:bg-slate-900/60">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">สรุปอ้างอิงกระบอก</span>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-              {data.length} กระบอก
+              {selectedMachineRef ? `${displayRows.length} / ${data.length}` : data.length} กระบอก
             </span>
+            {selectedMachineRef && (
+              <button
+                type="button"
+                onClick={() => setSelectedMachineRef('')}
+                className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                title="กดเพื่อล้างการกรอง"
+              >
+                <span>กรอง: <strong>{selectedMachineRef}</strong></span>
+                <span className="text-amber-600 dark:text-amber-400 font-black text-xs">✕</span>
+              </button>
+            )}
           </div>
           <button
             type="button"
@@ -1096,18 +1120,37 @@ export default function Cylinders() {
           <div className="p-3.5 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
             {machineRefSummary.map((item) => {
               const isInUse = item.value.startsWith('In-use-')
+              const isSelected = selectedMachineRef === item.value
               return (
                 <div
                   key={item.value}
-                  className="card p-3.5 flex items-center justify-between border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50"
+                  onClick={() => handleToggleMachineRef(item.value)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggleMachineRef(item.value) }}
+                  className={`card p-3.5 flex items-center justify-between cursor-pointer transition-all duration-150 select-none hover:scale-[1.02] active:scale-[0.98] ${
+                    isSelected
+                      ? isInUse
+                        ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-blue-500/40 shadow-sm'
+                        : 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 ring-2 ring-emerald-500/40 shadow-sm'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs'
+                  }`}
+                  title={isSelected ? `คลิกซ้ำเพื่อยกเลิกการกรอง ${item.value}` : `คลิกเพื่อกรองเฉพาะ ${item.value}`}
                 >
                   <div>
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{item.value}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{item.value}</span>
+                      {isSelected && (
+                        <span className={`w-2 h-2 rounded-full ${isInUse ? 'bg-blue-500' : 'bg-emerald-500'} animate-pulse`} />
+                      )}
+                    </div>
                     <div className="text-xl font-black mt-0.5" style={{ color: 'var(--text-900)' }}>
                       {item.count.toLocaleString()}
                     </div>
                   </div>
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold transition-transform ${
+                    isSelected ? 'scale-110' : ''
+                  } ${
                     isInUse
                       ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                       : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
