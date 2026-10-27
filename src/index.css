@@ -809,9 +809,49 @@ html.dark .glass-panel {
   -webkit-tap-highlight-color: transparent;
 }
 
-.is-mobile-view .btn,
-.is-mobile-view button {
+/* ── Universal Instant Tactile Action (Aligned with ORDEO POS Design System) ── */
+.is-mobile-view button:not(:disabled),
+.is-mobile-view [role="button"]:not([aria-disabled="true"]),
+.is-mobile-view .btn:not(.disabled),
+.is-mobile-view a[role="button"] {
   touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 60ms cubic-bezier(0.16, 1, 0.3, 1), filter 60ms ease, box-shadow 60ms ease;
+  will-change: transform;
+}
+
+.is-mobile-view button:not(:disabled):active,
+.is-mobile-view [role="button"]:not([aria-disabled="true"]):active,
+.is-mobile-view .btn:not(.disabled):active,
+.is-mobile-view a[role="button"]:active {
+  transform: scale(0.96) translateY(1px) !important;
+  filter: brightness(0.94) !important;
+  transition-duration: 20ms !important;
+}
+
+/* ── Mobile Input Standard (Height min 46px, Font 16px to completely eliminate iOS zoom) ── */
+.is-mobile-view input:not([type="checkbox"]):not([type="radio"]),
+.is-mobile-view select,
+.is-mobile-view textarea,
+.is-mobile-view .input {
+  font-size: 16px !important;
+  min-height: 46px !important;
+}
+
+/* ── Safe Area Bottom Padding & Scrollbar Utility ── */
+.safe-area-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+}
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 .is-mobile-view .card,

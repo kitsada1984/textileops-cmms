@@ -62,19 +62,19 @@ export default function MachinesPage() {
   return (
     <div className="machines-page-root w-full">
       {/* ── 0. SUB-TABS NAVIGATION (Machines vs Yarn Belts) ─── */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-5">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('machines')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'machines'
               ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
           }`}
         >
-          <Cpu size={15} />
+          <Cpu size={16} />
           <span>ข้อมูลเครื่องจักร</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-bold ${
             activeTab === 'machines'
               ? 'bg-blue-800 text-blue-100'
               : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -86,13 +86,13 @@ export default function MachinesPage() {
         <button
           type="button"
           onClick={() => setActiveTab('yarn_belts')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'yarn_belts'
               ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
           }`}
         >
-          <Disc size={15} />
+          <Disc size={16} />
           <span>สายพานส่งด้าย (เทป 1-5)</span>
         </button>
       </div>

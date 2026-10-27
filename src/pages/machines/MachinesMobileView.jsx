@@ -72,44 +72,44 @@ export default function MachinesMobileView({ logic }) {
         <button
           type="button"
           onClick={() => setQuickStatus('ALL')}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-semibold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl font-bold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
             quickStatus === 'ALL'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
               : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80'
           }`}
         >
-          <span className={quickStatus === 'ALL' ? 'text-blue-100' : 'text-slate-400'}>ทั้งหมด</span>
-          <span className="font-mono font-bold">{stats.total}</span>
+          <span className={quickStatus === 'ALL' ? 'text-blue-100' : 'text-slate-500'}>ทั้งหมด</span>
+          <span className="font-mono font-black text-sm">{stats.total}</span>
         </button>
 
         {/* Running Filter Chip */}
         <button
           type="button"
           onClick={() => setQuickStatus((prev) => (prev === 'RUNNING' ? 'ALL' : 'RUNNING'))}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-semibold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl font-bold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
             quickStatus === 'RUNNING'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
               : 'bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60'
           }`}
         >
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>ปกติ</span>
-          <span className="font-mono font-bold">{stats.running}</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>เดินเครื่อง</span>
+          <span className="font-mono font-black text-sm">{stats.running}</span>
         </button>
 
         {/* Maintenance / Stop Filter Chip */}
         <button
           type="button"
           onClick={() => setQuickStatus((prev) => (prev === 'MAINTENANCE' ? 'ALL' : 'MAINTENANCE'))}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-semibold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl font-bold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
             quickStatus === 'MAINTENANCE'
               ? 'bg-amber-600 text-white shadow-md shadow-amber-500/20'
               : 'bg-amber-50/80 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60'
           }`}
         >
-          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
           <span>ซ่อม/หยุด</span>
-          <span className="font-mono font-bold">{stats.maintenance}</span>
+          <span className="font-mono font-black text-sm">{stats.maintenance}</span>
         </button>
 
         {/* Refresh Button */}
@@ -117,19 +117,19 @@ export default function MachinesMobileView({ logic }) {
           type="button"
           onClick={load}
           disabled={loading}
-          className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-500 active:scale-90 transition-transform ml-auto flex-shrink-0 min-w-[38px] min-h-[38px] flex items-center justify-center shadow-2xs"
+          className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-500 active:scale-90 transition-transform ml-auto flex-shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center shadow-2xs"
           title="รีเฟรชข้อมูล"
           aria-label="รีเฟรชข้อมูล"
         >
-          <RefreshCw size={15} className={loading ? 'animate-spin text-blue-500' : ''} />
+          <RefreshCw size={16} className={loading ? 'animate-spin text-blue-500' : ''} />
         </button>
       </div>
 
       {/* ── 1.2 ZONE / LOCATION QUICK CHIPS ─────────────────── */}
       {stats.locationStats?.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
-          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap pl-0.5 flex items-center gap-1 flex-shrink-0">
-            <MapPin size={12} className="text-indigo-500" /> โซน:
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap pl-0.5 flex items-center gap-1 flex-shrink-0">
+            <MapPin size={13} className="text-indigo-500" /> โซน:
           </span>
           {stats.locationStats.map((loc) => {
             const isActive = activeLocationFilters?.includes(loc.name.toLowerCase())
@@ -138,7 +138,7 @@ export default function MachinesMobileView({ logic }) {
                 key={loc.name}
                 type="button"
                 onClick={() => toggleLocationFilter(loc.name)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl font-semibold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[34px] rounded-xl font-bold whitespace-nowrap transition-all active:scale-95 shadow-2xs ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1.5 ring-indigo-400'
                     : 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border border-slate-200/80 dark:border-slate-700/80'
@@ -146,7 +146,7 @@ export default function MachinesMobileView({ logic }) {
               >
                 <span>{loc.name}</span>
                 <span
-                  className={`text-[10px] font-mono px-1 rounded ${
+                  className={`text-[11px] font-mono px-1 rounded ${
                     isActive
                       ? 'bg-indigo-700 text-white'
                       : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300'
@@ -167,6 +167,7 @@ export default function MachinesMobileView({ logic }) {
             value={search}
             onChange={setSearch}
             placeholder={t('mc_search_ph')}
+            className="w-full"
           />
         </div>
         <FilterSortPanel
@@ -275,22 +276,22 @@ export default function MachinesMobileView({ logic }) {
                       </div>
 
                       {/* Specs Tags Matrix */}
-                      <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                      <div className="flex items-center gap-1.5 flex-wrap text-xs">
                         <span className="font-mono bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md font-bold border border-blue-200/40 dark:border-blue-800/40">
                           {m.Diameter ? `${m.Diameter}"` : '—'} · {m.Gauge ? `${m.Gauge}G` : '—'}
                         </span>
                         {m.Needle && (
-                          <span className="font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded-md">
+                          <span className="font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md font-semibold">
                             เข็ม: {m.Needle}
                           </span>
                         )}
                         {m.Feeder && (
-                          <span className="font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded-md">
+                          <span className="font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md font-semibold">
                             Feeder: {m.Feeder}
                           </span>
                         )}
                         {m.WaterCheck && (
-                          <span className="font-mono text-slate-500 dark:text-slate-400">
+                          <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">
                             น้ำ: {m.WaterCheck}
                           </span>
                         )}
@@ -303,19 +304,19 @@ export default function MachinesMobileView({ logic }) {
 
                 {/* Bottom Section: Serial & Action Buttons */}
                 <div
-                  className="px-3.5 py-2 bg-slate-50/60 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between"
+                  className="px-3.5 py-2.5 bg-slate-50/60 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span className="text-[11px] font-mono text-slate-400 truncate max-w-[140px]">
+                  <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[140px]">
                     {m.Serial_NEW ? `SN: ${m.Serial_NEW}` : m.Serial_OLD ? `SN: ${m.Serial_OLD}` : '—'}
                   </span>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     {/* Print PDF Button */}
                     <button
                       type="button"
                       onClick={() => setPdfItem(m)}
-                      className="px-2.5 py-1.5 rounded-xl text-rose-600 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 border border-rose-200/50 dark:border-rose-900/40 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs"
+                      className="px-3 py-2 min-h-[38px] rounded-xl text-rose-600 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 border border-rose-200/50 dark:border-rose-900/40 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-bold shadow-2xs"
                       title="พิมพ์ PDF"
                     >
                       <FileText size={14} />
@@ -327,7 +328,7 @@ export default function MachinesMobileView({ logic }) {
                       <button
                         type="button"
                         onClick={() => openEdit(m)}
-                        className="px-2.5 py-1.5 rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700/60 active:scale-95 transition-all flex items-center gap-1 text-[11px] font-bold shadow-2xs"
+                        className="px-3 py-2 min-h-[38px] rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700/60 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-bold shadow-2xs"
                         title="แก้ไข"
                       >
                         <Pencil size={14} />
@@ -340,10 +341,10 @@ export default function MachinesMobileView({ logic }) {
                       <button
                         type="button"
                         onClick={() => del(m._id || m.id)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200/60 dark:border-slate-700/60 active:scale-95 transition-all min-w-[34px] min-h-[34px] flex items-center justify-center shadow-2xs"
+                        className="p-2 rounded-xl text-slate-400 hover:text-rose-600 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200/60 dark:border-slate-700/60 active:scale-95 transition-all min-w-[38px] min-h-[38px] flex items-center justify-center shadow-2xs"
                         title="ลบ"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={15} />
                       </button>
                     )}
                   </div>
