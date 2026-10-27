@@ -26,6 +26,7 @@ import {
 import { QUICK_INTERRUPTION_PRESETS } from './WorkOrders'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
+import { PROBLEM_CAUSE_OPTIONS, getProblemCauseMeta } from '../constants/problemCause'
 import { isItemInText, toggleItemInText } from '../utils/textToggle'
 import {
   ActionChoiceModal,
@@ -319,6 +320,7 @@ function StepReport({ serial, cylinder, onSubmitted, onBack }) {
   const [rollNo, setRollNo] = useState('')
   const [problem, setProblem] = useState('')
   const [urgency, setUrgency] = useState('ปกติ')
+  const [problemCause, setProblemCause] = useState('')
   const [reporter, setReporter] = useState('')
   const [repairType, setRepairType] = useState('EASY') // 'EASY' | 'COMPLEX'
   const [techList, setTechList] = useState([])
@@ -2072,6 +2074,21 @@ function StatusView({ request, onOpenPdf }) {
           }
         />
         <FieldRow label="ระดับความเร่งด่วน" value={<PriorityBadge priority={request.priority} />} />
+        <FieldRow
+          label="สาเหตุปัญหา"
+          value={
+            request.problem_cause ? (
+              (() => {
+                const meta = getProblemCauseMeta(request.problem_cause)
+                return (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${meta.badgeClass}`}>
+                    {meta.icon} {meta.label}
+                  </span>
+                )
+              })()
+            ) : null
+          }
+        />
         <FieldRow label="อาการเสียที่แจ้ง" value={request.problem_description} full />
         <FieldRow label="ผู้แจ้งซ่อม" value={request.reported_by} />
         <FieldRow label="วันที่แจ้ง" value={request.created_at ? new Date(request.created_at).toLocaleString('th-TH') : null} />

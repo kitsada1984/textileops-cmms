@@ -31,12 +31,13 @@ import { useT } from '../contexts/LanguageContext'
 import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateRepairRequestPdfProps } from '../utils/pdfDocGenerators'
+import { PROBLEM_CAUSE_OPTIONS, getProblemCauseMeta } from '../constants/problemCause'
 
 const EMPTY = {
   request_no: '', status: 'PENDING',
   cylinder_serial: '', cylinder_location: '', cylinder_standard: '', machine_mc: '',
   KI: '', Design: '', roll_no: '', priority: 'ปกติ', repair_type: 'COMPLEX',
-  problem_description: '', reported_by: '',
+  problem_description: '', problem_cause: '', reported_by: '',
   technician_name: '', approved_by: '', approved_at: '', approval_notes: '',
   repair_details: '', parts_used: '', completed_by: '', completed_at: '',
 }
@@ -234,6 +235,7 @@ export default function RepairRequests() {
     { field:'roll_no',             label: 'เลขม้วน',                  type:'number'   },
     { field:'cylinder_location',   label: t('cyl_th_loc'),            type:'text'     },
     { field:'problem_description', label: t('rr_field_problem'),      type:'textarea' },
+    { field:'problem_cause',       label: 'สาเหตุปัญหา',              type:'select'   },
     { field:'status',              label: t('status'),                 type:'select'   },
     { field:'reported_by',         label: t('rr_field_reported_by'),  type:'text'     },
     { field:'technician_name',     label: t('wo_th_tech'),            type:'text'     },
@@ -244,7 +246,7 @@ export default function RepairRequests() {
   const normalizedData = useMemo(() => (Array.isArray(data) ? data.map(normalizeRepairRecord) : []), [data])
 
   const searched = normalizedData.filter(r =>
-    [r.request_no, r.cylinder_serial, r.cylinder_location, r.Design, r.KI, r.roll_no, r.RollNo, r.reported_by, r.technician_name, r.problem_description, r.repair_type]
+    [r.request_no, r.cylinder_serial, r.cylinder_location, r.Design, r.KI, r.roll_no, r.RollNo, r.reported_by, r.technician_name, r.problem_description, r.problem_cause, r.repair_type]
       .some(v => String(v || '').toLowerCase().includes(search.toLowerCase()))
   )
   const byStatus = REPAIR_STATUS.reduce((acc, s) => { acc[s.value] = normalizedData.filter(r => r.status === s.value).length; return acc }, {})
@@ -265,10 +267,15 @@ export default function RepairRequests() {
     if (!hasKI) list.splice(kiInsertAt, 0, { field: 'KI', label: 'KI', type: 'number' })
     const rollInsertAt = list.findIndex(c => c.field === 'KI' || c.field === 'ki') + 1
     if (!hasRollNo) list.splice(rollInsertAt, 0, { field: 'roll_no', label: 'เลขม้วน', type: 'number' })
+    const hasProblemCause = list.some(c => c.field === 'problem_cause')
+    if (!hasProblemCause) {
+      const probIdx = list.findIndex(c => c.field === 'problem_description')
+      list.splice(probIdx >= 0 ? probIdx + 1 : list.length, 0, { field: 'problem_cause', label: 'สาเหตุปัญหา', type: 'select' })
+    }
     return list
   })()
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
-    selectOptions: { status: REPAIR_STATUS, repair_type: REPAIR_TYPE_OPTIONS },
+    selectOptions: { status: REPAIR_STATUS, repair_type: REPAIR_TYPE_OPTIONS, problem_cause: PROBLEM_CAUSE_OPTIONS },
   }), [cols])
   const displayRows = useMemo(() => applyFilterSort(searched, FS_COLS, filterSort), [searched, FS_COLS, filterSort])
 
@@ -291,6 +298,19 @@ export default function RepairRequests() {
           background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe'
         }}>
           🛡️ งานยาก
+        </span>
+      )
+    }
+    if (col.field === 'problem_cause') {
+      const meta = getProblemCauseMeta(val)
+      if (!meta) return <span style={{ color: 'var(--text-400)' }}>-</span>
+      return (
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${meta.badgeClass}`}
+          title={`สาเหตุปัญหา: ${meta.label}`}
+        >
+          <span>{meta.icon}</span>
+          <span>{meta.label}</span>
         </span>
       )
     }
@@ -360,6 +380,7 @@ export default function RepairRequests() {
     {
       label: t('dr_problem'),
       fields: [
+        { label: 'สาเหตุปัญหา', value: detailRec.problem_cause },
         { label: t('rr_field_problem'),     value: detailRec.problem_description },
         { label: t('rr_field_reported_by'), value: detailRec.reported_by },
       ],
@@ -795,6 +816,7 @@ export default function RepairRequests() {
             <div className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
               ⚠️ รายละเอียดปัญหา & การแก้ไข
             </div>
+            <F form={form} setForm={setForm} label="🔍 สาเหตุปัญหา" id="problem_cause" opts={PROBLEM_CAUSE_OPTIONS} useBuilder={false} />
             <F form={form} setForm={setForm} label={t('rr_field_problem')} id="problem_description" type="textarea" placeholder="ระบุอาการเสีย หรือปัญหาที่พบ..." rows={4} />
             <F form={form} setForm={setForm} label={t('rr_field_approval_notes')} id="approval_notes" type="textarea" placeholder="คำสั่งการเพิ่มเติมจากหัวหน้าช่าง..." rows={2} />
             <F form={form} setForm={setForm} label={t('rr_field_repair_details')} id="repair_details" type="textarea" placeholder="รายละเอียดการซ่อม / วิธีแก้ไข..." rows={3} />

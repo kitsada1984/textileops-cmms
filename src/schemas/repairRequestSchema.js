@@ -7,5 +7,6 @@ export const repairRequestSchema = z.object({
   problem_description: z.string().trim().min(1, 'กรุณาระบุอาการเสีย/ปัญหาที่พบ'),
   priority: z.enum(['ปกติ', 'ด่วน', 'ด่วนที่สุด']).default('ปกติ'),
   repair_type: z.string().trim().optional().default('EASY'),
+  problem_cause: z.enum(['คน', 'เครื่องจักร', 'วัตถุดิบ']).optional().nullable().or(z.literal('')),
   status: z.string().trim().optional().default('PENDING'),
 })

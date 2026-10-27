@@ -391,6 +391,7 @@ export function generateWorkOrderPdfProps(wo, context = {}) {
         title: 'รายละเอียดและอาการปัญหา (Problem & Task Description)',
         fields: [
           { label: 'ชื่องาน / หัวข้อ (Title)', value: wo.Title || wo.TaskName || `งาน ${wo.JobType || 'ซ่อมบำรุง'} เครื่อง ${wo.MC || ''}`, full: true },
+          { label: '🔍 สาเหตุปัญหา (Root Cause)', value: wo.ProblemCause || wo.problem_cause || '—' },
           { label: 'รายละเอียดปัญหา (Problem Detail)', value: wo.Problem || wo.Description || wo.ProblemDetail || wo.Comment || '—', full: true },
           { label: 'แนวทางการแก้ไข (Action Taken)', value: wo.Solution || wo.ActionTaken || wo.Detail || '—', full: true },
         ],
@@ -486,6 +487,7 @@ export function generateRepairRequestPdfProps(req, context = {}) {
       {
         title: 'อาการขัดข้องและปัญหาที่พบ (Issue Description & Actions)',
         fields: [
+          { label: '🔍 สาเหตุปัญหา (Root Cause)', value: req.problem_cause || req.ProblemCause || '—' },
           { label: '⚠️ รายละเอียดปัญหา / อาการเสียที่พบ (Problem Description)', value: cleanProblem, full: true },
           req.approval_notes ? { label: '📝 คำสั่งการ / หมายเหตุหัวหน้าช่าง (Supervisor Notes)', value: req.approval_notes, full: true } : null,
           req.repair_details ? { label: '🛠️ รายละเอียดการซ่อม / วิธีแก้ไข (Repair Details)', value: req.repair_details, full: true } : null,

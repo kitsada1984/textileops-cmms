@@ -51,6 +51,19 @@ describe('buildRepairWorkOrderPayload', () => {
     expect(payload.Status).toBe('COMPLETED')
     expect(payload.JobType).toBe('REPAIR')
     expect(payload.Priority).toBe('MEDIUM')
+    expect(payload.ProblemCause).toBe('')
+  })
+
+  it('transfers problem_cause from repair record to ProblemCause in workorder payload', () => {
+    const withCause = buildRepairWorkOrderPayload({
+      woId: 'WO-RR202609-0058',
+      record: { ...record, problem_cause: 'เครื่องจักร' },
+      techName: 'ช.หนึ่ง',
+      startIso: '2026-09-29T06:00:00.000Z',
+      endIso: '2026-09-29T08:30:00.000Z',
+      durationHours: 2.5,
+    })
+    expect(withCause.ProblemCause).toBe('เครื่องจักร')
   })
 
   it('stores the extras that have no column inside the Comment JSON', () => {

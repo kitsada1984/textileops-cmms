@@ -61,6 +61,12 @@ describe('Drizzle ORM Schema for Cloudflare D1', () => {
     expect(workorders.WO_ID).toBeDefined()
     expect(workorders.Status).toBeDefined()
     expect(workorders.Tech).toBeDefined()
+    expect(workorders.ProblemCause).toBeDefined()
+
+    // repair_requests table
+    expect(repair_requests.id).toBeDefined()
+    expect(repair_requests.request_no).toBeDefined()
+    expect(repair_requests.problem_cause).toBeDefined()
 
     // needle_conditions table
     expect(needle_conditions.id).toBeDefined()

@@ -62,6 +62,7 @@ import WorkOrdersReportModal from '../components/workorder/WorkOrdersReportModal
 import { db } from '../api/dbClient'
 import { generateWorkOrderPdfProps } from '../utils/pdfDocGenerators'
 import { notifyLineWorkOrderAssigned } from '../utils/line'
+import { PROBLEM_CAUSE_OPTIONS, getProblemCauseMeta } from '../constants/problemCause'
 
 const DEFAULT_KPI_TARGETS = {
   REPAIR: 1.0,
@@ -449,6 +450,14 @@ function WorkOrderCard({
           >
             {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : '🛠️ แก้ไข'}
           </span>
+          {(job.ProblemCause || job.problem_cause) && (() => {
+            const causeMeta = getProblemCauseMeta(job.ProblemCause || job.problem_cause)
+            return (
+              <span className={`badge text-[10px] font-bold ${causeMeta.badgeClass}`} title={`สาเหตุปัญหา: ${causeMeta.label}`}>
+                {causeMeta.icon} {causeMeta.label}
+              </span>
+            )
+          })()}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className={`badge text-[10px] ${statusMeta.badgeClass}`}>
@@ -730,6 +739,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [design, setDesign] = useState('')
   const [rollNo, setRollNo] = useState('')
   const [jobType, setJobType] = useState('REPAIR')
+  const [problemCause, setProblemCause] = useState('')
   const [selectedTechs, setSelectedTechs] = useState([])
   const [comment, setComment] = useState('')
   const [status, setStatus] = useState('IN_PROGRESS')
@@ -1101,6 +1111,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           String(job.KI || '').toLowerCase().includes(q) ||
           String(job.Design || '').toLowerCase().includes(q) ||
           String(job.Technicians || '').toLowerCase().includes(q) ||
+          String(job.ProblemCause || job.problem_cause || '').toLowerCase().includes(q) ||
           String(job.CreatedBy || '').toLowerCase().includes(q) ||
           String(getWorkOrderDetails(job) || '').toLowerCase().includes(q) ||
           String(job.Details || '').toLowerCase().includes(q) ||
@@ -1226,6 +1237,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         RollNo: rollNo.trim(),
         roll_no: rollNo.trim(),
         JobType: jobType,
+        ProblemCause: problemCause || '',
         Technicians: selectedTechs.join(', '),
         Comment: detailText,
         Details: detailText,
@@ -1285,6 +1297,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       setDesign('')
       setRollNo('')
       setJobType('REPAIR')
+      setProblemCause('')
       setSelectedTechs([])
       setComment('')
       setStatus('IN_PROGRESS')
@@ -1371,6 +1384,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       ...job,
       Comment: detailsVal === '—' ? (job.Comment || '') : detailsVal,
       Details: detailsVal === '—' ? (job.Details || '') : detailsVal,
+      ProblemCause: job.ProblemCause || job.problem_cause || '',
       Status: statusCode,
     })
     const techArray = (job.Technicians || '')
@@ -2281,7 +2295,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   </div>
                 </div>
 
-                {/* 2. ประเภท, รายละเอียด (ถัดจากประเภท), สถานะ */}
+                {/* 2. ประเภท, สาเหตุปัญหา, รายละเอียด, สถานะ */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                   <div className="sm:col-span-3">
                     <label className="label">ประเภทงาน (Job Type)</label>
@@ -2295,7 +2309,22 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       <option value="PM">🧹 PM / ล้างเครื่อง</option>
                     </select>
                   </div>
-                  <div className="sm:col-span-6">
+                  <div className="sm:col-span-3">
+                    <label className="label">สาเหตุปัญหา (Root Cause)</label>
+                    <select
+                      value={problemCause}
+                      onChange={(e) => setProblemCause(e.target.value)}
+                      className="select font-semibold"
+                    >
+                      <option value="">-- ไม่ระบุ / ระบุภายหลัง --</option>
+                      {PROBLEM_CAUSE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.icon} {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-4">
                     <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
                     <input
                       type="text"
@@ -2305,7 +2334,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       className="input"
                     />
                   </div>
-                  <div className="sm:col-span-3">
+                  <div className="sm:col-span-2">
                     <label className="label">สถานะ (Status)</label>
                     <select
                       value={status}
@@ -2653,6 +2682,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     <th>Design</th>
                     <th>เลขม้วน</th>
                     <th>ประเภท</th>
+                    <th>สาเหตุปัญหา</th>
                     <th>รายละเอียด</th>
                     <th>สถานะ</th>
                     <th>ช่างผู้ปฏิบัติงาน</th>
@@ -2713,6 +2743,26 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                           >
                             {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : '🛠️ แก้ไข'}
                           </span>
+                        </td>
+
+                        {/* สาเหตุปัญหา */}
+                        <td>
+                          {job.ProblemCause || job.problem_cause ? (
+                            (() => {
+                              const meta = getProblemCauseMeta(job.ProblemCause || job.problem_cause)
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${meta.badgeClass}`}
+                                  title={`สาเหตุปัญหา: ${meta.label}`}
+                                >
+                                  <span>{meta.icon}</span>
+                                  <span>{meta.label}</span>
+                                </span>
+                              )
+                            })()
+                          ) : (
+                            <span className="text-slate-400 font-mono text-xs">—</span>
+                          )}
                         </td>
 
                         {/* รายละเอียด */}
@@ -2914,7 +2964,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
                   {filteredJobs.length === 0 && (
                     <tr>
-                      <td colSpan={14} className="text-center py-12 text-slate-400">
+                      <td colSpan={15} className="text-center py-12 text-slate-400">
                         {jobsLoading ? 'กำลังโหลดข้อมูล...' : 'ไม่พบรายการใบสั่งงาน'}
                       </td>
                     </tr>
@@ -3397,7 +3447,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label className="label">แบบงาน (Design)</label>
                 <input
@@ -3416,6 +3466,21 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   onChange={(e) => setEditJob({ ...editJob, RollNo: e.target.value, roll_no: e.target.value })}
                   className="input font-mono"
                 />
+              </div>
+              <div>
+                <label className="label">สาเหตุปัญหา (Root Cause)</label>
+                <select
+                  value={editJob.ProblemCause || editJob.problem_cause || ''}
+                  onChange={(e) => setEditJob({ ...editJob, ProblemCause: e.target.value })}
+                  className="select font-semibold"
+                >
+                  <option value="">-- ไม่ระบุ / ระบุภายหลัง --</option>
+                  {PROBLEM_CAUSE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.icon} {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="label">ประเภทงาน (Job Type)</label>

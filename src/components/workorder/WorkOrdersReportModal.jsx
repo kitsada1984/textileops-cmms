@@ -40,6 +40,7 @@ import {
   WORK_ORDER_TYPE_OPTIONS,
   WORK_ORDER_STATUS_OPTIONS,
 } from '../../pages/WorkOrders'
+import { getProblemCauseMeta } from '../../constants/problemCause'
 import {
   loadLineSettings,
   getSupervisorLineIds,
@@ -624,6 +625,7 @@ ${origin}`
                   <th className="py-2 px-2 w-16">เครื่อง</th>
                   <th className="py-2 px-2 w-20">KI / แบบ</th>
                   <th className="py-2 px-2 w-20">ประเภท</th>
+                  <th className="py-2 px-2 w-20">สาเหตุปัญหา</th>
                   <th className="py-2 px-2.5">อาการเสีย / รายละเอียดงาน</th>
                   <th className="py-2 px-2 w-20 text-center">สถานะ</th>
                   <th className="py-2 px-2 w-28">ช่างผู้ทำ</th>
@@ -688,6 +690,22 @@ ${origin}`
                       {/* Type */}
                       <td className="py-1.5 px-2 whitespace-nowrap font-medium text-slate-800">
                         {typeLabel}
+                      </td>
+
+                      {/* Problem Cause */}
+                      <td className="py-1.5 px-2 whitespace-nowrap text-[10.5px]">
+                        {job.ProblemCause || job.problem_cause ? (
+                          (() => {
+                            const meta = getProblemCauseMeta(job.ProblemCause || job.problem_cause)
+                            return (
+                              <span className={`inline-block px-1.5 py-0.5 rounded border font-bold ${meta.printClass || 'bg-slate-100 text-slate-800 border-slate-300'}`}>
+                                {meta.icon} {meta.label}
+                              </span>
+                            )
+                          })()
+                        ) : (
+                          <span className="text-slate-400 font-mono">—</span>
+                        )}
                       </td>
 
                       {/* Details & Latest daily log */}

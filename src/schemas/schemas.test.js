@@ -81,6 +81,31 @@ describe('Domain Zod Schemas Validation', () => {
       expect(parsed.priority).toBe('ปกติ')
       expect(parsed.repair_type).toBe('EASY')
       expect(parsed.status).toBe('PENDING')
+      expect(parsed.problem_cause).toBeUndefined()
+    })
+
+    it('validates repair request with problem_cause options', () => {
+      for (const cause of ['คน', 'เครื่องจักร', 'วัตถุดิบ']) {
+        const parsed = repairRequestSchema.parse({
+          cylinder_serial: 'CYL-01',
+          machine_mc: 'MC-10',
+          reported_by: 'กฤษฎา',
+          problem_description: 'ด้ายขาดบ่อย',
+          problem_cause: cause,
+        })
+        expect(parsed.problem_cause).toBe(cause)
+      }
+    })
+
+    it('rejects invalid problem_cause option', () => {
+      const res = repairRequestSchema.safeParse({
+        cylinder_serial: 'CYL-01',
+        machine_mc: 'MC-10',
+        reported_by: 'กฤษฎา',
+        problem_description: 'ด้ายขาดบ่อย',
+        problem_cause: 'สาเหตุอื่นๆ',
+      })
+      expect(res.success).toBe(false)
     })
 
     it('rejects missing problem description', () => {

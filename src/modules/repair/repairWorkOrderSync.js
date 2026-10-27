@@ -11,7 +11,7 @@ export const WORKORDER_COLUMNS = new Set([
   'id', 'WO_ID', 'MC', 'KI', 'Problem', 'Priority', 'Status', 'Tech', 'Requester',
   'ApprovedBy', 'StartTime', 'EndTime', 'Duration', 'Comment', 'Images', 'Design',
   'BOM', 'DateStart', 'DateEnd', 'Detail', 'JobType', 'Result_Raw', 'Result_Set',
-  'Result_Dye', 'Result_Fix', 'LastUpdated', 'created_at', 'updated_at',
+  'Result_Dye', 'Result_Fix', 'LastUpdated', 'created_at', 'updated_at', 'ProblemCause',
 ])
 
 const priorityMap = { 'ด่วนที่สุด': 'HIGH', 'ด่วน': 'MEDIUM' }
@@ -60,6 +60,7 @@ export function buildRepairWorkOrderPayload({
     EndTime: endIso,
     Duration: durationHours,
     Status: 'COMPLETED',
+    ProblemCause: record.problem_cause || record.ProblemCause || '',
     LastUpdated: new Date().toISOString(),
     Comment: JSON.stringify({
       synced_from_repair: true,

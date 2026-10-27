@@ -16,6 +16,7 @@ export function normalizeRepairRecord(row) {
   let roll = row.roll_no || row.RollNo || row.roll_number || ''
   let priority = row.priority || row.urgency || 'ปกติ'
   let repair_type = row.repair_type || ''
+  let cause = row.problem_cause || row.ProblemCause || ''
   let rawProb = String(row.problem_description || '')
   let cleanProb = rawProb
 
@@ -29,6 +30,7 @@ export function normalizeRepairRecord(row) {
       if (!roll && (parsed.roll_no || parsed.RollNo || parsed.roll_number)) roll = parsed.roll_no || parsed.RollNo || parsed.roll_number
       if (!row.priority && parsed.priority) priority = parsed.priority
       if (!repair_type && parsed.repair_type) repair_type = parsed.repair_type
+      if (!cause && parsed.problem_cause) cause = parsed.problem_cause
     } catch {}
     cleanProb = cleanProb.replace(/<!--PROD:\{.*?\}-->\n?/, '').trim()
   }
@@ -52,6 +54,8 @@ export function normalizeRepairRecord(row) {
     roll_no: roll,
     RollNo: roll,
     priority: priority,
+    problem_cause: cause,
+    ProblemCause: cause,
     problem_description: cleanProb || rawProb,
     raw_problem_description: rawProb,
   }
@@ -61,7 +65,7 @@ export function normalizeRepairRecord(row) {
  * Builds the problem description with embedded metadata so that even if
  * Supabase lacks Design/KI/roll_no columns, the data is permanently preserved.
  */
-export function encodeRepairProblemDescription(problemText, { Design, KI, roll_no, priority, repair_type } = {}) {
+export function encodeRepairProblemDescription(problemText, { Design, KI, roll_no, priority, repair_type, problem_cause } = {}) {
   const cleanText = String(problemText || '')
     .replace(/<!--PROD:\{.*?\}-->\n?/, '')
     .replace(/\[ข้อมูลผลิต\s*\|\s*Design:[^\]]*?\]\n?/, '')
@@ -73,6 +77,9 @@ export function encodeRepairProblemDescription(problemText, { Design, KI, roll_n
     roll_no: roll_no || '',
     priority: priority || 'ปกติ',
     repair_type: repair_type || 'EASY',
+  }
+  if (problem_cause) {
+    metaObj.problem_cause = problem_cause
   }
 
   const jsonTag = `<!--PROD:${JSON.stringify(metaObj)}-->`

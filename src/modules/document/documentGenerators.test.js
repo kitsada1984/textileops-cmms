@@ -193,6 +193,19 @@ describe('Document Generation Deep Module', () => {
       expect(detailSection.fields.find((f) => f.label.includes('Design')).value).toBe('Cotton Rib 2x2')
       expect(detailSection.fields.find((f) => f.label.includes('เลขม้วน')).value).toBe('12')
       expect(detailSection.fields.find((f) => f.label.includes('Location')).value).toBe('โรงทอ 2')
+
+      const problemSection = result.sections.find((s) => s.title.includes('Problem & Task Description'))
+      expect(problemSection.fields.find((f) => f.label.includes('สาเหตุปัญหา')).value).toBe('—')
+    })
+
+    it('generateWorkOrderPdfProps renders problem cause when provided', () => {
+      const result = generateWorkOrderPdfProps({
+        id: 'wo-102',
+        WONumber: 'WO-2026-002',
+        ProblemCause: 'เครื่องจักร',
+      })
+      const problemSection = result.sections.find((s) => s.title.includes('Problem & Task Description'))
+      expect(problemSection.fields.find((f) => f.label.includes('สาเหตุปัญหา')).value).toBe('เครื่องจักร')
     })
 
     it('generateRepairRequestPdfProps cleans hidden tags and resolves cylinder specs', () => {
@@ -219,6 +232,19 @@ describe('Document Generation Deep Module', () => {
       expect(detailsSection.fields.find((f) => f.label.includes('Cylinder Serial')).value).toBe('CYL-03-A')
       expect(detailsSection.fields.find((f) => f.label.includes('Location')).value).toBe('โรงทอ 3')
       expect(result.images[0].url).toBe('https://img.com/broken.jpg')
+
+      const issueSection = result.sections.find((s) => s.title.includes('Issue Description & Actions'))
+      expect(issueSection.fields.find((f) => f.label.includes('สาเหตุปัญหา')).value).toBe('—')
+    })
+
+    it('generateRepairRequestPdfProps renders problem_cause when provided', () => {
+      const result = generateRepairRequestPdfProps({
+        id: 'req-51',
+        request_no: 'REQ-2026-051',
+        problem_cause: 'คน',
+      })
+      const issueSection = result.sections.find((s) => s.title.includes('Issue Description & Actions'))
+      expect(issueSection.fields.find((f) => f.label.includes('สาเหตุปัญหา')).value).toBe('คน')
     })
 
     it('generateCenterCheckPdfProps renders checklist items and tableData correctly', () => {

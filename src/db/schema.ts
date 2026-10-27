@@ -282,6 +282,7 @@ export const repair_requests = sqliteTable('repair_requests', {
   completed_at: text('completed_at'),
   completed_by: text('completed_by'),
   machine_mc: text('machine_mc'),
+  problem_cause: text('problem_cause'),
   created_at: text('created_at').$defaultFn(() => new Date().toISOString()),
   updated_at: text('updated_at').$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
@@ -424,6 +425,7 @@ export const workorders = sqliteTable('workorders', {
   Result_Set: text('Result_Set'),
   Result_Dye: text('Result_Dye'),
   Result_Fix: text('Result_Fix'),
+  ProblemCause: text('ProblemCause'),
   LastUpdated: text('LastUpdated'),
   created_at: text('created_at').$defaultFn(() => new Date().toISOString()),
   updated_at: text('updated_at').$defaultFn(() => new Date().toISOString()),
