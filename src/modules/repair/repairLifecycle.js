@@ -1,7 +1,8 @@
 /**
  * src/modules/repair/repairLifecycle.js
  * Deep module encapsulating Repair Request lifecycle operations:
- * - Schema-resilient Supabase mutations (automatic retry when DB schema lacks columns)
+ * - Schema-resilient Supabase & Cloudflare D1 mutations (automatic retry when DB schema lacks columns)
+ * - Whitelist sanitization of database columns preventing SQL errors from in-memory UI fields
  * - Transparent entity normalization
  * - Decoupled multi-channel notification dispatching
  */
@@ -23,6 +24,58 @@ const MISSING_COLUMN_RES = [
   /no such column: ["']?([^"',\s:]+)/i,
 ]
 
+/** Column names that really exist in the repair_requests table (D1 + Supabase), plus schema-retryable columns. */
+export const REPAIR_REQUEST_COLUMNS = new Set([
+  'id',
+  'request_no',
+  'cylinder_serial',
+  'cylinder_location',
+  'cylinder_standard',
+  'problem_description',
+  'reported_by',
+  'status',
+  'technician_name',
+  'approval_notes',
+  'approved_at',
+  'approved_by',
+  'repair_details',
+  'parts_used',
+  'completed_at',
+  'completed_by',
+  'machine_mc',
+  'problem_cause',
+  'created_at',
+  'updated_at',
+  'interruption_logs',
+  'gross_duration_hours',
+  'sunday_duration_hours',
+  'lost_duration_hours',
+  'net_working_hours',
+  // Optional schema columns that might exist in future/custom DB schemas:
+  'repair_type',
+  'Design',
+  'KI',
+  'roll_no',
+  'priority',
+])
+
+/**
+ * Strips unknown/virtual in-memory fields (such as raw_problem_description,
+ * duplicate casing aliases, and UI helper fields) before database mutations.
+ * @param {object} payload
+ * @returns {object} Clean payload with only valid column keys
+ */
+export function sanitizeRepairRequestPayload(payload) {
+  if (!payload || typeof payload !== 'object') return {}
+  const sanitized = {}
+  for (const [key, value] of Object.entries(payload)) {
+    if (REPAIR_REQUEST_COLUMNS.has(key)) {
+      sanitized[key] = value
+    }
+  }
+  return sanitized
+}
+
 function findMissingColumn(message) {
   const msg = String(message || '')
   for (const re of MISSING_COLUMN_RES) {
@@ -35,16 +88,16 @@ function findMissingColumn(message) {
 /**
  * Executes a database query with automated missing-column retry loop.
  * If the schema has not migrated certain columns, removes the offending
- * column from payload and retries seamlessly up to 10 times.
+ * column from payload and retries seamlessly up to 20 times.
  * @param {object} payload Mutation payload
  * @param {Function} executeQuery Function that executes the database request
  */
 async function runWithSchemaRetry(payload, executeQuery) {
-  const currentPayload = { ...payload }
+  const currentPayload = sanitizeRepairRequestPayload(payload)
   let lastResult = await executeQuery(currentPayload)
   let retryCount = 0
 
-  while (lastResult.error && retryCount < 10) {
+  while (lastResult.error && retryCount < 20) {
     retryCount++
     const errMsg = String(lastResult.error.message || '')
     const missingCol = findMissingColumn(errMsg)
@@ -189,7 +242,10 @@ export async function completeRepairRequest(id, completionPayload, options = {})
  * @returns {Promise<{ ok: boolean, data: object }>}
  */
 export async function updateRepairRequest(id, updatePayload) {
-  const { data: updatedData } = await runWithSchemaRetry(updatePayload, (p) =>
+  const cleanPayload = sanitizeRepairRequestPayload(updatePayload)
+  delete cleanPayload.id
+
+  const { data: updatedData } = await runWithSchemaRetry(cleanPayload, (p) =>
     db.from('repair_requests').update(p).eq('id', id).select().single()
   )
 

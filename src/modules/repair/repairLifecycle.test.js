@@ -7,6 +7,9 @@ import {
   createRepairRequest,
   approveRepairRequest,
   completeRepairRequest,
+  updateRepairRequest,
+  sanitizeRepairRequestPayload,
+  REPAIR_REQUEST_COLUMNS,
 } from './repairLifecycle'
 import { supabase } from '../../supabase'
 import * as telegramUtils from '../../utils/telegram'
@@ -235,4 +238,79 @@ describe('Repair Lifecycle DB Operations & Schema Resilience', () => {
     expect(telegramUtils.notifyCompleted).toHaveBeenCalled()
     expect(lineUtils.notifyLineCompleted).toHaveBeenCalled()
   })
-})
+  it('sanitizeRepairRequestPayload strips raw_problem_description and in-memory UI fields', () => {
+    const dirty = {
+      id: 'RR001',
+      request_no: 'RR202610-0001',
+      cylinder_serial: 'CYL-101',
+      problem_description: 'เข็มหัก',
+      raw_problem_description: 'เข็มหัก raw',
+      Design: 'D-01',
+      design: 'D-01',
+      KI: 5,
+      ki: 5,
+      roll_no: 12,
+      RollNo: 12,
+      problem_cause: 'เครื่องจักร',
+      ProblemCause: 'เครื่องจักร',
+      repair_type: 'EASY',
+      _id: 'mongo-id',
+      random_field: 'should-be-removed',
+    }
+
+    const clean = sanitizeRepairRequestPayload(dirty)
+    expect(clean.raw_problem_description).toBeUndefined()
+    expect(clean.design).toBeUndefined()
+    expect(clean.ki).toBeUndefined()
+    expect(clean.RollNo).toBeUndefined()
+    expect(clean.ProblemCause).toBeUndefined()
+    expect(clean._id).toBeUndefined()
+    expect(clean.random_field).toBeUndefined()
+
+    expect(clean.id).toBe('RR001')
+    expect(clean.request_no).toBe('RR202610-0001')
+    expect(clean.cylinder_serial).toBe('CYL-101')
+    expect(clean.problem_description).toBe('เข็มหัก')
+    expect(clean.problem_cause).toBe('เครื่องจักร')
+    expect(clean.Design).toBe('D-01')
+    expect(clean.KI).toBe(5)
+    expect(clean.roll_no).toBe(12)
+    expect(clean.repair_type).toBe('EASY')
+  })
+
+  it('updateRepairRequest automatically sanitizes payload and removes raw_problem_description before calling DB', async () => {
+    let capturedPayload = null
+    const mockSingle = vi.fn().mockImplementation(() => {
+      return Promise.resolve({
+        data: { id: 'RR001', problem_description: 'เข็มหัก', status: 'IN_PROGRESS' },
+        error: null,
+      })
+    })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockUpdate = vi.fn().mockImplementation((payload) => {
+      capturedPayload = payload
+      return { eq: mockEq }
+    })
+    supabase.from.mockReturnValue({ update: mockUpdate })
+
+    const res = await updateRepairRequest('RR001', {
+      id: 'RR001',
+      problem_description: 'เข็มหัก',
+      raw_problem_description: 'เข็มหัก raw',
+      problem_cause: 'เครื่องจักร',
+      ProblemCause: 'เครื่องจักร',
+      Design: 'D-99',
+      design: 'D-99',
+    })
+
+    expect(res.ok).toBe(true)
+    expect(capturedPayload).not.toBeNull()
+    expect(capturedPayload.raw_problem_description).toBeUndefined()
+    expect(capturedPayload.ProblemCause).toBeUndefined()
+    expect(capturedPayload.design).toBeUndefined()
+    expect(capturedPayload.id).toBeUndefined() // Primary key removed from update body
+    expect(capturedPayload.problem_description).toBe('เข็มหัก')
+    expect(capturedPayload.problem_cause).toBe('เครื่องจักร')
+  })
+});

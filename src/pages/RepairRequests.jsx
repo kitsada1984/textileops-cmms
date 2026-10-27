@@ -25,6 +25,7 @@ import {
   dispatchRepairCompletedNotification,
   REPAIR_PRIORITY_OPTIONS,
   REPAIR_TYPE_OPTIONS,
+  sanitizeRepairRequestPayload,
 } from '../modules/repair'
 import CylinderQRModal from '../components/CylinderQR'
 import { useT } from '../contexts/LanguageContext'
@@ -142,7 +143,7 @@ export default function RepairRequests() {
         }
       }
 
-      let payload = {
+      let payload = sanitizeRepairRequestPayload({
         ...form,
         ...(requestNo ? { request_no: requestNo } : {}),
         cylinder_serial: serialForSave,
@@ -152,8 +153,9 @@ export default function RepairRequests() {
           roll_no: form.roll_no || form.RollNo,
           priority: form.priority || 'ปกติ',
           repair_type: form.repair_type || (form.status === 'APPROVED' ? 'EASY' : 'COMPLEX'),
+          problem_cause: form.problem_cause,
         }),
-      }
+      })
       let savedRecord = null
       if (isEdit && payload.id) {
         const res = await updateRepairRequest(payload.id, payload)
