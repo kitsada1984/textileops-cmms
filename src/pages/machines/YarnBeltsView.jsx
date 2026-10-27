@@ -13,11 +13,13 @@ import {
 } from 'lucide-react'
 import SearchInput from '../../components/ui/SearchInput'
 import GoogleSheetSyncButton from '../../components/ui/GoogleSheetSyncButton'
+import useDeviceView from '../../hooks/useDeviceView'
 import { useAuth } from '../../contexts/AuthContext'
 import { aggregateYarnBelts, getMachineTapes } from '../../utils/yarnBeltsLogic'
 import YarnBeltsPrintModal from './YarnBeltsPrintModal'
 
 export default function YarnBeltsView({ logic }) {
+  const { isMobile } = useDeviceView()
   const { user } = useAuth()
   const { data: machines = [], loading, load, setDetailRec } = logic
 
@@ -366,95 +368,183 @@ export default function YarnBeltsView({ logic }) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="table w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-2.5 px-3 text-center w-10">#</th>
-                <th className="py-2.5 px-3.5 text-left w-24">รหัสเครื่อง</th>
-                <th className="py-2.5 px-3 text-center w-20">โซน</th>
-                <th className="py-2.5 px-3 text-left w-28">ประเภท</th>
-                <th className="py-2.5 px-2.5 text-center w-20">เทป 1</th>
-                <th className="py-2.5 px-2.5 text-center w-20">เทป 2</th>
-                <th className="py-2.5 px-2.5 text-center w-20">เทป 3</th>
-                <th className="py-2.5 px-2.5 text-center w-20">เทป 4</th>
-                <th className="py-2.5 px-2.5 text-center w-20">เทป 5</th>
-                <th className="py-2.5 px-3 text-center w-20">ดูข้อมูล</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+          {isMobile ? (
+            <div className="p-3 space-y-2.5">
               {displayMachines.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="text-center py-12 text-slate-400 text-xs">
-                    ไม่พบเครื่องจักรตามเงื่อนไขที่ค้นหาหรือเลือก
-                  </td>
-                </tr>
+                <div className="card p-8 text-center text-slate-400 text-xs border border-dashed border-slate-200 dark:border-slate-800">
+                  ไม่พบเครื่องจักรตามเงื่อนไขที่ค้นหาหรือเลือก
+                </div>
               ) : (
                 displayMachines.map((m, idx) => {
                   const tapes = getMachineTapes(m)
 
                   return (
-                    <tr
+                    <div
                       key={m.id || m._id || m.Mc || idx}
                       onClick={() => setDetailRec(m)}
-                      className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                      className="card p-3 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm space-y-2 active:scale-[0.99] transition-transform cursor-pointer"
                     >
-                      <td className="py-2 px-3 text-center font-mono text-[11px] text-slate-400">
-                        {idx + 1}
-                      </td>
-                      <td className="py-2 px-3.5 font-mono font-bold text-slate-900 dark:text-slate-100">
-                        {m.Mc || '—'}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          {m.Location || '—'}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
-                        {m.Type || '—'}
-                      </td>
-
-                      {/* Tape 1 to 5 Columns with Highlight */}
-                      {[1, 2, 3, 4, 5].map((pos) => {
-                        const belt = tapes[pos]
-                        const isMatch = selectedBelt && belt === selectedBelt
-
-                        return (
-                          <td key={pos} className="py-2 px-2.5 text-center font-mono">
-                            {belt ? (
-                              <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] inline-block transition-all ${
-                                isMatch
-                                  ? 'bg-blue-600 text-white ring-2 ring-blue-400 scale-105'
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
-                              }`}>
-                                {belt}
+                      {/* Card Top: Mc + Zone + Type + Eye Action */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-extrabold text-xs">
+                            <Cpu size={15} />
+                          </div>
+                          <div>
+                            <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
+                              {m.Mc || '—'}
+                            </span>
+                            {m.Location && (
+                              <span className="ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                {m.Location}
                               </span>
-                            ) : (
-                              <span className="text-slate-300 dark:text-slate-600 text-[11px]">—</span>
                             )}
-                          </td>
-                        )
-                      })}
+                          </div>
+                        </div>
 
-                      {/* Action */}
-                      <td
-                        onClick={(e) => e.stopPropagation()}
-                        className="py-2 px-3 text-center"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setDetailRec(m)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                          title="ดูรายละเอียดเครื่องจักร"
-                        >
-                          <Eye size={14} />
-                        </button>
-                      </td>
-                    </tr>
+                        <div className="flex items-center gap-1.5">
+                          {m.Type && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                              {m.Type}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDetailRec(m)
+                            }}
+                            className="p-1 rounded-lg text-slate-400 hover:text-blue-600"
+                            title="ดูรายละเอียด"
+                          >
+                            <Eye size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tape 1-5 Grid Pills (5 columns) */}
+                      <div className="grid grid-cols-5 gap-1 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                        {[1, 2, 3, 4, 5].map((pos) => {
+                          const belt = tapes[pos]
+                          const isMatch = selectedBelt && belt === selectedBelt
+
+                          return (
+                            <div
+                              key={pos}
+                              className={`p-1 rounded-lg text-center font-mono ${
+                                isMatch
+                                  ? 'bg-blue-600 text-white ring-2 ring-blue-400 font-black'
+                                  : belt
+                                    ? 'bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80'
+                                    : 'bg-transparent text-slate-300 dark:text-slate-700'
+                              }`}
+                            >
+                              <div className={`text-[9px] ${isMatch ? 'text-blue-100' : 'text-slate-400'}`}>
+                                เทป {pos}
+                              </div>
+                              <div className={`text-[11px] font-bold truncate ${isMatch ? 'text-white' : belt ? 'text-slate-900 dark:text-slate-100' : 'text-slate-300 dark:text-slate-600'}`}>
+                                {belt || '—'}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
                   )
                 })
               )}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <table className="table w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                  <th className="py-2.5 px-3 text-center w-10">#</th>
+                  <th className="py-2.5 px-3.5 text-left w-24">รหัสเครื่อง</th>
+                  <th className="py-2.5 px-3 text-center w-20">โซน</th>
+                  <th className="py-2.5 px-3 text-left w-28">ประเภท</th>
+                  <th className="py-2.5 px-2.5 text-center w-20">เทป 1</th>
+                  <th className="py-2.5 px-2.5 text-center w-20">เทป 2</th>
+                  <th className="py-2.5 px-2.5 text-center w-20">เทป 3</th>
+                  <th className="py-2.5 px-2.5 text-center w-20">เทป 4</th>
+                  <th className="py-2.5 px-2.5 text-center w-20">เทป 5</th>
+                  <th className="py-2.5 px-3 text-center w-20">ดูข้อมูล</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {displayMachines.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="text-center py-12 text-slate-400 text-xs">
+                      ไม่พบเครื่องจักรตามเงื่อนไขที่ค้นหาหรือเลือก
+                    </td>
+                  </tr>
+                ) : (
+                  displayMachines.map((m, idx) => {
+                    const tapes = getMachineTapes(m)
+
+                    return (
+                      <tr
+                        key={m.id || m._id || m.Mc || idx}
+                        onClick={() => setDetailRec(m)}
+                        className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                      >
+                        <td className="py-2 px-3 text-center font-mono text-[11px] text-slate-400">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2 px-3.5 font-mono font-bold text-slate-900 dark:text-slate-100">
+                          {m.Mc || '—'}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {m.Location || '—'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
+                          {m.Type || '—'}
+                        </td>
+
+                        {/* Tape 1 to 5 Columns with Highlight */}
+                        {[1, 2, 3, 4, 5].map((pos) => {
+                          const belt = tapes[pos]
+                          const isMatch = selectedBelt && belt === selectedBelt
+
+                          return (
+                            <td key={pos} className="py-2 px-2.5 text-center font-mono">
+                              {belt ? (
+                                <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] inline-block transition-all ${
+                                  isMatch
+                                    ? 'bg-blue-600 text-white ring-2 ring-blue-400 scale-105'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                                }`}>
+                                  {belt}
+                                </span>
+                              ) : (
+                                <span className="text-slate-300 dark:text-slate-600 text-[11px]">—</span>
+                              )}
+                            </td>
+                          )
+                        })}
+
+                        {/* Action */}
+                        <td
+                          onClick={(e) => e.stopPropagation()}
+                          className="py-2 px-3 text-center"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setDetailRec(m)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                            title="ดูรายละเอียดเครื่องจักร"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

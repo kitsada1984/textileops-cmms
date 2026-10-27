@@ -31,6 +31,7 @@ import StatusBadge from '../components/ui/StatusBadge'
 import SearchInput from '../components/ui/SearchInput'
 import { useT } from '../contexts/LanguageContext'
 import usePagePerms from '../hooks/usePagePerms'
+import useDeviceView from '../hooks/useDeviceView'
 import DetailDrawer from '../components/ui/DetailDrawer'
 import { useToast } from '../components/ui/Toast'
 import F from '../components/ui/FormField'
@@ -257,6 +258,7 @@ function getMissingStockColumn(error) {
 }
 
 export default function StockMovement() {
+  const { isMobile } = useDeviceView()
   const { t } = useT()
   const { canAdd, canEdit, canDelete } = usePagePerms('stock')
   const toast = useToast()
@@ -793,7 +795,7 @@ export default function StockMovement() {
             value={search}
             onChange={setSearch}
             placeholder="ค้นหา เลขรายการ / รหัสอะไหล่ / ชื่ออะไหล่ / M/C / ผู้ดำเนินการ..."
-            className="w-full sm:w-80"
+            className={isMobile ? 'w-full' : 'w-full sm:w-80'}
           />
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
           <GoogleSheetSyncButton
@@ -836,79 +838,233 @@ export default function StockMovement() {
         </div>
       </div>
 
-      {/* ── DATA TABLE ────────────────────────────────────────── */}
-      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="table w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                {cols.map((c) => (
-                  <th key={c.field} style={getColumnWidthStyle(c)} className="py-3 px-3 text-left whitespace-nowrap">
-                    {c.label}
-                  </th>
-                ))}
-                <th className="py-3 px-3 text-center w-24">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {loading && (
-                <tr>
-                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
-                    <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
-                    <span>{t('loading')}</span>
-                  </td>
-                </tr>
-              )}
-              {!loading && displayRows.map((tx, i) => (
-                <tr
-                  key={tx._id || tx.id || i}
-                  onClick={() => setDetailRec(tx)}
-                  className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
-                >
-                  {cols.map((c) => (
-                    <td key={c.field} style={getColumnWidthStyle(c)} className="py-2.5 px-3 whitespace-nowrap">
-                      {renderCellContent(tx, c)}
-                    </td>
-                  ))}
-                  <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={() => openEdit(tx)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                          title="แก้ไขรายการเคลื่อนไหว"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => del(tx._id || tx.id)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                          title="ลบรายการ"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+      {/* ── DATA PRESENTATION (Tri-View ADR-0002) ────────────────── */}
+      {isMobile ? (
+        <div className="space-y-3 pb-24">
+          {loading && (
+            <div className="text-center py-12 text-slate-400">
+              <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50 text-blue-500" />
+              <span>{t('loading')}</span>
+            </div>
+          )}
+          {!loading && displayRows.map((tx, i) => {
+            const isReceive = tx.TXN_Type === 'RECEIVE'
+            const isIssue = tx.TXN_Type === 'ISSUE'
+            const delta = getSignedStockDelta(tx.TXN_Type, tx.Qty_Change)
+            const imgUrl = getStockPartImageUrl(tx)
+            const mc = getMovementMC(tx)
+
+            return (
+              <div
+                key={tx._id || tx.id || i}
+                onClick={() => setDetailRec(tx)}
+                className="card p-3.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm space-y-2.5 active:scale-[0.99] transition-transform cursor-pointer"
+              >
+                {/* Header: TXN_ID + Type Badge + Date */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-xs text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">
+                      {tx.TXN_ID || '—'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold ${
+                      isReceive
+                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20'
+                        : isIssue
+                          ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20'
+                          : 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20'
+                    }`}>
+                      {isReceive ? '📥 รับเข้า' : isIssue ? '📤 เบิกจ่าย' : '🔄 ปรับสต๊อก'}
+                    </span>
+                  </div>
+
+                  <span className="text-[11px] font-mono text-slate-500">
+                    {formatStockTxnDate(getStockTxnDate(tx))}
+                  </span>
+                </div>
+
+                {/* Part & Quantity Summary */}
+                <div className="flex items-start gap-3">
+                  {imgUrl && (
+                    <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <ImageThumbnail
+                        url={imgUrl}
+                        alt={`${tx.Part_Code} - ${tx.Part_Name_EN || ''}`}
+                        size={44}
+                        onClick={() => setPreviewImageModal({ url: imgUrl, title: `${tx.Part_Code} - ${tx.Part_Name_EN || ''}` })}
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-slate-900 dark:text-white text-sm truncate">
+                      {tx.Part_Name_EN || tx.Part_Code}
+                    </div>
+                    <div className="text-xs text-slate-500 font-mono mt-0.5">
+                      รหัส: <strong>{tx.Part_Code}</strong>
+                      {tx.Location_Store && (
+                        <span className="ml-2 font-sans text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded text-[10px]">
+                          {tx.Location_Store}
+                        </span>
                       )}
                     </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && !displayRows.length && (
-                <tr>
-                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
-                    <ArrowLeftRight size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
-                    <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
-                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ บันทึกเคลื่อนไหว" เพื่อเริ่มต้นทำรายการ</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+
+                {/* Stock Changes Matrix */}
+                <div className="grid grid-cols-3 gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+                  <div>
+                    <div className="text-[10px] text-slate-400">ก่อนทำ</div>
+                    <div className="font-mono text-xs text-slate-600 dark:text-slate-300">
+                      {Number(tx.Qty_Before || 0).toLocaleString()} {tx.Unit || ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400">เปลี่ยนแปลง</div>
+                    <div className={`font-mono font-black text-xs ${delta > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {delta > 0 ? `+${delta.toLocaleString()}` : delta.toLocaleString()} {tx.Unit || ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400">คงเหลือหลังทำ</div>
+                    <div className="font-mono font-black text-xs text-slate-800 dark:text-slate-100">
+                      {Number(tx.Qty_After || 0).toLocaleString()} {tx.Unit || ''}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer: Machine / Performed By / Action Buttons */}
+                <div className="flex items-center justify-between gap-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 truncate min-w-0">
+                    {mc && (
+                      <span className="font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded text-[11px] truncate">
+                        M/C: {mc}
+                      </span>
+                    )}
+                    {tx.Performed_By && (
+                      <span className="truncate">โดย: {tx.Performed_By}</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => openEdit(tx)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                        title="แก้ไข"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => del(tx._id || tx.id)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                        title="ลบ"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {!loading && !displayRows.length && (
+            <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+              <ArrowLeftRight size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+              <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+              <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ บันทึกเคลื่อนไหว" เพื่อเริ่มต้นทำรายการ</p>
+            </div>
+          )}
+
+          {/* Floating Action Button (FAB) for Mobile */}
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+              title="บันทึกเคลื่อนไหว"
+              aria-label="บันทึกเคลื่อนไหว"
+            >
+              <Plus size={24} />
+            </button>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="table w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                  {cols.map((c) => (
+                    <th key={c.field} style={getColumnWidthStyle(c)} className="py-3 px-3 text-left whitespace-nowrap">
+                      {c.label}
+                    </th>
+                  ))}
+                  <th className="py-3 px-3 text-center w-24">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {loading && (
+                  <tr>
+                    <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                      <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
+                      <span>{t('loading')}</span>
+                    </td>
+                  </tr>
+                )}
+                {!loading && displayRows.map((tx, i) => (
+                  <tr
+                    key={tx._id || tx.id || i}
+                    onClick={() => setDetailRec(tx)}
+                    className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                  >
+                    {cols.map((c) => (
+                      <td key={c.field} style={getColumnWidthStyle(c)} className="py-2.5 px-3 whitespace-nowrap">
+                        {renderCellContent(tx, c)}
+                      </td>
+                    ))}
+                    <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(tx)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                            title="แก้ไขรายการเคลื่อนไหว"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => del(tx._id || tx.id)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                            title="ลบรายการ"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!loading && !displayRows.length && (
+                  <tr>
+                    <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                      <ArrowLeftRight size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                      <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+                      <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ บันทึกเคลื่อนไหว" เพื่อเริ่มต้นทำรายการ</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
       <DetailDrawer

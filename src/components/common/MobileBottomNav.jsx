@@ -107,7 +107,11 @@ export default function MobileBottomNav({ onOpenPwaModal }) {
     <>
       {/* ── Native iOS / Android Style Bottom Tab Bar ────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 max-w-full lg:max-w-[390px] mx-auto bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800 backdrop-blur-xl shadow-2xl transition-all duration-300 select-none"
+        className={`fixed bottom-0 left-0 right-0 z-30 ${
+          isMobile
+            ? 'lg:left-[252px] max-w-full lg:max-w-[390px]'
+            : 'lg:hidden max-w-md'
+        } mx-auto bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800 backdrop-blur-xl shadow-2xl transition-all duration-300 select-none`}
         style={{
           paddingBottom: 'max(env(safe-area-inset-bottom, 8px), 8px)',
         }}
@@ -172,7 +176,7 @@ export default function MobileBottomNav({ onOpenPwaModal }) {
       {/* ── Native iOS / Android Style Bottom Sheet App Launcher ───────── */}
       <AnimatePresence>
         {sheetOpen && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center pointer-events-auto">
+          <div className={`fixed inset-0 ${isMobile ? 'lg:left-[252px]' : ''} z-50 flex items-end justify-center pointer-events-auto`}>
             {/* Backdrop */}
             <motion.div
               key="launcher-backdrop"

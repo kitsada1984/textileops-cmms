@@ -30,6 +30,7 @@ import StatusBadge from '../components/ui/StatusBadge'
 import SearchInput from '../components/ui/SearchInput'
 import { useT } from '../contexts/LanguageContext'
 import usePagePerms from '../hooks/usePagePerms'
+import useDeviceView from '../hooks/useDeviceView'
 import DetailDrawer from '../components/ui/DetailDrawer'
 import { useToast } from '../components/ui/Toast'
 import F from '../components/ui/FormField'
@@ -200,6 +201,7 @@ function getMissingSparePartColumn(error) {
 }
 
 export default function SpareParts() {
+  const { isMobile } = useDeviceView()
   const { t } = useT()
   const navigate = useNavigate()
   const { canAdd, canEdit, canDelete } = usePagePerms('spareparts')
@@ -874,7 +876,7 @@ export default function SpareParts() {
             value={search}
             onChange={setSearch}
             placeholder={t('sp_search')}
-            className="w-full sm:w-80"
+            className={isMobile ? 'w-full' : 'w-full sm:w-80'}
           />
           <button
             type="button"
@@ -948,103 +950,250 @@ export default function SpareParts() {
         </div>
       </div>
 
-      {/* ── DATA TABLE ────────────────────────────────────────── */}
-      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="table w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                {cols.map((c) => (
-                  <th key={c.field} style={getColumnWidthStyle(c)} className="py-3 px-3.5 text-left whitespace-nowrap">
-                    {c.label}
-                  </th>
-                ))}
-                <th className="py-3 px-3 text-center w-24">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {loading && (
-                <tr>
-                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
-                    <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
-                    <span>{t('loading')}</span>
-                  </td>
-                </tr>
-              )}
-              {!loading && displayRows.map((p, i) => (
-                <tr
-                  key={p._id || p.id || i}
-                  onClick={() => setDetailRec(p)}
-                  className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
-                >
-                  {cols.map((c) => (
-                    <td key={c.field} style={getColumnWidthStyle(c)} className="py-2.5 px-3.5 whitespace-nowrap">
-                      {renderCellContent(p, c)}
-                    </td>
-                  ))}
-                  <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handle1ClickPR(p)}
-                        className={`p-1.5 rounded-lg transition-all border ${
-                          getSparePartStatus(p) !== 'IN_STOCK'
-                            ? 'text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border-amber-300 dark:border-amber-700 font-bold'
-                            : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-slate-200 dark:border-slate-700'
-                        }`}
-                        title="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
-                        aria-label="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
-                      >
-                        <ShoppingCart size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPdfItem(p)}
-                        className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
-                        title="ดูเอกสาร PDF และพิมพ์"
-                        aria-label="ดูเอกสาร PDF และพิมพ์"
-                      >
-                        <FileText size={13} />
-                      </button>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={() => openEdit(p)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                          title="แก้ไขข้อมูลอะไหล่"
-                          aria-label="แก้ไขข้อมูลอะไหล่"
-                        >
-                          <Pencil size={13} />
-                        </button>
+      {/* ── DATA PRESENTATION (Tri-View ADR-0002) ────────────────── */}
+      {isMobile ? (
+        <div className="space-y-3 pb-24">
+          {loading && (
+            <div className="text-center py-12 text-slate-400">
+              <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50 text-blue-500" />
+              <span>{t('loading')}</span>
+            </div>
+          )}
+          {!loading && displayRows.map((p, i) => {
+            const imgUrl = getSparePartImageUrl(p)
+            const partName = getSparePartName(p)
+            const status = getSparePartStatus(p)
+            const isLow = Number(p.Stock_Qty) <= (Number(p.Min_Qty) || 0)
+
+            return (
+              <div
+                key={p._id || p.id || i}
+                onClick={() => setDetailRec(p)}
+                className="card p-3.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm space-y-2.5 active:scale-[0.99] transition-transform cursor-pointer"
+              >
+                {/* Header: Image Thumbnail + Part Code + Location + Status */}
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <ImageThumbnail
+                      url={imgUrl}
+                      alt={`${p.Part_Code} - ${partName}`}
+                      size={48}
+                      onClick={() => imgUrl && setPreviewImageModal({ url: imgUrl, title: `${p.Part_Code} - ${partName}` })}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5 mb-1 flex-wrap">
+                      <span className="font-mono font-black text-xs text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">
+                        {p.Part_Code}
+                      </span>
+                      {p.Location_Store && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {p.Location_Store}
+                        </span>
                       )}
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => del(p._id || p.id)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                          title="ลบข้อมูล"
-                          aria-label="ลบข้อมูล"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
+                      <StatusBadge value={status} />
                     </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && !displayRows.length && (
-                <tr>
-                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
-                    <Package size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
-                    <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
-                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่มอะไหล่" เพื่อเริ่มต้นบันทึก</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    <div className="font-bold text-slate-900 dark:text-white text-sm line-clamp-1">
+                      {partName}
+                    </div>
+                    {p.Category && (
+                      <span className="text-[10.5px] text-slate-500 font-medium">
+                        หมวด: {p.Category}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stock & Price Metric Pills */}
+                <div className="grid grid-cols-3 gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+                  <div>
+                    <div className="text-[10px] text-slate-400">คงเหลือ</div>
+                    <div className={`font-mono font-black text-xs ${isLow ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {Number(p.Stock_Qty || 0).toLocaleString()} {p.Unit || ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400">ขั้นต่ำ</div>
+                    <div className="font-mono text-xs text-slate-600 dark:text-slate-300">
+                      {Number(p.Min_Qty || 0).toLocaleString()} {p.Unit || ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400">ราคา/หน่วย</div>
+                    <div className="font-mono font-bold text-xs text-slate-700 dark:text-slate-200">
+                      {p.Unit_Price ? `฿${Number(p.Unit_Price).toLocaleString()}` : '—'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between gap-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => handle1ClickPR(p)}
+                    className={`flex-1 min-h-[38px] py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all border ${
+                      status !== 'IN_STOCK'
+                        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                        : 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                    }`}
+                  >
+                    <ShoppingCart size={13} />
+                    <span>ขอซื้อ (PR)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPdfItem(p)}
+                    className="p-2 min-h-[38px] rounded-xl text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex items-center justify-center active:scale-95 transition-transform"
+                    title="PDF"
+                  >
+                    <FileText size={15} />
+                  </button>
+
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => openEdit(p)}
+                      className="p-2 min-h-[38px] rounded-xl text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center active:scale-95 transition-transform"
+                      title="แก้ไข"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                  )}
+
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => del(p._id || p.id)}
+                      className="p-2 min-h-[38px] rounded-xl text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 flex items-center justify-center active:scale-95 transition-transform"
+                      title="ลบ"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {!loading && !displayRows.length && (
+            <div className="card p-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800">
+              <Package size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+              <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+              <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่มอะไหล่" เพื่อเริ่มต้นบันทึก</p>
+            </div>
+          )}
+
+          {/* Floating Action Button (FAB) for Mobile */}
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openNew}
+              className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+              title={t('sp_add')}
+              aria-label={t('sp_add')}
+            >
+              <Plus size={24} />
+            </button>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="table w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                  {cols.map((c) => (
+                    <th key={c.field} style={getColumnWidthStyle(c)} className="py-3 px-3.5 text-left whitespace-nowrap">
+                      {c.label}
+                    </th>
+                  ))}
+                  <th className="py-3 px-3 text-center w-24">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {loading && (
+                  <tr>
+                    <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                      <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
+                      <span>{t('loading')}</span>
+                    </td>
+                  </tr>
+                )}
+                {!loading && displayRows.map((p, i) => (
+                  <tr
+                    key={p._id || p.id || i}
+                    onClick={() => setDetailRec(p)}
+                    className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                  >
+                    {cols.map((c) => (
+                      <td key={c.field} style={getColumnWidthStyle(c)} className="py-2.5 px-3.5 whitespace-nowrap">
+                        {renderCellContent(p, c)}
+                      </td>
+                    ))}
+                    <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handle1ClickPR(p)}
+                          className={`p-1.5 rounded-lg transition-all border ${
+                            getSparePartStatus(p) !== 'IN_STOCK'
+                              ? 'text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border-amber-300 dark:border-amber-700 font-bold'
+                              : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-slate-200 dark:border-slate-700'
+                          }`}
+                          title="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
+                          aria-label="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
+                        >
+                          <ShoppingCart size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPdfItem(p)}
+                          className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
+                          title="ดูเอกสาร PDF และพิมพ์"
+                          aria-label="ดูเอกสาร PDF และพิมพ์"
+                        >
+                          <FileText size={13} />
+                        </button>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(p)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                            title="แก้ไขข้อมูลอะไหล่"
+                            aria-label="แก้ไขข้อมูลอะไหล่"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => del(p._id || p.id)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                            title="ลบข้อมูล"
+                            aria-label="ลบข้อมูล"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!loading && !displayRows.length && (
+                  <tr>
+                    <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
+                      <Package size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                      <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
+                      <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่มอะไหล่" เพื่อเริ่มต้นบันทึก</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
       <DetailDrawer
