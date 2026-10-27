@@ -8,6 +8,8 @@ import {
   getWorkOrderStatusMeta,
   matchesWorkOrderStatusFilter,
   matchesWorkOrderTypeFilter,
+  matchesWorkOrderProblemCauseFilter,
+  calculateProblemCauseStats,
   getJobDailyLogs,
   getLatestDailyLog,
 } from './WorkOrders.jsx'
@@ -264,6 +266,134 @@ describe('WorkOrders utilities', () => {
         ]),
       }
       expect(getLatestDailyLog(outOfOrderJob).details).toBe('วันที่ 23 ล่าสุด')
+    })
+  })
+
+  describe('matchesWorkOrderProblemCauseFilter', () => {
+    it('returns true when filter is empty or "ALL"', () => {
+      expect(matchesWorkOrderProblemCauseFilter('คน', '')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter('เครื่องจักร', 'ALL')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter(null, '')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter(undefined, 'ALL')).toBe(true)
+    })
+
+    it('matches exact cause string correctly', () => {
+      expect(matchesWorkOrderProblemCauseFilter('คน', 'คน')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter('เครื่องจักร', 'เครื่องจักร')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter('วัตถุดิบ', 'วัตถุดิบ')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter('คน', 'เครื่องจักร')).toBe(false)
+      expect(matchesWorkOrderProblemCauseFilter('', 'คน')).toBe(false)
+    })
+
+    it('matches "UNSPECIFIED" only when cause is empty or whitespace', () => {
+      expect(matchesWorkOrderProblemCauseFilter('', 'UNSPECIFIED')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter('  ', 'UNSPECIFIED')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter(null, 'UNSPECIFIED')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter(undefined, 'UNSPECIFIED')).toBe(true)
+      expect(matchesWorkOrderProblemCauseFilter('คน', 'UNSPECIFIED')).toBe(false)
+      expect(matchesWorkOrderProblemCauseFilter('เครื่องจักร', 'UNSPECIFIED')).toBe(false)
+    })
+  })
+
+  describe('calculateProblemCauseStats', () => {
+    const kpiTargets = { REPAIR: 1.0, DESIGN: 3.0, PM: 2.0 }
+
+    it('handles empty or null work orders array gracefully', () => {
+      const stats = calculateProblemCauseStats([], kpiTargets)
+      expect(stats.personnel.total).toBe(0)
+      expect(stats.machine.total).toBe(0)
+      expect(stats.material.total).toBe(0)
+      expect(stats.unspecified.total).toBe(0)
+      expect(stats.personnel.avgDurationText).toBe('—')
+    })
+
+    it('ignores deleted work orders (IsDeleted: true)', () => {
+      const jobs = [
+        { Job_ID: 'JOB-1', ProblemCause: 'คน', IsDeleted: true },
+        { Job_ID: 'JOB-2', ProblemCause: 'เครื่องจักร', IsDeleted: false },
+      ]
+      const stats = calculateProblemCauseStats(jobs, kpiTargets)
+      expect(stats.personnel.total).toBe(0)
+      expect(stats.machine.total).toBe(1)
+      expect(stats.machine.percentage).toBe(100)
+    })
+
+    it('accurately calculates counts, percentages, and SLA metrics across all causes', () => {
+      const mockJobs = [
+        // 2 คน: 1 onTime (2 hrs), 1 overdue (4 hrs)
+        {
+          Job_ID: 'J-1',
+          JobType: 'REPAIR',
+          ProblemCause: 'คน',
+          WorkingHoursDecimal: 2,
+          Status: 'COMPLETED',
+          CreatedDate: '2026-10-20',
+          CompletedDate: '2026-10-20',
+        },
+        {
+          Job_ID: 'J-2',
+          JobType: 'REPAIR',
+          ProblemCause: 'คน',
+          WorkingHoursDecimal: 4,
+          Status: 'COMPLETED',
+          CreatedDate: '2026-10-10',
+          CompletedDate: '2026-10-20',
+        },
+        // 1 เครื่องจักร: 1 onTime (1.5 hrs)
+        {
+          Job_ID: 'J-3',
+          JobType: 'REPAIR',
+          ProblemCause: 'เครื่องจักร',
+          WorkingHoursDecimal: 1.5,
+          Status: 'COMPLETED',
+          CreatedDate: '2026-10-20',
+          CompletedDate: '2026-10-20',
+        },
+        // 1 วัตถุดิบ: 1 overdue (6 hrs)
+        {
+          Job_ID: 'J-4',
+          JobType: 'REPAIR',
+          problem_cause: 'วัตถุดิบ', // alternate column name
+          WorkingHoursDecimal: 6,
+          Status: 'COMPLETED',
+          CreatedDate: '2026-10-01',
+          CompletedDate: '2026-10-20',
+        },
+        // 1 ยังไม่ระบุ: (ไม่มี ProblemCause)
+        {
+          Job_ID: 'J-5',
+          JobType: 'REPAIR',
+          ProblemCause: '',
+          Status: 'IN_PROGRESS',
+        },
+      ]
+
+      const stats = calculateProblemCauseStats(mockJobs, kpiTargets)
+
+      // Total = 5 jobs
+      // 1. คน: 2 jobs (40%)
+      expect(stats.personnel.total).toBe(2)
+      expect(stats.personnel.percentage).toBe(40)
+      expect(stats.personnel.exactPercentage).toBe(40.0)
+      expect(stats.personnel.avgDurationText).toBe('3.0 ชม.')
+
+      // 2. เครื่องจักร: 1 job (20%)
+      expect(stats.machine.total).toBe(1)
+      expect(stats.machine.percentage).toBe(20)
+      expect(stats.machine.avgDurationText).toBe('1.5 ชม.')
+
+      // 3. วัตถุดิบ: 1 job (20%)
+      expect(stats.material.total).toBe(1)
+      expect(stats.material.percentage).toBe(20)
+      expect(stats.material.avgDurationText).toBe('6.0 ชม.')
+
+      // 4. ยังไม่ระบุ: 1 job (20%)
+      expect(stats.unspecified.total).toBe(1)
+      expect(stats.unspecified.percentage).toBe(20)
+
+      // Total sum of totals = 5
+      const sumTotals = stats.personnel.total + stats.machine.total + stats.material.total + stats.unspecified.total
+      expect(sumTotals).toBe(5)
     })
   })
 })

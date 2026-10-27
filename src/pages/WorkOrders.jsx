@@ -28,6 +28,8 @@ import {
   Sparkles,
   CalendarClock,
   Tag,
+  ArrowRight,
+  PieChart,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -213,6 +215,79 @@ export function matchesWorkOrderStatusFilter(jobStatus, filterValue = 'ALL') {
 
   const filterMeta = getWorkOrderStatusMeta(filterValue)
   return jobMeta.value === filterMeta.value
+}
+
+/**
+ * Checks whether a job's problem cause matches the selected cause filter.
+ * Supports: 'ALL' or empty (matches all), specific causes ('คน', 'เครื่องจักร', 'วัตถุดิบ'),
+ * or 'UNSPECIFIED' (matches empty or unassigned cause).
+ */
+export function matchesWorkOrderProblemCauseFilter(jobCause, filterVal) {
+  if (!filterVal || filterVal === 'ALL') return true
+  const c = String(jobCause || '').trim()
+  if (filterVal === 'UNSPECIFIED') {
+    return !c
+  }
+  return c === filterVal
+}
+
+/**
+ * Computes breakdown metrics and SLA performance by problem cause (คน, เครื่องจักร, วัตถุดิบ, ยังไม่ระบุ).
+ * Non-breaking pure calculation helper suitable for dashboard and unit testing.
+ */
+export function calculateProblemCauseStats(jobs = [], kpiTargets = DEFAULT_KPI_TARGETS) {
+  const activeJobs = (jobs || []).filter((j) => !j?.IsDeleted)
+  const total = activeJobs.length
+
+  const calcCauseKpi = (causeVal) => {
+    const jobsOfCause = activeJobs.filter((j) => {
+      const c = String(j?.ProblemCause || j?.problem_cause || '').trim()
+      if (causeVal === 'UNSPECIFIED') return !c
+      return c === causeVal
+    })
+    const totalCount = jobsOfCause.length
+
+    let onTimeCount = 0
+    let overdueCount = 0
+    let totalHours = 0
+    let countWithDuration = 0
+
+    jobsOfCause.forEach((j) => {
+      const sla = calculateSlaPerformance(j, kpiTargets, 12)
+      if (sla.isOnTime) onTimeCount += 1
+      else overdueCount += 1
+
+      const durationVal = parseFloat(j?.WorkingHoursDecimal || j?.Duration || sla.netHoursDecimal) || 0
+      if (durationVal > 0) {
+        totalHours += durationVal
+        countWithDuration += 1
+      }
+    })
+
+    const rate = totalCount > 0 ? Math.round((onTimeCount / totalCount) * 100) : 0
+    const percentage = total > 0 ? Math.round((totalCount / total) * 100) : 0
+    const exactPercentage = total > 0 ? parseFloat(((totalCount / total) * 100).toFixed(1)) : 0
+    const avgHours = countWithDuration > 0 ? (totalHours / countWithDuration).toFixed(1) : '—'
+    const avgDurationText = avgHours !== '—' ? `${avgHours} ชม.` : '—'
+
+    return {
+      key: causeVal,
+      total: totalCount,
+      percentage,
+      exactPercentage,
+      onTime: onTimeCount,
+      overdue: overdueCount,
+      rate,
+      avgDurationText,
+    }
+  }
+
+  return {
+    personnel: calcCauseKpi('คน'),
+    machine: calcCauseKpi('เครื่องจักร'),
+    material: calcCauseKpi('วัตถุดิบ'),
+    unspecified: calcCauseKpi('UNSPECIFIED'),
+  }
 }
 
 /**
@@ -691,6 +766,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [search, setSearch] = useState('')
   const [typeFilters, setTypeFilters] = useState([]) // [] = ALL, or ['REPAIR', 'DESIGN', ...]
   const [statusFilters, setStatusFilters] = useState([]) // [] = ALL, or ['IN_PROGRESS', 'WAITING_TECH', ...]
+  const [causeFilter, setCauseFilter] = useState('') // '' = ALL, 'คน', 'เครื่องจักร', 'วัตถุดิบ', 'UNSPECIFIED'
   const [showDeleted, setShowDeleted] = useState(false)
 
   // Multi-select toggle helpers for Job Type and Status Cards
@@ -718,6 +794,21 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       }
       return [...prev, val]
     })
+  }
+
+  // Toggle helper for Problem Cause Filter Cards
+  const toggleCauseFilter = (val) => {
+    if (val === 'ALL' || causeFilter === val) {
+      setCauseFilter('')
+      return
+    }
+    setCauseFilter(val)
+  }
+
+  // Interactive Quick Drilldown from Dashboard to Records Tab
+  const handleDrilldownByCause = (causeKey) => {
+    setCauseFilter(causeKey)
+    setCurrentTab('records')
   }
 
   // Deep Link support (?job=JOB-XXXX or ?wo=JOB-XXXX)
@@ -1094,6 +1185,24 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     return counts
   }, [allJobs, showDeleted])
 
+  // Live counts for Problem Cause filter cards
+  const causeCounts = useMemo(() => {
+    const counts = { ALL: 0, คน: 0, เครื่องจักร: 0, วัตถุดิบ: 0, UNSPECIFIED: 0 }
+    const relevant = allJobs.filter((j) => (showDeleted ? Boolean(j.IsDeleted) : !j.IsDeleted))
+    counts.ALL = relevant.length
+    relevant.forEach((j) => {
+      const c = String(j?.ProblemCause || j?.problem_cause || '').trim()
+      if (!c) {
+        counts.UNSPECIFIED++
+      } else if (counts[c] !== undefined) {
+        counts[c]++
+      } else {
+        counts.UNSPECIFIED++
+      }
+    })
+    return counts
+  }, [allJobs, showDeleted])
+
   const filteredJobs = useMemo(() => {
     return allJobs.filter((job) => {
       const isDel = Boolean(job.IsDeleted)
@@ -1102,6 +1211,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
       if (!matchesWorkOrderTypeFilter(job.JobType, typeFilters)) return false
       if (!matchesWorkOrderStatusFilter(job.Status, statusFilters)) return false
+      if (!matchesWorkOrderProblemCauseFilter(job.ProblemCause || job.problem_cause, causeFilter)) return false
 
       if (search.trim()) {
         const q = search.toLowerCase()
@@ -1120,7 +1230,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       }
       return true
     })
-  }, [allJobs, typeFilters, statusFilters, showDeleted, search])
+  }, [allJobs, typeFilters, statusFilters, showDeleted, search, causeFilter])
 
   // KPI Breakdown Calculations
   const kpiStats = useMemo(() => {
@@ -1173,6 +1283,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     const totalOnTime = repairKpi.onTime + designKpi.onTime + pmKpi.onTime
     const overallRate = total > 0 ? Math.round((totalOnTime / total) * 100) : 0
 
+    // Problem cause analytics calculation
+    const causeStats = calculateProblemCauseStats(activeNonDeleted, kpiTargets)
+
     // User metrics
     const userMetricsMap = {}
     activeNonDeleted.forEach((j) => {
@@ -1188,6 +1301,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       repair: repairKpi,
       design: designKpi,
       pm: pmKpi,
+      causeStats,
       userMetrics: Object.entries(userMetricsMap).map(([name, count]) => ({ name, count })),
       recentJobs: activeNonDeleted.slice(0, 5),
     }
@@ -2195,6 +2309,360 @@ export default function WorkOrders({ defaultTab = 'records' }) {
             </div>
           </div>
 
+          {/* ══════════════════════════════════════════════════════════ */}
+          {/* ── 📊 PROBLEM CAUSE & ROOT CAUSE ANALYTICS ─────────────── */}
+          {/* ══════════════════════════════════════════════════════════ */}
+          <div className="space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                  <PieChart size={16} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
+                    <span>สรุปการวิเคราะห์สาเหตุปัญหา (Problem Cause & Root Cause Analytics)</span>
+                  </h2>
+                  <p className="text-[11px]" style={{ color: 'var(--text-500)' }}>
+                    สถิติแยกตาม คน (Man), เครื่องจักร (Machine), วัตถุดิบ (Material) และงานที่รอระบุสาเหตุ
+                  </p>
+                </div>
+              </div>
+              <div className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                รวม {kpiStats.total} รายการ
+              </div>
+            </div>
+
+            {/* Stacked 100% Proportion Bar Card */}
+            <div className="card p-4 space-y-3 border border-slate-200 dark:border-slate-800 shadow-2xs">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold flex items-center gap-1.5" style={{ color: 'var(--text-700)' }}>
+                  <span>สัดส่วนสาเหตุปัญหาภาพรวม (Overall Distribution)</span>
+                </span>
+                <span className="text-[11px] font-mono text-slate-500">100% Total Jobs</span>
+              </div>
+
+              {/* The Multi-Segment Bar */}
+              <div className="w-full h-3.5 rounded-full bg-slate-100 dark:bg-slate-800 flex overflow-hidden p-0.5 gap-0.5 shadow-inner">
+                {kpiStats.causeStats.personnel.total > 0 && (
+                  <div
+                    className="h-full bg-amber-500 rounded-sm transition-all duration-500 hover:opacity-90 cursor-pointer"
+                    style={{ width: `${(kpiStats.causeStats.personnel.total / (kpiStats.total || 1)) * 100}%` }}
+                    title={`คน: ${kpiStats.causeStats.personnel.total} งาน (${kpiStats.causeStats.personnel.percentage}%)`}
+                    onClick={() => handleDrilldownByCause('คน')}
+                  />
+                )}
+                {kpiStats.causeStats.machine.total > 0 && (
+                  <div
+                    className="h-full bg-blue-500 rounded-sm transition-all duration-500 hover:opacity-90 cursor-pointer"
+                    style={{ width: `${(kpiStats.causeStats.machine.total / (kpiStats.total || 1)) * 100}%` }}
+                    title={`เครื่องจักร: ${kpiStats.causeStats.machine.total} งาน (${kpiStats.causeStats.machine.percentage}%)`}
+                    onClick={() => handleDrilldownByCause('เครื่องจักร')}
+                  />
+                )}
+                {kpiStats.causeStats.material.total > 0 && (
+                  <div
+                    className="h-full bg-emerald-500 rounded-sm transition-all duration-500 hover:opacity-90 cursor-pointer"
+                    style={{ width: `${(kpiStats.causeStats.material.total / (kpiStats.total || 1)) * 100}%` }}
+                    title={`วัตถุดิบ: ${kpiStats.causeStats.material.total} งาน (${kpiStats.causeStats.material.percentage}%)`}
+                    onClick={() => handleDrilldownByCause('วัตถุดิบ')}
+                  />
+                )}
+                {kpiStats.causeStats.unspecified.total > 0 && (
+                  <div
+                    className="h-full bg-slate-400 dark:bg-slate-600 rounded-sm transition-all duration-500 hover:opacity-90 cursor-pointer"
+                    style={{ width: `${(kpiStats.causeStats.unspecified.total / (kpiStats.total || 1)) * 100}%` }}
+                    title={`ยังไม่ระบุ: ${kpiStats.causeStats.unspecified.total} งาน (${kpiStats.causeStats.unspecified.percentage}%)`}
+                    onClick={() => handleDrilldownByCause('UNSPECIFIED')}
+                  />
+                )}
+              </div>
+
+              {/* Bar Legend Labels */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleDrilldownByCause('คน')}
+                    className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left cursor-pointer"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block flex-shrink-0" />
+                    <span className="font-semibold" style={{ color: 'var(--text-800)' }}>👤 คน:</span>
+                    <b className="font-mono text-amber-600 dark:text-amber-400">{kpiStats.causeStats.personnel.total} งาน</b>
+                    <span className="text-[11px] text-slate-400 font-mono">({kpiStats.causeStats.personnel.percentage}%)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDrilldownByCause('เครื่องจักร')}
+                    className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left cursor-pointer"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block flex-shrink-0" />
+                    <span className="font-semibold" style={{ color: 'var(--text-800)' }}>⚙️ เครื่องจักร:</span>
+                    <b className="font-mono text-blue-600 dark:text-blue-400">{kpiStats.causeStats.machine.total} งาน</b>
+                    <span className="text-[11px] text-slate-400 font-mono">({kpiStats.causeStats.machine.percentage}%)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDrilldownByCause('วัตถุดิบ')}
+                    className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left cursor-pointer"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block flex-shrink-0" />
+                    <span className="font-semibold" style={{ color: 'var(--text-800)' }}>🧵 วัตถุดิบ:</span>
+                    <b className="font-mono text-emerald-600 dark:text-emerald-400">{kpiStats.causeStats.material.total} งาน</b>
+                    <span className="text-[11px] text-slate-400 font-mono">({kpiStats.causeStats.material.percentage}%)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDrilldownByCause('UNSPECIFIED')}
+                    className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left cursor-pointer"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-600 inline-block flex-shrink-0" />
+                    <span className="font-semibold" style={{ color: 'var(--text-800)' }}>❓ ยังไม่ระบุ:</span>
+                    <b className="font-mono text-slate-600 dark:text-slate-400">{kpiStats.causeStats.unspecified.total} งาน</b>
+                    <span className="text-[11px] text-slate-400 font-mono">({kpiStats.causeStats.unspecified.percentage}%)</span>
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-slate-500 italic">
+                  *คลิกที่สาเหตุเพื่อเจาะจงดูรายการใบสั่งงาน (Quick Drilldown)
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+              {/* Card 1: คน */}
+              <div
+                onClick={() => handleDrilldownByCause('คน')}
+                className="card p-4 space-y-3 border border-amber-500/25 hover:border-amber-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-base group-hover:scale-105 transition-transform">
+                        👤
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                          คน (Personnel)
+                        </h3>
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                          การปฏิบัติงาน / พนักงาน
+                        </p>
+                      </div>
+                    </div>
+                    <span className="badge badge-amber text-xs font-bold font-mono">
+                      {kpiStats.causeStats.personnel.percentage}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                      <div className="text-[10px]" style={{ color: 'var(--text-400)' }}>ทั้งหมด</div>
+                      <div className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                        {kpiStats.causeStats.personnel.total}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <div className="text-[10px]">ทัน SLA</div>
+                      <div className="font-bold text-sm">{kpiStats.causeStats.personnel.onTime}</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                      <div className="text-[10px]">เกิน SLA</div>
+                      <div className="font-bold text-sm">{kpiStats.causeStats.personnel.overdue}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-xs pt-1" style={{ color: 'var(--text-500)' }}>
+                    <div className="flex justify-between">
+                      <span>อัตราทันเป้า SLA:</span>
+                      <b className="font-mono text-emerald-600 dark:text-emerald-400">{kpiStats.causeStats.personnel.rate}%</b>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>ระยะเวลาเฉลี่ย:</span>
+                      <b className="font-mono" style={{ color: 'var(--text-900)' }}>{kpiStats.causeStats.personnel.avgDurationText}</b>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-amber-600 dark:text-amber-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                  <span>ดูรายการงาน ({kpiStats.causeStats.personnel.total})</span>
+                  <ArrowRight size={13} />
+                </div>
+              </div>
+
+              {/* Card 2: เครื่องจักร */}
+              <div
+                onClick={() => handleDrilldownByCause('เครื่องจักร')}
+                className="card p-4 space-y-3 border border-blue-500/25 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-base group-hover:scale-105 transition-transform">
+                        ⚙️
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                          เครื่องจักร (Machine)
+                        </h3>
+                        <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">
+                          อุปกรณ์ / ความสึกหรอ
+                        </p>
+                      </div>
+                    </div>
+                    <span className="badge badge-blue text-xs font-bold font-mono">
+                      {kpiStats.causeStats.machine.percentage}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                      <div className="text-[10px]" style={{ color: 'var(--text-400)' }}>ทั้งหมด</div>
+                      <div className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                        {kpiStats.causeStats.machine.total}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <div className="text-[10px]">ทัน SLA</div>
+                      <div className="font-bold text-sm">{kpiStats.causeStats.machine.onTime}</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                      <div className="text-[10px]">เกิน SLA</div>
+                      <div className="font-bold text-sm">{kpiStats.causeStats.machine.overdue}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-xs pt-1" style={{ color: 'var(--text-500)' }}>
+                    <div className="flex justify-between">
+                      <span>อัตราทันเป้า SLA:</span>
+                      <b className="font-mono text-emerald-600 dark:text-emerald-400">{kpiStats.causeStats.machine.rate}%</b>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>ระยะเวลาเฉลี่ย:</span>
+                      <b className="font-mono" style={{ color: 'var(--text-900)' }}>{kpiStats.causeStats.machine.avgDurationText}</b>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-blue-600 dark:text-blue-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                  <span>ดูรายการงาน ({kpiStats.causeStats.machine.total})</span>
+                  <ArrowRight size={13} />
+                </div>
+              </div>
+
+              {/* Card 3: วัตถุดิบ */}
+              <div
+                onClick={() => handleDrilldownByCause('วัตถุดิบ')}
+                className="card p-4 space-y-3 border border-emerald-500/25 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-base group-hover:scale-105 transition-transform">
+                        🧵
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                          วัตถุดิบ (Material)
+                        </h3>
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          เส้นด้าย / สารเคมี / ผ้า
+                        </p>
+                      </div>
+                    </div>
+                    <span className="badge badge-green text-xs font-bold font-mono">
+                      {kpiStats.causeStats.material.percentage}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                      <div className="text-[10px]" style={{ color: 'var(--text-400)' }}>ทั้งหมด</div>
+                      <div className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                        {kpiStats.causeStats.material.total}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <div className="text-[10px]">ทัน SLA</div>
+                      <div className="font-bold text-sm">{kpiStats.causeStats.material.onTime}</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                      <div className="text-[10px]">เกิน SLA</div>
+                      <div className="font-bold text-sm">{kpiStats.causeStats.material.overdue}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-xs pt-1" style={{ color: 'var(--text-500)' }}>
+                    <div className="flex justify-between">
+                      <span>อัตราทันเป้า SLA:</span>
+                      <b className="font-mono text-emerald-600 dark:text-emerald-400">{kpiStats.causeStats.material.rate}%</b>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>ระยะเวลาเฉลี่ย:</span>
+                      <b className="font-mono" style={{ color: 'var(--text-900)' }}>{kpiStats.causeStats.material.avgDurationText}</b>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                  <span>ดูรายการงาน ({kpiStats.causeStats.material.total})</span>
+                  <ArrowRight size={13} />
+                </div>
+              </div>
+
+              {/* Card 4: ยังไม่ระบุสาเหตุ (Pending) */}
+              <div
+                onClick={() => handleDrilldownByCause('UNSPECIFIED')}
+                className="card p-4 space-y-3 border border-slate-300 dark:border-slate-700 hover:border-slate-400 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between bg-slate-50/50 dark:bg-slate-900/30"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-slate-500/15 text-slate-600 dark:text-slate-400 flex items-center justify-center font-bold text-base group-hover:scale-105 transition-transform">
+                        ❓
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                          ยังไม่ระบุ (Pending)
+                        </h3>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          รอการระบุสาเหตุ
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      {kpiStats.causeStats.unspecified.percentage}%
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+                    <div className="text-[10px] text-slate-400 font-medium">งานที่ยังไม่ได้ระบุสาเหตุ</div>
+                    <div className="font-black text-xl text-slate-700 dark:text-slate-300 mt-0.5">
+                      {kpiStats.causeStats.unspecified.total} <span className="text-xs font-normal">รายการ</span>
+                    </div>
+                    <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                      {kpiStats.causeStats.unspecified.total > 0
+                        ? '⚠️ ต้องติดตามช่างเพื่อสรุปสาเหตุ'
+                        : '✅ บันทึกสาเหตุครบทุกงาน'}
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-slate-500 line-clamp-2">
+                    ช่วยหัวหน้างานติดตามใบสั่งงานที่เสร็จสิ้นหรือกำลังทำอยู่แต่ยังไม่ระบุสาเหตุ
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                  <span>ดูงานค้างระบุ ({kpiStats.causeStats.unspecified.total})</span>
+                  <ArrowRight size={13} />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Operational Metrics by User */}
           <div className="card p-5 space-y-3">
             <div className="flex items-center justify-between">
@@ -2434,12 +2902,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   </span>
                 </button>
 
-                {(typeFilters.length > 0 || statusFilters.length > 0 || search.trim()) && (
+                {(typeFilters.length > 0 || statusFilters.length > 0 || Boolean(causeFilter) || search.trim()) && (
                   <button
                     type="button"
                     onClick={() => {
                       setTypeFilters([])
                       setStatusFilters([])
+                      setCauseFilter('')
                       setSearch('')
                     }}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-bold text-xs"
@@ -2589,7 +3058,158 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   })}
                 </div>
               </div>
+
+              {/* Row 3: สาเหตุปัญหา (Problem Cause Cards) */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 font-bold text-slate-600 dark:text-slate-300 min-w-[70px] flex-shrink-0">
+                  <PieChart size={13} className="text-indigo-500" />
+                  <span>สาเหตุ:</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                  {/* All Causes Card */}
+                  <button
+                    type="button"
+                    onClick={() => setCauseFilter('')}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      !causeFilter
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <span>ทุกสาเหตุ</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        !causeFilter
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {causeCounts.ALL}
+                    </span>
+                  </button>
+
+                  {/* 1. คน */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCauseFilter('คน')}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      causeFilter === 'คน'
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {causeFilter === 'คน' && <Check size={12} strokeWidth={3} />}
+                    <span>👤</span>
+                    <span>คน</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        causeFilter === 'คน'
+                          ? 'bg-white/25 text-white'
+                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {causeCounts.คน}
+                    </span>
+                  </button>
+
+                  {/* 2. เครื่องจักร */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCauseFilter('เครื่องจักร')}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      causeFilter === 'เครื่องจักร'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {causeFilter === 'เครื่องจักร' && <Check size={12} strokeWidth={3} />}
+                    <span>⚙️</span>
+                    <span>เครื่องจักร</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        causeFilter === 'เครื่องจักร'
+                          ? 'bg-white/25 text-white'
+                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {causeCounts.เครื่องจักร}
+                    </span>
+                  </button>
+
+                  {/* 3. วัตถุดิบ */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCauseFilter('วัตถุดิบ')}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      causeFilter === 'วัตถุดิบ'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {causeFilter === 'วัตถุดิบ' && <Check size={12} strokeWidth={3} />}
+                    <span>🧵</span>
+                    <span>วัตถุดิบ</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        causeFilter === 'วัตถุดิบ'
+                          ? 'bg-white/25 text-white'
+                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {causeCounts.วัตถุดิบ}
+                    </span>
+                  </button>
+
+                  {/* 4. ยังไม่ระบุ */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCauseFilter('UNSPECIFIED')}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      causeFilter === 'UNSPECIFIED'
+                        ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {causeFilter === 'UNSPECIFIED' && <Check size={12} strokeWidth={3} />}
+                    <span>❓</span>
+                    <span>ยังไม่ระบุ</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        causeFilter === 'UNSPECIFIED'
+                          ? 'bg-white/25 text-white'
+                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {causeCounts.UNSPECIFIED}
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* Active Cause Filter Banner */}
+            {causeFilter && (
+              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-900 dark:text-indigo-200 text-xs animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">⚡ กำลังกรองตามสาเหตุปัญหา:</span>
+                  <span className="px-2 py-0.5 rounded-lg font-mono font-bold text-xs bg-white dark:bg-slate-900 border border-indigo-500/40 shadow-xs">
+                    {causeFilter === 'UNSPECIFIED' ? '❓ ยังไม่ระบุ (Pending)' : getProblemCauseMeta(causeFilter)?.fullLabel || causeFilter}
+                  </span>
+                  <span className="text-[11px] text-indigo-700/80 dark:text-indigo-400">
+                    (พบ {filteredJobs.length} รายการ)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCauseFilter('')}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-950 dark:text-indigo-100 font-bold text-xs transition-colors cursor-pointer"
+                  title="ยกเลิกตัวกรองสาเหตุปัญหา"
+                >
+                  <X size={13} />
+                  <span>ยกเลิกกรองสาเหตุ</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ── WORK ORDERS PRESENTATION (Tri-View ADR-0002) ─────────── */}
