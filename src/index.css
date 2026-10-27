@@ -653,64 +653,70 @@ html.dark .glass-panel {
 
 /* ── Mobile Simulator & Mobile Responsive Overrides ─────────── */
 .is-mobile-view {
-  font-size: 13px;
+  font-size: 14.5px;
 }
 
 .is-mobile-view .stat-card {
-  padding: 0.7rem 0.85rem !important;
-  gap: 0.6rem !important;
-  border-radius: 1rem !important;
-  min-height: 72px !important;
+  padding: 0.85rem 1rem !important;
+  gap: 0.75rem !important;
+  border-radius: 1.1rem !important;
+  min-height: 82px !important;
 }
 .is-mobile-view .stat-card .stat-icon {
-  width: 2.25rem !important;
-  height: 2.25rem !important;
-  border-radius: 0.65rem !important;
+  width: 2.6rem !important;
+  height: 2.6rem !important;
+  border-radius: 0.75rem !important;
 }
 .is-mobile-view .stat-card .stat-icon svg {
-  width: 1.1rem !important;
-  height: 1.1rem !important;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
 }
 .is-mobile-view .stat-card .stat-val {
-  font-size: 1.25rem !important;
-  line-height: 1.2 !important;
-}
-.is-mobile-view .stat-card .stat-label {
-  font-size: 0.725rem !important;
+  font-size: 1.6rem !important;
+  font-weight: 900 !important;
   line-height: 1.15 !important;
 }
+.is-mobile-view .stat-card .stat-label {
+  font-size: 0.875rem !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+}
 .is-mobile-view .stat-card .stat-sub {
-  font-size: 0.65rem !important;
-  line-height: 1.1 !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
 }
 
 @media (max-width: 640px) {
   .stat-card {
-    padding: 0.7rem 0.85rem !important;
-    gap: 0.6rem !important;
-    border-radius: 1rem !important;
-    min-height: 72px !important;
+    padding: 0.85rem 1rem !important;
+    gap: 0.75rem !important;
+    border-radius: 1.1rem !important;
+    min-height: 82px !important;
   }
   .stat-card .stat-icon {
-    width: 2.25rem !important;
-    height: 2.25rem !important;
-    border-radius: 0.65rem !important;
+    width: 2.6rem !important;
+    height: 2.6rem !important;
+    border-radius: 0.75rem !important;
   }
   .stat-card .stat-icon svg {
-    width: 1.1rem !important;
-    height: 1.1rem !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
   }
   .stat-card .stat-val {
-    font-size: 1.25rem !important;
-    line-height: 1.2 !important;
-  }
-  .stat-card .stat-label {
-    font-size: 0.725rem !important;
+    font-size: 1.6rem !important;
+    font-weight: 900 !important;
     line-height: 1.15 !important;
   }
+  .stat-card .stat-label {
+    font-size: 0.875rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+  }
   .stat-card .stat-sub {
-    font-size: 0.65rem !important;
-    line-height: 1.1 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
   }
 }
 
@@ -799,7 +805,7 @@ html.dark .glass-panel {
 }
 
 .is-mobile-view {
-  font-size: 13px;
+  font-size: 14.5px;
   -webkit-tap-highlight-color: transparent;
 }
 

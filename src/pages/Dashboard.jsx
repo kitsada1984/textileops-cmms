@@ -18,6 +18,7 @@ import {
   Clock,
   ExternalLink,
   Eye,
+  ChevronRight,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import {
@@ -41,6 +42,8 @@ import { syncRowsToGoogleSheet } from '../utils/googleSheetsSync'
 import { SHEET_EXPORTS } from '../utils/sheetExportConfigs'
 import { getAppBaseUrl, normalizeRepairRecord } from '../utils/telegram'
 import DetailDrawer from '../components/ui/DetailDrawer'
+import useDeviceView from '../hooks/useDeviceView'
+import { getProblemCauseMeta } from '../constants/problemCause'
 import { getWorkOrderDetails } from './WorkOrders'
 
 const ICON_BG = {
@@ -188,6 +191,7 @@ export default function Dashboard() {
   const { t } = useT()
   const navigate = useNavigate()
   const toast = useToast()
+  const { isMobile } = useDeviceView()
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [syncingAll, setSyncingAll] = useState(false)
@@ -322,6 +326,12 @@ export default function Dashboard() {
       title: 'ข้อมูลการแจ้งซ่อม',
       items: [
         { label: 'เลขที่แจ้งซ่อม', value: selectedRepair.request_no || (selectedRepair.id ? `REQ-${selectedRepair.id.slice(0, 8)}` : '—') },
+        { label: 'สาเหตุปัญหา', value: selectedRepair.problem_cause ? (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${getProblemCauseMeta(selectedRepair.problem_cause)?.badgeClass || ''}`}>
+            <span>{getProblemCauseMeta(selectedRepair.problem_cause)?.icon || '🔍'}</span>
+            <span>{selectedRepair.problem_cause}</span>
+          </span>
+        ) : '—' },
         { label: 'เครื่องจักร (M/C)', value: selectedRepair.machine_mc || '—' },
         { label: 'ซีเรียลกระบอก', value: selectedRepair.cylinder_serial || '—' },
         { label: 'Design (ลายผ้า)', value: selectedRepair.Design || '—' },
@@ -479,97 +489,180 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="table w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-3 text-left whitespace-nowrap">เลขที่แจ้งซ่อม</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">เครื่องจักร</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">ซีเรียล</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">Design</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">KI</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">เลขม้วน</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">ตำแหน่ง</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">อาการเสีย / ปัญหา</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">ผู้แจ้ง</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">ช่างผู้รับผิดชอบ</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">วันที่แจ้ง</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">สถานะ</th>
-                <th className="py-3 px-3 text-center whitespace-nowrap">ดูงาน</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {(stats.pendingRepairsList || []).map((req, i) => (
-                <tr
+        {isMobile ? (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {(stats.pendingRepairsList || []).map((req, i) => {
+              const causeMeta = getProblemCauseMeta(req.problem_cause)
+              return (
+                <div
                   key={req.id || req._id || i}
                   onClick={() => setSelectedRepair(req)}
-                  className="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                  className="p-3.5 sm:p-4 active:bg-blue-50/60 dark:active:bg-slate-800/80 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
                 >
-                  <td className="py-2.5 px-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap group-hover:underline">
-                    {req.request_no || (req.id ? `REQ-${req.id.slice(0, 8)}` : '—')}
-                  </td>
-                  <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                    {req.machine_mc || '—'}
-                  </td>
-                  <td className="py-2.5 px-3 font-mono font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                    {req.cylinder_serial || '—'}
-                  </td>
-                  <td className="py-2.5 px-3 font-semibold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
-                    {req.Design || '—'}
-                  </td>
-                  <td className="py-2.5 px-3 font-mono font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                    {req.KI !== undefined && req.KI !== null && req.KI !== '' ? req.KI : '—'}
-                  </td>
-                  <td className="py-2.5 px-3 font-mono font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                    {req.roll_no || req.RollNo || req.roll_number || '—'}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                    {req.cylinder_location ? (
-                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold text-[11px]">
-                        {req.cylinder_location}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">
+                        {req.request_no || (req.id ? `REQ-${req.id.slice(0, 8)}` : '—')}
                       </span>
-                    ) : '—'}
-                  </td>
-                  <td className="py-2.5 px-3 max-w-xs truncate text-slate-700 dark:text-slate-300 font-medium" title={req.problem_description}>
-                    {req.problem_description || '—'}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                    {req.reported_by || '—'}
-                  </td>
-                  <td className="py-2.5 px-3 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                    {req.technician_name || <span className="text-slate-400 font-normal italic">ยังไม่มอบหมาย</span>}
-                  </td>
-                  <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                    {formatDateTime(req.created_at)}
-                  </td>
-                  <td className="py-2.5 px-3 whitespace-nowrap">
+                      {causeMeta && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${causeMeta.badgeClass}`}>
+                          <span>{causeMeta.icon}</span>
+                          <span>{causeMeta.label}</span>
+                        </span>
+                      )}
+                    </div>
                     <RepairStatusBadge status={req.status} />
-                  </td>
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <a
-                      href={`${baseUrl}/repair/${encodeURIComponent(req.cylinder_serial || '')}?req=${encodeURIComponent(req.id || req._id || '')}&step=view`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-700 transition-all"
-                      title="เปิดดูหน้าแจ้งซ่อม"
-                    >
-                      <ArrowUpRight size={13} />
-                    </a>
-                  </td>
+                  </div>
+
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      🏭 {req.machine_mc || 'ไม่ระบุเครื่อง'}
+                    </span>
+                    {req.cylinder_serial && (
+                      <span>• ซีเรียล: <strong className="font-mono text-slate-700 dark:text-slate-300">{req.cylinder_serial}</strong></span>
+                    )}
+                    {req.Design && (
+                      <span>• ลาย: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{req.Design}</span></span>
+                    )}
+                    {(req.KI !== undefined && req.KI !== null && req.KI !== '') && (
+                      <span>• KI: <span className="font-mono">{req.KI}</span></span>
+                    )}
+                    {(req.roll_no || req.RollNo || req.roll_number) && (
+                      <span>• ม้วน: <span className="font-mono text-emerald-600">{req.roll_no || req.RollNo || req.roll_number}</span></span>
+                    )}
+                  </div>
+
+                  {req.problem_description && (
+                    <p className="text-[13.5px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium line-clamp-2 mb-2.5 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                      {req.problem_description}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                        👨‍🔧 {req.technician_name || <span className="italic text-slate-400">ยังไม่มอบหมาย</span>}
+                      </span>
+                      <span>•</span>
+                      <span className="text-[11.5px]">{formatDateTime(req.created_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={`${baseUrl}/repair/${encodeURIComponent(req.cylinder_serial || '')}?req=${encodeURIComponent(req.id || req._id || '')}&step=view`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-700 transition-all"
+                        title="เปิดดูหน้าแจ้งซ่อม"
+                      >
+                        <ArrowUpRight size={13} />
+                      </a>
+                      <ChevronRight size={16} className="text-slate-400 dark:text-slate-500" />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            {!stats.pendingRepairsList?.length && (
+              <div className="text-center py-10 px-4 text-slate-400">
+                <CheckCircle2 size={36} className="mx-auto mb-2 text-emerald-500 opacity-80" />
+                <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">ไม่มีงานแจ้งซ่อมค้างในระบบ</p>
+                <p className="text-xs mt-1 text-slate-400">ทุกรายการได้รับการซ่อมเสร็จสิ้นเรียบร้อยแล้ว</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-3 text-left whitespace-nowrap">เลขที่แจ้งซ่อม</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">เครื่องจักร</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">ซีเรียล</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">Design</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">KI</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">เลขม้วน</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">ตำแหน่ง</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">อาการเสีย / ปัญหา</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">ผู้แจ้ง</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">ช่างผู้รับผิดชอบ</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">วันที่แจ้ง</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">สถานะ</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap">ดูงาน</th>
                 </tr>
-              ))}
-              {!stats.pendingRepairsList?.length && (
-                <tr>
-                  <td colSpan={10} className="text-center py-10 text-slate-400">
-                    <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-500 opacity-80" />
-                    <p className="font-semibold text-slate-600 dark:text-slate-400">ไม่มีงานแจ้งซ่อมค้างในระบบ</p>
-                    <p className="text-[11px] mt-0.5 text-slate-400">ทุกรายการได้รับการซ่อมเสร็จสิ้นเรียบร้อยแล้ว</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {(stats.pendingRepairsList || []).map((req, i) => (
+                  <tr
+                    key={req.id || req._id || i}
+                    onClick={() => setSelectedRepair(req)}
+                    className="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                  >
+                    <td className="py-2.5 px-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap group-hover:underline">
+                      {req.request_no || (req.id ? `REQ-${req.id.slice(0, 8)}` : '—')}
+                    </td>
+                    <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                      {req.machine_mc || '—'}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                      {req.cylinder_serial || '—'}
+                    </td>
+                    <td className="py-2.5 px-3 font-semibold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                      {req.Design || '—'}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                      {req.KI !== undefined && req.KI !== null && req.KI !== '' ? req.KI : '—'}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                      {req.roll_no || req.RollNo || req.roll_number || '—'}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                      {req.cylinder_location ? (
+                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold text-[11px]">
+                          {req.cylinder_location}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="py-2.5 px-3 max-w-xs truncate text-slate-700 dark:text-slate-300 font-medium" title={req.problem_description}>
+                      {req.problem_description || '—'}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      {req.reported_by || '—'}
+                    </td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                      {req.technician_name || <span className="text-slate-400 font-normal italic">ยังไม่มอบหมาย</span>}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                      {formatDateTime(req.created_at)}
+                    </td>
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <RepairStatusBadge status={req.status} />
+                    </td>
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={`${baseUrl}/repair/${encodeURIComponent(req.cylinder_serial || '')}?req=${encodeURIComponent(req.id || req._id || '')}&step=view`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-700 transition-all"
+                        title="เปิดดูหน้าแจ้งซ่อม"
+                      >
+                        <ArrowUpRight size={13} />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+                {!stats.pendingRepairsList?.length && (
+                  <tr>
+                    <td colSpan={13} className="text-center py-10 text-slate-400">
+                      <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-500 opacity-80" />
+                      <p className="font-semibold text-slate-600 dark:text-slate-400">ไม่มีงานแจ้งซ่อมค้างในระบบ</p>
+                      <p className="text-[11px] mt-0.5 text-slate-400">ทุกรายการได้รับการซ่อมเสร็จสิ้นเรียบร้อยแล้ว</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ── RECENT WORK ORDERS SECTION (CLICKABLE ROWS) ───────────────────────── */}
@@ -590,51 +683,96 @@ export default function Dashboard() {
             <ArrowRight size={13} />
           </Link>
         </div>
-        <div className="overflow-x-auto">
-          <table className="table w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_id')}</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_machine')}</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_problem')}</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">{t('priority')}</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">{t('status')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {(stats.recentWO || []).map((wo, i) => (
-                <tr
-                  key={i}
-                  onClick={() => setSelectedWO(wo)}
-                  className="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
-                >
-                  <td className="py-2.5 px-3 font-mono text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap group-hover:underline">
+        {isMobile ? (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {(stats.recentWO || []).map((wo, i) => (
+              <div
+                key={wo.Job_ID || wo.id || i}
+                onClick={() => setSelectedWO(wo)}
+                className="p-3.5 sm:p-4 active:bg-blue-50/60 dark:active:bg-slate-800/80 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
                     {wo.Job_ID || wo['Job ID'] || wo.WO_ID || (wo.id ? `JOB-${wo.id.slice(0, 8)}` : '—')}
-                  </td>
-                  <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">{wo.MC}</td>
-                  <td className="py-2.5 px-3 max-w-xs truncate text-slate-600 dark:text-slate-300">{getWorkOrderDetails(wo) || wo.Design || '—'}</td>
-                  <td className="py-2.5 px-3 whitespace-nowrap">
-                    <span className={`badge ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':'badge-blue'}`}>
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`badge text-[11px] font-bold ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':'badge-blue'}`}>
                       {wo.JobType==='DESIGN'?'🎨 ปรับแบบ':wo.JobType==='PM'?'🧹 PM':wo.JobType==='REPAIR'?'🛠️ แก้ไข':(statusLabel(wo.Priority) || '🛠️ แก้ไข')}
                     </span>
-                  </td>
-                  <td className="py-2.5 px-3 whitespace-nowrap">
-                    <span className={`badge ${wo.Status==='COMPLETED'?'badge-green':wo.Status==='IN_PROGRESS'?'badge-orange':wo.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
+                    <span className={`badge text-[11px] font-bold ${wo.Status==='COMPLETED'?'badge-green':wo.Status==='IN_PROGRESS'?'badge-orange':wo.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
                       {wo.Status==='COMPLETED'?'เสร็จสิ้น':wo.Status==='IN_PROGRESS'?'กำลังทำ':(statusLabel(wo.Status) || wo.Status)}
                     </span>
-                  </td>
+                  </div>
+                </div>
+
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-semibold">
+                  🏭 เครื่องจักร: <span className="text-slate-800 dark:text-slate-200 font-bold">{wo.MC || '—'}</span>
+                </div>
+
+                <p className="text-[13.5px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium line-clamp-2">
+                  {getWorkOrderDetails(wo) || wo.Design || '—'}
+                </p>
+
+                <div className="flex items-center justify-end text-xs text-slate-400 mt-2">
+                  <span className="text-[11.5px] text-blue-500 font-semibold mr-1">แตะเพื่อดูรายละเอียด</span>
+                  <ChevronRight size={14} className="text-slate-400 dark:text-slate-500" />
+                </div>
+              </div>
+            ))}
+            {!stats.recentWO?.length && (
+              <div className="text-center py-10 px-4 text-slate-400">
+                <ClipboardList size={36} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                <p className="font-semibold text-slate-600 dark:text-slate-400 text-sm">{t('no_data')}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_id')}</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_machine')}</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">{t('wo_th_problem')}</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">{t('priority')}</th>
+                  <th className="py-3 px-3 text-left whitespace-nowrap">{t('status')}</th>
                 </tr>
-              ))}
-              {!stats.recentWO?.length && (
-                <tr>
-                  <td colSpan={5} className="text-center py-10 text-slate-400">
-                    {t('no_data')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {(stats.recentWO || []).map((wo, i) => (
+                  <tr
+                    key={i}
+                    onClick={() => setSelectedWO(wo)}
+                    className="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                  >
+                    <td className="py-2.5 px-3 font-mono text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap group-hover:underline">
+                      {wo.Job_ID || wo['Job ID'] || wo.WO_ID || (wo.id ? `JOB-${wo.id.slice(0, 8)}` : '—')}
+                    </td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">{wo.MC}</td>
+                    <td className="py-2.5 px-3 max-w-xs truncate text-slate-600 dark:text-slate-300">{getWorkOrderDetails(wo) || wo.Design || '—'}</td>
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <span className={`badge ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':'badge-blue'}`}>
+                        {wo.JobType==='DESIGN'?'🎨 ปรับแบบ':wo.JobType==='PM'?'🧹 PM':wo.JobType==='REPAIR'?'🛠️ แก้ไข':(statusLabel(wo.Priority) || '🛠️ แก้ไข')}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <span className={`badge ${wo.Status==='COMPLETED'?'badge-green':wo.Status==='IN_PROGRESS'?'badge-orange':wo.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
+                        {wo.Status==='COMPLETED'?'เสร็จสิ้น':wo.Status==='IN_PROGRESS'?'กำลังทำ':(statusLabel(wo.Status) || wo.Status)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {!stats.recentWO?.length && (
+                  <tr>
+                    <td colSpan={5} className="text-center py-10 text-slate-400">
+                      {t('no_data')}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ── DETAIL DRAWER: REPAIR REQUEST ──────────────────────────────────── */}
