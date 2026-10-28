@@ -33,6 +33,11 @@ import {
   Eye,
   Zap,
   ChevronRight,
+  Scan,
+  QrCode,
+  Smartphone,
+  AlertTriangle,
+  Pause,
 } from 'lucide-react'
 import gemmaLogo from '../assets/logo-gemma.png'
 import { APP_VERSION } from '../version'
@@ -261,6 +266,389 @@ const staggerCardVariants = {
   },
 }
 
+
+/**
+ * Interactive QR Code Scan-to-Repair Simulator
+ * Engaging interactive demo showcasing:
+ * 1. Smart Tag Camera Viewfinder scan of machine MC-12
+ * 2. Instant One-Tap Symptom Selection (เข็มหัก, รอบสะดุด, น้ำมันหยด, ผ้าเป็นทาง)
+ * 3. 0.3s Cloudflare Edge Work Order Generation
+ * 4. Real-Time LINE Flex Notification Pop-In with < 1 min response
+ */
+function InteractiveQrRepairSimulator({ motionEnabled = true }) {
+  const [activeStep, setActiveStep] = useState(1) // 1: Scan, 2: Select Symptom, 3: Sync WO, 4: LINE Alert
+  const [selectedIssue, setSelectedIssue] = useState('เข็มหัก / เส้นด้ายขาดซ้ำซ้อน')
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false)
+  const timerRef = useRef(null)
+
+  const ISSUES = [
+    { id: 'needle', icon: '🧵', label: 'เข็มหัก / เส้นด้ายขาดซ้ำซ้อน', sub: 'กระทบแผนทอผ้า' },
+    { id: 'cylinder', icon: '⚙️', label: 'รอบกระบอกสะดุด / เสียงดังผิดปกติ', sub: 'เสี่ยงกระบอกสึกหรอ' },
+    { id: 'oil', icon: '💧', label: 'ระบบน้ำมันหล่อลื่นขัดข้อง / หยดเลอะผ้า', sub: 'ผ้ามีตำหนิน้ำมัน' },
+    { id: 'tension', icon: '⚠️', label: 'ผ้าเป็นทาง / เส้นตึงหย่อนไม่สม่ำเสมอ', sub: 'น้ำหนักผ้าไม่ได้สเปก' },
+  ]
+
+  // Subtle Web Audio Feedback chime (fails gracefully if audio context blocked)
+  const playBeep = useCallback((freq = 880, dur = 0.08) => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, ctx.currentTime)
+      gain.gain.setValueAtTime(0.04, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + dur)
+    } catch {}
+  }, [])
+
+  // Auto-play simulation cycle
+  useEffect(() => {
+    if (!isAutoPlaying) return undefined
+
+    timerRef.current = setInterval(() => {
+      setActiveStep((prev) => {
+        if (prev === 1) {
+          playBeep(920, 0.08)
+          return 2
+        }
+        if (prev === 2) {
+          playBeep(650, 0.07)
+          return 3
+        }
+        if (prev === 3) {
+          playBeep(1174, 0.12)
+          return 4
+        }
+        return 1
+      })
+    }, 3400)
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [isAutoPlaying, playBeep])
+
+  const handleStepClick = (step) => {
+    setIsAutoPlaying(false)
+    setActiveStep(step)
+    playBeep(840 + step * 70, 0.06)
+  }
+
+  const handleSelectIssue = (issue) => {
+    setSelectedIssue(issue.label)
+    playBeep(960, 0.07)
+  }
+
+  const handleProceedToStep3 = () => {
+    playBeep(680, 0.08)
+    setActiveStep(3)
+    setTimeout(() => {
+      playBeep(1174, 0.14)
+      setActiveStep(4)
+    }, 1100)
+  }
+
+  const handleOpenLiveRepair = () => {
+    window.open('/repair/MC-12', '_blank')
+  }
+
+  return (
+    <div className="w-full max-w-[360px] sm:max-w-[400px] mx-auto rounded-3xl bg-[#070b17] border-2 border-emerald-500/45 shadow-2xl p-3 sm:p-5 flex flex-col justify-between relative overflow-hidden">
+      {/* Top Header of the Simulated Smartphone Frame */}
+      <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-800">
+        <span className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+          <Send size={14} />
+          <span>LINE Flex Notification</span>
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            10:14 AM · 5G
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsAutoPlaying((prev) => !prev)}
+            title={isAutoPlaying ? 'หยุดการจำลอง' : 'เปิดการจำลองอัตโนมัติ'}
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+              isAutoPlaying
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            {isAutoPlaying ? <Pause size={10} /> : <Play size={10} />}
+            <span>{isAutoPlaying ? 'หยุด' : 'เล่นสาธิต'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Interactive Step Navigator Tabs */}
+      <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800 mb-3 text-[10px] font-bold">
+        {[
+          { step: 1, label: '1. สแกน' },
+          { step: 2, label: '2. อาการ' },
+          { step: 3, label: '3. ส่งงาน' },
+          { step: 4, label: '4. เตือน LINE' },
+        ].map((item) => (
+          <button
+            key={item.step}
+            type="button"
+            onClick={() => handleStepClick(item.step)}
+            className={`py-1 rounded-lg text-center cursor-pointer transition-all ${
+              activeStep === item.step
+                ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Dynamic Viewport by Active Step */}
+      <div className="min-h-[290px] flex flex-col justify-between">
+        {/* STEP 1: Smart Tag Camera Viewfinder */}
+        {activeStep === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col justify-between p-3 rounded-2xl bg-slate-950/90 border border-slate-800 relative overflow-hidden"
+          >
+            {/* Viewfinder Corner Reticles */}
+            <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-emerald-400 pointer-events-none" />
+            <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-emerald-400 pointer-events-none" />
+            <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-emerald-400 pointer-events-none" />
+            <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-emerald-400 pointer-events-none" />
+
+            {/* Laser Scanning Beam */}
+            {motionEnabled && (
+              <motion.div
+                aria-hidden="true"
+                animate={{ top: ['15%', '80%', '15%'] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute left-3 right-3 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#34d399] pointer-events-none z-10"
+              />
+            )}
+
+            <div className="text-center pt-1">
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center justify-center gap-1">
+                <Scan size={12} className="animate-pulse" />
+                <span>Smart Tag Scanner Active</span>
+              </span>
+            </div>
+
+            {/* Target 20x7cm Machine Tag in Viewfinder */}
+            <div className="my-3 p-3 rounded-xl bg-[#bbf7d0] text-black text-center shadow-md border-2 border-slate-900">
+              <div className="text-[9px] font-bold tracking-wider text-slate-800 uppercase">
+                CURRENT MACHINE · โซนทอ A
+              </div>
+              <div
+                className="text-3xl font-black tracking-tight my-0.5 text-black"
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                MC-12
+              </div>
+              <div className="text-[9px] font-bold text-slate-700">
+                Double Knit 34&quot; 24G
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
+                <span className="flex items-center gap-1.5 font-bold">
+                  <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                  <span>ตรวจพบเครื่องจักร MC-12</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">0.1s</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleStepClick(2)}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all"
+              >
+                <span>กดเลือกอาการเสีย ➔</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* STEP 2: One-Tap Issue Selection */}
+        {activeStep === 2 && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col justify-between p-3 rounded-2xl bg-slate-950/90 border border-slate-800"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black text-white flex items-center gap-1.5">
+                  <Wrench size={13} className="text-cyan-400" />
+                  <span>เลือกอาการเสียด่วน (MC-12):</span>
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold">
+                  แจ้งด่วน
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                {ISSUES.map((issue) => {
+                  const isSelected = selectedIssue === issue.label
+                  return (
+                    <button
+                      key={issue.id}
+                      type="button"
+                      onClick={() => handleSelectIssue(issue)}
+                      className={`w-full p-2 rounded-xl text-left text-xs font-bold flex items-center justify-between border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-sm'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-sm shrink-0">{issue.icon}</span>
+                        <span className="truncate">{issue.label}</span>
+                      </div>
+                      {isSelected && <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <div className="text-[10px] text-slate-400 mb-2 px-1 flex justify-between">
+                <span>ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า)</span>
+                <span className="text-emerald-400 font-bold">พิกัด: โซน A</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleProceedToStep3}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all"
+              >
+                <Zap size={13} />
+                <span>ส่งแจ้งซ่อมทันที ➔</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* STEP 3: 0.3s Cloudflare Edge Work Order Sync */}
+        {activeStep === 3 && (
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-slate-950/90 border border-cyan-500/30 space-y-3"
+          >
+            <div className="w-14 h-14 rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center text-cyan-300 animate-spin">
+              <Zap size={24} />
+            </div>
+            <div>
+              <div className="text-sm font-black text-white">
+                กำลังบันทึกใบสั่งงาน #WO-MC12-089
+              </div>
+              <div className="text-xs text-cyan-300 font-mono mt-1">
+                Cloudflare Edge Sync · 0.3s
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed max-w-[240px]">
+              บันทึกลงระบบคลาวด์ พร้อมยิง Webhook ส่งต่อเข้า LINE Official ของทีมช่างซ่อมบำรุง
+            </p>
+            <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+              <motion.div
+                initial={{ width: '0%' }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 0.95 }}
+                className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+              />
+            </div>
+          </motion.div>
+        )}
+
+        {/* STEP 4: LINE Flex Notification Alert Card */}
+        {activeStep === 4 && (
+          <motion.div
+            key="step4"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex-1 flex flex-col justify-between"
+          >
+            {/* The Authentic LINE Flex Card matching existing test expectations */}
+            <div className="p-4 rounded-2xl bg-white text-slate-900 shadow-xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 text-[11px] font-black">
+                  🚨 แจ้งซ่อมด่วน (URGENT)
+                </span>
+                <span
+                  className="text-xs font-extrabold text-slate-700"
+                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                >
+                  MC-12
+                </span>
+              </div>
+              <div>
+                <div className="text-base sm:text-lg font-black text-slate-950">
+                  เครื่องจักร: MC-12 (โซน A)
+                </div>
+                <div className="text-xs sm:text-sm text-slate-700 mt-0.5 font-medium">
+                  อาการ: {selectedIssue}
+                </div>
+              </div>
+              <div className="pt-2 border-t border-slate-200 text-xs text-slate-600 space-y-0.5">
+                <div>ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า)</div>
+                <div>เวลาแจ้ง: 10:14 น. · อาคารโรงทอ 1</div>
+              </div>
+              <div className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black text-center shadow-md cursor-pointer transition-colors">
+                ⚡ กดรับงานซ่อมนี้ทันที
+              </div>
+            </div>
+
+            {/* Replay & Live Repair Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-2.5">
+              <button
+                type="button"
+                onClick={() => handleStepClick(1)}
+                className="py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <RotateCcw size={12} />
+                <span>จำลองใหม่</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenLiveRepair}
+                className="py-1.5 px-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <ExternalLink size={12} />
+                <span>เปิดฟอร์มจริง</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Footer Info Pill */}
+      <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+        <span className="flex items-center gap-1 text-emerald-400">
+          <Clock size={11} />
+          <span>เวลาตอบสนอง: &lt; 1 นาที</span>
+        </span>
+        <span className="text-slate-500">LINE Official Webhook</span>
+      </div>
+    </div>
+  )
+}
+
 export default function Presentation() {
   const navigate = useNavigate()
   const [activeSectionId, setActiveSectionId] = useState('hero')
@@ -361,13 +749,13 @@ export default function Presentation() {
     <MotionConfig reducedMotion={motionEnabled ? 'never' : 'always'}>
       <div
         ref={pageRef}
-        className="min-h-screen w-full bg-[#050811] text-slate-100 relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200"
+        className="min-h-screen w-full max-w-full bg-[#050811] text-slate-100 relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200"
         style={{
           fontFamily:
             "'Noto Sans Thai', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
         }}
       >
-        {/* ── AMBIENT ARCHITECTURAL GRID & FLOATING GLOWS ──────────────── */}
+        {/* ── AMBIENT ARCHITECTURAL GRID & CONTAINED FLOATING GLOWS ───── */}
         <div
           aria-hidden="true"
           className="fixed inset-0 pointer-events-none z-0 opacity-30"
@@ -377,18 +765,20 @@ export default function Presentation() {
             backgroundSize: '56px 56px',
           }}
         />
-        <motion.div
-          aria-hidden="true"
-          animate={{ x: [0, 36, -24, 0], y: [0, -28, 22, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-          className="fixed -top-36 left-1/4 w-[520px] h-[520px] rounded-full bg-blue-600/15 blur-[130px] pointer-events-none z-0"
-        />
-        <motion.div
-          aria-hidden="true"
-          animate={{ x: [0, -40, 28, 0], y: [0, 32, -24, 0] }}
-          transition={{ duration: 24, repeat: Infinity, ease: 'easeInOut' }}
-          className="fixed bottom-0 right-1/5 w-[480px] h-[480px] rounded-full bg-emerald-500/10 blur-[140px] pointer-events-none z-0"
-        />
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          <motion.div
+            aria-hidden="true"
+            animate={{ x: [0, 24, -20, 0], y: [0, -20, 16, 0] }}
+            transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute -top-36 left-1/4 w-[320px] sm:w-[520px] h-[320px] sm:h-[520px] rounded-full bg-blue-600/15 blur-[100px] sm:blur-[130px]"
+          />
+          <motion.div
+            aria-hidden="true"
+            animate={{ x: [0, -28, 20, 0], y: [0, 24, -18, 0] }}
+            transition={{ duration: 24, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute bottom-0 right-1/5 w-[280px] sm:w-[480px] h-[280px] sm:h-[480px] rounded-full bg-emerald-500/10 blur-[100px] sm:blur-[140px]"
+          />
+        </div>
 
         {/* ── STICKY GLASSMORPHIC EXECUTIVE NAVBAR ─────────────────────── */}
         <header className="sticky top-0 left-0 right-0 z-50 bg-[#050811]/85 backdrop-blur-xl border-b border-slate-800/80">
@@ -400,24 +790,24 @@ export default function Presentation() {
             />
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
             {/* Brand Lockup */}
             <button
               type="button"
               onClick={() => scrollToSection('hero')}
-              className="flex items-center gap-3 text-left cursor-pointer"
+              className="flex items-center gap-2 sm:gap-3 text-left cursor-pointer shrink-0"
             >
               <img
                 src={gemmaLogo}
                 alt="Gemma Knits"
-                className="h-8 w-auto object-contain drop-shadow"
+                className="h-7 sm:h-8 w-auto object-contain drop-shadow"
               />
-              <div className="hidden sm:flex flex-col">
-                <span className="text-xs font-black text-white tracking-wider leading-tight">
+              <div className="flex flex-col">
+                <span className="text-[11px] sm:text-xs font-black text-white tracking-wider leading-tight">
                   GEMMA KNITS · TEXTILEOPS
                 </span>
                 <span
-                  className="text-[10px] text-cyan-400 font-bold tracking-widest"
+                  className="text-[9px] sm:text-[10px] text-cyan-400 font-bold tracking-widest"
                   style={{ fontFamily: "'JetBrains Mono', monospace" }}
                 >
                   EXECUTIVE LANDING · {APP_VERSION}
@@ -450,14 +840,14 @@ export default function Presentation() {
             </nav>
 
             {/* Presenter Action Controls */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setReplayKey((prev) => prev + 1)}
                 title="เล่นอนิเมชั่นเปิดตัวซ้ำ (กดปุ่ม R)"
-                className="p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-cyan-300 hover:border-cyan-500/40 cursor-pointer flex items-center gap-1.5"
+                className="p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-cyan-300 hover:border-cyan-500/40 cursor-pointer flex items-center gap-1"
               >
-                <RotateCcw size={14} />
+                <RotateCcw size={13} />
                 <span className="hidden md:inline">เล่นซ้ำ</span>
               </button>
 
@@ -466,13 +856,13 @@ export default function Presentation() {
                 onClick={() => setMotionEnabled((prev) => !prev)}
                 aria-pressed={motionEnabled}
                 title="เปิด/ปิดโหมดอนิเมชั่นหน่วงเวลา"
-                className={`p-2 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1.5 ${
+                className={`p-1.5 sm:p-2 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1 ${
                   motionEnabled
                     ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
                     : 'bg-slate-900 text-slate-400 border-slate-700/80'
                 }`}
               >
-                <Sparkles size={14} />
+                <Sparkles size={13} />
                 <span className="hidden lg:inline">
                   {motionEnabled ? 'อนิเมชั่น: เปิด' : 'อนิเมชั่น: ปิด'}
                 </span>
@@ -483,13 +873,13 @@ export default function Presentation() {
                 onClick={() => setShowNotes((prev) => !prev)}
                 aria-pressed={showNotes}
                 title="เปิด/ปิดสคริปต์ผู้บรรยาย (กดปุ่ม N)"
-                className={`p-2 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1.5 ${
+                className={`p-1.5 sm:p-2 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1 ${
                   showNotes
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     : 'bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-white'
                 }`}
               >
-                <FileText size={14} />
+                <FileText size={13} />
                 <span className="hidden md:inline">บทพูด</span>
               </button>
 
@@ -497,16 +887,16 @@ export default function Presentation() {
                 type="button"
                 onClick={toggleFullscreen}
                 title={isFullscreen ? 'ออกจากโหมดเต็มจอ (F)' : 'ขยายเต็มหน้าจอ (F)'}
-                className="p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-white cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-white cursor-pointer"
               >
-                {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
               </button>
 
               <button
                 type="button"
                 onClick={handleLaunchLiveApp}
                 title="เปิดทดลองใช้งานระบบจริง"
-                className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 cursor-pointer hidden sm:flex items-center gap-1.5"
+                className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 cursor-pointer hidden sm:flex items-center gap-1.5"
               >
                 <ExternalLink size={13} />
                 <span>เปิดระบบจริง</span>
@@ -516,15 +906,15 @@ export default function Presentation() {
                 type="button"
                 onClick={() => navigate('/')}
                 title="กลับสู่หน้าหลัก TextileOps"
-                className="p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-rose-400 hover:border-rose-500/40 cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-rose-400 hover:border-rose-500/40 cursor-pointer"
               >
-                <X size={15} />
+                <X size={14} />
               </button>
             </div>
           </div>
 
           {/* Mobile/Tablet Quick Section Strip */}
-          <div className="xl:hidden flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto no-scrollbar">
+          <div className="xl:hidden flex items-center gap-1.5 px-3 sm:px-4 pb-2 sm:pb-2.5 overflow-x-auto no-scrollbar scroll-smooth">
             {LANDING_SECTIONS.map((sec) => {
               const isActive = activeSectionId === sec.id
               return (
@@ -552,18 +942,18 @@ export default function Presentation() {
              ============================================================== */}
           <section
             id="hero"
-            className="min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center px-4 sm:px-8 py-16 sm:py-24 relative scroll-mt-20"
+            className="min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center px-3.5 sm:px-8 py-10 sm:py-24 relative scroll-mt-16 sm:scroll-mt-20 max-w-full overflow-hidden"
           >
-            <div className="max-w-5xl mx-auto text-center flex flex-col items-center">
+            <div className="max-w-5xl mx-auto text-center flex flex-col items-center w-full">
               {/* Step 1: 0.15s delay — Operational Excellence Pill */}
               <motion.div
                 initial={{ opacity: 0, y: -22 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.65, delay: 0.15, ease: EASE_EXECUTIVE }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-400/35 text-cyan-300 text-xs sm:text-sm font-bold uppercase tracking-wider mb-7 shadow-lg shadow-cyan-500/10"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-cyan-500/10 border border-cyan-400/35 text-cyan-300 text-[11px] sm:text-sm font-bold uppercase tracking-wider mb-5 sm:mb-7 shadow-lg shadow-cyan-500/10 max-w-full text-center"
               >
-                <Sparkles size={14} className="text-cyan-400" />
-                <span>Gemma Knits Operational Excellence · {APP_VERSION}</span>
+                <Sparkles size={13} className="text-cyan-400 shrink-0" />
+                <span className="truncate">Gemma Knits Operational Excellence · {APP_VERSION}</span>
               </motion.div>
 
               {/* Step 2: 0.40s delay — Gemma Knits Corporate Identity */}
@@ -571,22 +961,22 @@ export default function Presentation() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.4, ease: EASE_EXECUTIVE }}
-                className="flex items-center justify-center gap-4 sm:gap-5 mb-8 px-6 py-3 rounded-2xl bg-slate-900/75 border border-slate-800/90 backdrop-blur-md"
+                className="flex items-center justify-center gap-2.5 sm:gap-5 mb-6 sm:mb-8 px-3.5 sm:px-6 py-2 sm:py-3 rounded-2xl bg-slate-900/75 border border-slate-800/90 backdrop-blur-md max-w-full"
               >
                 <img
                   src={gemmaLogo}
                   alt="Gemma Knits Logo"
-                  className="h-14 sm:h-16 w-auto object-contain drop-shadow-lg"
+                  className="h-10 sm:h-16 w-auto object-contain drop-shadow-lg shrink-0"
                 />
-                <div className="h-10 w-[2px] bg-slate-700" />
+                <div className="h-8 sm:h-10 w-[2px] bg-slate-700 shrink-0" />
                 <div
                   className="text-left"
                   style={{ fontFamily: "'JetBrains Mono', monospace" }}
                 >
-                  <div className="text-xl sm:text-2xl font-extrabold text-white tracking-wider">
+                  <div className="text-lg sm:text-2xl font-extrabold text-white tracking-wider leading-tight">
                     GEMMA KNITS
                   </div>
-                  <div className="text-[11px] sm:text-xs text-slate-400 font-semibold tracking-widest">
+                  <div className="text-[10px] sm:text-xs text-slate-400 font-semibold tracking-widest">
                     CO., LTD. · EST. 1984
                   </div>
                 </div>
@@ -597,14 +987,14 @@ export default function Presentation() {
                 initial={{ opacity: 0, y: 38 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.85, delay: 0.7, ease: EASE_EXECUTIVE }}
-                className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white mb-6 leading-[1.18]"
+                className="text-3xl sm:text-5xl lg:text-7xl font-black tracking-tight text-white mb-4 sm:mb-6 leading-[1.2] max-w-full break-words"
               >
                 TEXTILE
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400">
                   OPS
                 </span>{' '}
                 CMMS
-                <span className="block text-xl sm:text-3xl lg:text-4xl font-extrabold text-slate-200 mt-3 leading-[1.35]">
+                <span className="block text-base sm:text-2xl lg:text-4xl font-extrabold text-slate-200 mt-2 sm:mt-3 leading-snug break-words">
                   แพลตฟอร์มบริหารงานซ่อมบำรุงและเครื่องจักรโรงทออัจฉริยะ
                 </span>
               </motion.h1>
@@ -614,7 +1004,7 @@ export default function Presentation() {
                 initial={{ opacity: 0, y: 26 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.78, delay: 1.05, ease: EASE_EXECUTIVE }}
-                className="text-base sm:text-xl text-slate-300 max-w-3xl mb-10 leading-relaxed"
+                className="text-xs sm:text-base lg:text-xl text-slate-300 max-w-3xl mb-8 sm:mb-10 leading-relaxed px-1 break-words"
               >
                 “เปลี่ยนความสูญเสียจากเครื่องจักรหยุดชะงัก (Unplanned Downtime)
                 สู่ประสิทธิภาพการผลิตสูงสุด ด้วยข้อมูล Real-Time, การแจ้งเตือนผ่าน LINE
@@ -626,17 +1016,17 @@ export default function Presentation() {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.75, delay: 1.35, ease: EASE_EXECUTIVE }}
-                className="flex flex-wrap items-center justify-center gap-4 mb-14"
+                className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 w-full max-w-md sm:max-w-none mb-10 sm:mb-14 px-2 sm:px-0"
               >
                 <motion.button
                   type="button"
                   whileHover={{ scale: 1.03, y: -2 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => scrollToSection('friction')}
-                  className="px-7 py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 text-white font-black text-sm sm:text-base shadow-xl shadow-cyan-500/20 flex items-center gap-2.5 cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 text-white font-black text-xs sm:text-base shadow-xl shadow-cyan-500/20 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>เริ่มเลื่อนชมแผนโครงการ</span>
-                  <ArrowDown size={18} />
+                  <ArrowDown size={16} />
                 </motion.button>
 
                 <motion.button
@@ -644,9 +1034,9 @@ export default function Presentation() {
                   whileHover={{ scale: 1.03, y: -2 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={handleLaunchLiveApp}
-                  className="px-7 py-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-100 font-bold text-sm sm:text-base flex items-center gap-2.5 cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3.5 sm:py-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-100 font-bold text-xs sm:text-base flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <ExternalLink size={18} className="text-emerald-400" />
+                  <ExternalLink size={16} className="text-emerald-400" />
                   <span>เปิดทดลองระบบจริง (Live Demo)</span>
                 </motion.button>
               </motion.div>
@@ -657,16 +1047,16 @@ export default function Presentation() {
                 custom={1.65}
                 initial="hidden"
                 animate="visible"
-                className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-4xl"
+                className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 w-full max-w-4xl px-1 sm:px-0"
               >
                 <motion.div
                   variants={staggerCardVariants}
                   whileHover={{ y: -5 }}
-                  className="p-5 rounded-2xl bg-slate-900/85 border border-emerald-500/35 backdrop-blur-md shadow-xl relative overflow-hidden"
+                  className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/85 border border-emerald-500/35 backdrop-blur-md shadow-xl relative overflow-hidden"
                 >
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500" />
                   <div
-                    className="text-3xl sm:text-4xl font-extrabold text-emerald-400 mb-1"
+                    className="text-2xl sm:text-4xl font-extrabold text-emerald-400 mb-1"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     <AnimatedCounter
@@ -677,20 +1067,20 @@ export default function Presentation() {
                       motionEnabled={motionEnabled}
                     />
                   </div>
-                  <div className="text-xs sm:text-sm text-white font-bold">
+                  <div className="text-[11px] sm:text-sm text-white font-bold leading-tight">
                     ลดเวลาเครื่องจอดเสีย
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">Unplanned Downtime</div>
+                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Unplanned Downtime</div>
                 </motion.div>
 
                 <motion.div
                   variants={staggerCardVariants}
                   whileHover={{ y: -5 }}
-                  className="p-5 rounded-2xl bg-slate-900/85 border border-cyan-500/35 backdrop-blur-md shadow-xl relative overflow-hidden"
+                  className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/85 border border-cyan-500/35 backdrop-blur-md shadow-xl relative overflow-hidden"
                 >
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-cyan-400 to-blue-500" />
                   <div
-                    className="text-3xl sm:text-4xl font-extrabold text-cyan-400 mb-1"
+                    className="text-2xl sm:text-4xl font-extrabold text-cyan-400 mb-1"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     &lt;{' '}
@@ -702,20 +1092,20 @@ export default function Presentation() {
                       motionEnabled={motionEnabled}
                     />
                   </div>
-                  <div className="text-xs sm:text-sm text-white font-bold">
+                  <div className="text-[11px] sm:text-sm text-white font-bold leading-tight">
                     เวลาตอบสนองงานซ่อม
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">LINE Real-Time Alert</div>
+                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate">LINE Real-Time Alert</div>
                 </motion.div>
 
                 <motion.div
                   variants={staggerCardVariants}
                   whileHover={{ y: -5 }}
-                  className="p-5 rounded-2xl bg-slate-900/85 border border-purple-500/35 backdrop-blur-md shadow-xl relative overflow-hidden"
+                  className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/85 border border-purple-500/35 backdrop-blur-md shadow-xl relative overflow-hidden"
                 >
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-purple-400 to-fuchsia-500" />
                   <div
-                    className="text-3xl sm:text-4xl font-extrabold text-purple-400 mb-1"
+                    className="text-2xl sm:text-4xl font-extrabold text-purple-400 mb-1"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     <AnimatedCounter
@@ -726,20 +1116,20 @@ export default function Presentation() {
                       motionEnabled={motionEnabled}
                     />
                   </div>
-                  <div className="text-xs sm:text-sm text-white font-bold">
+                  <div className="text-[11px] sm:text-sm text-white font-bold leading-tight">
                     ความแม่นยำสต็อกคลัง
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">เข็มทอและอะไหล่สำคัญ</div>
+                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate">เข็มทอและอะไหล่สำคัญ</div>
                 </motion.div>
 
                 <motion.div
                   variants={staggerCardVariants}
                   whileHover={{ y: -5 }}
-                  className="p-5 rounded-2xl bg-slate-900/85 border border-amber-500/35 backdrop-blur-md shadow-xl relative overflow-hidden"
+                  className="p-3.5 sm:p-5 rounded-2xl bg-slate-900/85 border border-amber-500/35 backdrop-blur-md shadow-xl relative overflow-hidden"
                 >
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
                   <div
-                    className="text-3xl sm:text-4xl font-extrabold text-amber-400 mb-1"
+                    className="text-2xl sm:text-4xl font-extrabold text-amber-400 mb-1"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     <AnimatedCounter
@@ -749,10 +1139,10 @@ export default function Presentation() {
                       motionEnabled={motionEnabled}
                     />
                   </div>
-                  <div className="text-xs sm:text-sm text-white font-bold">
+                  <div className="text-[11px] sm:text-sm text-white font-bold leading-tight">
                     ตรวจสอบย้อนหลังได้ครบ
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">Audit & Traceability</div>
+                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Audit & Traceability</div>
                 </motion.div>
               </motion.div>
 
@@ -1248,85 +1638,41 @@ export default function Presentation() {
                   </motion.div>
                 </div>
 
-                {/* ── INNOVATION #2: LINE FLEX REAL-TIME NOTIFICATION ────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-6 sm:p-10 rounded-3xl bg-slate-900/80 border border-emerald-500/30 shadow-2xl">
-                  {/* Smartphone Notification Pop-in (0.55s delay) */}
+                {/* ── INNOVATION #2: INTERACTIVE SMART TAG QR SCAN & LINE FLEX ALERT ────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-center p-5 sm:p-10 rounded-2xl sm:rounded-3xl bg-slate-900/80 border border-emerald-500/30 shadow-2xl">
+                  {/* Left / Center: Interactive Smartphone QR Scan & LINE Alert Simulator */}
                   <motion.div
                     initial={{ opacity: 0, y: 42, scale: 0.94 }}
                     whileInView={{ opacity: 1, y: 0, scale: 1 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.85, delay: 0.55, ease: EASE_EXECUTIVE }}
-                    className="lg:col-span-5 order-2 lg:order-1"
+                    className="lg:col-span-6 order-2 lg:order-1 w-full"
                   >
-                    <div className="p-5 rounded-3xl bg-[#070b17] border-2 border-emerald-500/45 shadow-2xl">
-                      <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
-                        <span className="text-xs font-bold text-emerald-400 flex items-center gap-2">
-                          <Send size={14} />
-                          <span>LINE Flex Notification</span>
-                        </span>
-                        <span
-                          className="text-[11px] text-slate-400"
-                          style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                        >
-                          LIVE · 10:14 AM
-                        </span>
-                      </div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 24 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: false, amount: 0.3 }}
-                        transition={{ duration: 0.7, delay: 0.85, ease: EASE_EXECUTIVE }}
-                        className="p-5 rounded-2xl bg-white text-slate-900 shadow-lg space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 text-[11px] font-black">
-                            🚨 แจ้งซ่อมด่วน (URGENT)
-                          </span>
-                          <span
-                            className="text-xs font-extrabold text-slate-700"
-                            style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                          >
-                            MC-12
-                          </span>
-                        </div>
-                        <div>
-                          <div className="text-lg font-black text-slate-950">
-                            เครื่องจักร: MC-12 (โซน A)
-                          </div>
-                          <div className="text-xs sm:text-sm text-slate-700 mt-1 font-medium">
-                            อาการ: เข็มหัก / เส้นด้ายขาดซ้ำซ้อน
-                          </div>
-                        </div>
-                        <div className="pt-2.5 border-t border-slate-200 text-xs text-slate-600 space-y-1">
-                          <div>ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า)</div>
-                          <div>เวลาแจ้ง: 10:14 น. · อาคารโรงทอ 1</div>
-                        </div>
-                        <div className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs sm:text-sm font-black text-center shadow-md">
-                          ⚡ กดรับงานซ่อมนี้ทันที
-                        </div>
-                      </motion.div>
-                    </div>
+                    <InteractiveQrRepairSimulator motionEnabled={motionEnabled} />
                   </motion.div>
 
+                  {/* Right: Descriptive Value Proposition & Direct Action */}
                   <motion.div
                     initial={{ opacity: 0, x: 36 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.8, delay: 0.2, ease: EASE_EXECUTIVE }}
-                    className="lg:col-span-7 space-y-5 order-1 lg:order-2"
+                    className="lg:col-span-6 space-y-4 sm:space-y-5 order-1 lg:order-2"
                   >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-emerald-300 text-xs font-bold">
                       <Send size={14} />
-                      <span>นวัตกรรม #2 · Real-Time LINE Flex Webhook</span>
+                      <span>นวัตกรรม #2 · ระบบสแกน QR แจ้งซ่อม & LINE Flex Webhook 1 วินาที</span>
                     </div>
-                    <h3 className="text-2xl sm:text-3xl font-black text-white leading-[1.3]">
+                    <h3 className="text-xl sm:text-3xl font-black text-white leading-[1.3] break-words">
                       เครื่องจักรไม่ต้องจอดรอช่าง{' '}
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-300 block mt-1">
-                        ส่งการ์ดแจ้งเตือนตรงถึงมือถือช่างภายใน 1 วินาที
+                        สแกนป้าย แจ้งซ่อม เด้งเตือนช่างใน 1 วินาที
                       </span>
                     </h3>
-                    <ul className="text-sm sm:text-base text-slate-300 space-y-3 leading-relaxed">
+                    <p className="text-xs sm:text-base text-slate-300 leading-relaxed">
+                      ช่างทอหน้างานเพียงใช้สมาร์ทโฟนสแกนป้าย Smart Tag บนโครงเครื่องจักร ระบบจะเปิดฟอร์มแจ้งซ่อมที่กรอกรหัสเครื่องและสเปกกระบอกเข็มให้อัตโนมัติใน 30 วินาที เมื่อกดส่งข้อมูล การ์ดแจ้งเตือน LINE Flex จะเด้งเข้ามือถือทีมช่างซ่อมประจำกะทันที
+                    </p>
+                    <ul className="text-xs sm:text-base text-slate-300 space-y-2.5 sm:space-y-3 leading-relaxed">
                       <li className="flex items-start gap-2.5">
                         <span className="text-emerald-400 font-black mt-0.5">✓</span>
                         <span>
@@ -1349,6 +1695,19 @@ export default function Presentation() {
                         </span>
                       </li>
                     </ul>
+
+                    {/* Interactive prompt button */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => window.open('/repair/MC-12', '_blank')}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-bold cursor-pointer transition-all active:scale-95"
+                      >
+                        <QrCode size={16} />
+                        <span>ทดลองเปิดหน้าแจ้งซ่อมจริงของเครื่อง MC-12</span>
+                        <ExternalLink size={14} />
+                      </button>
+                    </div>
                   </motion.div>
                 </div>
 
@@ -2027,7 +2386,7 @@ export default function Presentation() {
               exit={{ opacity: 0, y: 60 }}
               transition={{ duration: 0.35, ease: EASE_EXECUTIVE }}
               aria-label="สคริปต์ผู้บรรยาย"
-              className="fixed bottom-4 left-4 right-4 z-50 max-w-4xl mx-auto p-5 rounded-2xl bg-slate-900/95 border-2 border-amber-500/45 backdrop-blur-xl shadow-2xl"
+              className="fixed bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 z-50 max-w-4xl mx-auto p-4 sm:p-5 rounded-2xl bg-slate-900/95 border-2 border-amber-500/45 backdrop-blur-xl shadow-2xl max-h-[50vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="text-xs font-black text-amber-400 flex items-center gap-2 uppercase tracking-wider">

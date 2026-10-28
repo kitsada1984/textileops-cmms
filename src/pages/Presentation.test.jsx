@@ -148,4 +148,42 @@ describe('Presentation Component (Executive Pitch Landing Page)', () => {
 
     openSpy.mockRestore()
   })
+
+  it('allows interactive step navigation in the QR Scan-to-Repair simulator', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    render(
+      <MemoryRouter>
+        <Presentation />
+      </MemoryRouter>
+    )
+
+    // Step 1: Scan Tag Viewfinder is active by default
+    expect(screen.getByText(/Smart Tag Scanner Active/i)).toBeInTheDocument()
+    expect(screen.getByText(/ตรวจพบเครื่องจักร MC-12/i)).toBeInTheDocument()
+
+    // Step 2: Click to select symptom
+    const step2Tab = screen.getByRole('button', { name: /2\. อาการ/i })
+    fireEvent.click(step2Tab)
+    expect(screen.getByText(/เลือกอาการเสียด่วน \(MC-12\):/i)).toBeInTheDocument()
+
+    // Select alternative symptom
+    const cylinderSymptom = screen.getByText(/รอบกระบอกสะดุด/i)
+    fireEvent.click(cylinderSymptom)
+
+    // Step 4: Jump to LINE alert view
+    const step4Tab = screen.getByRole('button', { name: /4\. เตือน LINE/i })
+    fireEvent.click(step4Tab)
+    expect(screen.getByText(/รอบกระบอกสะดุด/i)).toBeInTheDocument()
+    expect(screen.getByText(/⚡ กดรับงานซ่อมนี้ทันที/i)).toBeInTheDocument()
+
+    // Click direct link to /repair/MC-12
+    const liveRepairBtn = screen.getByRole('button', {
+      name: /เปิดฟอร์มจริง/i,
+    })
+    fireEvent.click(liveRepairBtn)
+    expect(openSpy).toHaveBeenCalledWith('/repair/MC-12', '_blank')
+
+    openSpy.mockRestore()
+  })
 })
