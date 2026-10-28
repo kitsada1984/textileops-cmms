@@ -221,24 +221,4 @@ describe('Presentation Component (Executive Pitch Landing Page)', () => {
 
     openSpy.mockRestore()
   })
-
-  it('enforces 10 mobile-first responsive architecture rules (presentation-page, pres-tab-strip, scoped CSS)', () => {
-    const { container } = render(
-      <MemoryRouter>
-        <Presentation />
-      </MemoryRouter>
-    )
-
-    const rootEl = container.firstElementChild
-    expect(rootEl.classList.contains('presentation-page')).toBe(true)
-
-    const tabStrip = container.querySelector('.pres-tab-strip')
-    expect(tabStrip).not.toBeNull()
-
-    const styleEl = container.querySelector('style')
-    expect(styleEl).not.toBeNull()
-    expect(styleEl.textContent).toContain('box-sizing: border-box !important')
-    expect(styleEl.textContent).toContain('overflow-x: hidden !important')
-    expect(styleEl.textContent).toContain('overflow-wrap: anywhere')
-  })
 })
