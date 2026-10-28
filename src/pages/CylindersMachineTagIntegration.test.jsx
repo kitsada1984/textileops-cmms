@@ -85,10 +85,10 @@ describe('Cylinders Sub-tab "พิมพ์ Tack" (20cm x 7cm Machine Tag) Inte
     const tagSubTabBtn = screen.getByRole('button', { name: /พิมพ์ Tack \(20x7cm/i })
     fireEvent.click(tagSubTabBtn)
 
-    // Tag preview header, 20cm x 7cm info, and print button should now be visible
-    expect(screen.getByText(/ขนาด: กว้าง 20 cm × ยาว 7 cm/i)).toBeInTheDocument()
-    expect(screen.getByText(/พื้นหลังสีเขียวอ่อน · ตัวหนังสือสีดำ/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /สั่งพิมพ์ Tack \(20cm × 7cm\)/i })).toBeInTheDocument()
+    // Tag preview controls, settings button, and print button should now be visible
+    expect(screen.getByRole('button', { name: /ตั้งค่าป้าย/i })).toBeInTheDocument()
+    expect(screen.getByText(/เครื่อง In-use:/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^พิมพ์ Tack$/i })).toBeInTheDocument()
 
     // The tag container must display the current machine
     const printableTag = document.getElementById('printable-machine-tag')
