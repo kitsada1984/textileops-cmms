@@ -7,7 +7,7 @@ import {
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
   FileText, Monitor, Tablet, Smartphone, Sparkles, Target, Download, RefreshCw, Database,
-  ShieldAlert
+  ShieldAlert, Presentation
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
@@ -41,6 +41,7 @@ const UsersPage     = lazyWithRetry(() => import('./pages/Users'), 'UsersPage')
 const WebBuilder    = lazyWithRetry(() => import('./pages/WebBuilder'), 'WebBuilder')
 const DesignBom     = lazyWithRetry(() => import('./pages/DesignBom'), 'DesignBom')
 const NeedleStock   = lazyWithRetry(() => import('./pages/NeedleStock'), 'NeedleStock')
+const PresentationPage = lazyWithRetry(() => import('./pages/Presentation'), 'PresentationPage')
 const D1TestPage    = lazyWithRetry(() => import('./pages/D1TestPage'), 'D1TestPage')
 
 const NAV_SECTIONS = [
@@ -153,6 +154,7 @@ function PageRoutes() {
           <Route path="/webbuilder" element={<ProtectedRoute permKey="webbuilder"><WebBuilder /></ProtectedRoute>} />
           <Route path="/settings"   element={<ProtectedRoute permKey="settings"><SettingsPage /></ProtectedRoute>} />
           <Route path="/d1-test"    element={<ProtectedRoute permKey="settings"><D1TestPage /></ProtectedRoute>} />
+          <Route path="/presentation" element={<PresentationPage />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>
@@ -595,6 +597,33 @@ function AppInner() {
               </button>
             </div>
 
+            {/* Executive Presentation Button */}
+            <button
+              type="button"
+              onClick={() => window.open('/presentation', '_blank')}
+              title="เปิดสไลด์นำเสนอผู้บริหาร (Executive Presentation)"
+              aria-label="เปิดสไลด์นำเสนอผู้บริหาร"
+              className="px-2 sm:px-3 active:scale-95 transition-all flex-shrink-0"
+              style={{
+                height: 30,
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+                color: '#38bdf8',
+                fontWeight: 700,
+                fontSize: 11.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                border: '1px solid rgba(56,189,248,0.35)',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(15,23,42,0.3)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Presentation size={13} />
+              <span className="hidden lg:inline">สไลด์นำเสนอ</span>
+            </button>
+
             {/* PWA Install Button */}
             <button
               type="button"
@@ -754,6 +783,7 @@ export default function App() {
                   <Suspense fallback={<RouteLoadingFallback />}>
                     <Routes>
                       <Route path="/repair/:serial" element={<RepairPage />} />
+                      <Route path="/presentation" element={<PresentationPage />} />
                       <Route path="/*" element={<AppInner />} />
                     </Routes>
                   </Suspense>

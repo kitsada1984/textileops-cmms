@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TextileOps CMMS - Executive Presentation (Gemma Knits)</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      background-color: #090d16;
+      color: #f8fafc;
+      font-family: 'Noto Sans Thai', 'Inter', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    .deck-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100vh;
+      width: 100vw;
+      background: radial-gradient(circle at 50% 10%, #172554 0%, #090d16 80%);
+    }
+    header {
+      height: 56px;
+      padding: 0 24px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+    .brand-title {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #ffffff;
+    }
+    .brand-sub {
+      font-size: 10px;
+      color: #94a3b8;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .progress-bar-container {
+      width: 100%;
+      height: 3px;
+      background: #1e293b;
+      position: relative;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #6366f1, #10b981);
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      overflow-y: auto;
+    }
+    .slide-wrapper {
+      width: 100%;
+      max-width: 1100px;
+      display: none;
+      animation: fadeIn 0.4s ease-out;
+    }
+    .slide-wrapper.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .slide-category {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #22d3ee;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .slide-title {
+      font-size: 32px;
+      font-weight: 900;
+      color: #ffffff;
+      text-align: center;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+    .slide-subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      text-align: center;
+      margin-top: 6px;
+      margin-bottom: 24px;
+    }
+    .card-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .card-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .card-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(71, 85, 105, 0.6);
+      border-radius: 18px;
+      padding: 20px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    .card-danger {
+      background: rgba(88, 28, 28, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    .card-warn {
+      background: rgba(120, 53, 15, 0.2);
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+    .card-info {
+      background: rgba(30, 58, 138, 0.2);
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    .card-purple {
+      background: rgba(88, 28, 135, 0.2);
+      border-color: rgba(168, 85, 247, 0.4);
+    }
+    .card-success {
+      background: rgba(6, 78, 59, 0.2);
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .stat-number {
+      font-size: 42px;
+      font-weight: 900;
+      line-height: 1;
+      font-family: 'JetBrains Mono', monospace;
+      margin: 8px 0;
+    }
+    footer {
+      height: 64px;
+      padding: 0 32px;
+      border-top: 1px solid rgba(51, 65, 85, 0.6);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid rgba(71, 85, 105, 0.8);
+      background: #1e293b;
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .btn:hover {
+      background: #334155;
+    }
+    .btn-primary {
+      background: #2563eb;
+      border-color: #3b82f6;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+    .btn-success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .btn-success:hover {
+      background: rgba(16, 185, 129, 0.3);
+    }
+    .notes-drawer {
+      position: absolute;
+      bottom: 64px;
+      left: 0;
+      right: 0;
+      background: rgba(15, 23, 42, 0.98);
+      border-top: 2px solid #f59e0b;
+      padding: 18px 32px;
+      max-height: 180px;
+      overflow-y: auto;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 45;
+    }
+    .notes-drawer.open {
+      display: block;
+      animation: slideUp 0.2s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .tag-preview-green {
+      background: #bbf7d0;
+      color: #0f172a;
+      border: 3px solid #0f172a;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 900;
+    }
+    .tag-preview-white {
+      background: #ffffff;
+      color: #0f172a;
+      border: 2px solid #0f172a;
+      border-radius: 12px;
+      padding: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .jump-select {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="deck-container">
+    <!-- Top Bar -->
+    <header>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 20px;">🏭</span>
+        <div>
+          <div class="brand-title">GEMMA KNITS · TEXTILEOPS</div>
+          <div class="brand-sub">EXECUTIVE PITCH DECK v1.3.185</div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label for="jumpSelect" style="font-size: 11px; color: #94a3b8;">สไลด์:</label>
+        <select id="jumpSelect" class="jump-select" onchange="goToSlide(Number(this.value))">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button type="button" class="btn" onclick="toggleNotes()" title="สคริปต์ผู้บรรยาย (กดปุ่ม N)">
+          🎙️ สคริปต์พูด (N)
+        </button>
+        <button type="button" class="btn" onclick="toggleFullscreen()" title="เต็มจอ (กดปุ่ม F)">
+          ⛶ เต็มจอ (F)
+        </button>
+      </div>
+    </header>
+
+    <!-- Progress Line -->
+    <div class="progress-bar-container">
+      <div id="progressBar" class="progress-bar-fill" style="width: 9.09%;"></div>
+    </div>
+
+    <!-- Main Slide Canvas -->
+    <main id="slideCanvas">
+      <!-- SLIDE 1: Cover -->
+      <div class="slide-wrapper active" data-index="0">
+        <div style="text-align: center; max-width: 800px; margin: 0 auto;">
+          <div style="display: inline-block; padding: 4px 14px; border-radius: 999px; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #60a5fa; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 20px;">
+            ✨ GEMMA KNITS OPERATIONAL EXCELLENCE · v1.3.185
+          </div>
+          <div style="font-size: 48px; font-weight: 900; color: #ffffff; letter-spacing: -0.03em; margin-bottom: 12px;">
+            TEXTILE<span style="color: #38bdf8;">OPS</span> CMMS
+          </div>
+          <div style="font-size: 20px; font-weight: 700; color: #94a3b8; margin-bottom: 24px;">
+            แพลตฟอร์มบริหารจัดการงานซ่อมบำรุงและเครื่องจักรอัจฉริยะ
+          </div>
+          <p style="font-size: 15px; color: #cbd5e1; line-height: 1.7; margin-bottom: 32px; font-weight: 300;">
+            "เปลี่ยนความสูญเสียจากเครื่องจักรหยุดชะงัก (Downtime) สู่ประสิทธิภาพการผลิตสูงสุด<br>ด้วยข้อมูลแบบ Real-Time และเทคโนโลยี AI อัจฉริยะ"
+          </p>
+          <div class="card-grid-4">
+            <div class="card" style="text-align: center;">
+              <div style="color: #34d399;" class="stat-number">-30%</div>
+              <div style="font-size: 11px; color: #94a3b8;">Unplanned Downtime</div>
+            </div>
+            <div class="card" style="text-align: center;">
+              <div style="color: #38bdf8;" class="stat-number">&lt; 1 นาที</div>
+              <div style="font-size: 11px; color: #94a3b8;">เวลาตอบสนองช่าง</div>
+            </div>
+            <div class="card" style="text-align: center;">
+              <div style="color: #c084fc;" class="stat-number">99.5%</div>
+              <div style="font-size: 11px; color: #94a3b8;">ความแม่นยำสต็อก</div>
+            </div>
+            <div class="card" style="text-align: center;">
+              <div style="color: #fbbf24;" class="stat-number">100%</div>
+              <div style="font-size: 11px; color: #94a3b8;">Traceability ย้อนหลัง</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 2: Pains -->
+      <div class="slide-wrapper" data-index="1">
+        <div class="slide-category">ปัญหาหน้างาน (The Pain Points)</div>
+        <div class="slide-title">ความท้าทายหน้างานเดิม (The Operational Friction)</div>
+        <div class="slide-subtitle">4 ปัญหาหลักที่สร้างความสูญเสียแฝงและโอกาสปรับปรุงในโรงทอ</div>
+        <div class="card-grid-2">
+          <div class="card card-danger">
+            <h3 style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 8px;">1. แจ้งซ่อมล่าช้า & ข้อมูลตกหล่น</h3>
+            <p style="font-size: 12px; color: #fca5a5; margin-bottom: 12px;">เครื่องหยุดรอช่างนานเกินจำเป็น</p>
+            <ul style="font-size: 12px; color: #cbd5e1; line-height: 1.6; padding-left: 16px;">
+              <li>เดินไปบอกด้วยวาจา หรือเขียนเศษกระดาษ ช่างไม่เห็นทันที</li>
+              <li>เครื่องหยุดรอช่างเฉลี่ย 10–15 นาทีก่อนเริ่มซ่อม</li>
+              <li>ไม่มีการจัดลำดับความเร่งด่วนของใบแจ้งซ่อม</li>
+            </ul>
+          </div>
+          <div class="card card-warn">
+            <h3 style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 8px;">2. สต็อกเข็มและอะไหล่ไม่ตรงจริง</h3>
+            <p style="font-size: 12px; color: #fcd34d; margin-bottom: 12px;">เข็มสูญหาย เบิกซ้ำซ้อน ค้นหาอะไหล่ช้า</p>
+            <ul style="font-size: 12px; color: #cbd5e1; line-height: 1.6; padding-left: 16px;">
+              <li>บันทึกใส่สมุด ไม่สัมพันธ์กับรอบเครื่องจักรจริง</li>
+              <li>ช่างไม่รู้ชื่ออะไหล่ เสียเวลาค้นหาในคลัง 15–20 นาที/ครั้ง</li>
+              <li>อะไหล่หมดกะทันหัน ทำให้เครื่องจักรหยุดซ่อมข้ามวัน</li>
+            </ul>
+          </div>
+          <div class="card card-info">
+            <h3 style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 8px;">3. ข้อมูลกระบอกเข็มสับสน</h3>
+            <p style="font-size: 12px; color: #93c5fd; margin-bottom: 12px;">เสี่ยงต่อการใส่กระบอกผิดสเปกและผ้าเสีย</p>
+            <ul style="font-size: 12px; color: #cbd5e1; line-height: 1.6; padding-left: 16px;">
+              <li>ใช้กระดาษเขียนแปะติดเครื่อง เลอะน้ำมันและหลุดหายง่าย</li>
+              <li>สลับกระบอกสำรองแล้วไม่บันทึกประวัติย้อนหลัง</li>
+              <li>ความเสี่ยงสูงที่เส้นผ่าศูนย์กลาง, เกจ หรือจำนวนเข็มผิดสเปก</li>
+            </ul>
+          </div>
+          <div class="card card-purple">
+            <h3 style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 8px;">4. ไร้ศูนย์กลางข้อมูลผู้บริหาร</h3>
+            <p style="font-size: 12px; color: #d8b4fe; margin-bottom: 12px;">ตัดสินใจช้าเพราะขาดข้อมูล Real-Time</p>
+            <ul style="font-size: 12px; color: #cbd5e1; line-height: 1.6; padding-left: 16px;">
+              <li>ต้องรอรวบรวมรายงานสรุปประจำสัปดาห์ ไม่ทันต่อเหตุการณ์</li>
+              <li>ไม่เห็นสถิติ MTTR และสาเหตุที่เครื่องจักรเสียซ้ำซาก</li>
+              <li>ยากต่อการนำข้อมูลไปผ่านการรับรองมาตรฐานสากล (ISO)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 3: Solution -->
+      <div class="slide-wrapper" data-index="2">
+        <div class="slide-category">ภาพรวมระบบ (Solution Architecture)</div>
+        <div class="slide-title">ทางออก: TextileOps Platform (The Solution)</div>
+        <div class="slide-subtitle">แพลตฟอร์มศูนย์กลางหนึ่งเดียว เชื่อมโยงทุกฝ่ายแบบ Real-Time ไร้รอยต่อ</div>
+        <div class="card-grid-4" style="margin-bottom: 20px;">
+          <div class="card" style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 6px;">👷‍♂️</div>
+            <div style="font-weight: 800; font-size: 13px; color: #ffffff;">ช่างทอหน้างาน</div>
+            <div style="font-size: 10px; color: #94a3b8;">แจ้งซ่อมด้วย QR 30 วิ</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 6px;">🔧</div>
+            <div style="font-weight: 800; font-size: 13px; color: #ffffff;">ช่างซ่อมบำรุง</div>
+            <div style="font-size: 10px; color: #94a3b8;">รับงานผ่าน LINE Alert</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 6px;">📦</div>
+            <div style="font-weight: 800; font-size: 13px; color: #ffffff;">ฝ่ายคลังพัสดุ</div>
+            <div style="font-size: 10px; color: #94a3b8;">ตัดสต็อกเข็ม & ค้นหาด้วย AI</div>
+          </div>
+          <div class="card" style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 6px;">📊</div>
+            <div style="font-weight: 800; font-size: 13px; color: #ffffff;">คณะผู้บริหาร</div>
+            <div style="font-size: 10px; color: #94a3b8;">Dashboard Real-Time 24 ชม.</div>
+          </div>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, rgba(30,58,138,0.4), rgba(6,78,59,0.4)); border: 2px solid rgba(56,189,248,0.4); text-align: center; padding: 28px;">
+          <h2 style="font-size: 22px; font-weight: 900; color: #ffffff; margin-bottom: 14px;">TEXTILEOPS UNIFIED PLATFORM</h2>
+          <div class="card-grid-3">
+            <div class="card" style="background: rgba(15,23,42,0.8);">
+              <div style="color: #60a5fa; font-weight: 800; font-size: 13px; margin-bottom: 4px;">⚡ Cloudflare Edge</div>
+              <div style="font-size: 11px; color: #cbd5e1;">โหลดไวต่ำกว่า 1 วินาที ทั่วทั้งโรงงาน</div>
+            </div>
+            <div class="card" style="background: rgba(15,23,42,0.8);">
+              <div style="color: #34d399; font-weight: 800; font-size: 13px; margin-bottom: 4px;">🔄 Real-Time Sync</div>
+              <div style="font-size: 11px; color: #cbd5e1;">อัปเดตสถานะงานซ่อมสด ไม่ต้องกดรีเฟรช</div>
+            </div>
+            <div class="card" style="background: rgba(15,23,42,0.8);">
+              <div style="color: #c084fc; font-weight: 800; font-size: 13px; margin-bottom: 4px;">📱 PWA Mobile App</div>
+              <div style="font-size: 11px; color: #cbd5e1;">ใช้งานบนมือถือได้ลื่นไหล รองรับออฟไลน์</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 4: Pillars -->
+      <div class="slide-wrapper" data-index="3">
+        <div class="slide-category">โมดูลการทำงาน (Core Modules)</div>
+        <div class="slide-title">สี่เสาหลักการทำงาน (Core Operational Pillars)</div>
+        <div class="slide-subtitle">ระบบที่ครอบคลุมวงจรการบำรุงรักษาโรงทออย่างสมบูรณ์แบบ</div>
+        <div class="card-grid-2">
+          <div class="card">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 20px;">🔧</span>
+              <h3 style="font-size: 15px; font-weight: 800; color: #ffffff;">1. งานซ่อม & งาน PM ป้องกัน</h3>
+            </div>
+            <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+              • แจ้งซ่อมและรับงานทันใจ บันทึกเวลาเริ่มซ่อม-เสร็จซ่อม<br>
+              • แผนบำรุงรักษาเชิงป้องกัน (PM Schedule) รอบเครื่องจักร<br>
+              • เก็บประวัติอาการเสียย้อนหลังเพื่อวิเคราะห์หาสาเหตุรากเหง้า
+            </p>
+          </div>
+          <div class="card">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 20px;">📦</span>
+              <h3 style="font-size: 15px; font-weight: 800; color: #ffffff;">2. คลังเข็ม & Needle Ledger</h3>
+            </div>
+            <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+              • บันทึกยอดเข็มเข้า-ออกทุกเบอร์แบบ Double-entry<br>
+              • บันทึกส่วนต่างมิเตอร์รอบเครื่องจักร (Counter Diff)<br>
+              • แจ้งเตือนเมื่อสต็อกเข็มต่ำกว่าเกณฑ์ความปลอดภัยโรงทอ
+            </p>
+          </div>
+          <div class="card">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 20px;">💿</span>
+              <h3 style="font-size: 15px; font-weight: 800; color: #ffffff;">3. บริหารกระบอกเข็ม (Cylinders)</h3>
+            </div>
+            <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+              • บันทึกประวัติสลับกระบอกเข็มระหว่างเครื่องและคลัง Spare<br>
+              • คุมสเปกละเอียด: เส้นผ่าศูนย์กลาง, เกจ, จำนวนเข็ม<br>
+              • พิมพ์ป้าย Tack ติดเครื่องและกระบอกมาตรฐานแม่นยำ
+            </p>
+          </div>
+          <div class="card">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 20px;">⚙️</span>
+              <h3 style="font-size: 15px; font-weight: 800; color: #ffffff;">4. คลังอะไหล่ & จุดสั่งซื้อ (Spare Parts)</h3>
+            </div>
+            <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+              • ทะเบียนอะไหล่กว่า 1,000+ รายการ พร้อมพิกัดตู้และชั้นวาง<br>
+              • จุดสั่งซื้ออัตโนมัติ (Reorder Point Alert) ป้องกันของขาด<br>
+              • ค้นหาด้วยภาพถ่าย AI ไม่ต้องจำ Part Number ภาษาอังกฤษ
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 5: AI Vision -->
+      <div class="slide-wrapper" data-index="4">
+        <div class="slide-category">ไฮไลต์นวัตกรรม (AI Innovation)</div>
+        <div class="slide-title">นวัตกรรม #1: Google Gemini AI Vision คลังอะไหล่</div>
+        <div class="slide-subtitle">ตรวจจำแนกชิ้นส่วนและค้นหาอะไหล่ในคลังด้วยภาพถ่ายภายใน 5 วินาที</div>
+        <div class="card-grid-2" style="align-items: center;">
+          <div>
+            <div style="display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.4); color: #c084fc; font-size: 11px; font-weight: 700; margin-bottom: 12px;">
+              ✨ Google Gemini 1.5 Pro Multimodal Vision
+            </div>
+            <h2 style="font-size: 24px; font-weight: 900; color: #ffffff; line-height: 1.3; margin-bottom: 12px;">
+              ค้นหาอะไหล่ด้วยภาพถ่าย<br>
+              <span style="color: #e879f9;">ลดเวลาจาก 15 นาที เหลือเพียง 5 วินาที</span>
+            </h2>
+            <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6; margin-bottom: 16px;">
+              แก้ปัญหาคลาสสิกของโรงงาน ช่างไม่ทราบชื่อภาษาอังกฤษ เพียงถ่ายรูปชิ้นส่วนที่เสีย AI จะวิเคราะห์เทียบเคียงฐานข้อมูลและชี้เป้าว่าอยู่ในตู้ไหน ชั้นไหน ทันที
+            </p>
+            <div class="card-grid-3">
+              <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 14px; font-weight: 800; color: #ffffff;">1. ถ่ายภาพ</div>
+                <div style="font-size: 10px; color: #94a3b8;">ผ่านมือถือ</div>
+              </div>
+              <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 14px; font-weight: 800; color: #c084fc;">2. AI เทียบ</div>
+                <div style="font-size: 10px; color: #94a3b8;">5 วินาที</div>
+              </div>
+              <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 14px; font-weight: 800; color: #34d399;">3. ชี้พิกัด</div>
+                <div style="font-size: 10px; color: #94a3b8;">ตู้/ชั้น/กล่อง</div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="border: 2px solid rgba(168,85,247,0.4); background: #0f172a;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 10px; margin-bottom: 12px;">
+              <span style="font-size: 12px; font-weight: 800; color: #ffffff;">🔍 ผลการวิเคราะห์จากภาพถ่าย</span>
+              <span style="background: rgba(16,185,129,0.2); color: #34d399; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800;">Match 98%</span>
+            </div>
+            <div class="card" style="background: #1e293b; margin-bottom: 10px;">
+              <div style="font-size: 10px; color: #94a3b8;">ชื่อชิ้นส่วนที่ตรวจพบ</div>
+              <div style="font-size: 14px; font-weight: 800; color: #ffffff;">ตัวป้อนเส้นด้าย (Yarn Feeder Unit)</div>
+              <div style="font-size: 11px; color: #cbd5e1; font-family: monospace;">Part: YF-GMK-2026-X</div>
+            </div>
+            <div class="card-grid-2" style="margin-bottom: 10px;">
+              <div class="card" style="background: #1e293b; padding: 10px;">
+                <div style="font-size: 10px; color: #94a3b8;">ตำแหน่งจัดเก็บ</div>
+                <div style="font-size: 12px; font-weight: 800; color: #38bdf8;">ชั้น B-04 กล่อง 12</div>
+              </div>
+              <div class="card" style="background: #1e293b; padding: 10px;">
+                <div style="font-size: 10px; color: #94a3b8;">สต็อกคงเหลือ</div>
+                <div style="font-size: 12px; font-weight: 800; color: #34d399;">12 ชิ้น (พร้อมเบิก)</div>
+              </div>
+            </div>
+            <div style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; padding: 8px 12px; border-radius: 10px; font-size: 11px;">
+              ✓ ช่างสามารถกดเบิกใช้งานลงสู่เครื่องจักรได้ทันที
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 6: Alerts -->
+      <div class="slide-wrapper" data-index="5">
+        <div class="slide-category">การแจ้งเตือน (Real-Time Communication)</div>
+        <div class="slide-title">นวัตกรรม #2: Real-Time Incident Notifications</div>
+        <div class="slide-subtitle">การแจ้งเตือนงานซ่อมด่วนผ่าน LINE Flex Messages ช่างเข้าถึงหน้างานทันที</div>
+        <div class="card-grid-2" style="align-items: center;">
+          <div class="card" style="background: #ffffff; color: #0f172a; max-width: 380px; margin: 0 auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 10px;">
+              <span style="font-size: 11px; font-weight: 800; color: #059669;">💬 LINE Flex Notification</span>
+              <span style="font-size: 10px; color: #64748b; font-family: monospace;">10:14 AM</span>
+            </div>
+            <div style="background: #fee2e2; color: #b91c1c; font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 999px; display: inline-block; margin-bottom: 8px;">
+              🚨 แจ้งซ่อมด่วน (URGENT)
+            </div>
+            <div style="font-size: 16px; font-weight: 900; margin-bottom: 4px;">เครื่องจักร: MC-12 (โซน A)</div>
+            <div style="font-size: 12px; color: #475569; margin-bottom: 12px;">อาการ: เข็มหัก / เส้นด้ายขาดซ้ำซ้อน</div>
+            <div style="font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 8px; margin-bottom: 12px;">
+              ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า) · โรงทอ 1
+            </div>
+            <div style="background: #059669; color: #ffffff; text-align: center; font-weight: 800; font-size: 12px; padding: 8px; border-radius: 10px;">
+              ⚡ รับงานซ่อมนี้ทันที
+            </div>
+          </div>
+          <div>
+            <div style="display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #34d399; font-size: 11px; font-weight: 700; margin-bottom: 12px;">
+              ✓ LINE & Telegram Enterprise Webhook
+            </div>
+            <h2 style="font-size: 24px; font-weight: 900; color: #ffffff; line-height: 1.3; margin-bottom: 14px;">
+              เครื่องจักรไม่ต้องจอดคอยช่าง<br>
+              <span style="color: #34d399;">แจ้งเตือนตรงถึงมือถือช่างใน 1 วินาที</span>
+            </h2>
+            <ul style="font-size: 13px; color: #cbd5e1; line-height: 1.8; padding-left: 20px;">
+              <li><strong>ไม่ต้องลงแอปใหม่:</strong> ใช้แอป LINE ที่ช่างทุกคนใช้อยู่แล้วในชีวิตประจำวัน</li>
+              <li><strong>ข้อมูลครบถ้วน:</strong> รู้เบอร์เครื่อง อาการ และความด่วน ไม่ต้องโทรสอบถามซ้ำ</li>
+              <li><strong>หัวหน้างานตรวจสอบได้:</strong> ทราบทันทีว่าช่างคนใดเข้าหน้างานและใช้เวลากี่นาที</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 7: Smart Tag -->
+      <div class="slide-wrapper" data-index="6">
+        <div class="slide-category">การควบคุมมาตรฐาน (Smart Tag Printing)</div>
+        <div class="slide-title">นวัตกรรม #3: Smart Tag Precision Printing</div>
+        <div class="slide-subtitle">ระบบพิมพ์ป้ายติดเครื่องจักรและป้ายกระบอกเข็มมาตรฐานโรงทอ (v1.3.185)</div>
+        <div class="card-grid-2">
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <span style="font-size: 13px; font-weight: 800; color: #34d399;">🏷️ ป้ายพิมพ์ Tack เครื่องปัจจุบัน</span>
+              <span style="font-size: 10px; font-family: monospace; background: rgba(16,185,129,0.2); color: #34d399; padding: 2px 6px; border-radius: 6px;">20 × 7 cm</span>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 14px;">ติดโครงเครื่องจักร พื้นหลังเขียวอ่อน ตัวหนังสือดำเด่นชัด เห็นชัดจากระยะไกล</p>
+            <div class="tag-preview-green">
+              <div style="font-size: 9px; text-transform: uppercase; color: #334155;">เครื่องปัจจุบัน (CURRENT M/C)</div>
+              <div style="font-size: 32px; letter-spacing: -1px; margin: 4px 0;">MC-12</div>
+              <div style="font-size: 8px; color: #475569;">SERIAL: 20240901-01 · GEMMA KNITS</div>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 14px; border-top: 1px solid #334155; padding-top: 8px; display: flex; justify-content: space-between;">
+              <span>• กรองเฉพาะเครื่อง In-use</span>
+              <span>• ตัวหนังสือ Auto-fit เต็มพื้นที่</span>
+            </div>
+          </div>
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <span style="font-size: 13px; font-weight: 800; color: #fbbf24;">📄 ป้ายพิมพ์ Tack Spare กระบอกสำรอง</span>
+              <span style="font-size: 10px; font-family: monospace; background: rgba(245,158,11,0.2); color: #fbbf24; padding: 2px 6px; border-radius: 6px;">A4 แนวนอน</span>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 14px;">เอกสารติดกระบอกสำรอง มีข้อมูลสเปก 7 ฟิลด์ครบ ปรับสัดส่วนการแสดงผลได้</p>
+            <div class="tag-preview-white">
+              <div style="display: flex; justify-content: space-between; font-size: 8px; font-weight: 800; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 6px;">
+                <span>เอกสารติดกระบอกเข็ม (CYLINDER TAG)</span>
+                <span>28/10/2026</span>
+              </div>
+              <div style="display: flex; justify-content: space-around; text-align: center; margin-bottom: 6px;">
+                <div><span style="font-size: 8px; color: #64748b;">M/C</span><div style="font-weight: 800; font-size: 12px;">MC-15</div></div>
+                <div><span style="font-size: 8px; color: #64748b;">DIAMETER</span><div style="font-weight: 800; font-size: 12px;">34"</div></div>
+                <div><span style="font-size: 8px; color: #64748b;">GAUGE</span><div style="font-weight: 800; font-size: 12px;">24G</div></div>
+              </div>
+              <div style="font-size: 8px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 4px;">REMARK: ตรวจเช็คศูนย์เรียบร้อย พร้อมใช้งาน</div>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 14px; border-top: 1px solid #334155; padding-top: 8px; display: flex; justify-content: space-between;">
+              <span>• กรองเฉพาะกระบอก Spare</span>
+              <span>• ปรับสัดส่วน Hero / Specs ได้</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 8: Live Demo Jump -->
+      <div class="slide-wrapper" data-index="7">
+        <div style="text-align: center; max-width: 700px; margin: 0 auto;">
+          <div style="font-size: 48px; margin-bottom: 12px;">🚀</div>
+          <div class="slide-title" style="margin-bottom: 12px;">3-MINUTE LIVE INTERACTIVE DEMO</div>
+          <p style="font-size: 14px; color: #cbd5e1; line-height: 1.6; margin-bottom: 28px;">
+            ชมการทำงานจริงแบบ Step-by-Step บนเซิร์ฟเวอร์ Cloudflare Production ทั้งมุมมองคอมพิวเตอร์และสมาร์ทโฟน
+          </p>
+          <a href="/" target="_blank" class="btn btn-primary" style="padding: 14px 28px; font-size: 15px; border-radius: 14px;">
+            🔗 คลิกเปิดระบบจริงเพื่อสาธิต (Launch Live App)
+          </a>
+          <div class="card-grid-3" style="margin-top: 36px; text-align: left;">
+            <div class="card" style="padding: 12px;">
+              <strong style="font-size: 12px; color: #ffffff; display: block;">1. แดชบอร์ด & มือถือ</strong>
+              <span style="font-size: 11px; color: #94a3b8;">ตรวจสถานะเครื่องทั้งโรงทอและมุมมอง PWA</span>
+            </div>
+            <div class="card" style="padding: 12px;">
+              <strong style="font-size: 12px; color: #ffffff; display: block;">2. พิมพ์ป้าย Tack</strong>
+              <span style="font-size: 11px; color: #94a3b8;">พิมพ์ฉลาก 20×7 ซม. และ A4 กระบอก Spare</span>
+            </div>
+            <div class="card" style="padding: 12px;">
+              <strong style="font-size: 12px; color: #ffffff; display: block;">3. สแกนภาพอะไหล่</strong>
+              <span style="font-size: 11px; color: #94a3b8;">Google Gemini AI ระบุชื่อและชั้นวาง</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 9: Business ROI -->
+      <div class="slide-wrapper" data-index="8">
+        <div class="slide-category">ความคุ้มค่าเชิงธุรกิจ (Business ROI)</div>
+        <div class="slide-title">ผลลัพธ์เชิงธุรกิจและตัวชี้วัด (Business Impact & ROI)</div>
+        <div class="slide-subtitle">ผลตอบแทนความคุ้มค่าที่ชัดเจนและจับต้องได้จากการใช้งานระบบ TextileOps</div>
+        <div class="card-grid-2">
+          <div class="card card-success">
+            <span style="font-size: 11px; font-weight: 800; color: #34d399; text-transform: uppercase;">Downtime Reduction</span>
+            <div style="color: #ffffff;" class="stat-number">-25% ถึง -35%</div>
+            <p style="font-size: 12px; color: #cbd5e1;">ลดการสูญเสียกำลังการผลิตจากเครื่องจักรหยุดนิ่ง คิดเป็นเวลาเดินงานเพิ่มขึ้นหลายร้อยชั่วโมง/เดือน</p>
+          </div>
+          <div class="card card-info">
+            <span style="font-size: 11px; font-weight: 800; color: #38bdf8; text-transform: uppercase;">Response Time</span>
+            <div style="color: #ffffff;" class="stat-number">&lt; 1 นาที</div>
+            <p style="font-size: 12px; color: #cbd5e1;">จากเดิมเฉลี่ย 10–15 นาที ช่างทราบเรื่องและเข้าหน้างานรวดเร็วด้วยระบบแจ้งเตือน LINE ทันที</p>
+          </div>
+          <div class="card card-purple">
+            <span style="font-size: 11px; font-weight: 800; color: #c084fc; text-transform: uppercase;">Inventory Accuracy</span>
+            <div style="color: #ffffff;" class="stat-number">99.5%</div>
+            <p style="font-size: 12px; color: #cbd5e1;">ควบคุมการเบิกจ่ายเข็มและอะไหล่ ป้องกันเข็มสูญหายหรือเบิกซ้ำซ้อน บัญชีมั่นใจในตัวเลข</p>
+          </div>
+          <div class="card card-warn">
+            <span style="font-size: 11px; font-weight: 800; color: #fbbf24; text-transform: uppercase;">Full Traceability</span>
+            <div style="color: #ffffff;" class="stat-number">100%</div>
+            <p style="font-size: 12px; color: #cbd5e1;">ตรวจสอบประวัติการสลับกระบอกเข็มและการซ่อมย้อนหลังได้ทุกชิ้นผ้า พร้อมรับรองมาตรฐานสากล</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 10: Enterprise Architecture -->
+      <div class="slide-wrapper" data-index="9">
+        <div class="slide-category">โครงสร้างและความปลอดภัย (Enterprise Architecture)</div>
+        <div class="slide-title">เสถียรภาพ ความปลอดภัย และการทำงานออฟไลน์</div>
+        <div class="slide-subtitle">โครงสร้างคลาวด์มาตรฐานสากล ต้นทุนต่ำ และไม่มีวันหยุดชะงัก</div>
+        <div class="card-grid-3">
+          <div class="card">
+            <div style="font-size: 24px; margin-bottom: 8px;">☁️</div>
+            <h3 style="font-size: 15px; font-weight: 800; color: #ffffff; margin-bottom: 6px;">Cloudflare Global Edge</h3>
+            <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 12px;">
+              ทำงานบนเครือข่ายเซิร์ฟเวอร์กว่า 300 เมืองทั่วโลก โหลดหน้าเว็บเร็วต่ำกว่า 1 วินาที พร้อมระบบป้องกัน DDoS และ WAF
+            </p>
+            <div style="font-size: 10px; font-family: monospace; color: #38bdf8; font-weight: 800;">Zero Server Maintenance</div>
+          </div>
+          <div class="card">
+            <div style="font-size: 24px; margin-bottom: 8px;">🛡️</div>
+            <h3 style="font-size: 15px; font-weight: 800; color: #ffffff; margin-bottom: 6px;">ความปลอดภัย & RBAC</h3>
+            <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 12px;">
+              เข้ารหัสข้อมูลระดับ HTTPS/SSL 256-bit พร้อมระบบ Role-Based Access Control แบ่งสิทธิ์ระหว่าง Admin, ช่าง และ Viewer
+            </p>
+            <div style="font-size: 10px; font-family: monospace; color: #34d399; font-weight: 800;">Enterprise Grade Security</div>
+          </div>
+          <div class="card">
+            <div style="font-size: 24px; margin-bottom: 8px;">📶</div>
+            <h3 style="font-size: 15px; font-weight: 800; color: #ffffff; margin-bottom: 6px;">Offline Resilience PWA</h3>
+            <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 12px;">
+              ช่างติดตั้งลงหน้าจอมือถือได้ทันที มีหน่วยความจำ Local Storage บันทึกข้อมูลได้แม้อินเทอร์เน็ตโรงงานขัดข้อง
+            </p>
+            <div style="font-size: 10px; font-family: monospace; color: #c084fc; font-weight: 800;">100% Offline-Friendly</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 11: Roadmap & Q&A -->
+      <div class="slide-wrapper" data-index="10">
+        <div style="text-align: center; max-width: 800px; margin: 0 auto;">
+          <div class="slide-title" style="margin-bottom: 10px;">TEXTILEOPS CMMS IS PRODUCTION READY</div>
+          <div class="slide-subtitle" style="margin-bottom: 24px;">ความพร้อมใช้งานจริง 100% เพื่อยกระดับโรงทอ เจมม่า นิตส์ สู่ความยั่งยืน</div>
+          <div class="card-grid-3" style="text-align: left; margin-bottom: 24px;">
+            <div class="card card-success">
+              <span style="font-size: 9px; font-weight: 800; color: #34d399; text-transform: uppercase;">Phase 1: ปัจจุบัน (Q4 2026)</span>
+              <div style="font-size: 13px; font-weight: 800; color: #ffffff; margin: 4px 0;">Full System Rollout</div>
+              <div style="font-size: 11px; color: #cbd5e1; line-height: 1.5;">
+                • ใช้งานครบทุกเครื่องในโรงทอ<br>• อบรมช่างและหัวหน้างานทุกกะ<br>• ติดป้าย Smart Tag มาตรฐาน
+              </div>
+            </div>
+            <div class="card">
+              <span style="font-size: 9px; font-weight: 800; color: #38bdf8; text-transform: uppercase;">Phase 2: ต่อยอด (2027)</span>
+              <div style="font-size: 13px; font-weight: 800; color: #ffffff; margin: 4px 0;">IoT & ERP Integration</div>
+              <div style="font-size: 11px; color: #cbd5e1; line-height: 1.5;">
+                • ติดตั้งเซ็นเซอร์มิเตอร์รอบ IoT<br>• เชื่อมโยง API สต็อกเข้าสู่ ERP<br>• ขยายผลสู่แผนกย้อม/การ์เมนต์
+              </div>
+            </div>
+            <div class="card">
+              <span style="font-size: 9px; font-weight: 800; color: #c084fc; text-transform: uppercase;">Phase 3: สู่อนาคต</span>
+              <div style="font-size: 13px; font-weight: 800; color: #ffffff; margin: 4px 0;">Predictive AI Maintenance</div>
+              <div style="font-size: 11px; color: #cbd5e1; line-height: 1.5;">
+                • AI พยากรณ์ชิ้นส่วนเสียล่วงหน้า<br>• วิเคราะห์ OEE โรงงานอัตโนมัติ<br>• Zero Unplanned Downtime
+              </div>
+            </div>
+          </div>
+          <div style="font-size: 28px; font-weight: 900; letter-spacing: 0.1em; color: #ffffff;">
+            Q & A
+          </div>
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 4px;">
+            ขอขอบพระคุณคณะผู้บริหาร บริษัท เจมม่า นิตส์ จำกัด ทุกท่านครับ
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Speaker Notes Drawer -->
+    <div id="notesDrawer" class="notes-drawer">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 11px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.1em;">
+          🎙️ สคริปต์ผู้บรรยาย (Speaker Notes) · สไลด์ที่ <span id="notesSlideNum">1</span>
+        </span>
+        <button type="button" onclick="toggleNotes()" style="background: none; border: none; color: #94a3b8; font-size: 12px; cursor: pointer;">✕ ปิด</button>
+      </div>
+      <p id="notesContent" style="font-size: 13px; color: #f1f5f9; line-height: 1.6;"></p>
+    </div>
+
+    <!-- Bottom Bar Controls -->
+    <footer>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn" onclick="prevSlide()" id="prevBtn" title="สไลด์ก่อนหน้า (ลูกศรซ้าย)">
+          ◀ ก่อนหน้า
+        </button>
+        <button type="button" class="btn btn-primary" onclick="nextSlide()" id="nextBtn" title="สไลด์ถัดไป (ลูกศรขวา / Spacebar)">
+          ถัดไป ▶
+        </button>
+      </div>
+
+      <div style="font-size: 11px; color: #64748b; font-family: monospace;" class="hidden sm:block">
+        กด ◀ ▶ หรือ <strong>Space</strong> เพื่อเปลี่ยนหน้า · กด <strong>N</strong> ดูสคริปต์พูด · กด <strong>F</strong> เต็มจอ
+      </div>
+
+      <div>
+        <a href="/" target="_blank" class="btn btn-success" title="เปิดหน้าโปรแกรมจริง">
+          🚀 เปิดระบบจริง (Demo)
+        </a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const SPEAKER_NOTES = [
+      "กราบเรียนท่านผู้บริหารทุกท่าน วันนี้ทีมงานมีความยินดีอย่างยิ่งที่จะนำเสนอ TextileOps CMMS แพลตฟอร์มบริหารจัดการเครื่องจักรและงานซ่อมบำรุงที่พัฒนาขึ้นเพื่อแก้ปัญหาหน้างานจริงของโรงทอ เจมม่า นิตส์ โดยเฉพาะ ในธุรกิจสิ่งทอ หัวใจของผลกำไรคือเครื่องจักรต้องเดินได้อย่างต่อเนื่องและผลิตผ้าได้คุณภาพสูงสุด ทุกนาทีที่เครื่องจักรหยุดซ่อม หรือสต็อกอะไหล่ไม่พร้อม คือต้นทุนมหาศาล วันนี้ TextileOps พร้อมแล้วที่จะเข้ามาเปลี่ยนการทำงานแบบเดิม สู่ระบบดิจิทัลที่แม่นยำ ตรวจสอบได้ และลด Downtime ได้อย่างเป็นรูปธรรมครับ",
+      "จากที่เราได้ลงพื้นที่ศึกษาขั้นตอนการทำงานจริงของโรงทอ พบปัญหาหลัก 4 ประการที่สร้างความสูญเสียแฝงอยู่ทุกวันครับ: 1. แจ้งซ่อมล่าช้า เครื่องหยุดรอช่างนาน 2. สต็อกเข็มและอะไหล่ไม่ตรงกับความจริง ช่างหาของช้า 3. สเปกกระบอกเข็มสับสน กระดาษกาวหลุดหาย และ 4. ผู้บริหารขาดข้อมูลแดชบอร์ดสรุปแบบ Real-Time ครับ",
+      "TextileOps เข้ามาทำหน้าที่เป็น Single Source of Truth หรือศูนย์กลางข้อมูลเพียงหนึ่งเดียวของโรงทอครับ ช่างทอสแกนแจ้งซ่อมใน 30 วินาที ช่างซ่อมรับงานผ่าน LINE คลังตัดยอดเข็มและอะไหล่อัตโนมัติ และผู้บริหารดูข้อมูลสรุปได้ทันที 24 ชั่วโมงครับ",
+      "สี่เสาหลักของระบบประกอบด้วย: เสาที่ 1 งานซ่อมและ PM วางแผนบำรุงรักษา เสาที่ 2 บัญชีคลังเข็ม Needle Ledger สัมพันธ์กับมิเตอร์รอบเครื่อง เสาที่ 3 บริหารกระบอกเข็มและประวัติการสลับเครื่อง และเสาที่ 4 คลังอะไหล่พร้อมระบบแจ้งเตือนจุดสั่งซื้อครับ",
+      "หนึ่งในความภาคภูมิใจคือการนำ Google Gemini AI Vision เข้ามาช่วยงานคลังอะไหล่ครับ ช่างเพียงหยิบมือถือถ่ายรูปชิ้นส่วนที่เสีย AI จะเทียบเคียงฐานข้อมูลและชี้เป้าว่าอยู่ในตู้ไหน ชั้นไหน ทันทีใน 5 วินาที ลดเวลาเดินหาอะไหล่ได้มากกว่า 70% ครับ",
+      "ระบบแจ้งเตือนผ่าน LINE Flex Messages ช่างทุกคนมี LINE อยู่แล้ว ไม่ต้องลงแอปใหม่ เมื่อมีแจ้งซ่อม ข้อมูลเบอร์เครื่องและอาการจะส่งตรงถึงมือถือช่างทันที ทำให้ลดเวลาเครื่องรอช่างจาก 15 นาที เหลือไม่ถึง 1 นาทีครับ",
+      "ระบบ Smart Tag Printing ช่วยพิมพ์ป้ายติดเครื่องจักรขนาด 20×7 ซม. สีเขียวอ่อนตัวหนังสือใหญ่ชัดเจน และพิมพ์ป้าย Tack Spare ขนาด A4 แนวนอนติดประจำกระบอกสำรอง สเปกครบ 7 ฟิลด์ หมดปัญหากระดาษโน้ตเลอะเลือนอย่างถาวรครับ",
+      "ขออนุญาตเปิดระบบจริงสาธิตสด 3 นาที เพื่อให้คณะผู้บริหารได้เห็นความเร็วและความง่ายในการใช้งานหน้างานจริงครับ",
+      "ผลลัพธ์ทางธุรกิจ: เราลดเวลาเครื่องหยุดซ่อมได้ 25 ถึง 35% ช่างเข้าถึงหน้างานในเวลาไม่เกิน 1 นาที สต็อกแม่นยำ 99.5% และมีประวัติตรวจสอบย้อนกลับ Traceability ได้ 100% ครับ",
+      "ด้านความปลอดภัยและเสถียรภาพ ระบบทำงานบน Cloudflare Global Edge โหลดเร็วต่ำกว่า 1 วินาที ปลอดภัยระดับองค์กร และมีระบบ PWA บันทึกข้อมูลได้แม้อินเทอร์เน็ตโรงงานขัดข้องครับ",
+      "TextileOps มีความพร้อมใช้งานจริง 100% แล้ววันนี้ ขอรับความเห็นชอบจากคณะผู้บริหารเพื่อประกาศนโยบายใช้งานระบบเต็มรูปแบบ และยินดีรับฟังข้อเสนอแนะและตอบข้อซักถามทุกประการครับ"
+    ];
+
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide-wrapper');
+    const totalSlides = slides.length;
+    const progressBar = document.getElementById('progressBar');
+    const jumpSelect = document.getElementById('jumpSelect');
+    const notesDrawer = document.getElementById('notesDrawer');
+    const notesSlideNum = document.getElementById('notesSlideNum');
+    const notesContent = document.getElementById('notesContent');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    // Populate dropdown
+    slides.forEach((_, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = `สไลด์ที่ ${idx + 1} / ${totalSlides}`;
+      jumpSelect.appendChild(opt);
+    });
+
+    function updateSlide() {
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx === currentSlide);
+      });
+      progressBar.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+      jumpSelect.value = currentSlide;
+      prevBtn.disabled = currentSlide === 0;
+      nextBtn.disabled = currentSlide === totalSlides - 1;
+      
+      notesSlideNum.textContent = currentSlide + 1;
+      notesContent.textContent = `"${SPEAKER_NOTES[currentSlide] || ''}"`;
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function goToSlide(idx) {
+      if (idx >= 0 && idx < totalSlides) {
+        currentSlide = idx;
+        updateSlide();
+      }
+    }
+
+    function toggleNotes() {
+      notesDrawer.classList.toggle('open');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    // Keyboard handlers
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowRight', ' ', 'Enter'].includes(e.key)) {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+      } else if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        toggleNotes();
+      } else if (e.key === 'Escape') {
+        notesDrawer.classList.remove('open');
+      }
+    });
+
+    // Initial render
+    updateSlide();
+  </script>
+</body>
+</html>
