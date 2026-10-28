@@ -65,25 +65,25 @@ vi.mock('../hooks/useWebBuilderMenu', () => ({
   useWebBuilderColumn: () => ({ columns: [] }),
 }))
 
-describe('Cylinders Sub-tab "พิมพ์ Tack" Integration', () => {
+describe('Cylinders Sub-tab "พิมพ์ Tack Spare" Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.print = vi.fn()
   })
 
-  it('renders sub-tab buttons: [รายการกระบอก] and [พิมพ์ Tack]', () => {
+  it('renders sub-tab buttons: [รายการกระบอก] and [พิมพ์ Tack Spare]', () => {
     render(<Cylinders />)
 
     expect(screen.getByRole('button', { name: /รายการกระบอก/i })).toBeInTheDocument()
-    const allTagBtns = screen.getAllByRole('button', { name: /พิมพ์ Tack/i })
+    const allTagBtns = screen.getAllByRole('button', { name: /พิมพ์ Tack Spare/i })
     expect(allTagBtns.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('switches to "พิมพ์ Tack" tab when clicking the sub-tab header', () => {
+  it('switches to "พิมพ์ Tack Spare" tab when clicking the sub-tab header', () => {
     render(<Cylinders />)
 
-    // The sub-tab button has text 'พิมพ์ Tack' inside span
-    const tagSubTabSpan = screen.getByText('พิมพ์ Tack')
+    // The sub-tab button has text 'พิมพ์ Tack Spare' inside span
+    const tagSubTabSpan = screen.getByText('พิมพ์ Tack Spare')
     const tagSubTabBtn = tagSubTabSpan.closest('button')
     fireEvent.click(tagSubTabBtn)
 
@@ -93,18 +93,18 @@ describe('Cylinders Sub-tab "พิมพ์ Tack" Integration', () => {
     expect(screen.getByRole('button', { name: /สั่งพิมพ์เอกสารติดกระบอก/i })).toBeInTheDocument()
   })
 
-  it('clicking the Tag shortcut button in desktop table switches tab to "พิมพ์ Tack" and selects that cylinder', () => {
+  it('clicking the Tag shortcut button in desktop table switches tab to "พิมพ์ Tack Spare" and selects that cylinder', () => {
     render(<Cylinders />)
 
     // Find the Tag buttons in table rows
-    const tagButtons = screen.getAllByRole('button', { name: /พิมพ์ Tack/i })
+    const tagButtons = screen.getAllByRole('button', { name: /พิมพ์ Tack Spare/i })
     // The first one is the sub-tab button, subsequent ones are table buttons
     const rowTagButton = tagButtons.find((btn) => btn.getAttribute('title')?.includes('A4 แนวนอน'))
     expect(rowTagButton).toBeDefined()
 
     fireEvent.click(rowTagButton)
 
-    // Should now be on "พิมพ์ Tack" tab with cylinder CYL-2026-01 preselected
+    // Should now be on "พิมพ์ Tack Spare" tab with cylinder CYL-2026-01 preselected
     expect(screen.getByText('MC-01')).toBeInTheDocument()
     expect(screen.getByText('CYL-2026-01')).toBeInTheDocument()
     expect(screen.getByText('30"')).toBeInTheDocument()

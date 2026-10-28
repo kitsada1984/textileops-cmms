@@ -69,7 +69,7 @@ describe('CylinderTagView Component (A4 Landscape Print Tag)', () => {
   it('allows switching cylinder via dropdown', () => {
     render(<CylinderTagView cylinders={mockCylinders} selectedCylinder={mockCylinders[0]} />)
 
-    const select = screen.getByRole('combobox', { name: /เลือกกระบอกที่ต้องการพิมพ์ Tack/i })
+    const select = screen.getByRole('combobox', { name: /เลือกกระบอกที่ต้องการพิมพ์ Tack Spare/i })
     fireEvent.change(select, { target: { value: 'cyl-2' } })
 
     // Check updated cylinder data

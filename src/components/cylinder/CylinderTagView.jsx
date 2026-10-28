@@ -168,7 +168,7 @@ export default function CylinderTagView({
             {/* Quick dropdown with search */}
             <div className="relative min-w-[260px] flex-1 max-w-md">
               <select
-                aria-label="เลือกกระบอกที่ต้องการพิมพ์ Tack"
+                aria-label="เลือกกระบอกที่ต้องการพิมพ์ Tack Spare"
                 value={currentCyl?.id || currentCyl?._id || ''}
                 onChange={(e) => {
                   const target = cylinders.find((c) => (c.id || c._id) === e.target.value)
@@ -256,7 +256,7 @@ export default function CylinderTagView({
         {!currentCyl ? (
           <div className="card p-12 text-center text-slate-400">
             <Disc size={36} className="mx-auto mb-2 opacity-40" />
-            <p className="font-bold">ไม่พบข้อมูลกระบอกสำหรับพิมพ์ Tack</p>
+            <p className="font-bold">ไม่พบข้อมูลกระบอกสำหรับพิมพ์ Tack Spare</p>
           </div>
         ) : (
           /* ── A4 LANDSCAPE SHEET (297mm x 210mm) ──────────────────── */

@@ -379,8 +379,8 @@ function CylinderCard({
               type="button"
               onClick={() => onPrintTag(c)}
               className="p-1.5 rounded-lg text-amber-600 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition-colors border border-amber-200 dark:border-amber-900/50"
-              title="พิมพ์ Tack (A4 แนวนอน)"
-              aria-label="พิมพ์ Tack"
+              title="พิมพ์ Tack Spare (A4 แนวนอน)"
+              aria-label="พิมพ์ Tack Spare"
             >
               <Tag size={14} />
             </button>
@@ -1018,7 +1018,7 @@ export default function Cylinders() {
 
   return (
     <div className="space-y-5">
-      {/* ── SUB-TAB NAVIGATION: 1. รายการกระบอก | 2. พิมพ์ Tack ── */}
+      {/* ── SUB-TAB NAVIGATION: 1. รายการกระบอก | 2. พิมพ์ Tack Spare ── */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
         <button
           type="button"
@@ -1046,7 +1046,7 @@ export default function Cylinders() {
           }`}
         >
           <Tag size={15} />
-          <span>พิมพ์ Tack</span>
+          <span>พิมพ์ Tack Spare</span>
           <span className="text-[10px] opacity-80 font-mono">(A4 แนวนอน)</span>
         </button>
       </div>
@@ -1395,8 +1395,8 @@ export default function Cylinders() {
                             setActiveTab('print_tag')
                           }}
                           className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 dark:text-amber-400 transition-all border border-amber-200 dark:border-amber-800/60"
-                          title="พิมพ์ Tack (A4 แนวนอน)"
-                          aria-label="พิมพ์ Tack"
+                          title="พิมพ์ Tack Spare (A4 แนวนอน)"
+                          aria-label="พิมพ์ Tack Spare"
                         >
                           <Tag size={13} />
                         </button>
@@ -1497,10 +1497,10 @@ export default function Cylinders() {
                 setDetailRec(null)
               }}
               className="btn-outline text-xs flex items-center gap-1.5 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-              title="พิมพ์ Tack (A4 แนวนอน)"
+              title="พิมพ์ Tack Spare (A4 แนวนอน)"
             >
               <Tag size={13} />
-              <span>พิมพ์ Tack</span>
+              <span>พิมพ์ Tack Spare</span>
             </button>
             <button
               type="button"
