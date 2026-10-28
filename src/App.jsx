@@ -601,8 +601,8 @@ function AppInner() {
             <button
               type="button"
               onClick={() => window.open('/presentation', '_blank')}
-              title="เปิดสไลด์นำเสนอผู้บริหาร (Executive Presentation)"
-              aria-label="เปิดสไลด์นำเสนอผู้บริหาร"
+              title="เปิดหน้าแลนดิ้งเพจนำเสนอผู้บริหาร (Executive Landing Page)"
+              aria-label="เปิดหน้าแลนดิ้งเพจนำเสนอผู้บริหาร"
               className="px-2 sm:px-3 active:scale-95 transition-all flex-shrink-0"
               style={{
                 height: 30,
@@ -621,7 +621,7 @@ function AppInner() {
               }}
             >
               <Presentation size={13} />
-              <span className="hidden lg:inline">สไลด์นำเสนอ</span>
+              <span className="hidden lg:inline">หน้านำเสนอ</span>
             </button>
 
             {/* PWA Install Button */}

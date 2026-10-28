@@ -1,7 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
-import Presentation, { SLIDES_DATA } from './Presentation'
+import Presentation, { LANDING_SECTIONS } from './Presentation'
 
 const mockedNavigate = vi.fn()
 
@@ -13,68 +13,75 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-describe('Presentation Component (Executive Pitch Deck)', () => {
+class MockIntersectionObserver {
+  constructor(callback) {
+    this.callback = callback
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return []
+  }
+}
+
+describe('Presentation Component (Executive Pitch Landing Page)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.IntersectionObserver = MockIntersectionObserver
+    Element.prototype.scrollIntoView = vi.fn()
   })
 
-  it('renders initial slide (Slide 1: Cover) and displays 1 / 11 counter', () => {
-    render(
+  it('renders all 7 executive landing page sections and Hero KPI metrics', () => {
+    const { container } = render(
       <MemoryRouter>
         <Presentation />
       </MemoryRouter>
     )
 
-    // Check title on slide 1
-    expect(screen.getAllByText(/TEXTILE/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/Gemma Knits Operational Excellence/i)).toBeInTheDocument()
-    expect(screen.getByText(/1 \/ 11/i)).toBeInTheDocument()
+    expect(LANDING_SECTIONS).toHaveLength(7)
+    LANDING_SECTIONS.forEach((sec) => {
+      expect(container.querySelector(`#${sec.id}`)).not.toBeNull()
+    })
+
     expect(screen.getByText(/GEMMA KNITS · TEXTILEOPS/i)).toBeInTheDocument()
+    expect(screen.getByText(/Gemma Knits Operational Excellence/i)).toBeInTheDocument()
+    expect(screen.getByText(/-30%/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/99\.5%/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/100%/i).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('navigates to next and previous slides via Next and Prev buttons', () => {
+  it('renders all 3 signature innovations including 20x7 cm and A4 Smart Tags', () => {
     render(
       <MemoryRouter>
         <Presentation />
       </MemoryRouter>
     )
 
-    const nextBtn = screen.getByRole('button', { name: /ถัดไป/i })
-    expect(nextBtn).toBeEnabled()
-
-    // Slide 1 -> Slide 2
-    fireEvent.click(nextBtn)
-    expect(screen.getByText(/2 \/ 11/i)).toBeInTheDocument()
-    expect(screen.getByText(/ความท้าทายหน้างานเดิม/i)).toBeInTheDocument()
-
-    // Slide 2 -> Slide 3
-    fireEvent.click(nextBtn)
-    expect(screen.getByText(/3 \/ 11/i)).toBeInTheDocument()
-    expect(screen.getByText(/ทางออก: TextileOps Platform/i)).toBeInTheDocument()
-
-    // Slide 3 -> Prev -> Slide 2
-    const prevBtn = screen.getByRole('button', { name: /ก่อนหน้า/i })
-    fireEvent.click(prevBtn)
-    expect(screen.getByText(/2 \/ 11/i)).toBeInTheDocument()
+    expect(screen.getByText(/Match 98\.4%/i)).toBeInTheDocument()
+    expect(screen.getByText(/Yarn Feeder Unit/i)).toBeInTheDocument()
+    expect(screen.getByText(/LINE Flex Notification/i)).toBeInTheDocument()
+    expect(screen.getByText(/20 × 7 cm/i)).toBeInTheDocument()
+    expect(screen.getByText(/A4 แนวนอน/i)).toBeInTheDocument()
   })
 
-  it('supports keyboard navigation via ArrowRight and ArrowLeft', () => {
+  it('scrolls smoothly to target section when clicking sticky navbar anchor pills', () => {
     render(
       <MemoryRouter>
         <Presentation />
       </MemoryRouter>
     )
 
-    // Press ArrowRight to move to slide 2
-    fireEvent.keyDown(window, { key: 'ArrowRight' })
-    expect(screen.getByText(/2 \/ 11/i)).toBeInTheDocument()
+    const roiNavButtons = screen.getAllByRole('button', { name: /ผลลัพธ์ ROI/i })
+    fireEvent.click(roiNavButtons[0])
 
-    // Press ArrowLeft to return to slide 1
-    fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    expect(screen.getByText(/1 \/ 11/i)).toBeInTheDocument()
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'start',
+    })
   })
 
-  it('opens and closes Speaker Notes drawer via button and key N', () => {
+  it('opens contextual Speaker Notes drawer, syncs with selected section, and closes on Escape', async () => {
     render(
       <MemoryRouter>
         <Presentation />
@@ -84,45 +91,61 @@ describe('Presentation Component (Executive Pitch Deck)', () => {
     const notesBtn = screen.getByTitle(/เปิด\/ปิดสคริปต์ผู้บรรยาย/i)
     fireEvent.click(notesBtn)
 
-    // Drawer should open and display speaker notes
-    expect(screen.getByText(/สคริปต์ผู้บรรยาย/i)).toBeInTheDocument()
+    expect(screen.getByText(/สคริปต์ผู้บรรยาย \(Speaker Notes\)/i)).toBeInTheDocument()
     expect(screen.getByText(/กราบเรียนท่านผู้บริหารทุกท่าน/i)).toBeInTheDocument()
 
-    // Close via Esc key
+    // Jump to ROI section and verify contextual script updates
+    const roiNavButtons = screen.getAllByRole('button', { name: /ผลลัพธ์ ROI/i })
+    fireEvent.click(roiNavButtons[0])
+    expect(screen.getByText(/หมวดปัจจุบัน: ผลลัพธ์ ROI/i)).toBeInTheDocument()
+    expect(screen.getByText(/Unplanned Downtime ลงได้ 25 ถึง 35%/i)).toBeInTheDocument()
+
+    // Close via Escape key (AnimatePresence exit transition completes asynchronously)
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(screen.queryByText(/สคริปต์ผู้บรรยาย/i)).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText(/สคริปต์ผู้บรรยาย \(Speaker Notes\)/i)).not.toBeInTheDocument()
+    })
   })
 
-  it('allows jumping to any slide via the jump menu', () => {
+  it('toggles delayed animation mode and supports replay button', () => {
     render(
       <MemoryRouter>
         <Presentation />
       </MemoryRouter>
     )
 
-    // Open jump menu
-    const jumpBtn = screen.getByTitle(/กระโดดข้ามสไลด์/i)
-    fireEvent.click(jumpBtn)
+    const motionBtn = screen.getByTitle(/เปิด\/ปิดโหมดอนิเมชั่นหน่วงเวลา/i)
+    expect(motionBtn).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText(/อนิเมชั่น: เปิด/i)).toBeInTheDocument()
 
-    // Click on slide 9 (Business ROI)
-    const targetSlideBtn = screen.getByRole('button', { name: /ผลลัพธ์เชิงธุรกิจและตัวชี้วัด/i })
-    fireEvent.click(targetSlideBtn)
+    fireEvent.click(motionBtn)
+    expect(motionBtn).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText(/อนิเมชั่น: ปิด/i)).toBeInTheDocument()
 
-    // Slide index should update to 9
-    expect(screen.getByText(/9 \/ 11/i)).toBeInTheDocument()
-    expect(screen.getByText(/Downtime Reduction/i)).toBeInTheDocument()
+    const replayBtn = screen.getByTitle(/เล่นอนิเมชั่นเปิดตัวซ้ำ/i)
+    fireEvent.click(replayBtn)
+    expect(screen.getByText(/GEMMA KNITS · TEXTILEOPS/i)).toBeInTheDocument()
   })
 
-  it('handles Return button to navigate back to /', () => {
+  it('launches Live App in new tab and handles Return button back to /', () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+
     render(
       <MemoryRouter>
         <Presentation />
       </MemoryRouter>
     )
+
+    const launchBtn = screen.getByRole('button', {
+      name: /เปิดระบบจริงเพื่อสาธิต \(Launch Live App\)/i,
+    })
+    fireEvent.click(launchBtn)
+    expect(openSpy).toHaveBeenCalledWith('/', '_blank')
 
     const closeBtn = screen.getByTitle(/กลับสู่หน้าหลัก TextileOps/i)
     fireEvent.click(closeBtn)
-
     expect(mockedNavigate).toHaveBeenCalledWith('/')
+
+    openSpy.mockRestore()
   })
 })
