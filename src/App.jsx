@@ -23,6 +23,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { MotionConfig } from 'framer-motion'
 import { queryClient } from './lib/queryClient'
 import { lazyWithRetry } from './utils/lazyWithRetry'
+import { getGeminiConfig } from './utils/geminiVision'
 
 const Login         = lazyWithRetry(() => import('./pages/Login'), 'Login')
 const RepairPage    = lazyWithRetry(() => import('./pages/RepairPage'), 'RepairPage')
@@ -169,6 +170,10 @@ function AppInner() {
   const { simulatorMode, setSimulatorMode, device, autoDevice } = useDeviceView()
   const [pwaModalOpen, setPwaModalOpen] = useState(false)
   const location = useLocation()
+
+  useEffect(() => {
+    getGeminiConfig().catch(() => {})
+  }, [])
 
   useEffect(() => {
     const html = document.documentElement

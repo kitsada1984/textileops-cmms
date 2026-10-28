@@ -2,7 +2,7 @@
 // Visual Product Search / Reverse Image Search Engine with Image Embedding & Vector Search
 import jsQR from 'jsqr'
 import { getDirectImageUrl } from './imageUrlUtils'
-import { isGeminiConfigured, identifySparePartWithGemini } from './geminiVision'
+import { isGeminiConfigured, getGeminiConfig, identifySparePartWithGemini } from './geminiVision'
 
 const OPENAI_BASE_URL = 'https://api.openai.com/v1'
 const VISION_MODEL = import.meta.env.VITE_OPENAI_VISION_MODEL || 'gpt-4.1-mini'
@@ -658,11 +658,17 @@ export async function searchSimilarSparePartsByImage(queryImageSource, sparePart
     } catch {}
   }
 
-  // 3. Try AI Vision (Google Gemini 1.5 Flash) if configured
-  if (isGeminiConfigured() && !options.disableAI) {
+  // 3. Try AI Vision (Google Gemini Vision) if configured
+  let geminiConfig = null
+  try {
+    geminiConfig = await getGeminiConfig()
+  } catch {}
+
+  const isAiConfigured = Boolean(geminiConfig?.apiKey && geminiConfig.isEnabled !== false)
+  if (isAiConfigured && !options.disableAI) {
     try {
       const aiResult = await identifySparePartWithGemini(queryImageSource, sparePartsList, {
-        timeoutMs: options.aiTimeoutMs || 10000,
+        timeoutMs: options.aiTimeoutMs || 25000,
       })
 
       if (aiResult?.bestMatchCode) {
@@ -696,17 +702,26 @@ export async function searchSimilarSparePartsByImage(queryImageSource, sparePart
 
         const bestCode = String(aiResult.bestMatchCode).toUpperCase()
         const bestPart = partMap.get(bestCode)
-        if (bestPart && !seenCodes.has(bestCode)) {
-          seenCodes.add(bestCode)
+        if (bestPart) {
           const conf = Math.max(0, Math.min(100, Number(aiResult.confidence) || 95))
-          candidates.unshift({
-            part: bestPart,
-            id: bestPart.Part_Code || bestPart.id,
-            similarity: conf / 100,
-            percent: Math.round(conf),
-            aiReason: aiResult.reasoning || '',
-            aiPowered: true,
-          })
+          const existing = candidates.find((c) => String(c.id).toUpperCase() === bestCode)
+          if (existing) {
+            existing.percent = Math.max(existing.percent, Math.round(conf))
+            existing.similarity = existing.percent / 100
+            if (!existing.aiReason && aiResult.reasoning) {
+              existing.aiReason = aiResult.reasoning
+            }
+          } else {
+            seenCodes.add(bestCode)
+            candidates.unshift({
+              part: bestPart,
+              id: bestPart.Part_Code || bestPart.id,
+              similarity: conf / 100,
+              percent: Math.round(conf),
+              aiReason: aiResult.reasoning || '',
+              aiPowered: true,
+            })
+          }
         }
 
         if (candidates.length > 0) {

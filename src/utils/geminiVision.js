@@ -174,7 +174,7 @@ export async function saveGeminiConfig({ apiKey, model = DEFAULT_GEMINI_MODEL, i
 }
 
 /**
- * Synchronous check if Gemini Vision is configured and enabled.
+ * Synchronous check if Gemini Vision is configured and enabled in memory or localStorage.
  */
 export function isGeminiConfigured() {
   if (inMemoryConfig?.apiKey && inMemoryConfig.isEnabled !== false) {
@@ -190,6 +190,18 @@ export function isGeminiConfigured() {
     } catch {}
   }
   return Boolean(typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY)
+}
+
+/**
+ * Asynchronous check if Gemini Vision is configured, querying Cloudflare D1 appconfigs if needed.
+ */
+export async function checkGeminiReady() {
+  try {
+    const config = await getGeminiConfig()
+    return Boolean(config?.apiKey && config?.isEnabled !== false)
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -334,9 +346,9 @@ export async function identifySparePartWithGemini(imageSource, candidates = [], 
   // Build a compact representation of inventory candidates to keep token usage minimal & fast
   const catalogList = candidates.slice(0, 100).map((p) => ({
     code: p.Part_Code || p.code || p.id || '',
-    name: p.Name || p.name || '',
+    name: p.Part_Name_EN || p.Part_Name_TH || p.Name || p.name || '',
     cat: p.Category || p.category || '',
-    spec: (p.Specification || p.Description || p.spec || '').slice(0, 100),
+    spec: (p.Remark || p.Specification || p.Description || p.spec || '').slice(0, 100),
   }))
 
   const prompt = [
@@ -410,7 +422,7 @@ export async function identifySparePartWithGemini(imageSource, candidates = [], 
       identifiedObject: parsed.identified_object || 'ไม่ระบุประเภท',
       identifiedFeatures: parsed.identified_features || '',
       bestMatchCode: String(parsed.best_match_code).trim(),
-      confidence: Number(parsed.best_match_confidence) || 90,
+      confidence: Number(parsed.best_match_confidence ?? parsed.confidence) || 90,
       reasoning: parsed.reasoning || '',
       rankedCandidates: Array.isArray(parsed.ranked_candidates) ? parsed.ranked_candidates : [],
       modelUsed,

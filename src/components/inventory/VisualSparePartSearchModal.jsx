@@ -28,7 +28,11 @@ import {
   getVectorCacheStats,
   prewarmSparePartEmbeddings,
 } from '../../utils/imageSearch'
-import { isGeminiConfigured } from '../../utils/geminiVision'
+import {
+  isGeminiConfigured,
+  getGeminiConfig,
+  DEFAULT_GEMINI_MODEL,
+} from '../../utils/geminiVision'
 
 export default function VisualSparePartSearchModal({
   isOpen,
@@ -47,10 +51,25 @@ export default function VisualSparePartSearchModal({
   const [cameraFacing, setCameraFacing] = useState('environment') // 'environment' (back) | 'user' (front)
   const [showVectorInspector, setShowVectorInspector] = useState(false)
   const [cacheStats, setCacheStats] = useState({ cached: 0, total: 0, isReady: false })
+  const [geminiReady, setGeminiReady] = useState(() => isGeminiConfigured())
+  const [activeGeminiModel, setActiveGeminiModel] = useState(DEFAULT_GEMINI_MODEL)
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  // ─── Preload Gemini Configuration from D1 / cache on Modal Open ────
+  useEffect(() => {
+    if (isOpen) {
+      getGeminiConfig()
+        .then((cfg) => {
+          const ready = Boolean(cfg?.apiKey && cfg?.isEnabled !== false)
+          setGeminiReady(ready)
+          if (cfg?.model) setActiveGeminiModel(cfg.model)
+        })
+        .catch(() => {})
+    }
+  }, [isOpen])
 
   // ─── Background Pre-Warming on Modal Open ──────────────────
   useEffect(() => {
@@ -228,12 +247,12 @@ export default function VisualSparePartSearchModal({
               {searchResult?.aiPowered ? (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
                   <Sparkles size={11} className="text-amber-500" />
-                  <span>AI Vision (Gemini 1.5 Flash)</span>
+                  <span>AI Vision ({searchResult.modelUsed || activeGeminiModel})</span>
                 </span>
-              ) : isGeminiConfigured() ? (
+              ) : geminiReady ? (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800 flex items-center gap-1">
                   <Sparkles size={10} className="text-purple-500" />
-                  <span>AI Vision Ready</span>
+                  <span>AI Vision พร้อม ({activeGeminiModel})</span>
                 </span>
               ) : (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
@@ -403,8 +422,8 @@ export default function VisualSparePartSearchModal({
               <p className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center justify-center gap-1.5">
                 <Sparkles size={16} className="text-amber-500 animate-spin" />
                 <span>
-                  {isGeminiConfigured()
-                    ? 'กำลังให้ AI Vision (Gemini 1.5 Flash) วิเคราะห์ประเภทอะไหล่และจับคู่สินค้า...'
+                  {geminiReady
+                    ? `กำลังให้ AI Vision (${activeGeminiModel}) วิเคราะห์ประเภทอะไหล่และจับคู่สินค้า...`
                     : 'กำลังวิเคราะห์ลักษณะทางสายตาและค้นหาเวกเตอร์ (Vector Search)...'}
                 </span>
               </p>
@@ -462,7 +481,7 @@ export default function VisualSparePartSearchModal({
                     <Sparkles size={14} />
                     <span>
                       {searchResult?.aiPowered
-                        ? 'ผลลัพธ์ที่ AI วิเคราะห์ตรงกันมากที่สุด (Gemini Vision)'
+                        ? `ผลลัพธ์ที่ AI วิเคราะห์ตรงกันมากที่สุด (${searchResult.modelUsed || activeGeminiModel})`
                         : 'ผลลัพธ์ที่เวกเตอร์ใกล้เคียงที่สุด (Nearest Neighbor)'}
                     </span>
                   </span>
