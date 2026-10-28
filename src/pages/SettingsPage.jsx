@@ -1541,10 +1541,10 @@ export default function SettingsPage() {
                 value={geminiModel}
                 onChange={(e) => setGeminiModel(e.target.value)}
               >
-                <option value="gemini-3.8-flash">gemini-3.8-flash (แนะนำ - โมเดลล่าสุด ฟรี รวดเร็วและแม่นยำสูงสุด)</option>
+                <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (แนะนำ - ฟรี 1,500 ครั้ง/วัน ความเร็วสูงสุด ประหยัดโควต้า)</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash (โมเดลอัจฉริยะสูงสุด)</option>
                 <option value="gemini-flash-latest">gemini-flash-latest (เลือกโมเดล Flash ล่าสุดอัตโนมัติ)</option>
                 <option value="gemini-3.5-flash">gemini-3.5-flash (เสถียรและประมวลผลภาพไว)</option>
-                <option value="gemini-2.5-flash">gemini-2.5-flash (รองรับโปรเจกต์รุ่นก่อนหน้า)</option>
               </select>
             </div>
 

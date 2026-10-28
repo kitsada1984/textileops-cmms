@@ -4,13 +4,13 @@ import { getSystemConfig, saveSystemConfig } from '../modules/systemConfig/syste
 
 export const GEMINI_CONFIG_KEY = 'gemini_settings'
 export const GEMINI_LOCAL_CACHE_KEY = 'textileops_gemini_config'
-export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash'
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite'
 export const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 export const FALLBACK_GEMINI_MODELS = [
+  'gemini-3.1-flash-lite',
   'gemini-3.8-flash',
   'gemini-flash-latest',
   'gemini-3.5-flash',
-  'gemini-2.5-flash',
 ]
 
 function isModelUnavailableError(status, message = '') {
