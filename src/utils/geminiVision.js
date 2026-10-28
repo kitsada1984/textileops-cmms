@@ -4,8 +4,101 @@ import { getSystemConfig, saveSystemConfig } from '../modules/systemConfig/syste
 
 export const GEMINI_CONFIG_KEY = 'gemini_settings'
 export const GEMINI_LOCAL_CACHE_KEY = 'textileops_gemini_config'
-export const DEFAULT_GEMINI_MODEL = 'gemini-1.5-flash'
+export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
 export const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
+export const FALLBACK_GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-flash-latest',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+]
+
+function isModelUnavailableError(status, message = '') {
+  if (status === 404) return true
+  const msg = String(message || '').toLowerCase()
+  return (
+    msg.includes('not found') ||
+    msg.includes('not supported') ||
+    msg.includes('no longer available') ||
+    msg.includes('deprecated') ||
+    msg.includes('retired')
+  )
+}
+
+async function fetchDynamicFlashModels(apiKey, signal) {
+  try {
+    const res = await fetch(`${GEMINI_API_BASE_URL}?key=${encodeURIComponent(apiKey)}`, {
+      method: 'GET',
+      signal,
+    })
+    if (!res.ok) return []
+    const json = await res.json().catch(() => ({}))
+    const models = Array.isArray(json?.models) ? json.models : []
+    return models
+      .filter(
+        (m) =>
+          Array.isArray(m?.supportedGenerationMethods) &&
+          m.supportedGenerationMethods.includes('generateContent') &&
+          typeof m?.name === 'string' &&
+          !m.name.includes('embedding') &&
+          !m.name.includes('tts') &&
+          !m.name.includes('imagen')
+      )
+      .map((m) => m.name.replace(/^models\//, ''))
+      .sort((a, b) => {
+        const aFlash = a.includes('flash') ? 0 : 1
+        const bFlash = b.includes('flash') ? 0 : 1
+        return aFlash - bFlash
+      })
+  } catch {
+    return []
+  }
+}
+
+async function callGeminiGenerateContent({ apiKey, model, body, signal }) {
+  const primaryModel = String(model || DEFAULT_GEMINI_MODEL).trim()
+  const trySingleModel = async (targetModel) => {
+    const endpoint = `${GEMINI_API_BASE_URL}/${targetModel}:generateContent?key=${encodeURIComponent(apiKey)}`
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    })
+    if (res.ok) {
+      const data = await res.json()
+      return { ok: true, data, modelUsed: targetModel }
+    }
+    const errJson = await res.json().catch(() => ({}))
+    const errMsg = errJson?.error?.message || `HTTP ${res.status}: ไม่สามารถเชื่อมต่อกับ Gemini API`
+    return { ok: false, status: res.status, message: errMsg }
+  }
+
+  const firstAttempt = await trySingleModel(primaryModel)
+  if (firstAttempt.ok) return firstAttempt
+
+  if (!isModelUnavailableError(firstAttempt.status, firstAttempt.message)) {
+    throw new Error(firstAttempt.message)
+  }
+
+  // Model was retired/unavailable (e.g. gemini-1.5-flash) — auto-discover & fallback seamlessly
+  const dynamicModels = await fetchDynamicFlashModels(apiKey, signal)
+  const candidates = [...new Set([...FALLBACK_GEMINI_MODELS, ...dynamicModels])].filter(
+    (m) => m && m !== primaryModel
+  )
+
+  let lastError = firstAttempt.message
+  for (const fallbackModel of candidates) {
+    const attempt = await trySingleModel(fallbackModel)
+    if (attempt.ok) return attempt
+    lastError = attempt.message
+    if (!isModelUnavailableError(attempt.status, attempt.message)) {
+      break
+    }
+  }
+
+  throw new Error(lastError)
+}
 
 let inMemoryConfig = null
 
@@ -106,29 +199,22 @@ export async function testGeminiConnection(apiKey, model = DEFAULT_GEMINI_MODEL)
   const key = String(apiKey || '').trim()
   if (!key) throw new Error('กรุณาระบุ Gemini API Key')
 
-  const endpoint = `${GEMINI_API_BASE_URL}/${model}:generateContent?key=${encodeURIComponent(key)}`
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
-  const timeoutId = controller ? setTimeout(() => controller.abort(), 10000) : null
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null
 
   try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const { data, modelUsed } = await callGeminiGenerateContent({
+      apiKey: key,
+      model,
+      body: {
         contents: [{ parts: [{ text: 'Ping test. Reply with JSON: {"ok": true}' }] }],
         generationConfig: { responseMimeType: 'application/json' },
-      }),
+      },
       signal: controller?.signal,
     })
 
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}))
-      throw new Error(errJson?.error?.message || `HTTP ${res.status}: ไม่สามารถเชื่อมต่อกับ Gemini API`)
-    }
-
-    const data = await res.json()
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    return { ok: true, rawText: text }
+    return { ok: true, rawText: text, modelUsed }
   } finally {
     if (timeoutId) clearTimeout(timeoutId)
   }
@@ -282,16 +368,15 @@ export async function identifySparePartWithGemini(imageSource, candidates = [], 
     `}`,
   ].join('\n')
 
-  const endpoint = `${GEMINI_API_BASE_URL}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
-  const timeoutMs = options.timeoutMs || 12000
+  const timeoutMs = options.timeoutMs || 15000
   const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
 
   try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const { data, modelUsed } = await callGeminiGenerateContent({
+      apiKey,
+      model,
+      body: {
         contents: [
           {
             role: 'user',
@@ -310,16 +395,10 @@ export async function identifySparePartWithGemini(imageSource, candidates = [], 
           responseMimeType: 'application/json',
           temperature: 0.1,
         },
-      }),
+      },
       signal: controller?.signal,
     })
 
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}))
-      throw new Error(errJson?.error?.message || `Gemini API error (HTTP ${res.status})`)
-    }
-
-    const data = await res.json()
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
     const parsed = parseGeminiJsonResponse(rawText)
 
@@ -334,7 +413,7 @@ export async function identifySparePartWithGemini(imageSource, candidates = [], 
       confidence: Number(parsed.best_match_confidence) || 90,
       reasoning: parsed.reasoning || '',
       rankedCandidates: Array.isArray(parsed.ranked_candidates) ? parsed.ranked_candidates : [],
-      modelUsed: model,
+      modelUsed,
     }
   } finally {
     if (timeoutId) clearTimeout(timeoutId)

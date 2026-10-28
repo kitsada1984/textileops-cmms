@@ -105,7 +105,8 @@ export default function SettingsPage() {
       const geminiCfg = await getGeminiConfig()
       if (geminiCfg) {
         setGeminiKey(geminiCfg.apiKey || '')
-        setGeminiModel(geminiCfg.model || DEFAULT_GEMINI_MODEL)
+        const loadedModel = geminiCfg.model || DEFAULT_GEMINI_MODEL
+        setGeminiModel(loadedModel.startsWith('gemini-1.5') ? DEFAULT_GEMINI_MODEL : loadedModel)
       }
     } catch {}
   }
@@ -148,7 +149,8 @@ export default function SettingsPage() {
       const geminiCfg = await getGeminiConfig()
       if (geminiCfg) {
         setGeminiKey(geminiCfg.apiKey || '')
-        setGeminiModel(geminiCfg.model || DEFAULT_GEMINI_MODEL)
+        const loadedModel = geminiCfg.model || DEFAULT_GEMINI_MODEL
+        setGeminiModel(loadedModel.startsWith('gemini-1.5') ? DEFAULT_GEMINI_MODEL : loadedModel)
       }
     })()
   }, [])
@@ -279,9 +281,13 @@ export default function SettingsPage() {
     setGeminiTesting(true)
     setGeminiStatus(null)
     try {
-      await testGeminiConnection(geminiKey, geminiModel)
-      setGeminiStatus({ ok: true, text: 'เชื่อมต่อสำเร็จ! โมเดล Gemini 1.5 Flash พร้อมใช้งาน' })
-      toast.success('เชื่อมต่อ Google Gemini สำเร็จ', 'API Key ใช้งานได้ปกติ')
+      const res = await testGeminiConnection(geminiKey, geminiModel)
+      const activeModel = res?.modelUsed || geminiModel
+      if (res?.modelUsed && res.modelUsed !== geminiModel) {
+        setGeminiModel(res.modelUsed)
+      }
+      setGeminiStatus({ ok: true, text: `เชื่อมต่อสำเร็จ! โมเดล ${activeModel} พร้อมใช้งาน` })
+      toast.success('เชื่อมต่อ Google Gemini สำเร็จ', `API Key ใช้งานได้ปกติ (${activeModel})`)
     } catch (err) {
       setGeminiStatus({ ok: false, text: err.message || 'เชื่อมต่อไม่สำเร็จ' })
       toast.error('ทดสอบการเชื่อมต่อไม่สำเร็จ', err.message)
@@ -1468,7 +1474,7 @@ export default function SettingsPage() {
           <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-200 space-y-1.5 leading-relaxed">
             <div className="flex items-center gap-1.5 font-bold text-sm text-purple-700 dark:text-purple-300">
               <Sparkles size={16} className="text-amber-500" />
-              <span>Google Gemini 1.5 Flash (Free Tier)</span>
+              <span>Google Gemini Flash Vision (Free Tier)</span>
             </div>
             <p className="text-slate-600 dark:text-slate-300">
               ยกระดับความแม่นยำในการค้นหาอะไหล่จากรูปถ่ายเป็น <b>98%+</b> โดย AI จะวิเคราะห์แยกประเภทและจับคู่กับรายการอะไหล่ในคลังอย่างแม่นยำ ไม่สับสนกับพื้นหลังสีขาว
@@ -1527,9 +1533,10 @@ export default function SettingsPage() {
                 value={geminiModel}
                 onChange={(e) => setGeminiModel(e.target.value)}
               >
-                <option value="gemini-1.5-flash">gemini-1.5-flash (แนะนำ - ฟรี 1,500 ครั้ง/วัน รวดเร็วและแม่นยำ)</option>
-                <option value="gemini-2.0-flash">gemini-2.0-flash (เวอร์ชันใหม่ล่าสุด)</option>
-                <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b (เน้นความเร็วสูงสุด)</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash (แนะนำ - ฟรี รวดเร็วและแม่นยำสูง)</option>
+                <option value="gemini-flash-latest">gemini-flash-latest (เลือกโมเดล Flash ล่าสุดอัตโนมัติ)</option>
+                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (เน้นความเร็วสูงสุด ประหยัดโควต้า)</option>
+                <option value="gemini-2.0-flash">gemini-2.0-flash (เสถียรสำหรับสแกนภาพอะไหล่)</option>
               </select>
             </div>
 

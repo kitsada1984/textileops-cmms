@@ -82,9 +82,44 @@ describe('geminiVision - Google Gemini Vision AI Integration', () => {
       const res = await testGeminiConnection('AIzaSyValidKey')
       expect(res.ok).toBe(true)
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('gemini-1.5-flash:generateContent'),
+        expect.stringContaining(`${DEFAULT_GEMINI_MODEL}:generateContent`),
         expect.objectContaining({ method: 'POST' })
       )
+    })
+
+    it('auto-falls back to active Gemini Flash model when retired model returns 404', async () => {
+      const mockFetch = vi
+        .fn()
+        // 1st call: retired gemini-1.5-flash returns 404
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          json: async () => ({ error: { message: 'models/gemini-1.5-flash is not found' } }),
+        })
+        // 2nd call: dynamic GET /models discovery
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            models: [
+              {
+                name: 'models/gemini-2.5-flash',
+                supportedGenerationMethods: ['generateContent'],
+              },
+            ],
+          }),
+        })
+        // 3rd call: fallback gemini-2.5-flash succeeds
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            candidates: [{ content: { parts: [{ text: '{"ok": true}' }] } }],
+          }),
+        })
+      global.fetch = mockFetch
+
+      const res = await testGeminiConnection('AIzaSyValidKey', 'gemini-1.5-flash')
+      expect(res.ok).toBe(true)
+      expect(res.modelUsed).toBe('gemini-2.5-flash')
     })
 
     it('throws descriptive error when Gemini responds with error status', async () => {
