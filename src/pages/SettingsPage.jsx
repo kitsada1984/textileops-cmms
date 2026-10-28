@@ -106,7 +106,11 @@ export default function SettingsPage() {
       if (geminiCfg) {
         setGeminiKey(geminiCfg.apiKey || '')
         const loadedModel = geminiCfg.model || DEFAULT_GEMINI_MODEL
-        setGeminiModel(loadedModel.startsWith('gemini-1.5') ? DEFAULT_GEMINI_MODEL : loadedModel)
+        setGeminiModel(
+          loadedModel.startsWith('gemini-1.5') || loadedModel === 'gemini-2.5-flash'
+            ? DEFAULT_GEMINI_MODEL
+            : loadedModel
+        )
       }
     } catch {}
   }
@@ -150,7 +154,11 @@ export default function SettingsPage() {
       if (geminiCfg) {
         setGeminiKey(geminiCfg.apiKey || '')
         const loadedModel = geminiCfg.model || DEFAULT_GEMINI_MODEL
-        setGeminiModel(loadedModel.startsWith('gemini-1.5') ? DEFAULT_GEMINI_MODEL : loadedModel)
+        setGeminiModel(
+          loadedModel.startsWith('gemini-1.5') || loadedModel === 'gemini-2.5-flash'
+            ? DEFAULT_GEMINI_MODEL
+            : loadedModel
+        )
       }
     })()
   }, [])
@@ -1533,10 +1541,10 @@ export default function SettingsPage() {
                 value={geminiModel}
                 onChange={(e) => setGeminiModel(e.target.value)}
               >
-                <option value="gemini-2.5-flash">gemini-2.5-flash (แนะนำ - ฟรี รวดเร็วและแม่นยำสูง)</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash (แนะนำ - โมเดลล่าสุด ฟรี รวดเร็วและแม่นยำสูงสุด)</option>
                 <option value="gemini-flash-latest">gemini-flash-latest (เลือกโมเดล Flash ล่าสุดอัตโนมัติ)</option>
-                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (เน้นความเร็วสูงสุด ประหยัดโควต้า)</option>
-                <option value="gemini-2.0-flash">gemini-2.0-flash (เสถียรสำหรับสแกนภาพอะไหล่)</option>
+                <option value="gemini-3.5-flash">gemini-3.5-flash (เสถียรและประมวลผลภาพไว)</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash (รองรับโปรเจกต์รุ่นก่อนหน้า)</option>
               </select>
             </div>
 

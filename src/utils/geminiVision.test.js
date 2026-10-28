@@ -102,13 +102,13 @@ describe('geminiVision - Google Gemini Vision AI Integration', () => {
           json: async () => ({
             models: [
               {
-                name: 'models/gemini-2.5-flash',
+                name: 'models/gemini-3.8-flash',
                 supportedGenerationMethods: ['generateContent'],
               },
             ],
           }),
         })
-        // 3rd call: fallback gemini-2.5-flash succeeds
+        // 3rd call: fallback gemini-3.8-flash succeeds
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
@@ -119,7 +119,7 @@ describe('geminiVision - Google Gemini Vision AI Integration', () => {
 
       const res = await testGeminiConnection('AIzaSyValidKey', 'gemini-1.5-flash')
       expect(res.ok).toBe(true)
-      expect(res.modelUsed).toBe('gemini-2.5-flash')
+      expect(res.modelUsed).toBe('gemini-3.8-flash')
     })
 
     it('throws descriptive error when Gemini responds with error status', async () => {
