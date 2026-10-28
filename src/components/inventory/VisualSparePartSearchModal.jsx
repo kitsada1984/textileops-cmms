@@ -19,10 +19,12 @@ import {
   ChevronDown,
   ChevronUp,
   Zap,
+  Package,
 } from 'lucide-react'
 import Modal from '../ui/Modal'
 import StatusBadge from '../ui/StatusBadge'
 import { getDirectImageUrl } from '../../utils/imageUrlUtils'
+import { getSparePartImageUrl } from '../../utils/sparePartImage'
 import {
   searchSimilarSparePartsByImage,
   getVectorCacheStats,
@@ -53,6 +55,7 @@ export default function VisualSparePartSearchModal({
   const [cacheStats, setCacheStats] = useState({ cached: 0, total: 0, isReady: false })
   const [geminiReady, setGeminiReady] = useState(() => isGeminiConfigured())
   const [activeGeminiModel, setActiveGeminiModel] = useState(DEFAULT_GEMINI_MODEL)
+  const [heroImgError, setHeroImgError] = useState(false)
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -156,6 +159,7 @@ export default function VisualSparePartSearchModal({
       setErrorMsg('')
       setIsSearching(false)
       setShowVectorInspector(false)
+      setHeroImgError(false)
     }
   }, [isOpen, stopCamera])
 
@@ -171,6 +175,7 @@ export default function VisualSparePartSearchModal({
     setIsSearching(true)
     setErrorMsg('')
     setSearchResult(null)
+    setHeroImgError(false)
     try {
       const results = await searchSimilarSparePartsByImage(imageSource, spareParts, {
         topK: 5,
@@ -218,6 +223,7 @@ export default function VisualSparePartSearchModal({
     setCapturedImage(null)
     setSearchResult(null)
     setErrorMsg('')
+    setHeroImgError(false)
     if (mode === 'camera') {
       startCamera(cameraFacing)
     }
@@ -507,14 +513,31 @@ export default function VisualSparePartSearchModal({
                   </div>
 
                   {/* Right: Matched Catalogue Image */}
-                  <div className="relative rounded-xl overflow-hidden aspect-square max-h-44 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <img
-                      src={getDirectImageUrl(bestMatch.part?.ImageUrl || '', 'w300')}
-                      alt={bestMatch.part?.Part_Code}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute bottom-1 inset-x-1 text-center">
-                      <span className="text-[10px] font-bold text-white bg-blue-600/80 px-2 py-0.5 rounded-full backdrop-blur-xs">
+                  <div className="relative rounded-xl overflow-hidden aspect-square max-h-44 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                    {(() => {
+                      const matchedRawUrl = getSparePartImageUrl(bestMatch.part)
+                      const matchedDirectUrl = getDirectImageUrl(matchedRawUrl, 'w400')
+                      return matchedDirectUrl && !heroImgError ? (
+                        <img
+                          src={matchedDirectUrl}
+                          alt={bestMatch.part?.Part_Code}
+                          className="w-full h-full object-cover"
+                          onError={() => setHeroImgError(true)}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-slate-100 dark:bg-slate-800 text-slate-400">
+                          <Package size={36} className="opacity-40 mb-1.5" />
+                          <span className="font-mono font-bold text-xs text-slate-600 dark:text-slate-300">
+                            {bestMatch.part?.Part_Code}
+                          </span>
+                          <span className="text-[10px] text-slate-400 mt-0.5">
+                            ไม่มีรูปในระบบคลัง
+                          </span>
+                        </div>
+                      )
+                    })()}
+                    <div className="absolute bottom-1 inset-x-1 text-center pointer-events-none">
+                      <span className="text-[10px] font-bold text-white bg-blue-600/80 px-2 py-0.5 rounded-full backdrop-blur-xs shadow-xs">
                         รูปในระบบคลัง
                       </span>
                     </div>
@@ -644,12 +667,30 @@ export default function VisualSparePartSearchModal({
                       onClick={() => handleSelectCandidate(candidate)}
                       className="card p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/20 cursor-pointer transition-all flex items-center gap-3 group"
                     >
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 border border-slate-200 dark:border-slate-700">
-                        <img
-                          src={getDirectImageUrl(candidate.part?.ImageUrl || '', 'w100')}
-                          alt={candidate.part?.Part_Code}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                        />
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                        {(() => {
+                          const candRawUrl = getSparePartImageUrl(candidate.part)
+                          const candDirectUrl = getDirectImageUrl(candRawUrl, 'w120')
+                          return candDirectUrl ? (
+                            <img
+                              src={candDirectUrl}
+                              alt={candidate.part?.Part_Code}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                                if (e.currentTarget.nextElementSibling) {
+                                  e.currentTarget.nextElementSibling.style.display = 'flex'
+                                }
+                              }}
+                            />
+                          ) : null
+                        })()}
+                        <div
+                          style={{ display: getSparePartImageUrl(candidate.part) ? 'none' : 'flex' }}
+                          className="w-full h-full flex-col items-center justify-center text-slate-400 p-1"
+                        >
+                          <Package size={16} className="opacity-40" />
+                        </div>
                       </div>
                       <div className="flex-1 min-w-0 text-xs">
                         <div className="flex items-center justify-between gap-1">

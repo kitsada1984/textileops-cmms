@@ -23,6 +23,17 @@ const MOCK_PARTS = [
     Location_Store: 'Store',
     Unit_Price: 350,
   },
+  {
+    id: 'sp-10',
+    Part_Code: 'SP-010',
+    Part_Name_EN: 'ดอกสว่าน ',
+    Category: 'เครื่องมือช่าง',
+    ImageUrl: null,
+    Remark: 'ช่างหนึ่ง\nImageUrl: https://drive.google.com/file/d/1_0FBR63AMZgrDkei2BXdM-z3dhctZSH0/view',
+    Stock_Qty: 2,
+    Location_Store: 'Store',
+    Unit_Price: 80,
+  },
 ]
 
 describe('VisualSparePartSearchModal', () => {
@@ -81,5 +92,16 @@ describe('VisualSparePartSearchModal', () => {
     fireEvent.click(closeBtn)
 
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('supports spare parts with ImageUrl stored in Remark (like SP-010)', () => {
+    const { container } = render(
+      <VisualSparePartSearchModal
+        isOpen={true}
+        onClose={vi.fn()}
+        spareParts={MOCK_PARTS}
+      />
+    )
+    expect(container).toBeInTheDocument()
   })
 })
