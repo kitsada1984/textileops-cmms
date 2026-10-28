@@ -23,6 +23,7 @@ import {
   FileText,
   Zap,
   History,
+  Tag,
 } from 'lucide-react'
 import useWebBuilderMenu, { useWebBuilderColumn } from '../hooks/useWebBuilderMenu'
 import { format } from 'date-fns'
@@ -49,6 +50,7 @@ import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generateCylinderPdfProps } from '../utils/pdfDocGenerators'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../components/ui/ImageThumbnail'
+import CylinderTagView from '../components/cylinder/CylinderTagView'
 import {
   appendCylinderImageMeta,
   getCylinderImageUrl,
@@ -291,6 +293,7 @@ function CylinderCard({
   onDelete,
   onPreviewImage,
   onHistory,
+  onPrintTag,
 }) {
   const imageUrl = getCylinderImageUrl(c)
   const display = (c.Serial_OLD && c.Serial_NOW && c.Serial_OLD === c.Serial_NOW)
@@ -371,6 +374,17 @@ function CylinderCard({
         </span>
 
         <div className="flex items-center gap-1">
+          {onPrintTag && (
+            <button
+              type="button"
+              onClick={() => onPrintTag(c)}
+              className="p-1.5 rounded-lg text-amber-600 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition-colors border border-amber-200 dark:border-amber-900/50"
+              title="พิมพ์ Tack (A4 แนวนอน)"
+              aria-label="พิมพ์ Tack"
+            >
+              <Tag size={14} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onPdf(c)}
@@ -443,6 +457,8 @@ export default function Cylinders() {
   const [swapOpen, setSwapOpen] = useState(false)
   const [swapCfgOpen, setSwapCfgOpen] = useState(false)
   const [openingSwap, setOpeningSwap] = useState(false)
+  const [activeTab, setActiveTab] = useState('list') // 'list' | 'print_tag'
+  const [selectedTagCylinder, setSelectedTagCylinder] = useState(null)
   const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [selectedImportMcKey, setSelectedImportMcKey] = useState('')
@@ -1002,6 +1018,47 @@ export default function Cylinders() {
 
   return (
     <div className="space-y-5">
+      {/* ── SUB-TAB NAVIGATION: 1. รายการกระบอก | 2. พิมพ์ Tack ── */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab('list')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === 'list'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Disc size={15} />
+          <span>รายการกระบอก</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+            activeTab === 'list' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+          }`}>{data.length}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('print_tag')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === 'print_tag'
+              ? 'bg-amber-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Tag size={15} />
+          <span>พิมพ์ Tack</span>
+          <span className="text-[10px] opacity-80 font-mono">(A4 แนวนอน)</span>
+        </button>
+      </div>
+
+      {activeTab === 'print_tag' ? (
+        <CylinderTagView
+          cylinders={data}
+          selectedCylinder={selectedTagCylinder}
+          onSelectCylinder={setSelectedTagCylinder}
+        />
+      ) : (
+        <>
       {/* ── TOOLBAR ───────────────────────────────────────────── */}
       <div className={`flex flex-wrap items-center justify-between gap-2 ${
         isMobile
@@ -1230,6 +1287,7 @@ export default function Cylinders() {
               onDelete={(id) => del(id)}
               onPreviewImage={setPreviewImageModal}
               onHistory={setHistoryTarget}
+              onPrintTag={(cyl) => { setSelectedTagCylinder(cyl); setActiveTab('print_tag'); }}
             />
           ))}
           {!loading && !displayRows.length && (
@@ -1279,6 +1337,7 @@ export default function Cylinders() {
                   onDelete={(id) => del(id)}
                   onPreviewImage={setPreviewImageModal}
                   onHistory={setHistoryTarget}
+                  onPrintTag={(cyl) => { setSelectedTagCylinder(cyl); setActiveTab('print_tag'); }}
                 />
               ))}
             </div>
@@ -1329,6 +1388,18 @@ export default function Cylinders() {
                     ))}
                     <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTagCylinder(c)
+                            setActiveTab('print_tag')
+                          }}
+                          className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 dark:text-amber-400 transition-all border border-amber-200 dark:border-amber-800/60"
+                          title="พิมพ์ Tack (A4 แนวนอน)"
+                          aria-label="พิมพ์ Tack"
+                        >
+                          <Tag size={13} />
+                        </button>
                         <button
                           type="button"
                           onClick={() => setPdfItem(c)}
@@ -1396,6 +1467,8 @@ export default function Cylinders() {
           </div>
         </div>
       )}
+        </>
+      )}
 
       {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
       <DetailDrawer
@@ -1416,6 +1489,19 @@ export default function Cylinders() {
         }}
         extraActions={detailRec && (
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTagCylinder(detailRec)
+                setActiveTab('print_tag')
+                setDetailRec(null)
+              }}
+              className="btn-outline text-xs flex items-center gap-1.5 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+              title="พิมพ์ Tack (A4 แนวนอน)"
+            >
+              <Tag size={13} />
+              <span>พิมพ์ Tack</span>
+            </button>
             <button
               type="button"
               onClick={() => setHistoryTarget(detailRec)}
