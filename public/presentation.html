@@ -38,15 +38,11 @@
       background-color: var(--bg-deep);
       color: var(--text-main);
       font-family: 'Noto Sans Thai', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-      max-width: 100%;
-      overflow-x: clip;
     }
 
     body {
       background-color: var(--bg-deep);
-      width: 100%;
-      max-width: 100%;
-      overflow-x: clip;
+      overflow-x: hidden;
       min-height: 100vh;
       position: relative;
       line-height: 1.6;
@@ -65,18 +61,12 @@
       background-size: 56px 56px;
     }
 
-    .orb-wrap {
-      position: fixed;
-      inset: 0;
-      overflow: hidden;
-      pointer-events: none;
-      z-index: 0;
-    }
     .orb {
-      position: absolute;
+      position: fixed;
       border-radius: 9999px;
       filter: blur(130px);
       pointer-events: none;
+      z-index: 0;
     }
     .orb-1 {
       top: -140px;
@@ -98,10 +88,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      width: 100%;
-      max-width: 100%;
-      overflow-x: clip;
-      background: rgba(5, 8, 17, 0.88);
+      background: rgba(5, 8, 17, 0.86);
       backdrop-filter: blur(16px);
       border-bottom: 1px solid rgba(30, 41, 59, 0.9);
     }
@@ -240,14 +227,8 @@
     main {
       position: relative;
       z-index: 10;
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
     }
     section {
-      width: 100%;
-      max-width: 100%;
-      overflow-x: clip;
       padding: 92px 20px;
       border-top: 1px solid rgba(30, 41, 59, 0.75);
       scroll-margin-top: 72px;
@@ -256,9 +237,7 @@
       background: var(--bg-section);
     }
     .container {
-      width: 100%;
       max-width: 1140px;
-      min-width: 0;
       margin: 0 auto;
     }
 
@@ -267,7 +246,6 @@
       min-height: calc(100vh - 68px);
       border-top: none;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
@@ -276,8 +254,6 @@
     }
     .eyebrow {
       display: inline-flex;
-      flex-wrap: wrap;
-      justify-content: center;
       align-items: center;
       gap: 8px;
       padding: 6px 15px;
@@ -290,8 +266,6 @@
       border: 1px solid rgba(34, 211, 238, 0.35);
       color: #67e8f9;
       margin-bottom: 22px;
-      max-width: 100%;
-      text-align: center;
     }
     .corp-badge {
       display: inline-flex;
@@ -302,7 +276,6 @@
       background: rgba(15, 23, 42, 0.8);
       border: 1px solid rgba(51, 65, 85, 0.9);
       margin-bottom: 26px;
-      max-width: 100%;
     }
     .corp-name {
       font-family: var(--mono);
@@ -320,13 +293,12 @@
       text-align: left;
     }
     .hero-title {
-      font-size: clamp(2rem, 5.5vw, 4.4rem);
+      font-size: clamp(2.4rem, 5.5vw, 4.4rem);
       font-weight: 900;
       line-height: 1.2;
       letter-spacing: -0.02em;
       color: #fff;
       margin-bottom: 20px;
-      overflow-wrap: break-word;
     }
     .grad-text {
       background: linear-gradient(90deg, #60a5fa, #22d3ee, #34d399);
@@ -335,19 +307,17 @@
     }
     .hero-subline {
       display: block;
-      font-size: clamp(1.05rem, 2.5vw, 2.05rem);
+      font-size: clamp(1.2rem, 2.5vw, 2.05rem);
       color: #e2e8f0;
       margin-top: 12px;
       line-height: 1.38;
-      overflow-wrap: break-word;
     }
     .hero-quote {
-      font-size: clamp(0.88rem, 1.6vw, 1.22rem);
+      font-size: clamp(1rem, 1.6vw, 1.22rem);
       color: var(--text-muted);
       max-width: 780px;
       margin: 0 auto 34px;
       line-height: 1.7;
-      overflow-wrap: break-word;
     }
     .cta-row {
       display: flex;
@@ -355,7 +325,6 @@
       justify-content: center;
       gap: 14px;
       margin-bottom: 48px;
-      width: 100%;
     }
     .btn-primary-lg {
       padding: 15px 28px;
@@ -370,10 +339,8 @@
       box-shadow: 0 12px 30px rgba(8, 145, 178, 0.28);
       text-decoration: none;
       display: inline-flex;
-      justify-content: center;
       align-items: center;
       gap: 10px;
-      max-width: 100%;
     }
     .btn-secondary-lg {
       padding: 15px 26px;
@@ -387,10 +354,8 @@
       cursor: pointer;
       text-decoration: none;
       display: inline-flex;
-      justify-content: center;
       align-items: center;
       gap: 10px;
-      max-width: 100%;
     }
 
     /* Section Header */
@@ -400,11 +365,10 @@
       margin: 0 auto 54px;
     }
     .sec-title {
-      font-size: clamp(1.5rem, 3.4vw, 2.55rem);
+      font-size: clamp(1.75rem, 3.4vw, 2.55rem);
       font-weight: 900;
       color: #fff;
       line-height: 1.34;
-      overflow-wrap: break-word;
     }
     .sec-sub {
       font-size: 16px;
@@ -418,27 +382,21 @@
       background: linear-gradient(90deg, transparent, #22d3ee, transparent);
     }
 
-    /* Grids & Cards — Mobile-Safe Track Sizing */
+    /* Grids & Cards */
     .grid-4 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 16px;
-      width: 100%;
-      min-width: 0;
     }
     .grid-2 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 22px;
-      width: 100%;
-      min-width: 0;
     }
     .grid-3 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
-      width: 100%;
-      min-width: 0;
     }
     .card {
       background: var(--bg-card);
@@ -448,7 +406,6 @@
       box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
       position: relative;
       overflow: hidden;
-      min-width: 0;
     }
     .top-bar-emerald { border-top: 3px solid var(--emerald); }
     .top-bar-cyan { border-top: 3px solid var(--cyan); }
@@ -458,7 +415,7 @@
 
     .kpi-num {
       font-family: var(--mono);
-      font-size: clamp(1.55rem, 3.5vw, 2.7rem);
+      font-size: clamp(2rem, 3.5vw, 2.7rem);
       font-weight: 800;
       line-height: 1.15;
       margin-bottom: 6px;
@@ -469,7 +426,6 @@
       color: #fff;
       margin-bottom: 10px;
       line-height: 1.35;
-      overflow-wrap: break-word;
     }
     .bullet-list {
       list-style: none;
@@ -483,7 +439,7 @@
     /* Innovation Showcases */
     .showcase {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 28px;
       align-items: center;
       background: rgba(15, 23, 42, 0.82);
@@ -491,7 +447,6 @@
       padding: 32px;
       margin-bottom: 32px;
       border: 1px solid rgba(148, 163, 184, 0.22);
-      min-width: 0;
     }
     .mockup-box {
       background: #070b17;
@@ -500,7 +455,6 @@
       position: relative;
       overflow: hidden;
       border: 2px solid rgba(192, 132, 252, 0.42);
-      min-width: 0;
     }
     .laser-line {
       position: absolute;
@@ -551,59 +505,6 @@
       background: linear-gradient(90deg, #06b6d4, #10b981);
     }
 
-    /* Interactive QR Simulator Tabs & Buttons */
-    .qr-step-tabs {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 4px;
-      padding: 4px;
-      border-radius: 12px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid #1e293b;
-      margin-bottom: 12px;
-    }
-    .qr-step-btn {
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      font-family: inherit;
-      font-size: 10.5px;
-      font-weight: 800;
-      padding: 6px 2px;
-      border-radius: 8px;
-      cursor: pointer;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .qr-step-btn.active {
-      background: linear-gradient(90deg, #059669, #0891b2);
-      color: #fff;
-    }
-    .qr-issue-btn {
-      width: 100%;
-      padding: 9px 11px;
-      border-radius: 12px;
-      border: 1px solid #1e293b;
-      background: rgba(15, 23, 42, 0.85);
-      color: #cbd5e1;
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 700;
-      text-align: left;
-      cursor: pointer;
-      margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 6px;
-    }
-    .qr-issue-btn.selected {
-      background: rgba(16, 185, 129, 0.2);
-      border-color: #34d399;
-      color: #fff;
-    }
-
     /* Initial hidden state when JS motion is enabled */
     html.motion-ready [data-reveal] {
       opacity: 0;
@@ -630,70 +531,6 @@
     .notes-dock.open {
       display: block;
     }
-
-    /* Mobile Responsive Layout Rules */
-    @media (max-width: 768px) {
-      .nav-inner {
-        padding: 8px 12px;
-        gap: 8px;
-      }
-      .nav-pills {
-        order: 3;
-        width: 100%;
-        border-radius: 10px;
-      }
-      .tool-label {
-        display: none;
-      }
-      .tool-btn.hide-sm {
-        display: none;
-      }
-      .tool-btn {
-        padding: 6px 9px;
-      }
-      section {
-        padding: 56px 14px;
-      }
-      #hero {
-        padding-top: 32px;
-        padding-bottom: 44px;
-        min-height: calc(100vh - 96px);
-      }
-      .grid-4 {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-      .card {
-        padding: 16px;
-        border-radius: 20px;
-      }
-      .showcase {
-        padding: 16px;
-        gap: 20px;
-        border-radius: 22px;
-      }
-      .mockup-box {
-        padding: 15px;
-      }
-      .cta-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-        margin-bottom: 32px;
-      }
-      .btn-primary-lg,
-      .btn-secondary-lg {
-        width: 100%;
-        font-size: 13.5px;
-        padding: 13px 18px;
-      }
-      .sec-head {
-        margin-bottom: 34px;
-      }
-      .sec-sub {
-        font-size: 13.5px;
-      }
-    }
   </style>
   <script>
     document.documentElement.classList.add('motion-ready');
@@ -701,10 +538,8 @@
 </head>
 <body>
   <div class="bg-grid" aria-hidden="true"></div>
-  <div class="orb-wrap" aria-hidden="true">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-  </div>
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
 
   <!-- STICKY EXECUTIVE NAVBAR -->
   <header class="navbar">
@@ -712,11 +547,11 @@
       <div class="scroll-fill" id="scrollFill"></div>
     </div>
     <div class="nav-inner">
-      <button type="button" class="brand-btn" onclick="scrollToId('hero')" style="min-width:0;flex:1 1 auto;">
-        <div class="brand-mark" style="flex-shrink:0;">GK</div>
-        <div style="min-width:0;overflow:hidden;">
-          <span class="brand-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">GEMMA KNITS · TEXTILEOPS</span>
-          <span class="brand-sub" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">EXECUTIVE LANDING · v1.3.194</span>
+      <button type="button" class="brand-btn" onclick="scrollToId('hero')">
+        <div class="brand-mark">GK</div>
+        <div>
+          <span class="brand-title">GEMMA KNITS · TEXTILEOPS</span>
+          <span class="brand-sub">EXECUTIVE LANDING · v1.3.187</span>
         </div>
       </button>
 
@@ -730,12 +565,12 @@
         <button type="button" class="nav-pill" data-nav="roadmap" onclick="scrollToId('roadmap')">แผนอนาคต</button>
       </nav>
 
-      <div class="toolbar" style="flex-shrink:0;">
-        <button type="button" class="tool-btn" onclick="replayViewportAnimations()" title="เล่นอนิเมชั่นซ้ำ (กด R)">🔄 <span class="tool-label">เล่นซ้ำ</span></button>
-        <button type="button" class="tool-btn active-cyan" id="btnMotion" onclick="toggleMotion()" title="เปิด/ปิดโหมดอนิเมชั่น">✨ <span class="tool-label" id="btnMotionLabel">อนิเมชั่น: เปิด</span></button>
-        <button type="button" class="tool-btn" id="btnNotes" onclick="toggleNotes()" title="เปิด/ปิดสคริปต์ผู้บรรยาย (กด N)">🎙️ <span class="tool-label">บทพูด</span></button>
-        <button type="button" class="tool-btn hide-sm" onclick="toggleFullscreen()" title="ขยายเต็มหน้าจอ (กด F)">⛶</button>
-        <a href="/" target="_blank" class="tool-btn demo hide-sm">🚀 เปิดระบบจริง</a>
+      <div class="toolbar">
+        <button type="button" class="tool-btn" onclick="replayViewportAnimations()" title="เล่นอนิเมชั่นซ้ำ (กด R)">🔄 เล่นซ้ำ</button>
+        <button type="button" class="tool-btn active-cyan" id="btnMotion" onclick="toggleMotion()" title="เปิด/ปิดโหมดอนิเมชั่น">✨ อนิเมชั่น: เปิด</button>
+        <button type="button" class="tool-btn" id="btnNotes" onclick="toggleNotes()" title="เปิด/ปิดสคริปต์ผู้บรรยาย (กด N)">🎙️ บทพูด</button>
+        <button type="button" class="tool-btn" onclick="toggleFullscreen()" title="ขยายเต็มหน้าจอ (กด F)">⛶</button>
+        <a href="/" target="_blank" class="tool-btn demo">🚀 เปิดระบบจริง</a>
       </div>
     </div>
   </header>
@@ -745,7 +580,7 @@
     <section id="hero">
       <div class="container">
         <div class="eyebrow" data-reveal data-delay="150">
-          ✨ Gemma Knits Operational Excellence · v1.3.194
+          ✨ Gemma Knits Operational Excellence · v1.3.187
         </div>
 
         <div style="display:flex;justify-content:center;" data-reveal data-delay="400">
@@ -976,7 +811,7 @@
 
           <div class="mockup-box" data-reveal data-delay="650">
             <div class="laser-line" id="laserBeam"></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;border-bottom:1px solid #1e293b;padding-bottom:10px;margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e293b;padding-bottom:10px;margin-bottom:14px;">
               <strong style="font-size:13px;">✨ ผลการวิเคราะห์ภาพถ่าย AI Vision</strong>
               <span style="font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(16,185,129,0.2);color:#6ee7b7;font-weight:700;">Match 98.4%</span>
             </div>
@@ -998,117 +833,40 @@
           </div>
         </div>
 
-        <!-- Innovation 2: Interactive QR Scan-to-Repair & LINE Flex Simulator -->
+        <!-- Innovation 2: LINE Flex -->
         <div class="showcase">
-          <div class="mockup-box" style="border-color:rgba(16,185,129,0.45);max-width:405px;width:100%;margin:0 auto;" data-reveal data-delay="580">
-            <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:rgba(16,185,129,0.16);border:1px solid rgba(52,211,153,0.4);color:#6ee7b7;font-size:10.5px;font-weight:800;margin-bottom:10px;">
-              <span style="width:7px;height:7px;border-radius:50%;background:#34d399;display:inline-block;"></span>
-              INTERACTIVE DEMO · แตะทดลองสแกน QR แจ้งซ่อมได้จริง
+          <div class="mockup-box" style="border-color:rgba(16,185,129,0.45);" data-reveal data-delay="580">
+            <div style="display:flex;justify-content:space-between;border-bottom:1px solid #1e293b;padding-bottom:10px;margin-bottom:14px;font-size:12px;">
+              <strong style="color:#34d399;">📨 LINE Flex Notification</strong>
+              <span style="font-family:var(--mono);color:var(--text-dim);">LIVE · 10:14 AM</span>
             </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;border-bottom:1px solid #1e293b;padding-bottom:10px;margin-bottom:10px;font-size:12px;">
-              <strong style="color:#34d399;">📱 QR Scan-to-Repair Simulator</strong>
-              <span style="font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:99px;background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(52,211,153,0.3);">SIMULATOR</span>
-            </div>
-
-            <div class="qr-sim-tabs" role="tablist" aria-label="ขั้นตอนจำลองการสแกน QR แจ้งซ่อม">
-              <button type="button" class="qr-step-btn active" data-qr-step="0" onclick="setQrSimStep(0)">1. สแกน</button>
-              <button type="button" class="qr-step-btn" data-qr-step="1" onclick="setQrSimStep(1)">2. อาการ</button>
-              <button type="button" class="qr-step-btn" data-qr-step="2" onclick="setQrSimStep(2)">3. ส่งงาน</button>
-              <button type="button" class="qr-step-btn" data-qr-step="3" onclick="setQrSimStep(3)">4. เตือน LINE</button>
-            </div>
-
-            <!-- Step 0: Camera Viewfinder & Tappable Green Tag -->
-            <div id="qrStepPanel0" class="qr-step-panel" style="min-height:230px;display:flex;flex-direction:column;justify-content:space-between;">
-              <div style="position:relative;background:#090d16;border:1px solid rgba(51,65,85,0.85);border-radius:14px;padding:12px;text-align:center;">
-                <div style="font-size:10px;font-family:var(--mono);color:#6ee7b7;font-weight:700;margin-bottom:8px;">● Smart Tag Scanner Active</div>
-                <button type="button" onclick="setQrSimStep(1)" style="width:100%;max-width:240px;margin:0 auto;display:block;background:#bbf7d0;color:#0f172a;border:2px solid #0f172a;border-radius:10px;padding:10px 12px;cursor:pointer;font-family:var(--mono);box-shadow:0 8px 20px rgba(0,0,0,0.4);" title="แตะป้าย QR MC-12 เพื่อจำลองการสแกนแจ้งซ่อม">
-                  <div style="font-size:8.5px;font-weight:800;letter-spacing:0.06em;">CURRENT MACHINE · เครื่องปัจจุบัน</div>
-                  <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;">
-                    <span style="font-size:28px;font-weight:900;line-height:1;">MC-12</span>
-                    <span style="background:#fff;border:1.5px solid #0f172a;border-radius:6px;padding:3px 6px;font-size:9px;font-weight:900;">QR · TAP</span>
-                  </div>
-                </button>
-                <div style="font-size:11.5px;color:#cbd5e1;margin-top:10px;">
-                  ส่องกล้องสแกนป้าย <strong style="color:#6ee7b7;">QR ข้างเครื่อง MC-12</strong> (หรือแตะที่ป้ายด้านบน)
-                </div>
+            <div style="background:#fff;color:#0f172a;border-radius:16px;padding:18px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="background:#ffe4e6;color:#be123c;font-size:11px;font-weight:900;padding:3px 10px;border-radius:99px;">🚨 แจ้งซ่อมด่วน (URGENT)</span>
+                <strong style="font-family:var(--mono);font-size:12px;">MC-12</strong>
               </div>
-              <button type="button" onclick="setQrSimStep(1)" style="margin-top:10px;width:100%;padding:10px;border-radius:12px;border:none;background:linear-gradient(90deg,#059669,#0891b2);color:#fff;font-family:inherit;font-size:12.5px;font-weight:900;cursor:pointer;">
-                ✓ ตรวจพบเครื่องจักร MC-12 · แตะเพื่อแจ้งอาการ →
-              </button>
-            </div>
-
-            <!-- Step 1: Select Symptom -->
-            <div id="qrStepPanel1" class="qr-step-panel" style="display:none;min-height:230px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;background:rgba(16,185,129,0.12);border:1px solid rgba(52,211,153,0.3);border-radius:10px;padding:7px 10px;margin-bottom:8px;font-size:11.5px;">
-                <strong style="color:#a7f3d0;">เครื่อง MC-12 (โซน A · 30" 28G)</strong>
-                <span style="font-family:var(--mono);font-size:10px;color:#6ee7b7;">AUTO-FILLED</span>
+              <div style="font-size:18px;font-weight:900;">เครื่องจักร: MC-12 (โซน A)</div>
+              <div style="font-size:13px;color:#334155;margin:4px 0 10px;">อาการ: เข็มหัก / เส้นด้ายขาดซ้ำซ้อน</div>
+              <div style="font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px;margin-bottom:12px;">
+                ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า) · 10:14 น.
               </div>
-              <div style="font-size:11px;font-weight:700;color:#cbd5e1;margin-bottom:6px;">เลือกอาการเสียด่วน (MC-12):</div>
-              <button type="button" class="qr-issue-btn selected" data-issue="เข็มหัก / เส้นด้ายขาดซ้ำซ้อน" onclick="selectQrIssue(this)">
-                <span>เข็มหัก / เส้นด้ายขาดซ้ำซ้อน</span>
-                <span style="font-size:9.5px;padding:2px 7px;border-radius:99px;background:rgba(244,63,94,0.2);color:#fda4af;">ด่วนมาก</span>
-              </button>
-              <button type="button" class="qr-issue-btn" data-issue="ตัวป้อนเส้นด้าย (Feeder) ติดขัด" onclick="selectQrIssue(this)">
-                <span>ตัวป้อนเส้นด้าย (Feeder) ติดขัด</span>
-                <span style="font-size:9.5px;padding:2px 7px;border-radius:99px;background:rgba(245,158,11,0.2);color:#fcd34d;">สำคัญ</span>
-              </button>
-              <button type="button" class="qr-issue-btn" data-issue="เครื่องหยุดฉุกเฉิน / รอบกระบอกสะดุด" onclick="selectQrIssue(this)">
-                <span>เครื่องหยุดฉุกเฉิน / รอบกระบอกสะดุด</span>
-                <span style="font-size:9.5px;padding:2px 7px;border-radius:99px;background:rgba(244,63,94,0.2);color:#fda4af;">ด่วนมาก</span>
-              </button>
-              <button type="button" onclick="setQrSimStep(2)" style="margin-top:4px;width:100%;padding:10px;border-radius:12px;border:none;background:linear-gradient(90deg,#10b981,#059669);color:#fff;font-family:inherit;font-size:12.5px;font-weight:900;cursor:pointer;">
-                📨 กดส่งใบแจ้งซ่อมเข้า LINE ทันที
-              </button>
-            </div>
-
-            <!-- Step 2: Syncing 0.3s -->
-            <div id="qrStepPanel2" class="qr-step-panel" style="display:none;min-height:230px;text-align:center;padding:28px 12px;">
-              <div style="width:52px;height:52px;margin:0 auto 12px;border-radius:16px;background:rgba(16,185,129,0.2);border:1px solid rgba(52,211,153,0.45);display:flex;align-items:center;justify-content:center;font-size:24px;">📡</div>
-              <div style="font-size:15px;font-weight:900;color:#fff;">บันทึก Cloud D1 &amp; ยิง LINE Flex Webhook...</div>
-              <div id="qrSyncDesc" style="font-size:12px;color:#94a3b8;margin-top:6px;">MC-12 · เข็มหัก / เส้นด้ายขาดซ้ำซ้อน</div>
-              <div style="font-family:var(--mono);font-size:11px;color:#6ee7b7;margin-top:10px;">Latency ~0.3 วินาที → ส่งเข้ากลุ่มช่างซ่อม</div>
-            </div>
-
-            <!-- Step 3: LINE Flex Alert Card -->
-            <div id="qrStepPanel3" class="qr-step-panel" style="display:none;min-height:230px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;font-size:11.5px;">
-                <strong style="color:#34d399;">📨 LINE Flex Notification</strong>
-                <span style="font-family:var(--mono);color:var(--text-dim);font-size:10.5px;">LIVE · &lt; 1 วินาที</span>
+              <div style="background:#059669;color:#fff;text-align:center;padding:10px;border-radius:12px;font-weight:900;font-size:13px;">
+                ⚡ กดรับงานซ่อมนี้ทันที
               </div>
-              <div style="background:#fff;color:#0f172a;border-radius:14px;padding:14px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
-                  <span style="background:#ffe4e6;color:#be123c;font-size:10.5px;font-weight:900;padding:2px 9px;border-radius:99px;">🚨 แจ้งซ่อมด่วน (URGENT)</span>
-                  <strong style="font-family:var(--mono);font-size:11.5px;">MC-12</strong>
-                </div>
-                <div style="font-size:16px;font-weight:900;">เครื่องจักร: MC-12 (โซน A)</div>
-                <div style="font-size:12.5px;color:#334155;margin:4px 0 8px;">อาการ: <strong id="qrFinalSymptom">เข็มหัก / เส้นด้ายขาดซ้ำซ้อน</strong></div>
-                <div style="font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:6px;margin-bottom:10px;">
-                  ผู้แจ้ง: สมชาย (สแกน QR หน้าเครื่อง) · แจ้งเตือนทันที
-                </div>
-                <a href="/repair/MC-12" target="_blank" style="display:block;text-decoration:none;background:#059669;color:#fff;text-align:center;padding:9px;border-radius:10px;font-weight:900;font-size:12.5px;">
-                  ⚡ กดรับงานซ่อมนี้ทันที
-                </a>
-              </div>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;border-top:1px solid #1e293b;padding-top:10px;margin-top:10px;font-size:11px;color:var(--text-dim);">
-              <span>แตะสลับขั้นตอนด้านบนเพื่อสาธิตได้ทันที</span>
-              <a href="/repair/MC-12" target="_blank" style="color:#6ee7b7;font-weight:800;text-decoration:none;">เปิดฟอร์มจริง (/repair/MC-12) ↗</a>
             </div>
           </div>
 
           <div data-reveal data-delay="220">
             <div class="eyebrow" style="color:#6ee7b7;border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.14);margin-bottom:14px;">
-              นวัตกรรม #2 · QR Scan-to-Repair &amp; LINE Flex
+              นวัตกรรม #2 · Real-Time LINE Flex Webhook
             </div>
             <h3 class="card-title" style="font-size:26px;">
-              สแกนป้าย QR ข้างเครื่อง แจ้งซ่อมจบใน 3 แตะ<br />
+              เครื่องจักรไม่ต้องจอดรอช่าง<br />
               <span style="color:#34d399;">ส่งการ์ดแจ้งเตือนตรงถึงมือถือช่างภายใน 1 วินาที</span>
             </h3>
             <ul class="bullet-list" style="margin-top:12px;">
-              <li>✓ <strong>ไม่ต้องพิมพ์ชื่อเครื่องเอง:</strong> สแกน QR ดึงรหัสเครื่อง โซน และสเปกกระบอกเข็มให้อัตโนมัติ</li>
-              <li>✓ <strong>ไม่ต้องติดตั้งแอปใหม่:</strong> รองรับทั้งกล้องมือถือ แอป LINE และ PWA หน้างาน</li>
+              <li>✓ <strong>ไม่ต้องติดตั้งแอปใหม่:</strong> ทำงานผ่าน LINE ที่ทีมช่างทุกคนใช้อยู่แล้ว</li>
+              <li>✓ <strong>ข้อมูลครบในหน้าเดียว:</strong> รู้หมายเลขเครื่อง อาการเสีย และระดับความเร่งด่วนทันที</li>
               <li>✓ <strong>วัดผลเวลาตอบสนองจริง:</strong> หัวหน้างานตรวจสอบเวลาเริ่มรับงานและปิดงานได้ครบ</li>
             </ul>
           </div>
@@ -1124,38 +882,38 @@
 
           <div class="grid-2">
             <div class="mockup-box" style="border-color:rgba(16,185,129,0.4);" data-reveal data-delay="450">
-              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
                 <strong style="color:#34d399;font-size:14px;">🖨️ ปุ่ม “พิมพ์ Tack” (เครื่อง In-Use)</strong>
                 <span style="font-family:var(--mono);font-size:11px;background:rgba(16,185,129,0.2);color:#6ee7b7;padding:3px 8px;border-radius:8px;font-weight:700;">20 × 7 cm</span>
               </div>
               <div class="tag-green-20x7">
-                <div style="font-size:11px;font-weight:800;letter-spacing:0.08em;">CURRENT MACHINE · เครื่องปัจจุบัน</div>
-                <div style="font-size:clamp(34px,9vw,52px);font-weight:900;line-height:1.05;">MC-12</div>
+                <div style="font-size:11px;font-weight:800;letter-spacing:0.1em;">CURRENT MACHINE · เครื่องปัจจุบัน</div>
+                <div style="font-size:52px;font-weight:900;line-height:1.05;">MC-12</div>
               </div>
-              <div style="font-size:12px;color:var(--text-dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+              <div style="font-size:12px;color:var(--text-dim);display:flex;justify-content:space-between;">
                 <span>✓ กรองเฉพาะเครื่อง In-Use</span>
                 <span>✓ ปรับขนาด กว้าง–ยาว &amp; สีได้</span>
               </div>
             </div>
 
             <div class="mockup-box" style="border-color:rgba(245,158,11,0.4);" data-reveal data-delay="750">
-              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
                 <strong style="color:#fcd34d;font-size:14px;">💿 ปุ่ม “พิมพ์ Tack Spare” (กระบอกสำรอง)</strong>
                 <span style="font-family:var(--mono);font-size:11px;background:rgba(245,158,11,0.2);color:#fcd34d;padding:3px 8px;border-radius:8px;font-weight:700;">A4 แนวนอน</span>
               </div>
               <div class="tag-a4-spare">
-                <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:10px;font-weight:800;border-bottom:2px solid #0f172a;padding-bottom:4px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:800;border-bottom:2px solid #0f172a;padding-bottom:4px;margin-bottom:8px;">
                   <span>CYLINDER TAG · เอกสารติดกระบอกเข็ม</span>
                   <span style="font-family:var(--mono);">28/10/2026</span>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;font-family:var(--mono);margin-bottom:8px;">
-                  <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:6px;min-width:0;">
+                  <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:6px;">
                     <div style="font-size:9px;color:#475569;font-weight:700;">เครื่องปัจจุบัน</div>
-                    <div style="font-size:clamp(13px,3.8vw,17px);font-weight:900;">SPARE-04</div>
+                    <div style="font-size:17px;font-weight:900;">SPARE-04</div>
                   </div>
-                  <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:6px;min-width:0;">
+                  <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:6px;">
                     <div style="font-size:9px;color:#475569;font-weight:700;">ซีเรียลปัจจุบัน</div>
-                    <div style="font-size:clamp(13px,3.8vw,17px);font-weight:900;">CYL-3424-09</div>
+                    <div style="font-size:17px;font-weight:900;">CYL-3424-09</div>
                   </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;font-family:var(--mono);font-size:11px;">
@@ -1164,7 +922,7 @@
                   <div style="border:1px solid #cbd5e1;border-radius:6px;padding:3px;"><strong>2,520 เข็ม</strong></div>
                 </div>
               </div>
-              <div style="font-size:12px;color:var(--text-dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+              <div style="font-size:12px;color:var(--text-dim);display:flex;justify-content:space-between;">
                 <span>✓ กรองเฉพาะกระบอก Spare</span>
                 <span>✓ ปรับสัดส่วนแต่ละส่วนได้</span>
               </div>
@@ -1248,7 +1006,7 @@
         <div class="card" data-reveal data-delay="450">
           <h3 class="card-title">เปรียบเทียบประสิทธิภาพการทำงาน (ก่อนใช้ระบบ vs หลังใช้ TextileOps)</h3>
           <div style="margin-top:16px;">
-            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;font-weight:700;">
+            <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;">
               <span>ความเร็วในการแจ้งซ่อมถึงมือช่าง</span>
               <span style="color:var(--text-dim);">เดิม 10–15 นาที → เหลือ &lt; 1 นาที (เร็วขึ้น 93%)</span>
             </div>
@@ -1256,7 +1014,7 @@
           </div>
 
           <div style="margin-top:16px;">
-            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;font-weight:700;">
+            <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;">
               <span>เวลาค้นหาอะไหล่และพิกัดชั้นวางในคลัง</span>
               <span style="color:var(--text-dim);">เดิม 15–20 นาที → เหลือ 5 วินาที (เร็วขึ้น 98%)</span>
             </div>
@@ -1264,7 +1022,7 @@
           </div>
 
           <div style="margin-top:16px;">
-            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13.5px;font-weight:700;">
+            <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;">
               <span>ความถูกต้องของป้ายสเปกกระบอกเข็มและเครื่องจักร</span>
               <span style="color:var(--text-dim);">เดิมป้ายกระดาษเขียนมือ → Smart Tag มาตรฐาน 100%</span>
             </div>
@@ -1565,10 +1323,7 @@
     function toggleMotion() {
       motionEnabled = !motionEnabled;
       const btn = document.getElementById('btnMotion');
-      const lbl = document.getElementById('btnMotionLabel');
-      if (lbl) {
-        lbl.textContent = motionEnabled ? 'อนิเมชั่น: เปิด' : 'อนิเมชั่น: ปิด';
-      }
+      btn.textContent = motionEnabled ? '✨ อนิเมชั่น: เปิด' : '✨ อนิเมชั่น: ปิด';
       btn.classList.toggle('active-cyan', motionEnabled);
       if (!motionEnabled) {
         if (laserAnim) laserAnim.pause();
@@ -1581,41 +1336,6 @@
         if (laserAnim) laserAnim.play();
         replayViewportAnimations();
       }
-    }
-
-    let qrSelectedIssue = 'เข็มหัก / เส้นด้ายขาดซ้ำซ้อน';
-    let qrSyncTimer = null;
-
-    function setQrSimStep(stepIdx) {
-      if (qrSyncTimer) {
-        clearTimeout(qrSyncTimer);
-        qrSyncTimer = null;
-      }
-      document.querySelectorAll('.qr-step-btn').forEach((btn) => {
-        btn.classList.toggle('active', Number(btn.dataset.qrStep) === stepIdx);
-      });
-      for (let i = 0; i < 4; i++) {
-        const panel = document.getElementById('qrStepPanel' + i);
-        if (panel) panel.style.display = i === stepIdx ? (i === 0 ? 'flex' : 'block') : 'none';
-      }
-      const syncDesc = document.getElementById('qrSyncDesc');
-      if (syncDesc) syncDesc.textContent = 'MC-12 · ' + qrSelectedIssue;
-      const finalSym = document.getElementById('qrFinalSymptom');
-      if (finalSym) finalSym.textContent = qrSelectedIssue;
-
-      if (stepIdx === 2) {
-        qrSyncTimer = setTimeout(() => {
-          setQrSimStep(3);
-        }, 850);
-      }
-    }
-
-    function selectQrIssue(btnEl) {
-      qrSelectedIssue = btnEl.dataset.issue || qrSelectedIssue;
-      document.querySelectorAll('.qr-issue-btn').forEach((b) => b.classList.remove('selected'));
-      btnEl.classList.add('selected');
-      const finalSym = document.getElementById('qrFinalSymptom');
-      if (finalSym) finalSym.textContent = qrSelectedIssue;
     }
 
     function toggleNotes() {

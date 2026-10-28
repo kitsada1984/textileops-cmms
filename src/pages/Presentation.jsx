@@ -195,18 +195,18 @@ function SectionHeader({ eyebrow, title, subtitle, accentColor = 'cyan' }) {
   }
 
   return (
-    <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 px-1 min-w-0">
+    <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 0.65, delay: 0.1, ease: EASE_EXECUTIVE }}
-        className={`inline-flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-2xl sm:rounded-full border text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest mb-4 max-w-full text-center leading-snug ${
+        className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold uppercase tracking-widest mb-4 ${
           badgePalette[accentColor] || badgePalette.cyan
         }`}
       >
-        <Sparkles size={13} className="shrink-0" />
-        <span className="break-words">{eyebrow}</span>
+        <Sparkles size={13} />
+        <span>{eyebrow}</span>
       </motion.div>
 
       <motion.h2
@@ -214,7 +214,7 @@ function SectionHeader({ eyebrow, title, subtitle, accentColor = 'cyan' }) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 0.78, delay: 0.28, ease: EASE_EXECUTIVE }}
-        className="text-2xl sm:text-4xl lg:text-[2.6rem] font-black text-white tracking-tight leading-[1.32] break-words"
+        className="text-2xl sm:text-4xl lg:text-[2.6rem] font-black text-white tracking-tight leading-[1.32]"
       >
         {title}
       </motion.h2>
@@ -225,7 +225,7 @@ function SectionHeader({ eyebrow, title, subtitle, accentColor = 'cyan' }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, amount: 0.3 }}
           transition={{ duration: 0.72, delay: 0.46, ease: EASE_EXECUTIVE }}
-          className="text-xs sm:text-base lg:text-lg text-slate-300 mt-3.5 sm:mt-4 leading-relaxed break-words"
+          className="text-sm sm:text-base lg:text-lg text-slate-300 mt-4 leading-relaxed"
         >
           {subtitle}
         </motion.p>
@@ -236,7 +236,7 @@ function SectionHeader({ eyebrow, title, subtitle, accentColor = 'cyan' }) {
         whileInView={{ scaleX: 1, opacity: 1 }}
         viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 0.85, delay: 0.6, ease: EASE_EXECUTIVE }}
-        className="h-[2px] w-24 mx-auto mt-5 sm:mt-6 bg-gradient-to-r from-transparent via-cyan-400 to-transparent origin-center"
+        className="h-[2px] w-24 mx-auto mt-6 bg-gradient-to-r from-transparent via-cyan-400 to-transparent origin-center"
       />
     </div>
   )
@@ -359,324 +359,291 @@ function InteractiveQrRepairSimulator({ motionEnabled = true }) {
   }
 
   return (
-    <div className="w-full max-w-full sm:max-w-[405px] mx-auto min-w-0">
-      {/* Live Interactive Prompt Pill Above Phone Frame */}
-      <div className="flex items-center justify-center mb-2.5">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 text-[10px] sm:text-[11px] font-extrabold tracking-wide shadow-md shadow-emerald-500/10 max-w-full text-center">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-          <span className="truncate">INTERACTIVE DEMO · แตะทดลองสแกน QR แจ้งซ่อมได้จริง</span>
+    <div className="w-full max-w-[360px] sm:max-w-[400px] mx-auto rounded-3xl bg-[#070b17] border-2 border-emerald-500/45 shadow-2xl p-3 sm:p-5 flex flex-col justify-between relative overflow-hidden">
+      {/* Top Header of the Simulated Smartphone Frame */}
+      <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-800">
+        <span className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+          <Send size={14} />
+          <span>LINE Flex Notification</span>
         </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-400" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            10:14 AM · 5G
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsAutoPlaying((prev) => !prev)}
+            title={isAutoPlaying ? 'หยุดการจำลอง' : 'เปิดการจำลองอัตโนมัติ'}
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+              isAutoPlaying
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            {isAutoPlaying ? <Pause size={10} /> : <Play size={10} />}
+            <span>{isAutoPlaying ? 'หยุด' : 'เล่นสาธิต'}</span>
+          </button>
+        </div>
       </div>
 
-      <div className="w-full max-w-full rounded-3xl bg-[#070b17] border-2 border-emerald-500/45 shadow-2xl p-3 sm:p-5 flex flex-col justify-between relative overflow-hidden min-w-0">
-        {/* Top Header of the Simulated Smartphone Frame */}
-        <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2.5 mb-3 border-b border-slate-800 min-w-0">
-          <span className="text-[11px] sm:text-xs font-bold text-emerald-400 flex items-center gap-1.5 min-w-0">
-            <Send size={13} className="shrink-0" />
-            <span className="truncate">LINE Flex Notification</span>
-          </span>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span
-              className="text-[9px] sm:text-[10px] text-slate-400"
-              style={{ fontFamily: "'JetBrains Mono', monospace" }}
-            >
-              10:14 AM · 5G
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsAutoPlaying((prev) => !prev)}
-              title={isAutoPlaying ? 'หยุดการจำลอง' : 'เปิดการจำลองอัตโนมัติ'}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                isAutoPlaying
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  : 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white'
-              }`}
-            >
-              {isAutoPlaying ? <Pause size={10} /> : <Play size={10} />}
-              <span>{isAutoPlaying ? 'หยุด' : 'เล่นสาธิต'}</span>
-            </button>
-          </div>
-        </div>
+      {/* Interactive Step Navigator Tabs */}
+      <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800 mb-3 text-[10px] font-bold">
+        {[
+          { step: 1, label: '1. สแกน' },
+          { step: 2, label: '2. อาการ' },
+          { step: 3, label: '3. ส่งงาน' },
+          { step: 4, label: '4. เตือน LINE' },
+        ].map((item) => (
+          <button
+            key={item.step}
+            type="button"
+            onClick={() => handleStepClick(item.step)}
+            className={`py-1 rounded-lg text-center cursor-pointer transition-all ${
+              activeStep === item.step
+                ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Interactive Step Navigator Tabs */}
-        <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800 mb-3 text-[10px] font-bold min-w-0">
-          {[
-            { step: 1, label: '1. สแกน' },
-            { step: 2, label: '2. อาการ' },
-            { step: 3, label: '3. ส่งงาน' },
-            { step: 4, label: '4. เตือน LINE' },
-          ].map((item) => (
-            <button
-              key={item.step}
-              type="button"
-              onClick={() => handleStepClick(item.step)}
-              className={`py-1.5 px-0.5 rounded-lg text-center cursor-pointer transition-all truncate ${
-                activeStep === item.step
-                  ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+      {/* Dynamic Viewport by Active Step */}
+      <div className="min-h-[290px] flex flex-col justify-between">
+        {/* STEP 1: Smart Tag Camera Viewfinder */}
+        {activeStep === 1 && (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col justify-between p-3 rounded-2xl bg-slate-950/90 border border-slate-800 relative overflow-hidden"
+          >
+            {/* Viewfinder Corner Reticles */}
+            <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-emerald-400 pointer-events-none" />
+            <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-emerald-400 pointer-events-none" />
+            <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-emerald-400 pointer-events-none" />
+            <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-emerald-400 pointer-events-none" />
 
-        {/* Dynamic Viewport by Active Step */}
-        <div className="min-h-[296px] flex flex-col justify-between min-w-0">
-          {/* STEP 1: Smart Tag Camera Viewfinder */}
-          {activeStep === 1 && (
-            <motion.div
-              key="step1"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex-1 flex flex-col justify-between p-3 rounded-2xl bg-slate-950/90 border border-slate-800 relative overflow-hidden min-w-0"
-            >
-              {/* Viewfinder Corner Reticles */}
-              <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-emerald-400 pointer-events-none" />
-              <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-emerald-400 pointer-events-none" />
-              <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-emerald-400 pointer-events-none" />
-              <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-emerald-400 pointer-events-none" />
+            {/* Laser Scanning Beam */}
+            {motionEnabled && (
+              <motion.div
+                aria-hidden="true"
+                animate={{ top: ['15%', '80%', '15%'] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute left-3 right-3 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#34d399] pointer-events-none z-10"
+              />
+            )}
 
-              {/* Laser Scanning Beam */}
-              {motionEnabled && (
-                <motion.div
-                  aria-hidden="true"
-                  animate={{ top: ['15%', '80%', '15%'] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                  className="absolute left-3 right-3 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#34d399] pointer-events-none z-10"
-                />
-              )}
+            <div className="text-center pt-1">
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center justify-center gap-1">
+                <Scan size={12} className="animate-pulse" />
+                <span>Smart Tag Scanner Active</span>
+              </span>
+            </div>
 
-              <div className="text-center pt-1">
-                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider sm:tracking-widest flex items-center justify-center gap-1">
-                  <Scan size={12} className="animate-pulse shrink-0" />
-                  <span className="truncate">Smart Tag Scanner Active</span>
+            {/* Target 20x7cm Machine Tag in Viewfinder */}
+            <div className="my-3 p-3 rounded-xl bg-[#bbf7d0] text-black text-center shadow-md border-2 border-slate-900">
+              <div className="text-[9px] font-bold tracking-wider text-slate-800 uppercase">
+                CURRENT MACHINE · โซนทอ A
+              </div>
+              <div
+                className="text-3xl font-black tracking-tight my-0.5 text-black"
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                MC-12
+              </div>
+              <div className="text-[9px] font-bold text-slate-700">
+                Double Knit 34&quot; 24G
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
+                <span className="flex items-center gap-1.5 font-bold">
+                  <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                  <span>ตรวจพบเครื่องจักร MC-12</span>
                 </span>
+                <span className="text-[10px] text-slate-400 font-mono">0.1s</span>
               </div>
 
-              {/* Interactive Tappable 20x7cm Machine Tag with QR Code in Viewfinder */}
               <button
                 type="button"
                 onClick={() => handleStepClick(2)}
-                title="แตะที่ป้าย QR เครื่อง MC-12 เพื่อจำลองการสแกนทันที"
-                className="my-2.5 p-2.5 sm:p-3 rounded-xl bg-[#bbf7d0] hover:bg-[#a7f3d0] text-black shadow-md border-2 border-slate-900 flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.98] transition-all text-left w-full min-w-0 group"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all"
               >
-                <div className="min-w-0 flex-1">
-                  <div className="text-[8px] sm:text-[9px] font-extrabold tracking-wider text-slate-800 uppercase truncate">
-                    CURRENT MACHINE · โซนทอ A
-                  </div>
-                  <div
-                    className="text-2xl sm:text-3xl font-black tracking-tight my-0.5 text-black leading-none"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                  >
-                    MC-12
-                  </div>
-                  <div className="text-[9px] font-bold text-slate-700 truncate">
-                    Double Knit 34&quot; 24G
-                  </div>
-                </div>
-
-                {/* Authentic Mini QR Tag Badge */}
-                <div className="p-1.5 rounded-lg bg-white border-2 border-slate-900 shrink-0 flex flex-col items-center shadow-sm group-hover:scale-105 transition-transform">
-                  <QrCode size={34} className="text-slate-950" />
-                  <span className="text-[7px] font-black text-emerald-700 uppercase mt-0.5">
-                    TAP SCAN
-                  </span>
-                </div>
+                <span>กดเลือกอาการเสีย ➔</span>
               </button>
+            </div>
+          </motion.div>
+        )}
 
-              <div className="space-y-2 min-w-0">
-                <div className="flex items-center justify-between gap-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 min-w-0">
-                  <span className="flex items-center gap-1.5 font-bold min-w-0">
-                    <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
-                    <span className="truncate">ตรวจพบเครื่องจักร MC-12</span>
-                  </span>
-                  <span className="text-[10px] text-emerald-300/90 font-mono shrink-0">0.1s</span>
-                </div>
+        {/* STEP 2: One-Tap Issue Selection */}
+        {activeStep === 2 && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col justify-between p-3 rounded-2xl bg-slate-950/90 border border-slate-800"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black text-white flex items-center gap-1.5">
+                  <Wrench size={13} className="text-cyan-400" />
+                  <span>เลือกอาการเสียด่วน (MC-12):</span>
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold">
+                  แจ้งด่วน
+                </span>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleStepClick(2)}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all"
+              <div className="space-y-1.5">
+                {ISSUES.map((issue) => {
+                  const isSelected = selectedIssue === issue.label
+                  return (
+                    <button
+                      key={issue.id}
+                      type="button"
+                      onClick={() => handleSelectIssue(issue)}
+                      className={`w-full p-2 rounded-xl text-left text-xs font-bold flex items-center justify-between border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-sm'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-sm shrink-0">{issue.icon}</span>
+                        <span className="truncate">{issue.label}</span>
+                      </div>
+                      {isSelected && <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <div className="text-[10px] text-slate-400 mb-2 px-1 flex justify-between">
+                <span>ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า)</span>
+                <span className="text-emerald-400 font-bold">พิกัด: โซน A</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleProceedToStep3}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all"
+              >
+                <Zap size={13} />
+                <span>ส่งแจ้งซ่อมทันที ➔</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* STEP 3: 0.3s Cloudflare Edge Work Order Sync */}
+        {activeStep === 3 && (
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-slate-950/90 border border-cyan-500/30 space-y-3"
+          >
+            <div className="w-14 h-14 rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center text-cyan-300 animate-spin">
+              <Zap size={24} />
+            </div>
+            <div>
+              <div className="text-sm font-black text-white">
+                กำลังบันทึกใบสั่งงาน #WO-MC12-089
+              </div>
+              <div className="text-xs text-cyan-300 font-mono mt-1">
+                Cloudflare Edge Sync · 0.3s
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed max-w-[240px]">
+              บันทึกลงระบบคลาวด์ พร้อมยิง Webhook ส่งต่อเข้า LINE Official ของทีมช่างซ่อมบำรุง
+            </p>
+            <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+              <motion.div
+                initial={{ width: '0%' }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 0.95 }}
+                className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+              />
+            </div>
+          </motion.div>
+        )}
+
+        {/* STEP 4: LINE Flex Notification Alert Card */}
+        {activeStep === 4 && (
+          <motion.div
+            key="step4"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex-1 flex flex-col justify-between"
+          >
+            {/* The Authentic LINE Flex Card matching existing test expectations */}
+            <div className="p-4 rounded-2xl bg-white text-slate-900 shadow-xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 text-[11px] font-black">
+                  🚨 แจ้งซ่อมด่วน (URGENT)
+                </span>
+                <span
+                  className="text-xs font-extrabold text-slate-700"
+                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
                 >
-                  <QrCode size={14} className="shrink-0" />
-                  <span>แตะสแกน &amp; กดเลือกอาการเสีย ➔</span>
-                </button>
+                  MC-12
+                </span>
               </div>
-            </motion.div>
-          )}
+              <div>
+                <div className="text-base sm:text-lg font-black text-slate-950">
+                  เครื่องจักร: MC-12 (โซน A)
+                </div>
+                <div className="text-xs sm:text-sm text-slate-700 mt-0.5 font-medium">
+                  อาการ: {selectedIssue}
+                </div>
+              </div>
+              <div className="pt-2 border-t border-slate-200 text-xs text-slate-600 space-y-0.5">
+                <div>ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า)</div>
+                <div>เวลาแจ้ง: 10:14 น. · อาคารโรงทอ 1</div>
+              </div>
+              <div className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black text-center shadow-md cursor-pointer transition-colors">
+                ⚡ กดรับงานซ่อมนี้ทันที
+              </div>
+            </div>
 
-          {/* STEP 2: One-Tap Issue Selection */}
-          {activeStep === 2 && (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex-1 flex flex-col justify-between p-3 rounded-2xl bg-slate-950/90 border border-slate-800 min-w-0"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
-                  <span className="text-xs font-black text-white flex items-center gap-1.5 min-w-0">
-                    <Wrench size={13} className="text-cyan-400 shrink-0" />
-                    <span className="truncate">เลือกอาการเสียด่วน (MC-12):</span>
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold shrink-0">
-                    แจ้งด่วน
-                  </span>
-                </div>
+            {/* Replay & Live Repair Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-2.5">
+              <button
+                type="button"
+                onClick={() => handleStepClick(1)}
+                className="py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <RotateCcw size={12} />
+                <span>จำลองใหม่</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenLiveRepair}
+                className="py-1.5 px-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <ExternalLink size={12} />
+                <span>เปิดฟอร์มจริง</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </div>
 
-                <div className="space-y-1.5 min-w-0">
-                  {ISSUES.map((issue) => {
-                    const isSelected = selectedIssue === issue.label
-                    return (
-                      <button
-                        key={issue.id}
-                        type="button"
-                        onClick={() => handleSelectIssue(issue)}
-                        className={`w-full p-2 rounded-xl text-left text-xs font-bold flex items-center justify-between gap-2 border cursor-pointer transition-all min-w-0 ${
-                          isSelected
-                            ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-sm'
-                            : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="text-sm shrink-0">{issue.icon}</span>
-                          <span className="truncate">{issue.label}</span>
-                        </div>
-                        {isSelected && <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="pt-2 min-w-0">
-                <div className="text-[10px] text-slate-400 mb-2 px-1 flex flex-wrap justify-between gap-1">
-                  <span className="truncate">ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า)</span>
-                  <span className="text-emerald-400 font-bold shrink-0">พิกัด: โซน A</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleProceedToStep3}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all"
-                >
-                  <Zap size={13} className="shrink-0" />
-                  <span>ส่งแจ้งซ่อมทันที ➔</span>
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* STEP 3: 0.3s Cloudflare Edge Work Order Sync */}
-          {activeStep === 3 && (
-            <motion.div
-              key="step3"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex-1 flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-slate-950/90 border border-cyan-500/30 space-y-3 min-w-0"
-            >
-              <div className="w-14 h-14 rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center text-cyan-300 animate-spin">
-                <Zap size={24} />
-              </div>
-              <div className="min-w-0 max-w-full">
-                <div className="text-xs sm:text-sm font-black text-white break-words">
-                  กำลังบันทึกใบสั่งงาน #WO-MC12-089
-                </div>
-                <div className="text-xs text-cyan-300 font-mono mt-1">
-                  Cloudflare Edge Sync · 0.3s
-                </div>
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed max-w-[240px]">
-                บันทึกลงระบบคลาวด์ พร้อมยิง Webhook ส่งต่อเข้า LINE Official ของทีมช่างซ่อมบำรุง
-              </p>
-              <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                <motion.div
-                  initial={{ width: '0%' }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: 0.95 }}
-                  className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400"
-                />
-              </div>
-            </motion.div>
-          )}
-
-          {/* STEP 4: LINE Flex Notification Alert Card */}
-          {activeStep === 4 && (
-            <motion.div
-              key="step4"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="flex-1 flex flex-col justify-between min-w-0"
-            >
-              {/* The Authentic LINE Flex Card matching existing test expectations */}
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-white text-slate-900 shadow-xl space-y-2.5 min-w-0">
-                <div className="flex flex-wrap items-center justify-between gap-1">
-                  <span className="px-2.5 py-0.5 sm:py-1 rounded-full bg-rose-100 text-rose-700 text-[10px] sm:text-[11px] font-black">
-                    🚨 แจ้งซ่อมด่วน (URGENT)
-                  </span>
-                  <span
-                    className="text-xs font-extrabold text-slate-700"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                  >
-                    MC-12
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm sm:text-lg font-black text-slate-950 break-words">
-                    เครื่องจักร: MC-12 (โซน A)
-                  </div>
-                  <div className="text-xs sm:text-sm text-slate-700 mt-0.5 font-medium break-words">
-                    อาการ: {selectedIssue}
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-slate-200 text-[11px] sm:text-xs text-slate-600 space-y-0.5">
-                  <div>ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า)</div>
-                  <div>เวลาแจ้ง: 10:14 น. · อาคารโรงทอ 1</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleOpenLiveRepair}
-                  className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black text-center shadow-md cursor-pointer transition-colors"
-                >
-                  ⚡ กดรับงานซ่อมนี้ทันที
-                </button>
-              </div>
-
-              {/* Replay & Live Repair Buttons */}
-              <div className="grid grid-cols-2 gap-2 pt-2.5 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => handleStepClick(1)}
-                  className="py-1.5 px-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer truncate"
-                >
-                  <RotateCcw size={12} className="shrink-0" />
-                  <span className="truncate">จำลองใหม่</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenLiveRepair}
-                  className="py-1.5 px-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer truncate"
-                >
-                  <ExternalLink size={12} className="shrink-0" />
-                  <span className="truncate">เปิดฟอร์มจริง</span>
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Footer Info Pill */}
-        <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
-          <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-            <Clock size={11} className="shrink-0" />
-            <span>เวลาตอบสนอง: &lt; 1 นาที</span>
-          </span>
-          <span className="text-slate-500">LINE Official Webhook</span>
-        </div>
+      {/* Footer Info Pill */}
+      <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+        <span className="flex items-center gap-1 text-emerald-400">
+          <Clock size={11} />
+          <span>เวลาตอบสนอง: &lt; 1 นาที</span>
+        </span>
+        <span className="text-slate-500">LINE Official Webhook</span>
       </div>
     </div>
   )
@@ -782,9 +749,8 @@ export default function Presentation() {
     <MotionConfig reducedMotion={motionEnabled ? 'never' : 'always'}>
       <div
         ref={pageRef}
-        className="min-h-screen w-full max-w-full min-w-0 bg-[#050811] text-slate-100 relative selection:bg-cyan-500/30 selection:text-cyan-200"
+        className="min-h-screen w-full max-w-full bg-[#050811] text-slate-100 relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200"
         style={{
-          overflowX: 'clip',
           fontFamily:
             "'Noto Sans Thai', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
         }}
@@ -815,10 +781,7 @@ export default function Presentation() {
         </div>
 
         {/* ── STICKY GLASSMORPHIC EXECUTIVE NAVBAR ─────────────────────── */}
-        <header
-          className="sticky top-0 left-0 right-0 z-50 w-full max-w-full bg-[#050811]/85 backdrop-blur-xl border-b border-slate-800/80"
-          style={{ overflowX: 'clip' }}
-        >
+        <header className="sticky top-0 left-0 right-0 z-50 bg-[#050811]/85 backdrop-blur-xl border-b border-slate-800/80">
           {/* Top Scroll-Linked Spring Progress Bar */}
           <div className="w-full h-1 bg-slate-900 overflow-hidden">
             <motion.div
@@ -827,24 +790,24 @@ export default function Presentation() {
             />
           </div>
 
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3 w-full min-w-0">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
             {/* Brand Lockup */}
             <button
               type="button"
               onClick={() => scrollToSection('hero')}
-              className="flex items-center gap-2 sm:gap-3 text-left cursor-pointer min-w-0 flex-1 sm:flex-initial"
+              className="flex items-center gap-2 sm:gap-3 text-left cursor-pointer shrink-0"
             >
               <img
                 src={gemmaLogo}
                 alt="Gemma Knits"
-                className="h-7 sm:h-8 w-auto object-contain drop-shadow shrink-0"
+                className="h-7 sm:h-8 w-auto object-contain drop-shadow"
               />
-              <div className="flex flex-col min-w-0">
-                <span className="text-[11px] sm:text-xs font-black text-white tracking-normal sm:tracking-wider leading-tight truncate">
+              <div className="flex flex-col">
+                <span className="text-[11px] sm:text-xs font-black text-white tracking-wider leading-tight">
                   GEMMA KNITS · TEXTILEOPS
                 </span>
                 <span
-                  className="text-[9px] sm:text-[10px] text-cyan-400 font-bold tracking-normal sm:tracking-widest truncate"
+                  className="text-[9px] sm:text-[10px] text-cyan-400 font-bold tracking-widest"
                   style={{ fontFamily: "'JetBrains Mono', monospace" }}
                 >
                   EXECUTIVE LANDING · {APP_VERSION}
@@ -877,7 +840,7 @@ export default function Presentation() {
             </nav>
 
             {/* Presenter Action Controls */}
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setReplayKey((prev) => prev + 1)}
@@ -924,7 +887,7 @@ export default function Presentation() {
                 type="button"
                 onClick={toggleFullscreen}
                 title={isFullscreen ? 'ออกจากโหมดเต็มจอ (F)' : 'ขยายเต็มหน้าจอ (F)'}
-                className="hidden sm:inline-flex p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-white cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-white cursor-pointer"
               >
                 {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
               </button>
@@ -951,7 +914,7 @@ export default function Presentation() {
           </div>
 
           {/* Mobile/Tablet Quick Section Strip */}
-          <div className="xl:hidden flex items-center gap-1.5 px-3 sm:px-4 pb-2 sm:pb-2.5 overflow-x-auto no-scrollbar scroll-smooth w-full max-w-full">
+          <div className="xl:hidden flex items-center gap-1.5 px-3 sm:px-4 pb-2 sm:pb-2.5 overflow-x-auto no-scrollbar scroll-smooth">
             {LANDING_SECTIONS.map((sec) => {
               const isActive = activeSectionId === sec.id
               return (
@@ -959,7 +922,7 @@ export default function Presentation() {
                   key={sec.id}
                   type="button"
                   onClick={() => scrollToSection(sec.id)}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer shrink-0 ${
+                  className={`px-3 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer ${
                     isActive
                       ? 'bg-cyan-600 text-white'
                       : 'bg-slate-900/90 text-slate-400 border border-slate-800'
@@ -973,16 +936,15 @@ export default function Presentation() {
         </header>
 
         {/* ── MAIN SCROLLYTELLING CONTENT (REPLAYABLE VIA KEY) ─────────── */}
-        <main key={replayKey} className="relative z-10 w-full max-w-full min-w-0">
+        <main key={replayKey} className="relative z-10">
           {/* ==============================================================
               SECTION 1: EXECUTIVE HERO & SEQUENTIAL KPI STRIP
              ============================================================== */}
           <section
             id="hero"
-            className="min-h-[calc(100vh-5.5rem)] sm:min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center px-3.5 sm:px-8 py-10 sm:py-24 relative scroll-mt-20 w-full max-w-full min-w-0"
-            style={{ overflowX: 'clip' }}
+            className="min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center px-3.5 sm:px-8 py-10 sm:py-24 relative scroll-mt-16 sm:scroll-mt-20 max-w-full overflow-hidden"
           >
-            <div className="max-w-5xl mx-auto text-center flex flex-col items-center w-full min-w-0">
+            <div className="max-w-5xl mx-auto text-center flex flex-col items-center w-full">
               {/* Step 1: 0.15s delay — Operational Excellence Pill */}
               <motion.div
                 initial={{ opacity: 0, y: -22 }}
@@ -1205,10 +1167,9 @@ export default function Presentation() {
              ============================================================== */}
           <section
             id="friction"
-            className="py-14 sm:py-28 px-3.5 sm:px-8 border-t border-slate-800/70 bg-slate-950/40 scroll-mt-20 w-full max-w-full min-w-0"
-            style={{ overflowX: 'clip' }}
+            className="py-20 sm:py-28 px-4 sm:px-8 border-t border-slate-800/70 bg-slate-950/40 scroll-mt-20"
           >
-            <div className="max-w-6xl mx-auto min-w-0">
+            <div className="max-w-6xl mx-auto">
               <SectionHeader
                 eyebrow="ปัญหาหน้างานเดิม & ทางออก (The Friction & The Solution)"
                 title="ความท้าทายหน้างานเดิม สู่แพลตฟอร์มศูนย์กลางหนึ่งเดียว"
@@ -1223,21 +1184,21 @@ export default function Presentation() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: false, amount: 0.16 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-12 min-w-0"
+                className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
               >
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-rose-950/35 to-slate-900/90 border border-rose-500/35 shadow-xl min-w-0"
+                  className="p-6 rounded-3xl bg-gradient-to-br from-rose-950/35 to-slate-900/90 border border-rose-500/35 shadow-xl"
                 >
-                  <div className="flex items-center gap-3.5 mb-4 min-w-0">
-                    <div className="p-3 rounded-2xl bg-rose-500/20 text-rose-400 shrink-0">
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <div className="p-3 rounded-2xl bg-rose-500/20 text-rose-400">
                       <Clock size={26} />
                     </div>
-                    <div className="min-w-0">
+                    <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400">
                         Pain Point #01
                       </span>
-                      <h3 className="text-lg sm:text-xl font-black text-white break-words">
+                      <h3 className="text-lg sm:text-xl font-black text-white">
                         1. แจ้งซ่อมล่าช้า & ข้อมูลตกหล่น
                       </h3>
                     </div>
@@ -1251,17 +1212,17 @@ export default function Presentation() {
 
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-950/35 to-slate-900/90 border border-amber-500/35 shadow-xl min-w-0"
+                  className="p-6 rounded-3xl bg-gradient-to-br from-amber-950/35 to-slate-900/90 border border-amber-500/35 shadow-xl"
                 >
-                  <div className="flex items-center gap-3.5 mb-4 min-w-0">
-                    <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400 shrink-0">
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400">
                       <Package size={26} />
                     </div>
-                    <div className="min-w-0">
+                    <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
                         Pain Point #02
                       </span>
-                      <h3 className="text-lg sm:text-xl font-black text-white break-words">
+                      <h3 className="text-lg sm:text-xl font-black text-white">
                         2. สต็อกเข็มและอะไหล่ไม่ตรงจริง
                       </h3>
                     </div>
@@ -1275,17 +1236,17 @@ export default function Presentation() {
 
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-blue-950/35 to-slate-900/90 border border-blue-500/35 shadow-xl min-w-0"
+                  className="p-6 rounded-3xl bg-gradient-to-br from-blue-950/35 to-slate-900/90 border border-blue-500/35 shadow-xl"
                 >
-                  <div className="flex items-center gap-3.5 mb-4 min-w-0">
-                    <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-400 shrink-0">
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-400">
                       <Disc size={26} />
                     </div>
-                    <div className="min-w-0">
+                    <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
                         Pain Point #03
                       </span>
-                      <h3 className="text-lg sm:text-xl font-black text-white break-words">
+                      <h3 className="text-lg sm:text-xl font-black text-white">
                         3. ข้อมูลกระบอกเข็มสับสน
                       </h3>
                     </div>
@@ -1299,17 +1260,17 @@ export default function Presentation() {
 
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-purple-950/35 to-slate-900/90 border border-purple-500/35 shadow-xl min-w-0"
+                  className="p-6 rounded-3xl bg-gradient-to-br from-purple-950/35 to-slate-900/90 border border-purple-500/35 shadow-xl"
                 >
-                  <div className="flex items-center gap-3.5 mb-4 min-w-0">
-                    <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400 shrink-0">
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400">
                       <TrendingDown size={26} />
                     </div>
-                    <div className="min-w-0">
+                    <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">
                         Pain Point #04
                       </span>
-                      <h3 className="text-lg sm:text-xl font-black text-white break-words">
+                      <h3 className="text-lg sm:text-xl font-black text-white">
                         4. ไร้ศูนย์กลางข้อมูลผู้บริหาร
                       </h3>
                     </div>
@@ -1328,11 +1289,11 @@ export default function Presentation() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: false, amount: 0.4 }}
                 transition={{ duration: 0.7, delay: 0.35, ease: EASE_EXECUTIVE }}
-                className="flex flex-col items-center justify-center my-6 sm:my-8 min-w-0"
+                className="flex flex-col items-center justify-center my-8"
               >
-                <div className="px-3.5 sm:px-5 py-2 rounded-2xl sm:rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 text-[11px] sm:text-sm font-black tracking-wide flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-emerald-500/10 max-w-full text-center leading-snug">
-                  <Zap size={16} className="text-emerald-400 shrink-0" />
-                  <span className="break-words">ทางออก: TEXTILEOPS UNIFIED PLATFORM (Single Source of Truth)</span>
+                <div className="px-5 py-2 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-black tracking-wide flex items-center gap-2 shadow-lg shadow-emerald-500/10">
+                  <Zap size={16} className="text-emerald-400" />
+                  <span>ทางออก: TEXTILEOPS UNIFIED PLATFORM (Single Source of Truth)</span>
                 </div>
               </motion.div>
 
@@ -1342,13 +1303,13 @@ export default function Presentation() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: false, amount: 0.2 }}
                 transition={{ duration: 0.85, delay: 0.5, ease: EASE_EXECUTIVE }}
-                className="p-5 sm:p-9 rounded-3xl bg-gradient-to-r from-blue-950/60 via-slate-900/95 to-emerald-950/50 border-2 border-cyan-500/40 shadow-2xl relative overflow-hidden min-w-0"
+                className="p-7 sm:p-9 rounded-3xl bg-gradient-to-r from-blue-950/60 via-slate-900/95 to-emerald-950/50 border-2 border-cyan-500/40 shadow-2xl relative overflow-hidden"
               >
-                <div className="text-center mb-6 sm:mb-8">
+                <div className="text-center mb-8">
                   <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">
                     ทางออก: TextileOps Platform
                   </span>
-                  <h3 className="text-xl sm:text-3xl font-black text-white mt-1 break-words">
+                  <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">
                     เชื่อมโยงทุกฝ่ายในโรงทอแบบ Real-Time ไร้รอยต่อ
                   </h3>
                 </div>
@@ -1359,11 +1320,11 @@ export default function Presentation() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: false, amount: 0.2 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 min-w-0"
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
                 >
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-center min-w-0"
+                    className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-center"
                   >
                     <div className="text-3xl mb-2">👷‍♂️</div>
                     <div className="text-sm font-black text-white">1. ช่างทอหน้างาน</div>
@@ -1374,7 +1335,7 @@ export default function Presentation() {
 
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-center min-w-0"
+                    className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-center"
                   >
                     <div className="text-3xl mb-2">🔧</div>
                     <div className="text-sm font-black text-white">2. ช่างซ่อมบำรุง</div>
@@ -1385,7 +1346,7 @@ export default function Presentation() {
 
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-center min-w-0"
+                    className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-center"
                   >
                     <div className="text-3xl mb-2">📦</div>
                     <div className="text-sm font-black text-white">3. ฝ่ายคลังพัสดุ</div>
@@ -1396,7 +1357,7 @@ export default function Presentation() {
 
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-center min-w-0"
+                    className="p-4 rounded-2xl bg-slate-900/90 border border-slate-700/80 text-center"
                   >
                     <div className="text-3xl mb-2">📊</div>
                     <div className="text-sm font-black text-white">4. คณะผู้บริหาร</div>
@@ -1414,10 +1375,9 @@ export default function Presentation() {
              ============================================================== */}
           <section
             id="pillars"
-            className="py-14 sm:py-28 px-3.5 sm:px-8 border-t border-slate-800/70 scroll-mt-20 w-full max-w-full min-w-0"
-            style={{ overflowX: 'clip' }}
+            className="py-20 sm:py-28 px-4 sm:px-8 border-t border-slate-800/70 scroll-mt-20"
           >
-            <div className="max-w-6xl mx-auto min-w-0">
+            <div className="max-w-6xl mx-auto">
               <SectionHeader
                 eyebrow="Core Operational Pillars · โมดูลหลักของระบบ"
                 title="สี่เสาหลักการทำงานที่ออกแบบเพื่อโรงทอโดยเฉพาะ"
@@ -1431,26 +1391,26 @@ export default function Presentation() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: false, amount: 0.16 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 min-w-0"
+                className="grid grid-cols-1 md:grid-cols-2 gap-6"
               >
                 <motion.div
                   variants={staggerCardVariants}
                   whileHover={{ y: -6 }}
-                  className="p-5 sm:p-7 rounded-3xl bg-slate-900/85 border border-slate-700/90 hover:border-blue-500/60 shadow-xl flex flex-col justify-between min-w-0"
+                  className="p-7 rounded-3xl bg-slate-900/85 border border-slate-700/90 hover:border-blue-500/60 shadow-xl flex flex-col justify-between"
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                      <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-400 shrink-0">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-400">
                         <Wrench size={26} />
                       </div>
                       <span
-                        className="text-[11px] sm:text-xs font-bold text-blue-400"
+                        className="text-xs font-bold text-blue-400"
                         style={{ fontFamily: "'JetBrains Mono', monospace" }}
                       >
                         PILLAR 01 · WORK ORDERS & PM
                       </span>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-black text-white mb-3 break-words">
+                    <h3 className="text-xl font-black text-white mb-3">
                       1. งานซ่อมด่วน & แผน PM เชิงป้องกัน
                     </h3>
                     <ul className="text-sm text-slate-300 space-y-2 leading-relaxed">
@@ -1464,21 +1424,21 @@ export default function Presentation() {
                 <motion.div
                   variants={staggerCardVariants}
                   whileHover={{ y: -6 }}
-                  className="p-5 sm:p-7 rounded-3xl bg-slate-900/85 border border-slate-700/90 hover:border-emerald-500/60 shadow-xl flex flex-col justify-between min-w-0"
+                  className="p-7 rounded-3xl bg-slate-900/85 border border-slate-700/90 hover:border-emerald-500/60 shadow-xl flex flex-col justify-between"
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                      <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-400 shrink-0">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-400">
                         <Layers size={26} />
                       </div>
                       <span
-                        className="text-[11px] sm:text-xs font-bold text-emerald-400"
+                        className="text-xs font-bold text-emerald-400"
                         style={{ fontFamily: "'JetBrains Mono', monospace" }}
                       >
                         PILLAR 02 · NEEDLE LEDGER
                       </span>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-black text-white mb-3 break-words">
+                    <h3 className="text-xl font-black text-white mb-3">
                       2. คลังเข็มทอ & บัญชี Needle Ledger
                     </h3>
                     <ul className="text-sm text-slate-300 space-y-2 leading-relaxed">
@@ -1492,21 +1452,21 @@ export default function Presentation() {
                 <motion.div
                   variants={staggerCardVariants}
                   whileHover={{ y: -6 }}
-                  className="p-5 sm:p-7 rounded-3xl bg-slate-900/85 border border-slate-700/90 hover:border-purple-500/60 shadow-xl flex flex-col justify-between min-w-0"
+                  className="p-7 rounded-3xl bg-slate-900/85 border border-slate-700/90 hover:border-purple-500/60 shadow-xl flex flex-col justify-between"
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                      <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400 shrink-0">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400">
                         <Disc size={26} />
                       </div>
                       <span
-                        className="text-[11px] sm:text-xs font-bold text-purple-400"
+                        className="text-xs font-bold text-purple-400"
                         style={{ fontFamily: "'JetBrains Mono', monospace" }}
                       >
                         PILLAR 03 · CYLINDER TRACKING
                       </span>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-black text-white mb-3 break-words">
+                    <h3 className="text-xl font-black text-white mb-3">
                       3. บริหารกระบอกเข็ม & ประวัติสลับเครื่อง
                     </h3>
                     <ul className="text-sm text-slate-300 space-y-2 leading-relaxed">
@@ -1520,21 +1480,21 @@ export default function Presentation() {
                 <motion.div
                   variants={staggerCardVariants}
                   whileHover={{ y: -6 }}
-                  className="p-5 sm:p-7 rounded-3xl bg-slate-900/85 border border-slate-700/90 hover:border-amber-500/60 shadow-xl flex flex-col justify-between min-w-0"
+                  className="p-7 rounded-3xl bg-slate-900/85 border border-slate-700/90 hover:border-amber-500/60 shadow-xl flex flex-col justify-between"
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                      <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400 shrink-0">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-400">
                         <Package size={26} />
                       </div>
                       <span
-                        className="text-[11px] sm:text-xs font-bold text-amber-400"
+                        className="text-xs font-bold text-amber-400"
                         style={{ fontFamily: "'JetBrains Mono', monospace" }}
                       >
                         PILLAR 04 · SMART SPARE PARTS
                       </span>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-black text-white mb-3 break-words">
+                    <h3 className="text-xl font-black text-white mb-3">
                       4. คลังอะไหล่อัจฉริยะ & จุดสั่งซื้ออัตโนมัติ
                     </h3>
                     <ul className="text-sm text-slate-300 space-y-2 leading-relaxed">
@@ -1553,10 +1513,9 @@ export default function Presentation() {
              ============================================================== */}
           <section
             id="innovations"
-            className="py-14 sm:py-28 px-3.5 sm:px-8 border-t border-slate-800/70 bg-slate-950/50 scroll-mt-20 w-full max-w-full min-w-0"
-            style={{ overflowX: 'clip' }}
+            className="py-20 sm:py-28 px-4 sm:px-8 border-t border-slate-800/70 bg-slate-950/50 scroll-mt-20"
           >
-            <div className="max-w-6xl mx-auto min-w-0">
+            <div className="max-w-6xl mx-auto">
               <SectionHeader
                 eyebrow="Signature Innovations · 3 นวัตกรรมเรือธง"
                 title="เทคโนโลยีที่เปลี่ยนงานซับซ้อนหน้าโรงงานให้เสร็จในไม่กี่วินาที"
@@ -1564,47 +1523,47 @@ export default function Presentation() {
                 accentColor="purple"
               />
 
-              <div className="space-y-10 sm:space-y-20 min-w-0">
+              <div className="space-y-14 sm:space-y-20">
                 {/* ── INNOVATION #1: GEMINI AI VISION WITH LASER SCAN ────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-center p-4 sm:p-10 rounded-3xl bg-slate-900/80 border border-purple-500/30 shadow-2xl min-w-0">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-6 sm:p-10 rounded-3xl bg-slate-900/80 border border-purple-500/30 shadow-2xl">
                   <motion.div
                     initial={{ opacity: 0, x: -36 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.8, delay: 0.2, ease: EASE_EXECUTIVE }}
-                    className="lg:col-span-6 space-y-4 sm:space-y-5 min-w-0"
+                    className="lg:col-span-6 space-y-5"
                   >
-                    <div className="inline-flex flex-wrap items-center gap-1.5 sm:gap-2 px-3 py-1 rounded-2xl sm:rounded-full bg-purple-500/15 border border-purple-400/35 text-purple-300 text-[11px] sm:text-xs font-bold max-w-full leading-snug">
-                      <Eye size={14} className="shrink-0" />
-                      <span className="break-words">นวัตกรรม #1 · Google Gemini Multimodal AI Vision</span>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-400/35 text-purple-300 text-xs font-bold">
+                      <Eye size={14} />
+                      <span>นวัตกรรม #1 · Google Gemini Multimodal AI Vision</span>
                     </div>
-                    <h3 className="text-xl sm:text-3xl font-black text-white leading-[1.3] break-words">
+                    <h3 className="text-2xl sm:text-3xl font-black text-white leading-[1.3]">
                       ค้นหาอะไหล่ในคลังด้วยภาพถ่าย{' '}
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 block mt-1">
                         ลดเวลาจาก 15 นาที เหลือเพียง 5 วินาที
                       </span>
                     </h3>
-                    <p className="text-xs sm:text-base text-slate-300 leading-relaxed">
+                    <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
                       ช่างไม่จำเป็นต้องจำชื่อทางการค้าภาษาอังกฤษหรือเยอรมัน
                       เพียงใช้สมาร์ทโฟนถ่ายรูปชิ้นส่วนที่ชำรุด ระบบ AI จะสแกนรูปทรงเทียบกับฐานข้อมูลคลัง
                       พร้อมชี้เป้าตู้และกล่องจัดเก็บทันที
                     </p>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-1 min-w-0">
-                      <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center min-w-0">
-                        <span className="text-xs sm:text-base font-black text-white block">1. ถ่ายภาพ</span>
-                        <span className="text-[10px] sm:text-[11px] text-slate-400">จากมือถือหน้าเครื่อง</span>
+                    <div className="grid grid-cols-3 gap-3 pt-2">
+                      <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+                        <span className="text-base font-black text-white block">1. ถ่ายภาพ</span>
+                        <span className="text-[11px] text-slate-400">จากมือถือหน้าเครื่อง</span>
                       </div>
-                      <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-950/80 border border-purple-500/30 text-center min-w-0">
-                        <span className="text-xs sm:text-base font-black text-purple-400 block">
+                      <div className="p-3 rounded-2xl bg-slate-950/80 border border-purple-500/30 text-center">
+                        <span className="text-base font-black text-purple-400 block">
                           2. AI สแกน
                         </span>
-                        <span className="text-[10px] sm:text-[11px] text-slate-400">ประมวลผลใน 5 วิ</span>
+                        <span className="text-[11px] text-slate-400">ประมวลผลใน 5 วิ</span>
                       </div>
-                      <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-950/80 border border-emerald-500/30 text-center min-w-0">
-                        <span className="text-xs sm:text-base font-black text-emerald-400 block">
+                      <div className="p-3 rounded-2xl bg-slate-950/80 border border-emerald-500/30 text-center">
+                        <span className="text-base font-black text-emerald-400 block">
                           3. ชี้พิกัด
                         </span>
-                        <span className="text-[10px] sm:text-[11px] text-slate-400">ระบุชั้น & ยอดคงเหลือ</span>
+                        <span className="text-[11px] text-slate-400">ระบุชั้น & ยอดคงเหลือ</span>
                       </div>
                     </div>
                   </motion.div>
@@ -1615,9 +1574,9 @@ export default function Presentation() {
                     whileInView={{ opacity: 1, x: 0, scale: 1 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.85, delay: 0.65, ease: EASE_EXECUTIVE }}
-                    className="lg:col-span-6 min-w-0"
+                    className="lg:col-span-6"
                   >
-                    <div className="p-4 sm:p-6 rounded-3xl bg-[#070b17] border-2 border-purple-500/40 shadow-2xl relative overflow-hidden min-w-0">
+                    <div className="p-5 sm:p-6 rounded-3xl bg-[#070b17] border-2 border-purple-500/40 shadow-2xl relative overflow-hidden">
                       {/* Animated Laser Scanning Beam */}
                       <motion.div
                         aria-hidden="true"
@@ -1626,9 +1585,9 @@ export default function Presentation() {
                         className="absolute left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-purple-400 to-transparent shadow-[0_0_16px_#c084fc] pointer-events-none z-20"
                       />
 
-                      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-800">
+                      <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
                         <span className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                          <Sparkles size={15} className="text-purple-400 shrink-0" />
+                          <Sparkles size={15} className="text-purple-400" />
                           <span>ผลการวิเคราะห์ภาพถ่าย AI Vision</span>
                         </span>
                         <span
@@ -1639,12 +1598,12 @@ export default function Presentation() {
                         </span>
                       </div>
 
-                      <div className="space-y-3 sm:space-y-3.5 min-w-0">
-                        <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/95 border border-slate-700/80 min-w-0">
+                      <div className="space-y-3.5">
+                        <div className="p-4 rounded-2xl bg-slate-900/95 border border-slate-700/80">
                           <div className="text-[11px] text-slate-400 uppercase font-semibold">
                             ชิ้นส่วนที่ตรวจพบ (Detected Spare Part)
                           </div>
-                          <div className="text-sm sm:text-lg font-black text-white mt-0.5 break-words">
+                          <div className="text-base sm:text-lg font-black text-white mt-0.5">
                             ตัวป้อนเส้นด้าย (Yarn Feeder Unit)
                           </div>
                           <div
@@ -1655,16 +1614,16 @@ export default function Presentation() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 min-w-0">
-                          <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-900/95 border border-slate-700/80 min-w-0">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3.5 rounded-2xl bg-slate-900/95 border border-slate-700/80">
                             <div className="text-[11px] text-slate-400">พิกัดตู้จัดเก็บ</div>
-                            <div className="text-xs sm:text-sm font-black text-cyan-300 mt-0.5">
+                            <div className="text-sm font-black text-cyan-300 mt-0.5">
                               ชั้น B-04 · กล่อง 12
                             </div>
                           </div>
-                          <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-900/95 border border-slate-700/80 min-w-0">
+                          <div className="p-3.5 rounded-2xl bg-slate-900/95 border border-slate-700/80">
                             <div className="text-[11px] text-slate-400">สต็อกพร้อมเบิก</div>
-                            <div className="text-xs sm:text-sm font-black text-emerald-400 mt-0.5">
+                            <div className="text-sm font-black text-emerald-400 mt-0.5">
                               12 ชิ้น (สถานะปกติ)
                             </div>
                           </div>
@@ -1680,14 +1639,14 @@ export default function Presentation() {
                 </div>
 
                 {/* ── INNOVATION #2: INTERACTIVE SMART TAG QR SCAN & LINE FLEX ALERT ────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-center p-4 sm:p-10 rounded-3xl bg-slate-900/80 border border-emerald-500/30 shadow-2xl min-w-0">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-center p-5 sm:p-10 rounded-2xl sm:rounded-3xl bg-slate-900/80 border border-emerald-500/30 shadow-2xl">
                   {/* Left / Center: Interactive Smartphone QR Scan & LINE Alert Simulator */}
                   <motion.div
                     initial={{ opacity: 0, y: 42, scale: 0.94 }}
                     whileInView={{ opacity: 1, y: 0, scale: 1 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.85, delay: 0.55, ease: EASE_EXECUTIVE }}
-                    className="lg:col-span-6 order-2 lg:order-1 w-full min-w-0"
+                    className="lg:col-span-6 order-2 lg:order-1 w-full"
                   >
                     <InteractiveQrRepairSimulator motionEnabled={motionEnabled} />
                   </motion.div>
@@ -1698,11 +1657,11 @@ export default function Presentation() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.8, delay: 0.2, ease: EASE_EXECUTIVE }}
-                    className="lg:col-span-6 space-y-4 sm:space-y-5 order-1 lg:order-2 min-w-0"
+                    className="lg:col-span-6 space-y-4 sm:space-y-5 order-1 lg:order-2"
                   >
-                    <div className="inline-flex flex-wrap items-center gap-1.5 sm:gap-2 px-3 py-1 rounded-2xl sm:rounded-full bg-emerald-500/15 border border-emerald-400/35 text-emerald-300 text-[11px] sm:text-xs font-bold max-w-full leading-snug">
-                      <Send size={14} className="shrink-0" />
-                      <span className="break-words">นวัตกรรม #2 · ระบบสแกน QR แจ้งซ่อม & LINE Flex Webhook 1 วินาที</span>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-emerald-300 text-xs font-bold">
+                      <Send size={14} />
+                      <span>นวัตกรรม #2 · ระบบสแกน QR แจ้งซ่อม & LINE Flex Webhook 1 วินาที</span>
                     </div>
                     <h3 className="text-xl sm:text-3xl font-black text-white leading-[1.3] break-words">
                       เครื่องจักรไม่ต้องจอดรอช่าง{' '}
@@ -1738,59 +1697,59 @@ export default function Presentation() {
                     </ul>
 
                     {/* Interactive prompt button */}
-                    <div className="pt-1 sm:pt-2">
+                    <div className="pt-2">
                       <button
                         type="button"
                         onClick={() => window.open('/repair/MC-12', '_blank')}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-bold cursor-pointer transition-all active:scale-95"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-bold cursor-pointer transition-all active:scale-95"
                       >
-                        <QrCode size={16} className="shrink-0" />
-                        <span className="truncate">ทดลองเปิดหน้าแจ้งซ่อมจริงของเครื่อง MC-12</span>
-                        <ExternalLink size={14} className="shrink-0" />
+                        <QrCode size={16} />
+                        <span>ทดลองเปิดหน้าแจ้งซ่อมจริงของเครื่อง MC-12</span>
+                        <ExternalLink size={14} />
                       </button>
                     </div>
                   </motion.div>
                 </div>
 
                 {/* ── INNOVATION #3: SMART TAG PRECISION PRINTING ────────── */}
-                <div className="p-4 sm:p-10 rounded-3xl bg-slate-900/80 border border-cyan-500/30 shadow-2xl min-w-0">
+                <div className="p-6 sm:p-10 rounded-3xl bg-slate-900/80 border border-cyan-500/30 shadow-2xl">
                   <motion.div
                     initial={{ opacity: 0, y: 24 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.75, delay: 0.15, ease: EASE_EXECUTIVE }}
-                    className="text-center max-w-3xl mx-auto mb-8 sm:mb-10 min-w-0"
+                    className="text-center max-w-3xl mx-auto mb-10"
                   >
-                    <div className="inline-flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-3 py-1 rounded-2xl sm:rounded-full bg-cyan-500/15 border border-cyan-400/35 text-cyan-300 text-[11px] sm:text-xs font-bold mb-3 max-w-full">
-                      <Printer size={14} className="shrink-0" />
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/35 text-cyan-300 text-xs font-bold mb-3">
+                      <Printer size={14} />
                       <span>นวัตกรรม #3 · Smart Tag Precision Printing</span>
                     </div>
-                    <h3 className="text-xl sm:text-3xl font-black text-white leading-[1.3] break-words">
+                    <h3 className="text-2xl sm:text-3xl font-black text-white leading-[1.3]">
                       ระบบพิมพ์ป้ายติดโครงเครื่องจักร และป้ายกระบอกสำรองมาตรฐานโรงทอ
                     </h3>
-                    <p className="text-xs sm:text-base text-slate-300 mt-2">
+                    <p className="text-sm sm:text-base text-slate-300 mt-2">
                       ปรับแต่งขนาดตัวอักษร ความกว้าง–ยาว และสัดส่วนการแสดงผลได้อย่างอิสระ
                       พร้อมดึงข้อมูลเฉพาะสถานะเครื่องที่ถูกต้องอัตโนมัติ
                     </p>
                   </motion.div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 min-w-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Tag 1: 20x7 cm Green In-Use Machine Tag (0.45s delay) */}
                     <motion.div
                       initial={{ opacity: 0, y: 38 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: false, amount: 0.25 }}
                       transition={{ duration: 0.8, delay: 0.45, ease: EASE_EXECUTIVE }}
-                      className="p-4 sm:p-6 rounded-2xl bg-[#070b17] border border-emerald-500/35 flex flex-col justify-between space-y-4 sm:space-y-5 min-w-0"
+                      className="p-6 rounded-2xl bg-[#070b17] border border-emerald-500/35 flex flex-col justify-between space-y-5"
                     >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <span className="text-xs sm:text-sm font-black text-emerald-400 flex items-center gap-2 min-w-0">
-                            <Printer size={16} className="shrink-0" />
-                            <span className="break-words">ปุ่ม “พิมพ์ Tack” (เครื่องกำลังเดินงาน In-Use)</span>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-black text-emerald-400 flex items-center gap-2">
+                            <Printer size={16} />
+                            <span>ปุ่ม “พิมพ์ Tack” (เครื่องกำลังเดินงาน In-Use)</span>
                           </span>
                           <span
-                            className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold shrink-0"
+                            className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold"
                             style={{ fontFamily: "'JetBrains Mono', monospace" }}
                           >
                             20 × 7 cm
@@ -1804,13 +1763,13 @@ export default function Presentation() {
 
                       {/* Authentic 20x7cm Green Tag Preview */}
                       <div
-                        className="w-full py-5 sm:py-6 px-3 sm:px-4 rounded-xl border-4 border-slate-950 bg-[#bbf7d0] text-black flex flex-col items-center justify-center shadow-inner min-w-0 text-center"
+                        className="w-full py-6 px-4 rounded-xl border-4 border-slate-950 bg-[#bbf7d0] text-black flex flex-col items-center justify-center shadow-inner"
                         style={{ fontFamily: "'JetBrains Mono', monospace" }}
                       >
-                        <span className="text-[10px] sm:text-[11px] font-bold tracking-wider sm:tracking-widest uppercase text-slate-800">
+                        <span className="text-[11px] font-bold tracking-widest uppercase text-slate-800">
                           CURRENT MACHINE · เครื่องปัจจุบัน
                         </span>
-                        <span className="text-4xl sm:text-6xl font-black tracking-tight leading-none text-black my-1">
+                        <span className="text-5xl sm:text-6xl font-black tracking-tight leading-none text-black my-1">
                           MC-12
                         </span>
                       </div>
@@ -1827,16 +1786,16 @@ export default function Presentation() {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: false, amount: 0.25 }}
                       transition={{ duration: 0.8, delay: 0.75, ease: EASE_EXECUTIVE }}
-                      className="p-4 sm:p-6 rounded-2xl bg-[#070b17] border border-amber-500/35 flex flex-col justify-between space-y-4 sm:space-y-5 min-w-0"
+                      className="p-6 rounded-2xl bg-[#070b17] border border-amber-500/35 flex flex-col justify-between space-y-5"
                     >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <span className="text-xs sm:text-sm font-black text-amber-400 flex items-center gap-2 min-w-0">
-                            <Disc size={16} className="shrink-0" />
-                            <span className="break-words">ปุ่ม “พิมพ์ Tack Spare” (กระบอกสำรอง)</span>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-black text-amber-400 flex items-center gap-2">
+                            <Disc size={16} />
+                            <span>ปุ่ม “พิมพ์ Tack Spare” (กระบอกสำรอง)</span>
                           </span>
                           <span
-                            className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-bold shrink-0"
+                            className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-bold"
                             style={{ fontFamily: "'JetBrains Mono', monospace" }}
                           >
                             A4 แนวนอน
@@ -1849,48 +1808,48 @@ export default function Presentation() {
                       </div>
 
                       {/* Authentic A4 Landscape Tag Preview */}
-                      <div className="w-full p-3 sm:p-3.5 rounded-xl border-2 border-slate-950 bg-white text-slate-950 shadow-inner space-y-2 min-w-0">
-                        <div className="flex flex-wrap justify-between items-center gap-1 text-[9px] sm:text-[10px] font-extrabold border-b-2 border-slate-900 pb-1">
-                          <span className="truncate">CYLINDER SPECIFICATION TAG · เอกสารติดกระบอกเข็ม</span>
+                      <div className="w-full p-3.5 rounded-xl border-2 border-slate-950 bg-white text-slate-950 shadow-inner space-y-2">
+                        <div className="flex justify-between items-center text-[10px] font-extrabold border-b-2 border-slate-900 pb-1">
+                          <span>CYLINDER SPECIFICATION TAG · เอกสารติดกระบอกเข็ม</span>
                           <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                             วันที่: 28/10/2026
                           </span>
                         </div>
                         <div
-                          className="grid grid-cols-2 gap-1.5 sm:gap-2 text-center min-w-0"
+                          className="grid grid-cols-2 gap-2 text-center"
                           style={{ fontFamily: "'JetBrains Mono', monospace" }}
                         >
-                          <div className="bg-slate-100 border border-slate-300 rounded-lg py-1.5 px-1.5 sm:px-2 min-w-0">
-                            <div className="text-[8px] sm:text-[9px] text-slate-600 font-bold truncate">
+                          <div className="bg-slate-100 border border-slate-300 rounded-lg py-1.5 px-2">
+                            <div className="text-[9px] text-slate-600 font-bold">
                               เครื่องปัจจุบัน (MACHINE)
                             </div>
-                            <div className="text-sm sm:text-lg font-black text-black leading-tight truncate">
+                            <div className="text-lg font-black text-black leading-tight">
                               SPARE-04
                             </div>
                           </div>
-                          <div className="bg-slate-100 border border-slate-300 rounded-lg py-1.5 px-1.5 sm:px-2 min-w-0">
-                            <div className="text-[8px] sm:text-[9px] text-slate-600 font-bold truncate">
+                          <div className="bg-slate-100 border border-slate-300 rounded-lg py-1.5 px-2">
+                            <div className="text-[9px] text-slate-600 font-bold">
                               ซีเรียลปัจจุบัน (SERIAL)
                             </div>
-                            <div className="text-sm sm:text-lg font-black text-black leading-tight truncate">
+                            <div className="text-lg font-black text-black leading-tight">
                               CYL-3424-09
                             </div>
                           </div>
                         </div>
                         <div
-                          className="grid grid-cols-3 gap-1.5 text-center min-w-0"
+                          className="grid grid-cols-3 gap-1.5 text-center"
                           style={{ fontFamily: "'JetBrains Mono', monospace" }}
                         >
-                          <div className="border border-slate-300 rounded py-1 min-w-0">
-                            <div className="text-[8px] text-slate-500 font-bold truncate">เส้นผ่าศูนย์กลาง</div>
+                          <div className="border border-slate-300 rounded py-1">
+                            <div className="text-[8px] text-slate-500 font-bold">เส้นผ่าศูนย์กลาง</div>
                             <div className="text-xs font-black">34&quot;</div>
                           </div>
-                          <div className="border border-slate-300 rounded py-1 min-w-0">
-                            <div className="text-[8px] text-slate-500 font-bold truncate">เกจ (GAUGE)</div>
+                          <div className="border border-slate-300 rounded py-1">
+                            <div className="text-[8px] text-slate-500 font-bold">เกจ (GAUGE)</div>
                             <div className="text-xs font-black">24G</div>
                           </div>
-                          <div className="border border-slate-300 rounded py-1 min-w-0">
-                            <div className="text-[8px] text-slate-500 font-bold truncate">จำนวนเข็ม</div>
+                          <div className="border border-slate-300 rounded py-1">
+                            <div className="text-[8px] text-slate-500 font-bold">จำนวนเข็ม</div>
                             <div className="text-xs font-black">2,520</div>
                           </div>
                         </div>
@@ -1915,25 +1874,24 @@ export default function Presentation() {
              ============================================================== */}
           <section
             id="demo"
-            className="py-14 sm:py-28 px-3.5 sm:px-8 border-t border-slate-800/70 scroll-mt-20 w-full max-w-full min-w-0"
-            style={{ overflowX: 'clip' }}
+            className="py-20 sm:py-28 px-4 sm:px-8 border-t border-slate-800/70 scroll-mt-20"
           >
-            <div className="max-w-5xl mx-auto min-w-0">
+            <div className="max-w-5xl mx-auto">
               <motion.div
                 initial={{ opacity: 0, y: 36, scale: 0.97 }}
                 whileInView={{ opacity: 1, y: 0, scale: 1 }}
                 viewport={{ once: false, amount: 0.25 }}
                 transition={{ duration: 0.85, delay: 0.15, ease: EASE_EXECUTIVE }}
-                className="p-5 sm:p-14 rounded-3xl bg-gradient-to-br from-blue-950/70 via-slate-900 to-emerald-950/60 border-2 border-cyan-400/40 text-center shadow-2xl relative overflow-hidden min-w-0"
+                className="p-8 sm:p-14 rounded-3xl bg-gradient-to-br from-blue-950/70 via-slate-900 to-emerald-950/60 border-2 border-cyan-400/40 text-center shadow-2xl relative overflow-hidden"
               >
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   whileInView={{ scale: 1, opacity: 1 }}
                   viewport={{ once: false, amount: 0.3 }}
                   transition={{ duration: 0.7, delay: 0.35, ease: EASE_EXECUTIVE }}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-blue-600 via-cyan-500 to-emerald-500 flex items-center justify-center text-white shadow-2xl shadow-cyan-500/30 mx-auto mb-5 sm:mb-6"
+                  className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-blue-600 via-cyan-500 to-emerald-500 flex items-center justify-center text-white shadow-2xl shadow-cyan-500/30 mx-auto mb-6"
                 >
-                  <Play size={32} className="ml-1" />
+                  <Play size={36} className="ml-1" />
                 </motion.div>
 
                 <motion.h2
@@ -1941,7 +1899,7 @@ export default function Presentation() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: false, amount: 0.3 }}
                   transition={{ duration: 0.75, delay: 0.5, ease: EASE_EXECUTIVE }}
-                  className="text-2xl sm:text-4xl font-black text-white mb-3.5 sm:mb-4 break-words"
+                  className="text-3xl sm:text-4xl font-black text-white mb-4"
                 >
                   ช่วงสาธิตระบบจริง (3-Minute Live Demo)
                 </motion.h2>
@@ -1951,7 +1909,7 @@ export default function Presentation() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: false, amount: 0.3 }}
                   transition={{ duration: 0.75, delay: 0.65, ease: EASE_EXECUTIVE }}
-                  className="text-xs sm:text-lg text-slate-300 max-w-2xl mx-auto mb-7 sm:mb-8 leading-relaxed"
+                  className="text-sm sm:text-lg text-slate-300 max-w-2xl mx-auto mb-8 leading-relaxed"
                 >
                   สัมผัสความเร็วในการโหลดระดับเสี้ยววินาทีบนเซิร์ฟเวอร์ Production จริง
                   ทั้งมุมมองคอมพิวเตอร์ผู้บริหารและมุมมองสมาร์ทโฟนสำหรับช่างหน้างาน
@@ -1962,16 +1920,16 @@ export default function Presentation() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: false, amount: 0.3 }}
                   transition={{ duration: 0.75, delay: 0.8, ease: EASE_EXECUTIVE }}
-                  className="mb-8 sm:mb-10"
+                  className="mb-10"
                 >
                   <motion.button
                     type="button"
                     whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.97 }}
                     onClick={handleLaunchLiveApp}
-                    className="w-full sm:w-auto px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 text-white font-black text-xs sm:text-base shadow-xl shadow-cyan-500/25 inline-flex items-center justify-center gap-2.5 sm:gap-3 cursor-pointer"
+                    className="px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 text-white font-black text-base shadow-xl shadow-cyan-500/25 inline-flex items-center gap-3 cursor-pointer"
                   >
-                    <ExternalLink size={18} className="shrink-0" />
+                    <ExternalLink size={20} />
                     <span>เปิดระบบจริงเพื่อสาธิต (Launch Live App)</span>
                   </motion.button>
                 </motion.div>
@@ -1982,11 +1940,11 @@ export default function Presentation() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: false, amount: 0.2 }}
-                  className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 text-left border-t border-slate-800/90 pt-6 sm:pt-8 min-w-0"
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left border-t border-slate-800/90 pt-8"
                 >
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 min-w-0"
+                    className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800"
                   >
                     <div className="text-xs font-bold text-cyan-400 mb-1">STEP 01 · 1 นาที</div>
                     <div className="text-sm font-black text-white mb-1">
@@ -1999,7 +1957,7 @@ export default function Presentation() {
 
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 min-w-0"
+                    className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800"
                   >
                     <div className="text-xs font-bold text-emerald-400 mb-1">STEP 02 · 1 นาที</div>
                     <div className="text-sm font-black text-white mb-1">
@@ -2012,7 +1970,7 @@ export default function Presentation() {
 
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 min-w-0"
+                    className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800"
                   >
                     <div className="text-xs font-bold text-purple-400 mb-1">STEP 03 · 1 นาที</div>
                     <div className="text-sm font-black text-white mb-1">
@@ -2032,10 +1990,9 @@ export default function Presentation() {
              ============================================================== */}
           <section
             id="roi"
-            className="py-14 sm:py-28 px-3.5 sm:px-8 border-t border-slate-800/70 bg-slate-950/50 scroll-mt-20 w-full max-w-full min-w-0"
-            style={{ overflowX: 'clip' }}
+            className="py-20 sm:py-28 px-4 sm:px-8 border-t border-slate-800/70 bg-slate-950/50 scroll-mt-20"
           >
-            <div className="max-w-6xl mx-auto min-w-0">
+            <div className="max-w-6xl mx-auto">
               <SectionHeader
                 eyebrow="Business Impact & ROI · ผลลัพธ์เชิงธุรกิจและตัวชี้วัด"
                 title="ผลตอบแทนความคุ้มค่าที่ชัดเจนและวัดผลได้เป็นรูปธรรม"
@@ -2050,23 +2007,23 @@ export default function Presentation() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: false, amount: 0.16 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-12 min-w-0"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12"
               >
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-7 rounded-3xl bg-gradient-to-br from-emerald-950/50 to-slate-900 border border-emerald-500/40 shadow-xl min-w-0"
+                  className="p-7 rounded-3xl bg-gradient-to-br from-emerald-950/50 to-slate-900 border border-emerald-500/40 shadow-xl"
                 >
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider sm:tracking-widest block mb-2">
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest block mb-2">
                     Downtime Reduction · ลดเครื่องจอดเสีย
                   </span>
                   <div
-                    className="text-3xl sm:text-5xl font-black text-white mb-3"
+                    className="text-4xl sm:text-5xl font-black text-white mb-3"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     -25% ถึง -
                     <AnimatedCounter to={35} suffix="%" delayMs={600} motionEnabled={motionEnabled} />
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-sm text-slate-300 leading-relaxed">
                     คืนชั่วโมงเดินเครื่องจักรให้สายการผลิตได้หลายร้อยชั่วโมงต่อเดือน
                     ลดความเสี่ยงงานส่งมอบล่าช้า
                   </p>
@@ -2074,13 +2031,13 @@ export default function Presentation() {
 
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-7 rounded-3xl bg-gradient-to-br from-cyan-950/50 to-slate-900 border border-cyan-500/40 shadow-xl min-w-0"
+                  className="p-7 rounded-3xl bg-gradient-to-br from-cyan-950/50 to-slate-900 border border-cyan-500/40 shadow-xl"
                 >
-                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider sm:tracking-widest block mb-2">
+                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest block mb-2">
                     Response Time · เวลาช่างรับทราบปัญหา
                   </span>
                   <div
-                    className="text-3xl sm:text-5xl font-black text-white mb-3"
+                    className="text-4xl sm:text-5xl font-black text-white mb-3"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     &lt;{' '}
@@ -2092,20 +2049,20 @@ export default function Presentation() {
                       motionEnabled={motionEnabled}
                     />
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-sm text-slate-300 leading-relaxed">
                     ลดเวลารอคอยจากเดิม 10–15 นาที ด้วยระบบแจ้งเตือน LINE Flex ตรงถึงช่างประจำกะทันที
                   </p>
                 </motion.div>
 
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-7 rounded-3xl bg-gradient-to-br from-purple-950/50 to-slate-900 border border-purple-500/40 shadow-xl min-w-0"
+                  className="p-7 rounded-3xl bg-gradient-to-br from-purple-950/50 to-slate-900 border border-purple-500/40 shadow-xl"
                 >
-                  <span className="text-xs font-bold text-purple-400 uppercase tracking-wider sm:tracking-widest block mb-2">
+                  <span className="text-xs font-bold text-purple-400 uppercase tracking-widest block mb-2">
                     Inventory Accuracy · ความแม่นยำคลังพัสดุ
                   </span>
                   <div
-                    className="text-3xl sm:text-5xl font-black text-white mb-3"
+                    className="text-4xl sm:text-5xl font-black text-white mb-3"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     <AnimatedCounter
@@ -2116,20 +2073,20 @@ export default function Presentation() {
                       motionEnabled={motionEnabled}
                     />
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-sm text-slate-300 leading-relaxed">
                     ป้องกันเข็มทอสูญหายหรือเบิกซ้ำซ้อน ฝ่ายบัญชีและการเงินตรวจสอบมูลค่าคงคลังได้แม่นยำ
                   </p>
                 </motion.div>
 
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-7 rounded-3xl bg-gradient-to-br from-amber-950/50 to-slate-900 border border-amber-500/40 shadow-xl min-w-0"
+                  className="p-7 rounded-3xl bg-gradient-to-br from-amber-950/50 to-slate-900 border border-amber-500/40 shadow-xl"
                 >
-                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider sm:tracking-widest block mb-2">
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-widest block mb-2">
                     Full Traceability · ตรวจสอบย้อนหลัง
                   </span>
                   <div
-                    className="text-3xl sm:text-5xl font-black text-white mb-3"
+                    className="text-4xl sm:text-5xl font-black text-white mb-3"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     <AnimatedCounter
@@ -2139,7 +2096,7 @@ export default function Presentation() {
                       motionEnabled={motionEnabled}
                     />
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-sm text-slate-300 leading-relaxed">
                     สืบค้นประวัติการสลับกระบอกเข็มและการซ่อมบำรุงย้อนหลังได้ทุกชิ้นผ้า
                     รองรับการตรวจประเมินลูกค้าสากล
                   </p>
@@ -2152,9 +2109,9 @@ export default function Presentation() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: false, amount: 0.2 }}
                 transition={{ duration: 0.8, delay: 0.45, ease: EASE_EXECUTIVE }}
-                className="p-5 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-5 sm:space-y-6 min-w-0"
+                className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-6"
               >
-                <h3 className="text-base sm:text-xl font-black text-white break-words">
+                <h3 className="text-lg sm:text-xl font-black text-white">
                   เปรียบเทียบประสิทธิภาพการทำงาน (ก่อนใช้ระบบ vs หลังใช้ TextileOps)
                 </h3>
 
@@ -2181,8 +2138,8 @@ export default function Presentation() {
                     barColor: 'from-emerald-500 to-teal-400',
                   },
                 ].map((row, idx) => (
-                  <div key={row.label} className="space-y-2 min-w-0">
-                    <div className="flex flex-wrap justify-between gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                  <div key={row.label} className="space-y-2">
+                    <div className="flex flex-wrap justify-between gap-2 text-xs sm:text-sm">
                       <span className="font-bold text-white">{row.label}</span>
                       <span className="text-slate-400">{row.before}</span>
                     </div>
@@ -2211,10 +2168,9 @@ export default function Presentation() {
              ============================================================== */}
           <section
             id="roadmap"
-            className="py-14 sm:py-28 px-3.5 sm:px-8 border-t border-slate-800/70 scroll-mt-20 w-full max-w-full min-w-0"
-            style={{ overflowX: 'clip' }}
+            className="py-20 sm:py-28 px-4 sm:px-8 border-t border-slate-800/70 scroll-mt-20"
           >
-            <div className="max-w-6xl mx-auto min-w-0">
+            <div className="max-w-6xl mx-auto">
               <SectionHeader
                 eyebrow="Enterprise Cloud & Strategic Roadmap"
                 title="เสถียรภาพระดับสากล ความปลอดภัยสูง และแผนเติบโต 3 ระยะ"
@@ -2229,11 +2185,11 @@ export default function Presentation() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: false, amount: 0.16 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-12 sm:mb-16 min-w-0"
+                className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16"
               >
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-6 rounded-3xl bg-slate-900/85 border border-slate-700/90 flex flex-col justify-between min-w-0"
+                  className="p-6 rounded-3xl bg-slate-900/85 border border-slate-700/90 flex flex-col justify-between"
                 >
                   <div>
                     <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-400 w-fit mb-4">
@@ -2255,7 +2211,7 @@ export default function Presentation() {
 
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-6 rounded-3xl bg-slate-900/85 border border-slate-700/90 flex flex-col justify-between min-w-0"
+                  className="p-6 rounded-3xl bg-slate-900/85 border border-slate-700/90 flex flex-col justify-between"
                 >
                   <div>
                     <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-400 w-fit mb-4">
@@ -2279,7 +2235,7 @@ export default function Presentation() {
 
                 <motion.div
                   variants={staggerCardVariants}
-                  className="p-5 sm:p-6 rounded-3xl bg-slate-900/85 border border-slate-700/90 flex flex-col justify-between min-w-0"
+                  className="p-6 rounded-3xl bg-slate-900/85 border border-slate-700/90 flex flex-col justify-between"
                 >
                   <div>
                     <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400 w-fit mb-4">
@@ -2303,7 +2259,7 @@ export default function Presentation() {
               </motion.div>
 
               {/* 3-Phase Strategic Roadmap Timeline */}
-              <div className="relative mb-12 sm:mb-16 min-w-0">
+              <div className="relative mb-16">
                 {/* Animated Connecting Progress Line on Desktop */}
                 <motion.div
                   aria-hidden="true"
@@ -2320,13 +2276,13 @@ export default function Presentation() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: false, amount: 0.16 }}
-                  className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 relative z-10 min-w-0"
+                  className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10"
                 >
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-5 sm:p-6 rounded-3xl bg-emerald-950/40 border-2 border-emerald-500/50 shadow-xl min-w-0"
+                    className="p-6 rounded-3xl bg-emerald-950/40 border-2 border-emerald-500/50 shadow-xl"
                   >
-                    <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] sm:text-xs font-black uppercase tracking-wider mb-3 max-w-full">
+                    <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black uppercase tracking-wider mb-3">
                       Phase 1 · ปัจจุบัน (Q4 2026) — พร้อม 100%
                     </span>
                     <h4 className="text-lg font-black text-white mb-2">Full System Rollout</h4>
@@ -2339,9 +2295,9 @@ export default function Presentation() {
 
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-5 sm:p-6 rounded-3xl bg-slate-900/95 border border-cyan-500/35 shadow-xl min-w-0"
+                    className="p-6 rounded-3xl bg-slate-900/95 border border-cyan-500/35 shadow-xl"
                   >
-                    <span className="inline-block px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-[11px] sm:text-xs font-black uppercase tracking-wider mb-3 max-w-full">
+                    <span className="inline-block px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-xs font-black uppercase tracking-wider mb-3">
                       Phase 2 · ต่อยอด (Q1–Q2 2027)
                     </span>
                     <h4 className="text-lg font-black text-white mb-2">IoT & ERP Integration</h4>
@@ -2354,9 +2310,9 @@ export default function Presentation() {
 
                   <motion.div
                     variants={staggerCardVariants}
-                    className="p-5 sm:p-6 rounded-3xl bg-slate-900/95 border border-purple-500/35 shadow-xl min-w-0"
+                    className="p-6 rounded-3xl bg-slate-900/95 border border-purple-500/35 shadow-xl"
                   >
-                    <span className="inline-block px-3 py-1 rounded-full bg-purple-500/15 text-purple-300 text-[11px] sm:text-xs font-black uppercase tracking-wider mb-3 max-w-full">
+                    <span className="inline-block px-3 py-1 rounded-full bg-purple-500/15 text-purple-300 text-xs font-black uppercase tracking-wider mb-3">
                       Phase 3 · สู่อนาคต (Q3–Q4 2027)
                     </span>
                     <h4 className="text-lg font-black text-white mb-2">
@@ -2377,31 +2333,31 @@ export default function Presentation() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: false, amount: 0.25 }}
                 transition={{ duration: 0.85, delay: 0.4, ease: EASE_EXECUTIVE }}
-                className="p-5 sm:p-12 rounded-3xl bg-gradient-to-r from-slate-900 via-blue-950/60 to-slate-900 border border-slate-700 text-center shadow-2xl min-w-0"
+                className="p-8 sm:p-12 rounded-3xl bg-gradient-to-r from-slate-900 via-blue-950/60 to-slate-900 border border-slate-700 text-center shadow-2xl"
               >
-                <div className="inline-flex flex-wrap items-center justify-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-2xl sm:rounded-full bg-amber-500/15 border border-amber-400/35 text-amber-300 text-[11px] sm:text-xs font-bold uppercase tracking-wider mb-4 max-w-full">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/15 border border-amber-400/35 text-amber-300 text-xs font-bold uppercase tracking-wider mb-4">
                   <span>TEXTILEOPS CMMS IS PRODUCTION READY</span>
                 </div>
-                <h3 className="text-xl sm:text-3xl font-black text-white mb-3 break-words">
+                <h3 className="text-2xl sm:text-3xl font-black text-white mb-3">
                   ขอรับความเห็นชอบและการสนับสนุนจากคณะผู้บริหาร
                 </h3>
-                <p className="text-xs sm:text-base text-slate-300 max-w-2xl mx-auto mb-6 sm:mb-8 leading-relaxed">
+                <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto mb-8 leading-relaxed">
                   เพื่อประกาศนโยบายใช้งานระบบอย่างเป็นทางการ
                   และดำเนินการถ่ายทอดการใช้งานแก่หัวหน้างานและพนักงานทุกกะ
                 </p>
 
-                <div className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-emerald-300 tracking-widest mb-2">
+                <div className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-emerald-300 tracking-widest mb-2">
                   Q &amp; A
                 </div>
-                <p className="text-xs sm:text-sm text-slate-400 mb-6 sm:mb-8">
+                <p className="text-xs sm:text-sm text-slate-400 mb-8">
                   ขอขอบพระคุณคณะผู้บริหาร บริษัท เจมม่า นิตส์ จำกัด ทุกท่านครับ
                 </p>
 
-                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-3 sm:gap-4">
+                <div className="flex flex-wrap items-center justify-center gap-4">
                   <button
                     type="button"
                     onClick={() => scrollToSection('hero')}
-                    className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-2 cursor-pointer"
+                    className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs sm:text-sm font-bold inline-flex items-center gap-2 cursor-pointer"
                   >
                     <ArrowUp size={16} />
                     <span>เลื่อนกลับขึ้นบนสุด</span>
@@ -2410,7 +2366,7 @@ export default function Presentation() {
                   <button
                     type="button"
                     onClick={() => navigate('/')}
-                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black inline-flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 cursor-pointer"
+                    className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black inline-flex items-center gap-2 shadow-lg shadow-emerald-600/25 cursor-pointer"
                   >
                     <span>เข้าสู่ระบบหลัก TextileOps</span>
                     <ChevronRight size={16} />

@@ -186,39 +186,4 @@ describe('Presentation Component (Executive Pitch Landing Page)', () => {
 
     openSpy.mockRestore()
   })
-
-  it('enforces overflow-x clip on root, header, and all sections and supports tapping the MC-12 QR tag directly', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-
-    const { container } = render(
-      <MemoryRouter>
-        <Presentation />
-      </MemoryRouter>
-    )
-
-    const rootEl = container.firstElementChild
-    const headerEl = container.querySelector('header')
-    expect(rootEl.style.overflowX).toBe('clip')
-    expect(headerEl.style.overflowX).toBe('clip')
-
-    LANDING_SECTIONS.forEach((sec) => {
-      const sectionEl = container.querySelector(`#${sec.id}`)
-      expect(sectionEl).not.toBeNull()
-      expect(sectionEl.style.overflowX).toBe('clip')
-    })
-
-    // Tapping the green 20x7cm MC-12 QR tag inside Step 1 viewfinder advances directly to Step 2
-    const qrTagButton = screen.getByTitle(/แตะที่ป้าย QR เครื่อง MC-12 เพื่อจำลองการสแกนทันที/i)
-    expect(qrTagButton).toBeInTheDocument()
-    fireEvent.click(qrTagButton)
-    expect(screen.getByText(/เลือกอาการเสียด่วน \(MC-12\):/i)).toBeInTheDocument()
-
-    // Jump to Step 4 and verify the LINE Flex CTA button also opens /repair/MC-12
-    fireEvent.click(screen.getByRole('button', { name: /4\. เตือน LINE/i }))
-    const acceptRepairCta = screen.getByRole('button', { name: /⚡ กดรับงานซ่อมนี้ทันที/i })
-    fireEvent.click(acceptRepairCta)
-    expect(openSpy).toHaveBeenCalledWith('/repair/MC-12', '_blank')
-
-    openSpy.mockRestore()
-  })
 })
