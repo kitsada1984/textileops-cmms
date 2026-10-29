@@ -18,6 +18,7 @@ import {
   Sparkles,
   Tag,
   Package,
+  PackageCheck,
   Phone,
   Mail,
   User,
@@ -385,6 +386,31 @@ export function buildPurchasePayload(form = {}) {
   })
 }
 
+export function buildQuickReceivePayload({ po, receivedDate, note = '' } = {}) {
+  if (!po) return null
+  const items = parsePOItems(po)
+  const cleanNote = stripHiddenNoteMeta(po.Note || '')
+  const nextNote = note && note.trim()
+    ? (cleanNote ? `${cleanNote}\n[รับของเมื่อ ${receivedDate}]: ${note.trim()}` : `[รับของเมื่อ ${receivedDate}]: ${note.trim()}`)
+    : cleanNote
+
+  return {
+    ...po,
+    Status: 'RECEIVED',
+    Received_Date: receivedDate,
+    Items: items,
+    Note: appendPOMetaToNote(nextNote, {
+      imageUrl: getPOImageUrl(po),
+      category: getPOCategory(po),
+      partCode: getPOPartCode(po),
+      partName: getPOPartName(po),
+      appliedQty: getPOAppliedQty(po),
+      appliedPartCode: getPOAppliedPartCode(po),
+      appliedItems: extractHiddenNoteValue(po.Note, APPLIED_ITEMS_NOTE_PREFIX),
+    }),
+  }
+}
+
 function omitKeys(item, keys) {
   const clone = { ...item }
   keys.forEach((key) => {
@@ -437,6 +463,10 @@ export default function Purchasing() {
   const [detailRec, setDetailRec] = useState(null)
   const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
+  const [receiveItem, setReceiveItem] = useState(null)
+  const [receiveDate, setReceiveDate] = useState('')
+  const [receiveNote, setReceiveNote] = useState('')
+  const [receiving, setReceiving] = useState(false)
 
   // Summary statistics
   const stats = useMemo(() => {
@@ -1049,6 +1079,61 @@ export default function Purchasing() {
     }
   }
 
+  const openQuickReceive = (po) => {
+    if (!po) return
+    setReceiveItem(po)
+    setReceiveDate(format(new Date(), 'yyyy-MM-dd'))
+    setReceiveNote('')
+  }
+
+  const confirmQuickReceive = async () => {
+    if (!receiveItem) return
+    if (!receiveDate) {
+      toast.warning('กรุณากรอกข้อมูล', 'กรุณาระบุวันที่รับสินค้า')
+      return
+    }
+
+    setReceiving(true)
+    try {
+      const currentRecord = receiveItem
+      const items = parsePOItems(receiveItem)
+      const formToSync = buildQuickReceivePayload({
+        po: receiveItem,
+        receivedDate: receiveDate,
+        note: receiveNote,
+      })
+
+      // Sync inventory for all items in the PO
+      const syncedForm = await syncInventoryOnStatusChange(formToSync, currentRecord)
+      const payload = buildPurchasePayload({
+        ...syncedForm,
+        LastUpdated: format(new Date(), 'yyyy-MM-dd'),
+      })
+
+      await saveWithColumnFallback(payload)
+
+      toast.success(
+        'รับสินค้าเข้าสต็อกสำเร็จ',
+        `PO: ${receiveItem.PO_Number} (${items.length} รายการ, วันที่รับ: ${receiveDate})`
+      )
+
+      if (detailRec && (detailRec.id || detailRec._id) === (receiveItem.id || receiveItem._id)) {
+        setDetailRec({
+          ...detailRec,
+          ...syncedForm,
+          Status: 'RECEIVED',
+          Received_Date: receiveDate,
+        })
+      }
+
+      setReceiveItem(null)
+      await load()
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาดในการรับสินค้า', e.message)
+    }
+    setReceiving(false)
+  }
+
   const renderCellContent = (row, col) => {
     const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
       ? getPOImageUrl(row)
@@ -1309,6 +1394,16 @@ export default function Purchasing() {
                       >
                         <FileText size={13} />
                       </button>
+                      {p.Status !== 'RECEIVED' && canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => openQuickReceive(p)}
+                          className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-400 transition-all border border-emerald-200 dark:border-emerald-800/60"
+                          title="รับของเข้าสต็อก (ใส่วันที่รับวันนี้อัตโนมัติ)"
+                        >
+                          <PackageCheck size={13} />
+                        </button>
+                      )}
                       {canEdit && (
                         <button
                           type="button"
@@ -1358,6 +1453,19 @@ export default function Purchasing() {
         badge={detailRec && <StatusPill value={detailRec.Status} />}
         canEdit={canEdit}
         canDelete={canDelete}
+        extraActions={
+          detailRec && detailRec.Status !== 'RECEIVED' && canEdit && (
+            <button
+              type="button"
+              onClick={() => openQuickReceive(detailRec)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="รับของเข้าสต็อกทันที (ใส่วันที่รับวันนี้อัตโนมัติ)"
+            >
+              <PackageCheck size={14} />
+              <span>รับของเข้าสต็อก</span>
+            </button>
+          )
+        }
         onPdf={() => setPdfItem(detailRec)}
         onEdit={() => openEdit(detailRec)}
         onDelete={() => {
@@ -1822,6 +1930,148 @@ export default function Purchasing() {
             </div>
           </div>
         </div>
+      </Modal>
+
+      {/* ── QUICK RECEIVE MODAL ───────────────────────────────── */}
+      <Modal
+        open={!!receiveItem}
+        onClose={() => !receiving && setReceiveItem(null)}
+        title="📦 รับสินค้าเข้าสต็อก (Quick Receive)"
+        size="md"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              className="btn-outline px-4 text-xs"
+              onClick={() => setReceiveItem(null)}
+              disabled={receiving}
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn-primary px-5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
+              onClick={confirmQuickReceive}
+              disabled={receiving}
+            >
+              {receiving ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin" />
+                  <span>กำลังบันทึกรับของ...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={14} />
+                  <span>ยืนยันรับของเข้าสต็อก</span>
+                </>
+              )}
+            </button>
+          </div>
+        }
+      >
+        {receiveItem && (() => {
+          const items = parsePOItems(receiveItem)
+          const totals = calculatePOTotals(items)
+          return (
+            <div className="space-y-4 text-xs">
+              {/* Header Card */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] text-slate-500 font-medium">เลขที่ใบสั่งซื้อ</div>
+                  <div className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400 mt-0.5">
+                    {receiveItem.PO_Number}
+                  </div>
+                </div>
+                {receiveItem.Supplier && (
+                  <div className="text-right">
+                    <div className="text-[11px] text-slate-500 font-medium">ผู้จัดจำหน่าย</div>
+                    <div className="font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
+                      {receiveItem.Supplier}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Items summary */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                  <span>รายการอะไหล่ที่จะรับเข้าสต็อก ({items.length} รายการ)</span>
+                  <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">
+                    รวม {totals.totalQty.toLocaleString()} ชิ้น
+                  </span>
+                </div>
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10.5px] uppercase font-bold">
+                        <th className="py-2 px-2.5">ลำดับ</th>
+                        <th className="py-2 px-2.5">รหัสอะไหล่</th>
+                        <th className="py-2 px-2.5">ชื่ออะไหล่</th>
+                        <th className="py-2 px-2.5 text-right">จำนวน</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-[11px]">
+                      {items.map((it, idx) => (
+                        <tr key={it.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                          <td className="py-1.5 px-2.5 font-mono text-slate-400">{idx + 1}</td>
+                          <td className="py-1.5 px-2.5 font-mono font-bold text-blue-600 dark:text-blue-400">
+                            {it.Part_Code || '—'}
+                          </td>
+                          <td className="py-1.5 px-2.5 font-medium text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                            {it.Part_Name_EN || it.Detail || '—'}
+                          </td>
+                          <td className="py-1.5 px-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-100">
+                            {Number(it.Qty || 1).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Date Input */}
+              <div className="space-y-1">
+                <label className="label font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Clock size={13} className="text-emerald-500" />
+                  <span>วันที่รับสินค้า (Received Date) *</span>
+                </label>
+                <input
+                  type="date"
+                  className="input text-xs py-2 px-3 w-full font-mono font-bold text-emerald-600 dark:text-emerald-400"
+                  value={receiveDate}
+                  onChange={(e) => setReceiveDate(e.target.value)}
+                  required
+                />
+                <span className="text-[10px] text-slate-400">
+                  ระบบใส่วันที่ปัจจุบัน (วันนี้) ให้อัตโนมัติ สามารถเปลี่ยนวันที่ได้หากเป็นการรับย้อนหลัง
+                </span>
+              </div>
+
+              {/* Optional Receiving Note */}
+              <div className="space-y-1">
+                <label className="label font-bold text-slate-700 dark:text-slate-300">
+                  บันทึกเพิ่มเติมตอนรับของ (Optional)
+                </label>
+                <input
+                  type="text"
+                  className="input text-xs py-1.5 px-3 w-full"
+                  value={receiveNote}
+                  onChange={(e) => setReceiveNote(e.target.value)}
+                  placeholder="เช่น ตรวจรับครบถ้วน, บิลเลขที่ 12345"
+                />
+              </div>
+
+              {/* Informational Notice */}
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px] flex items-start gap-2">
+                <CheckCircle2 size={15} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                <span>
+                  เมื่อกดยืนยัน ระบบจะปรับสถานะใบสั่งซื้อเป็น <strong>"รับสินค้าแล้ว" (RECEIVED)</strong> และเพิ่มจำนวนสต็อกเข้าคลังอะไหล่ (SparePart & Stock Transactions) ครบทุกรายการทันที
+                </span>
+              </div>
+            </div>
+          )
+        })()}
       </Modal>
 
       {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}

@@ -10,6 +10,7 @@ import {
   parsePOItems,
   calculatePOTotals,
   buildPurchasePayload,
+  buildQuickReceivePayload,
   getPOAppliedItems,
 } from './Purchasing'
 
@@ -219,6 +220,52 @@ describe('Purchasing Part Auto-Fill & Auto-Creation Logic', () => {
 
       // Empty Note
       expect(getPOAppliedItems({ Note: '' })).toEqual({})
+    })
+
+    it('buildQuickReceivePayload prepares PO with RECEIVED status, received date, and optional note', () => {
+      const po = {
+        PO_Number: 'PO-2026-QR01',
+        Supplier: 'SKF Thailand',
+        Status: 'ORDERED',
+        Note: 'ด่วนมาก',
+        Items: [
+          { Part_Code: 'SP-001', Part_Name_EN: 'Timing Belt 5M', Qty: 3, UnitPrice: 350 },
+        ],
+      }
+
+      const quickReceivePayload = buildQuickReceivePayload({
+        po,
+        receivedDate: '2026-10-29',
+        note: 'ตรวจรับของครบเรียบร้อย',
+      })
+
+      expect(quickReceivePayload.Status).toBe('RECEIVED')
+      expect(quickReceivePayload.Received_Date).toBe('2026-10-29')
+      expect(quickReceivePayload.Items).toHaveLength(1)
+      expect(quickReceivePayload.Note).toContain('[รับของเมื่อ 2026-10-29]: ตรวจรับของครบเรียบร้อย')
+      expect(quickReceivePayload.Note).toContain('ด่วนมาก')
+    })
+
+    it('buildQuickReceivePayload handles legacy PO without Items field seamlessly', () => {
+      const legacyPo = {
+        PO_Number: 'PO-2026-LEGACY-RCV',
+        Part_Code: 'SP-002',
+        Part_Name_EN: 'Bearing 6204',
+        Qty: 10,
+        UnitPrice: 120,
+        Status: 'ORDERED',
+      }
+
+      const quickReceivePayload = buildQuickReceivePayload({
+        po: legacyPo,
+        receivedDate: '2026-10-29',
+      })
+
+      expect(quickReceivePayload.Status).toBe('RECEIVED')
+      expect(quickReceivePayload.Received_Date).toBe('2026-10-29')
+      expect(quickReceivePayload.Items).toHaveLength(1)
+      expect(quickReceivePayload.Items[0].Part_Code).toBe('SP-002')
+      expect(quickReceivePayload.Items[0].Qty).toBe(10)
     })
   })
 })
