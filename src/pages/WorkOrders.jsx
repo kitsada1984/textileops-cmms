@@ -30,6 +30,8 @@ import {
   Tag,
   ArrowRight,
   PieChart,
+  Ban,
+  AlertTriangle,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -159,6 +161,15 @@ export const WORK_ORDER_STATUS_OPTIONS = [
     badgeClass: 'badge-green',
     activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
   },
+  {
+    value: 'CANCELLED',
+    label: 'ยกเลิก',
+    fullLabel: '⚪ ยกเลิก (Cancelled)',
+    icon: '⚪',
+    badgeClass: 'badge-gray',
+    activeClass: 'bg-slate-500 text-white border-slate-500 shadow-xs',
+    isCancelled: true,
+  },
 ]
 
 /**
@@ -169,19 +180,22 @@ export function getWorkOrderStatusMeta(status) {
   const raw = String(status || '').trim()
   const upper = raw.toUpperCase()
 
+  if (upper === 'CANCELLED' || raw === 'ยกเลิก') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[5], isCompleted: false, isCancelled: true }
+  }
   if (upper === 'COMPLETED' || raw === 'เสร็จสิ้น') {
-    return { ...WORK_ORDER_STATUS_OPTIONS[4], isCompleted: true }
+    return { ...WORK_ORDER_STATUS_OPTIONS[4], isCompleted: true, isCancelled: false }
   }
   if (upper === 'WAITING_TECH' || raw === 'รอช่าง') {
-    return { ...WORK_ORDER_STATUS_OPTIONS[1], isCompleted: false }
+    return { ...WORK_ORDER_STATUS_OPTIONS[1], isCompleted: false, isCancelled: false }
   }
   if (upper === 'WAITING_PARTS' || raw === 'รออะไหล่') {
-    return { ...WORK_ORDER_STATUS_OPTIONS[2], isCompleted: false }
+    return { ...WORK_ORDER_STATUS_OPTIONS[2], isCompleted: false, isCancelled: false }
   }
   if (upper === 'WAITING_SUMMARY' || raw === 'รอสรุป') {
-    return { ...WORK_ORDER_STATUS_OPTIONS[3], isCompleted: false }
+    return { ...WORK_ORDER_STATUS_OPTIONS[3], isCompleted: false, isCancelled: false }
   }
-  return { ...WORK_ORDER_STATUS_OPTIONS[0], isCompleted: false }
+  return { ...WORK_ORDER_STATUS_OPTIONS[0], isCompleted: false, isCancelled: false }
 }
 
 /**
@@ -351,6 +365,34 @@ export function getLatestDailyLog(job = {}) {
     return tA - tB
   })
   return sorted[sorted.length - 1]
+}
+
+export function buildCancelJobPayload(params = {}) {
+  const { job, cancelDate, reason = '', technician = 'ผู้ยกเลิก' } = params || {}
+  if (!job) return null
+  const dateStr = cancelDate || format(new Date(), 'yyyy-MM-dd')
+  const existingLogs = getJobDailyLogs(job)
+  const newEntry = {
+    id: `DLOG-${Date.now()}`,
+    date: dateStr,
+    timestamp: new Date().toISOString(),
+    status: 'CANCELLED',
+    details: `[ยกเลิกใบสั่งงาน]: ${reason.trim()}`,
+    hours: null,
+    techs: [technician],
+    recorded_by: technician,
+  }
+  const updatedLogs = [...existingLogs, newEntry]
+  const logsJson = JSON.stringify(updatedLogs)
+  return {
+    ...job,
+    Status: 'CANCELLED',
+    DailyLogs: logsJson,
+    daily_logs: logsJson,
+    CancellationReason: reason.trim(),
+    UpdatedBy: technician,
+    updated_at: new Date().toISOString(),
+  }
 }
 
 export function getTechSkillInfo(skillLevel = 'Senior') {
@@ -871,6 +913,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [dailyLogHours, setDailyLogHours] = useState('')
   const [dailyLogTechs, setDailyLogTechs] = useState([])
   const [dailyLogSubmitting, setDailyLogSubmitting] = useState(false)
+  const [cancelJobModalOpen, setCancelJobModalOpen] = useState(false)
+  const [cancelJobReason, setCancelJobReason] = useState('')
+  const [cancellingJobSubmitting, setCancellingJobSubmitting] = useState(false)
 
   // Interruption / Lost Time Modal State
   const [interruptionModalOpen, setInterruptionModalOpen] = useState(false)
@@ -1175,7 +1220,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Live counts for Status filter cards
   const statusCounts = useMemo(() => {
-    const counts = { ALL: 0, IN_PROGRESS: 0, WAITING_TECH: 0, WAITING_PARTS: 0, WAITING_SUMMARY: 0, COMPLETED: 0 }
+    const counts = { ALL: 0, IN_PROGRESS: 0, WAITING_TECH: 0, WAITING_PARTS: 0, WAITING_SUMMARY: 0, COMPLETED: 0, CANCELLED: 0 }
     const relevant = allJobs.filter((j) => (showDeleted ? Boolean(j.IsDeleted) : !j.IsDeleted))
     counts.ALL = relevant.length
     relevant.forEach((j) => {
@@ -1237,7 +1282,11 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     const activeNonDeleted = allJobs.filter((j) => !j.IsDeleted)
     const total = activeNonDeleted.length
     const completed = activeNonDeleted.filter((j) => getWorkOrderStatusMeta(j.Status).isCompleted).length
-    const active = activeNonDeleted.filter((j) => !getWorkOrderStatusMeta(j.Status).isCompleted).length
+    const cancelled = activeNonDeleted.filter((j) => getWorkOrderStatusMeta(j.Status).isCancelled).length
+    const active = activeNonDeleted.filter((j) => {
+      const m = getWorkOrderStatusMeta(j.Status)
+      return !m.isCompleted && !m.isCancelled
+    }).length
 
     const calcJobTypeKpi = (typeKey) => {
       const jobsOfType = activeNonDeleted.filter((j) => (j.JobType || 'REPAIR') === typeKey)
@@ -1297,6 +1346,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       total,
       active,
       completed,
+      cancelled,
       overallRate,
       repair: repairKpi,
       design: designKpi,
@@ -1615,6 +1665,56 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       toast.error('บันทึกความคืบหน้าไม่สำเร็จ', err.message)
     } finally {
       setDailyLogSubmitting(false)
+    }
+  }
+
+  // Open 2-Step Confirmation Modal to Cancel Job from Daily Log
+  const openCancelJobConfirm = () => {
+    setCancelJobReason('')
+    setCancelJobModalOpen(true)
+  }
+
+  // Confirm Cancellation of Job
+  const handleConfirmCancelJob = async () => {
+    if (!dailyLogJob) return
+    const reason = cancelJobReason.trim()
+    if (!reason) {
+      toast.warning('กรุณาระบุเหตุผล', 'กรุณาระบุเหตุผลในการยกเลิกใบสั่งงาน')
+      return
+    }
+
+    setCancellingJobSubmitting(true)
+    try {
+      const currentJob =
+        allJobs.find(
+          (j) =>
+            (j.id && j.id === dailyLogJob.id) ||
+            (j.WO_ID && j.WO_ID === (dailyLogJob.WO_ID || dailyLogJob.Job_ID)) ||
+            (j.Job_ID && j.Job_ID === (dailyLogJob.Job_ID || dailyLogJob.WO_ID))
+        ) || dailyLogJob
+
+      const userName = user?.full_name || user?.line_display_name || user?.username || user?.Name || 'ช่างผู้ใช้งาน'
+      const payload = buildCancelJobPayload({
+        job: currentJob,
+        cancelDate: format(new Date(), 'yyyy-MM-dd'),
+        reason,
+        technician: userName,
+      })
+
+      await saveJob(payload)
+
+      toast.success(
+        'ยกเลิกใบสั่งงานสำเร็จ',
+        `${currentJob.Job_ID || currentJob['Job ID'] || currentJob.WO_ID} • สถานะ: ยกเลิก`
+      )
+
+      setCancelJobModalOpen(false)
+      setDailyLogModalOpen(false)
+      setDailyLogJob(null)
+    } catch (err) {
+      toast.error('ยกเลิกใบสั่งงานไม่สำเร็จ', err.message)
+    } finally {
+      setCancellingJobSubmitting(false)
     }
   }
 
@@ -5010,22 +5110,107 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setDailyLogModalOpen(false)}
-                  className="btn-outline px-4"
-                >
-                  ยกเลิก
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDailyLogModalOpen(false)}
+                    className="btn-outline px-3.5 text-xs"
+                    disabled={dailyLogSubmitting || cancellingJobSubmitting}
+                  >
+                    ปิด
+                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={openCancelJobConfirm}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 transition-colors flex items-center gap-1 cursor-pointer"
+                      disabled={dailyLogSubmitting || cancellingJobSubmitting}
+                      title="ยกเลิกใบสั่งงานนี้ (มีป๊อปอัปยืนยัน)"
+                    >
+                      <Ban size={13} />
+                      <span>ยกเลิกงานนี้</span>
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={handleSaveDailyLog}
-                  disabled={dailyLogSubmitting || !dailyLogDetails.trim()}
-                  className="btn-primary px-5"
+                  disabled={dailyLogSubmitting || cancellingJobSubmitting || !dailyLogDetails.trim()}
+                  className="btn-primary px-5 text-xs flex items-center gap-1.5"
                 >
                   <Check size={14} />
                   <span>{dailyLogSubmitting ? 'กำลังบันทึก...' : '💾 บันทึกความคืบหน้า'}</span>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
+
+      {/* 2-Step Confirmation Modal for Cancelling Job */}
+      {cancelJobModalOpen && dailyLogJob && (() => {
+        const jobIdDisplay = dailyLogJob.Job_ID || dailyLogJob['Job ID'] || dailyLogJob.WO_ID
+        return (
+          <Modal
+            open={cancelJobModalOpen}
+            onClose={() => !cancellingJobSubmitting && setCancelJobModalOpen(false)}
+            title="⚠️ ยืนยันการยกเลิกใบสั่งงาน"
+            size="sm"
+            className="border-rose-300 dark:border-rose-900/60 shadow-rose-950/20"
+          >
+            <div className="space-y-4 text-xs">
+              {/* Alert Warning Box */}
+              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-start gap-3">
+                <AlertTriangle className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" size={20} />
+                <div className="space-y-1">
+                  <div className="font-bold text-rose-900 dark:text-rose-200 text-sm">
+                    คุณแน่ใจหรือไม่ว่าต้องการยกเลิกงานนี้?
+                  </div>
+                  <div className="text-rose-700 dark:text-rose-300 leading-relaxed">
+                    ใบสั่งงาน <span className="font-mono font-bold">{jobIdDisplay}</span> (เครื่อง {dailyLogJob.MC || '-'}) จะถูกเปลี่ยนสถานะเป็น <span className="font-bold">"ยกเลิก" (CANCELLED)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cancellation Reason Input (Required) */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  เหตุผลในการยกเลิกใบสั่งงาน <span className="text-rose-500 font-bold">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={cancelJobReason}
+                  onChange={(e) => setCancelJobReason(e.target.value)}
+                  placeholder="ระบุสาเหตุที่ต้องยกเลิกงาน เช่น ยกเลิกแผนผลิต, เครื่องถูกย้าย, สั่งงานซ้ำซ้อน..."
+                  className="input text-xs w-full resize-none border-rose-200 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500"
+                  disabled={cancellingJobSubmitting}
+                  required
+                  autoFocus
+                />
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">
+                  * ข้อมูลเหตุผลจะถูกบันทึกลงในประวัติความคืบหน้ารายวัน (Daily Logs) เพื่อความโปร่งใส
+                </span>
+              </div>
+
+              {/* Modal Action Buttons */}
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setCancelJobModalOpen(false)}
+                  disabled={cancellingJobSubmitting}
+                  className="btn-outline px-4 text-xs"
+                >
+                  กลับ
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCancelJob}
+                  disabled={cancellingJobSubmitting || !cancelJobReason.trim()}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  <Ban size={14} />
+                  <span>{cancellingJobSubmitting ? 'กำลังยกเลิกงาน...' : 'ยืนยันยกเลิกงานนี้'}</span>
                 </button>
               </div>
             </div>

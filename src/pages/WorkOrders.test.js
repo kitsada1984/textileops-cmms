@@ -12,6 +12,7 @@ import {
   calculateProblemCauseStats,
   getJobDailyLogs,
   getLatestDailyLog,
+  buildCancelJobPayload,
 } from './WorkOrders.jsx'
 
 describe('WorkOrders utilities', () => {
@@ -126,12 +127,18 @@ describe('WorkOrders utilities', () => {
   })
 
   describe('getWorkOrderStatusMeta & matchesWorkOrderStatusFilter', () => {
-    it('defines all 5 status options including รอช่าง, รอสรุป, รออะไหล่', () => {
+    it('defines all 6 status options including รอช่าง, รอสรุป, รออะไหล่, ยกเลิก', () => {
       const labels = WORK_ORDER_STATUS_OPTIONS.map((o) => o.label)
-      expect(labels).toEqual(['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'เสร็จสิ้น'])
+      expect(labels).toEqual(['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'เสร็จสิ้น', 'ยกเลิก'])
     })
 
     it('normalizes both English codes and Thai labels accurately', () => {
+      expect(getWorkOrderStatusMeta('CANCELLED').label).toBe('ยกเลิก')
+      expect(getWorkOrderStatusMeta('CANCELLED').isCancelled).toBe(true)
+      expect(getWorkOrderStatusMeta('CANCELLED').isCompleted).toBe(false)
+      expect(getWorkOrderStatusMeta('ยกเลิก').value).toBe('CANCELLED')
+      expect(getWorkOrderStatusMeta('ยกเลิก').isCancelled).toBe(true)
+
       expect(getWorkOrderStatusMeta('WAITING_TECH').label).toBe('รอช่าง')
       expect(getWorkOrderStatusMeta('รอช่าง').value).toBe('WAITING_TECH')
 
@@ -394,6 +401,50 @@ describe('WorkOrders utilities', () => {
       // Total sum of totals = 5
       const sumTotals = stats.personnel.total + stats.machine.total + stats.material.total + stats.unspecified.total
       expect(sumTotals).toBe(5)
+    })
+  })
+
+  describe('buildCancelJobPayload', () => {
+    it('returns null if job is missing', () => {
+      expect(buildCancelJobPayload(null)).toBeNull()
+      expect(buildCancelJobPayload()).toBeNull()
+    })
+
+    it('creates cancel payload with CANCELLED status, audit log and cancellation reason', () => {
+      const mockJob = {
+        Job_ID: 'JOB-2026-001',
+        MC: 'K-01',
+        Status: 'IN_PROGRESS',
+        DailyLogs: JSON.stringify([
+          {
+            id: 'DLOG-1',
+            date: '2026-10-28',
+            status: 'IN_PROGRESS',
+            details: 'เริ่มตรวจเช็คเครื่อง',
+            techs: ['ช่างทดสอบ'],
+          },
+        ]),
+      }
+
+      const result = buildCancelJobPayload({
+        job: mockJob,
+        cancelDate: '2026-10-29',
+        reason: 'เปลี่ยนแผนการผลิต เครื่องถูกนำไปใช้ไลน์อื่น',
+        technician: 'สมชาย ช่างกล',
+      })
+
+      expect(result.Status).toBe('CANCELLED')
+      expect(result.CancellationReason).toBe('เปลี่ยนแผนการผลิต เครื่องถูกนำไปใช้ไลน์อื่น')
+      expect(result.UpdatedBy).toBe('สมชาย ช่างกล')
+      expect(result.updated_at).toBeDefined()
+
+      const parsedLogs = JSON.parse(result.DailyLogs)
+      expect(parsedLogs).toHaveLength(2)
+      expect(parsedLogs[1].status).toBe('CANCELLED')
+      expect(parsedLogs[1].details).toBe('[ยกเลิกใบสั่งงาน]: เปลี่ยนแผนการผลิต เครื่องถูกนำไปใช้ไลน์อื่น')
+      expect(parsedLogs[1].recorded_by).toBe('สมชาย ช่างกล')
+      expect(parsedLogs[1].date).toBe('2026-10-29')
+      expect(result.daily_logs).toBe(result.DailyLogs)
     })
   })
 })
