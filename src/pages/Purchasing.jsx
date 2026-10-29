@@ -67,6 +67,7 @@ const PART_CODE_NOTE_PREFIX = 'PartCode:'
 const PART_NAME_NOTE_PREFIX = 'PartName:'
 const APPLIED_QTY_NOTE_PREFIX = 'InventoryAppliedQty:'
 const APPLIED_PART_NOTE_PREFIX = 'InventoryAppliedPartCode:'
+const APPLIED_ITEMS_NOTE_PREFIX = 'InventoryAppliedItems:'
 const PO_NUMERIC_FIELDS = ['Qty', 'UnitPrice', 'Total_Amount']
 const HIDDEN_NOTE_PREFIXES = [
   IMAGE_NOTE_PREFIX,
@@ -75,8 +76,103 @@ const HIDDEN_NOTE_PREFIXES = [
   PART_NAME_NOTE_PREFIX,
   APPLIED_QTY_NOTE_PREFIX,
   APPLIED_PART_NOTE_PREFIX,
+  APPLIED_ITEMS_NOTE_PREFIX,
 ]
 const PURCHASE_IMAGE_FOLDER = 'จัดซื้อ'
+
+export function createEmptyPOItem(overrides = {}) {
+  return {
+    id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    Part_Code: '',
+    Part_Name_EN: '',
+    Category: '',
+    Qty: 1,
+    UnitPrice: '',
+    Total_Amount: '',
+    Detail: '',
+    ...overrides,
+  }
+}
+
+export function parsePOItems(row = {}) {
+  if (!row) return []
+
+  if (Array.isArray(row.Items)) {
+    return row.Items.map((item, idx) => ({
+      id: item.id || `item-${idx}`,
+      Part_Code: item.Part_Code || '',
+      Part_Name_EN: item.Part_Name_EN || item.ItemName || '',
+      Category: item.Category || '',
+      Qty: Number(item.Qty) || 1,
+      UnitPrice: item.UnitPrice !== undefined && item.UnitPrice !== null ? item.UnitPrice : '',
+      Total_Amount: item.Total_Amount !== undefined && item.Total_Amount !== null ? item.Total_Amount : '',
+      Detail: item.Detail || '',
+    }))
+  }
+
+  if (typeof row.Items === 'string' && row.Items.trim()) {
+    try {
+      const parsed = JSON.parse(row.Items)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((item, idx) => ({
+          id: item.id || `item-${idx}`,
+          Part_Code: item.Part_Code || '',
+          Part_Name_EN: item.Part_Name_EN || item.ItemName || '',
+          Category: item.Category || '',
+          Qty: Number(item.Qty) || 1,
+          UnitPrice: item.UnitPrice !== undefined && item.UnitPrice !== null ? item.UnitPrice : '',
+          Total_Amount: item.Total_Amount !== undefined && item.Total_Amount !== null ? item.Total_Amount : '',
+          Detail: item.Detail || '',
+        }))
+      }
+    } catch {
+      // fallback to legacy single item
+    }
+  }
+
+  const partCode = getPOPartCode(row)
+  const partName = getPOPartName(row)
+  const category = getPOCategory(row)
+  const qty = row.Qty !== undefined && row.Qty !== null && row.Qty !== '' ? Number(row.Qty) : 1
+  const unitPrice = row.UnitPrice !== undefined && row.UnitPrice !== null ? row.UnitPrice : ''
+  const totalAmount = row.Total_Amount !== undefined && row.Total_Amount !== null ? row.Total_Amount : ''
+  const detail = row.Detail || ''
+
+  if (partCode || partName || row.PO_Number) {
+    return [
+      {
+        id: 'legacy-item-0',
+        Part_Code: partCode,
+        Part_Name_EN: partName,
+        Category: category,
+        Qty: qty,
+        UnitPrice: unitPrice,
+        Total_Amount: totalAmount,
+        Detail: detail,
+      },
+    ]
+  }
+
+  return []
+}
+
+export function calculatePOTotals(items = []) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { totalQty: 0, totalAmount: 0 }
+  }
+  let totalQty = 0
+  let totalAmount = 0
+  items.forEach((item) => {
+    const q = Number(item.Qty) || 0
+    const p = Number(item.UnitPrice) || 0
+    const rowTotal = item.Total_Amount !== undefined && item.Total_Amount !== null && item.Total_Amount !== ''
+      ? Number(item.Total_Amount)
+      : (q * p)
+    totalQty += q
+    totalAmount += rowTotal
+  })
+  return { totalQty, totalAmount }
+}
 
 function StatusPill({ value }) {
   const cfg = STATUS_CFG[value] || {}
@@ -183,6 +279,7 @@ function appendPOMetaToNote(note = '', {
   partName = '',
   appliedQty,
   appliedPartCode = '',
+  appliedItems = '',
 } = {}) {
   const cleanNote = stripHiddenNoteMeta(note)
   const appliedQtyText = appliedQty !== undefined && appliedQty !== null ? String(toNumber(appliedQty)) : ''
@@ -194,6 +291,7 @@ function appendPOMetaToNote(note = '', {
     partName ? `${PART_NAME_NOTE_PREFIX} ${partName}` : '',
     appliedQtyText ? `${APPLIED_QTY_NOTE_PREFIX} ${appliedQtyText}` : '',
     appliedPartCode ? `${APPLIED_PART_NOTE_PREFIX} ${appliedPartCode}` : '',
+    appliedItems ? `${APPLIED_ITEMS_NOTE_PREFIX} ${appliedItems}` : '',
   ].filter(Boolean).join('\n')
 }
 
@@ -221,6 +319,24 @@ function getPOAppliedPartCode(row = {}) {
   return extractHiddenNoteValue(row.Note, APPLIED_PART_NOTE_PREFIX) || getPOPartCode(row)
 }
 
+export function getPOAppliedItems(row = {}) {
+  const raw = extractHiddenNoteValue(row?.Note, APPLIED_ITEMS_NOTE_PREFIX)
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') return parsed
+    } catch {
+      // ignore
+    }
+  }
+  const legacyCode = getPOAppliedPartCode(row)
+  const legacyQty = getPOAppliedQty(row)
+  if (legacyCode && legacyQty > 0) {
+    return { [legacyCode]: legacyQty }
+  }
+  return {}
+}
+
 function normalizePONumericFields(payload = {}) {
   return PO_NUMERIC_FIELDS.reduce((nextPayload, field) => ({
     ...nextPayload,
@@ -228,16 +344,43 @@ function normalizePONumericFields(payload = {}) {
   }), { ...payload })
 }
 
-function buildPurchasePayload(form = {}) {
+export function buildPurchasePayload(form = {}) {
+  const items = Array.isArray(form.Items) && form.Items.length > 0
+    ? form.Items
+    : parsePOItems(form)
+  const { totalQty, totalAmount } = calculatePOTotals(items)
+
+  const firstItem = items[0] || {}
+  const primaryPartCode = firstItem.Part_Code || form.Part_Code || ''
+  const primaryPartName = firstItem.Part_Name_EN || form.Part_Name_EN || ''
+  const primaryCategory = firstItem.Category || form.Category || ''
+
+  let detailSummary = form.Detail || ''
+  if (items.length > 1) {
+    const names = items.map((it) => it.Part_Code || it.Part_Name_EN).filter(Boolean)
+    const itemsPreview = names.slice(0, 2).join(', ')
+    detailSummary = `${itemsPreview} (+${items.length} รายการ)`
+  } else if (!detailSummary && (primaryPartName || primaryPartCode)) {
+    detailSummary = primaryPartName || primaryPartCode
+  }
+
+  const itemsJson = items.length > 0 ? JSON.stringify(items) : null
+
   return normalizePONumericFields({
     ...omitKeys(form, ['ImageUrl', 'Part_Code', 'Part_Name_EN']),
+    Qty: totalQty || toNumber(form.Qty),
+    Total_Amount: totalAmount || toNumber(form.Total_Amount),
+    UnitPrice: firstItem.UnitPrice !== undefined && firstItem.UnitPrice !== null ? toNumber(firstItem.UnitPrice) : toNumber(form.UnitPrice),
+    Detail: detailSummary,
+    Items: itemsJson,
     Note: appendPOMetaToNote(form.Note, {
       imageUrl: getPOImageUrl(form),
-      category: getPOCategory(form),
-      partCode: getPOPartCode(form),
-      partName: getPOPartName(form),
+      category: primaryCategory || getPOCategory(form),
+      partCode: primaryPartCode || getPOPartCode(form),
+      partName: primaryPartName || getPOPartName(form),
       appliedQty: getPOAppliedQty(form),
       appliedPartCode: getPOAppliedPartCode(form),
+      appliedItems: extractHiddenNoteValue(form.Note, APPLIED_ITEMS_NOTE_PREFIX),
     }),
   })
 }
@@ -275,6 +418,7 @@ const EMPTY = {
   Part_Name_EN: '',
   Category: '',
   ImageUrl: '',
+  Items: [createEmptyPOItem()],
 }
 
 export default function Purchasing() {
@@ -286,6 +430,7 @@ export default function Purchasing() {
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY)
+  const formTotals = useMemo(() => calculatePOTotals(form.Items), [form.Items])
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [filterSort, setFilterSort] = useState(INIT_FS)
@@ -303,11 +448,22 @@ export default function Purchasing() {
   }, [data])
 
   const baseRows = useMemo(() => {
-    return data.filter((p) =>
-      [p.PO_Number, p.Supplier, getPOPartCode(p), getPOPartName(p), getPOCategory(p), p.Detail, stripHiddenNoteMeta(p.Note)].some((v) =>
+    return data.filter((p) => {
+      const items = parsePOItems(p)
+      const itemTexts = items.map((it) => `${it.Part_Code} ${it.Part_Name_EN} ${it.Category} ${it.Detail}`).join(' ')
+      return [
+        p.PO_Number,
+        p.Supplier,
+        getPOPartCode(p),
+        getPOPartName(p),
+        getPOCategory(p),
+        p.Detail,
+        stripHiddenNoteMeta(p.Note),
+        itemTexts,
+      ].some((v) =>
         String(v || '').toLowerCase().includes(search.toLowerCase())
       )
-    )
+    })
   }, [data, search])
 
   const { categories: sparePartCategories } = useSparePartCategories(parts)
@@ -374,6 +530,15 @@ export default function Purchasing() {
     if (autoOpen && (partCode || partName)) {
       const qtyNum = parseFloat(qty) || 1
       const priceNum = parseFloat(price) || 0
+      const initialItem = createEmptyPOItem({
+        Part_Code: partCode || '',
+        Part_Name_EN: partName || '',
+        Detail: partName || partCode || '',
+        Qty: qtyNum,
+        UnitPrice: priceNum || '',
+        Total_Amount: qtyNum * priceNum,
+        Category: category || 'อะไหล่',
+      })
       setForm({
         ...EMPTY,
         PO_Number: `PO-${Date.now().toString().slice(-6)}`,
@@ -386,6 +551,7 @@ export default function Purchasing() {
         Total_Amount: qtyNum * priceNum,
         Supplier: supplier || '',
         Category: category || 'อะไหล่',
+        Items: [initialItem],
       })
       setModal(true)
       if (searchParams.get('autoOpen')) {
@@ -394,93 +560,185 @@ export default function Purchasing() {
     }
   }, [searchParams, location.state])
 
-  useEffect(() => {
-    const qty = parseFloat(form.Qty) || 0
-    const price = parseFloat(form.UnitPrice) || 0
-    if (qty > 0 && price > 0) {
-      setForm((p) => ({ ...p, Total_Amount: qty * price }))
-    }
-  }, [form.Qty, form.UnitPrice])
-
   const openNew = () => {
-    setForm(EMPTY)
+    setForm({
+      ...EMPTY,
+      PO_Number: `PO-${Date.now().toString().slice(-6)}`,
+      Order_Date: format(new Date(), 'yyyy-MM-dd'),
+      Items: [createEmptyPOItem()],
+    })
     setModal(true)
   }
 
   const openEdit = (p) => {
+    const items = parsePOItems(p)
+    const { totalQty, totalAmount } = calculatePOTotals(items)
     setForm({
       ...p,
       ImageUrl: getPOImageUrl(p),
       Category: getPOCategory(p),
       Part_Code: getPOPartCode(p),
       Part_Name_EN: getPOPartName(p),
+      Items: items.length > 0 ? items : [createEmptyPOItem()],
+      Qty: totalQty || p.Qty || '',
+      Total_Amount: totalAmount || p.Total_Amount || '',
     })
     setModal(true)
     setDetailRec(null)
   }
 
-  const applyPartToForm = (partCode) => {
+  const handleAddItem = () => {
+    setForm((prev) => {
+      const currentItems = Array.isArray(prev.Items) ? [...prev.Items] : []
+      const newItem = createEmptyPOItem({
+        Category: prev.Category || 'อะไหล่',
+      })
+      const nextItems = [...currentItems, newItem]
+      const { totalQty, totalAmount } = calculatePOTotals(nextItems)
+      return {
+        ...prev,
+        Items: nextItems,
+        Qty: totalQty,
+        Total_Amount: totalAmount,
+      }
+    })
+  }
+
+  const handleRemoveItem = (index) => {
+    setForm((prev) => {
+      const currentItems = Array.isArray(prev.Items) ? [...prev.Items] : []
+      if (currentItems.length <= 1) return prev
+      currentItems.splice(index, 1)
+      const { totalQty, totalAmount } = calculatePOTotals(currentItems)
+      return {
+        ...prev,
+        Items: currentItems,
+        Qty: totalQty,
+        Total_Amount: totalAmount,
+        Part_Code: currentItems[0]?.Part_Code || '',
+        Part_Name_EN: currentItems[0]?.Part_Name_EN || '',
+      }
+    })
+  }
+
+  const handleItemFieldChange = (index, field, value) => {
+    setForm((prev) => {
+      const currentItems = Array.isArray(prev.Items) ? [...prev.Items] : []
+      if (!currentItems[index]) return prev
+      const updatedItem = { ...currentItems[index], [field]: value }
+      if (field === 'Qty' || field === 'UnitPrice') {
+        const q = field === 'Qty' ? toNumber(value) : toNumber(updatedItem.Qty)
+        const p = field === 'UnitPrice' ? toNumber(value) : toNumber(updatedItem.UnitPrice)
+        updatedItem.Total_Amount = q * p
+      }
+      currentItems[index] = updatedItem
+      const { totalQty, totalAmount } = calculatePOTotals(currentItems)
+      return {
+        ...prev,
+        Items: currentItems,
+        Qty: totalQty,
+        Total_Amount: totalAmount,
+      }
+    })
+  }
+
+  const handleItemPartCodeChange = (index, partCode) => {
     const code = String(partCode || '').trim()
     const part = code
       ? (findMatchingSparePart(parts, code) || parts.find((item) => String(item.Part_Code || '').toLowerCase() === code.toLowerCase()))
       : null
 
-    setForm((prev) => ({
-      ...prev,
-      Part_Code: code,
-      Part_Name_EN: part ? (part.Part_Name_EN || part.Part_Name_TH || prev.Part_Name_EN) : prev.Part_Name_EN,
-      Category: part?.Category || prev.Category,
-      Detail: prev.Detail || (part ? (part.Part_Name_EN || part.Part_Name_TH || '') : ''),
-      UnitPrice: prev.UnitPrice || (part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : ''),
-      Supplier: prev.Supplier || part?.Supplier || '',
-      Note: appendPOMetaToNote(prev.Note, {
-        imageUrl: getPOImageUrl(prev),
-        category: part?.Category || prev.Category,
-        partCode: code,
-        partName: part ? (part.Part_Name_EN || part.Part_Name_TH || prev.Part_Name_EN) : (prev.Part_Name_EN || prev.Detail),
-        appliedQty: getPOAppliedQty(prev),
-        appliedPartCode: getPOAppliedPartCode(prev),
-      }),
-    }))
-  }
-
-  const applyPartNameToForm = (partName) => {
-    const name = String(partName || '').trim()
-    const part = name ? findMatchingSparePart(parts, name) : null
-
     setForm((prev) => {
-      let code = part?.Part_Code || prev.Part_Code
-      // If user enters a new part name without an existing part code, auto-generate next code
-      if (!part && !code && name) {
-        code = generatePartCode(parts)
+      const currentItems = Array.isArray(prev.Items) ? [...prev.Items] : []
+      if (!currentItems[index]) return prev
+      const current = currentItems[index]
+      const nextUnitPrice = part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : current.UnitPrice
+      const nextQty = toNumber(current.Qty) || 1
+      const updatedItem = {
+        ...current,
+        Part_Code: code,
+        Part_Name_EN: part ? (part.Part_Name_EN || part.Part_Name_TH || current.Part_Name_EN) : current.Part_Name_EN,
+        Category: part?.Category || current.Category,
+        UnitPrice: nextUnitPrice,
+        Total_Amount: (toNumber(nextUnitPrice) * nextQty) || current.Total_Amount,
+        Detail: current.Detail || (part ? (part.Part_Name_EN || part.Part_Name_TH || '') : ''),
       }
+      currentItems[index] = updatedItem
+      const { totalQty, totalAmount } = calculatePOTotals(currentItems)
       return {
         ...prev,
-        Part_Name_EN: name,
-        Part_Code: code,
-        Category: part?.Category || prev.Category,
-        Detail: prev.Detail || name,
-        UnitPrice: prev.UnitPrice || (part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : ''),
+        Items: currentItems,
         Supplier: prev.Supplier || part?.Supplier || '',
-        Note: appendPOMetaToNote(prev.Note, {
-          imageUrl: getPOImageUrl(prev),
-          category: part?.Category || prev.Category,
-          partCode: code,
-          partName: name,
-          appliedQty: getPOAppliedQty(prev),
-          appliedPartCode: getPOAppliedPartCode(prev),
-        }),
+        Qty: totalQty,
+        Total_Amount: totalAmount,
+        Part_Code: currentItems[0]?.Part_Code || '',
+        Part_Name_EN: currentItems[0]?.Part_Name_EN || '',
       }
     })
   }
 
-  const handleGenerateNextPartCode = () => {
+  const handleItemPartNameChange = (index, partName) => {
+    const name = String(partName || '').trim()
+    const part = name ? findMatchingSparePart(parts, name) : null
+
+    setForm((prev) => {
+      const currentItems = Array.isArray(prev.Items) ? [...prev.Items] : []
+      if (!currentItems[index]) return prev
+      const current = currentItems[index]
+      let code = part?.Part_Code || current.Part_Code
+      if (!part && !code && name) {
+        code = generatePartCode(parts)
+      }
+      const nextUnitPrice = part?.Unit_Price !== undefined && part?.Unit_Price !== null ? toNumber(part.Unit_Price) : current.UnitPrice
+      const nextQty = toNumber(current.Qty) || 1
+      const updatedItem = {
+        ...current,
+        Part_Name_EN: name,
+        Part_Code: code,
+        Category: part?.Category || current.Category,
+        UnitPrice: nextUnitPrice,
+        Total_Amount: (toNumber(nextUnitPrice) * nextQty) || current.Total_Amount,
+        Detail: current.Detail || name,
+      }
+      currentItems[index] = updatedItem
+      const { totalQty, totalAmount } = calculatePOTotals(currentItems)
+      return {
+        ...prev,
+        Items: currentItems,
+        Supplier: prev.Supplier || part?.Supplier || '',
+        Qty: totalQty,
+        Total_Amount: totalAmount,
+        Part_Code: currentItems[0]?.Part_Code || '',
+        Part_Name_EN: currentItems[0]?.Part_Name_EN || '',
+      }
+    })
+  }
+
+  const handleGenerateItemCode = (index) => {
     const nextCode = generatePartCode(parts)
-    setForm((prev) => ({
-      ...prev,
-      Part_Code: nextCode,
-    }))
-    toast.success('สร้างรหัสอะไหล่ใหม่', `กำหนดรหัส ${nextCode} สำหรับอะไหล่ใหม่เรียบร้อย`)
+    setForm((prev) => {
+      const currentItems = Array.isArray(prev.Items) ? [...prev.Items] : []
+      if (!currentItems[index]) return prev
+      currentItems[index] = { ...currentItems[index], Part_Code: nextCode }
+      return {
+        ...prev,
+        Items: currentItems,
+        Part_Code: currentItems[0]?.Part_Code || '',
+      }
+    })
+    toast.success('สร้างรหัสอะไหล่ใหม่', `กำหนดรหัส ${nextCode} สำหรับแถวที่ ${index + 1}`)
+  }
+
+  const applyPartToForm = (partCode) => {
+    handleItemPartCodeChange(0, partCode)
+  }
+
+  const applyPartNameToForm = (partName) => {
+    handleItemPartNameChange(0, partName)
+  }
+
+  const handleGenerateNextPartCode = () => {
+    handleGenerateItemCode(0)
   }
 
   const onPickImageFile = async (file) => {
@@ -497,6 +755,7 @@ export default function Purchasing() {
           partName: getPOPartName(prev),
           appliedQty: getPOAppliedQty(prev),
           appliedPartCode: getPOAppliedPartCode(prev),
+          appliedItems: extractHiddenNoteValue(prev.Note, APPLIED_ITEMS_NOTE_PREFIX),
         }),
       }))
       toast.success('อัปโหลดรูปสำเร็จ', `บันทึกไว้ในโฟลเดอร์ ${PURCHASE_IMAGE_FOLDER}`)
@@ -538,7 +797,7 @@ export default function Purchasing() {
     }
   }
 
-  const updateSparePartStock = async (partCode, delta, po) => {
+  const updateSparePartStock = async (partCode, delta, po, itemMeta = {}) => {
     const allParts = await SparePartAPI.list()
     const targetLoc = String(po?.Location_Store || po?.Warehouse || '').trim().toLowerCase()
     const existing = allParts.find((part) => {
@@ -548,9 +807,12 @@ export default function Purchasing() {
       return String(part.Location_Store || '').trim().toLowerCase() === targetLoc
     }) || allParts.find((part) => String(part.Part_Code || '').toLowerCase() === String(partCode || '').toLowerCase())
 
-    const partName = getPOPartName(po)
-    const poImageUrl = getPOImageUrl(po)
-    const category = getPOCategory(po) || existing?.Category || 'อะไหล่'
+    const partName = itemMeta.Part_Name_EN || itemMeta.Detail || getPOPartName(po)
+    const poImageUrl = itemMeta.ImageUrl || getPOImageUrl(po)
+    const category = itemMeta.Category || getPOCategory(po) || existing?.Category || 'อะไหล่'
+    const unitPrice = itemMeta.UnitPrice !== undefined && itemMeta.UnitPrice !== null && itemMeta.UnitPrice !== ''
+      ? toNumber(itemMeta.UnitPrice)
+      : toNumber(po.UnitPrice)
     const before = toNumber(existing?.Stock_Qty)
     const after = before + delta
     if (!existing && delta < 0) throw new Error(`ไม่พบอะไหล่ ${partCode} ในเมนูอะไหล่`)
@@ -561,7 +823,7 @@ export default function Purchasing() {
           Part_Name_EN: existing.Part_Name_EN || partName,
           Category: existing.Category || category,
           Supplier: existing.Supplier || po.Supplier || '',
-          Unit_Price: existing.Unit_Price || toNumber(po.UnitPrice),
+          Unit_Price: existing.Unit_Price || unitPrice,
           Stock_Qty: after,
           Status: getPartStockStatus(after, existing.Min_Qty),
           Remark: appendSparePartImageMeta(existing.Remark, {
@@ -573,12 +835,12 @@ export default function Purchasing() {
           Part_Name_TH: '',
           Part_Name_EN: partName,
           Category: category,
-          Unit: '',
+          Unit: itemMeta.Unit || '',
           Stock_Qty: after,
           Min_Qty: 0,
           Location_Store: '',
           Supplier: po.Supplier || '',
-          Unit_Price: toNumber(po.UnitPrice),
+          Unit_Price: unitPrice,
           Compatible_Machines: [],
           Status: getPartStockStatus(after, 0),
           Remark: appendSparePartImageMeta('สร้างอัตโนมัติจากเมนูจัดซื้อ', {
@@ -601,7 +863,7 @@ export default function Purchasing() {
       Qty_Change: Math.abs(delta),
       Qty_After: after,
       Unit: savedPart.Unit || '',
-      Unit_Price: savedPart.Unit_Price || toNumber(po.UnitPrice),
+      Unit_Price: savedPart.Unit_Price || unitPrice,
       Reference: po.PO_Number || po.id || '',
       Reference_Type: 'PO',
       Location_Store: savedPart.Location_Store || '',
@@ -614,31 +876,54 @@ export default function Purchasing() {
   const syncInventoryOnStatusChange = async (nextForm, currentRecord) => {
     const nextStatus = nextForm.Status
     const previousStatus = currentRecord?.Status || 'ORDERED'
-    const targetPartCode = getPOPartCode(nextForm) || getPOAppliedPartCode(currentRecord)
-    if (!targetPartCode) return nextForm
+    const items = parsePOItems(nextForm)
+    if (!items || items.length === 0) return nextForm
 
-    const previousAppliedQty = getPOAppliedQty(currentRecord)
-    const targetQty = toNumber(nextForm.Qty)
-    let appliedQtyDelta = 0
-    let nextAppliedQty = previousAppliedQty
+    const previousAppliedItems = getPOAppliedItems(currentRecord)
+    const nextAppliedItems = {}
 
     if (nextStatus === 'RECEIVED') {
-      if (previousStatus === 'RECEIVED') {
-        appliedQtyDelta = targetQty - previousAppliedQty
-        nextAppliedQty = targetQty
-      } else {
-        appliedQtyDelta = targetQty
-        nextAppliedQty = targetQty
-      }
-    } else if (previousStatus === 'RECEIVED') {
-      appliedQtyDelta = -previousAppliedQty
-      nextAppliedQty = 0
-    }
+      for (const item of items) {
+        const code = String(item.Part_Code || '').trim()
+        if (!code) continue
 
-    if (appliedQtyDelta !== 0) {
-      await updateSparePartStock(targetPartCode, appliedQtyDelta, nextForm)
+        const targetQty = toNumber(item.Qty)
+        const prevQty = toNumber(previousAppliedItems[code])
+        let delta = 0
+
+        if (previousStatus === 'RECEIVED') {
+          delta = targetQty - prevQty
+        } else {
+          delta = targetQty
+        }
+
+        if (delta !== 0) {
+          await updateSparePartStock(code, delta, nextForm, item)
+        }
+        nextAppliedItems[code] = targetQty
+      }
+
+      // Rollback any items removed from the PO
+      for (const [prevCode, prevQty] of Object.entries(previousAppliedItems)) {
+        if (!nextAppliedItems[prevCode] && prevQty > 0) {
+          await updateSparePartStock(prevCode, -prevQty, nextForm, { Part_Code: prevCode })
+        }
+      }
+
+      await loadParts()
+    } else if (previousStatus === 'RECEIVED') {
+      // Changed away from RECEIVED -> rollback all applied items
+      for (const [prevCode, prevQty] of Object.entries(previousAppliedItems)) {
+        if (prevQty > 0) {
+          await updateSparePartStock(prevCode, -prevQty, nextForm, { Part_Code: prevCode })
+        }
+      }
       await loadParts()
     }
+
+    const appliedItemsText = Object.keys(nextAppliedItems).length > 0 ? JSON.stringify(nextAppliedItems) : ''
+    const totalAppliedQty = Object.values(nextAppliedItems).reduce((sum, q) => sum + (toNumber(q) || 0), 0)
+    const primaryAppliedPartCode = items[0]?.Part_Code || ''
 
     return {
       ...nextForm,
@@ -647,8 +932,9 @@ export default function Purchasing() {
         category: getPOCategory(nextForm),
         partCode: getPOPartCode(nextForm),
         partName: getPOPartName(nextForm),
-        appliedQty: nextAppliedQty,
-        appliedPartCode: targetPartCode,
+        appliedQty: totalAppliedQty,
+        appliedPartCode: primaryAppliedPartCode,
+        appliedItems: appliedItemsText,
       }),
     }
   }
@@ -658,51 +944,77 @@ export default function Purchasing() {
       toast.warning('กรุณากรอกข้อมูล', 'เลข PO จำเป็นต้องกรอก')
       return
     }
+
+    const items = Array.isArray(form.Items) && form.Items.length > 0 ? form.Items : parsePOItems(form)
+    if (!items || items.length === 0) {
+      toast.warning('กรุณากรอกข้อมูล', 'ต้องมีรายการอะไหล่อย่างน้อย 1 รายการ')
+      return
+    }
+
     setSaving(true)
     const isEdit = !!(form._id || form.id)
     const currentRecord = isEdit ? data.find((item) => (item.id || item._id) === (form.id || form._id)) : null
     try {
-      let targetPartCode = String(form.Part_Code || '').trim()
-      const targetPartName = String(form.Part_Name_EN || form.Detail || '').trim()
+      const allParts = await SparePartAPI.list()
+      const updatedPartsList = [...(allParts || [])]
 
-      // If user entered part name but left Part_Code empty, auto-assign running code
-      if (!targetPartCode && targetPartName) {
-        targetPartCode = generatePartCode(parts)
-        form.Part_Code = targetPartCode
-      }
+      // Validate & auto-generate codes for items lacking Part_Code
+      const updatedItems = []
+      for (const item of items) {
+        let code = String(item.Part_Code || '').trim()
+        const name = String(item.Part_Name_EN || item.Detail || '').trim()
 
-      // Auto-register spare part in SparePartAPI if it doesn't exist yet
-      if (targetPartCode) {
-        const allParts = await SparePartAPI.list()
-        const existing = (allParts || []).find((p) =>
-          String(p.Part_Code || '').trim().toLowerCase() === targetPartCode.toLowerCase()
-        )
-
-        if (!existing) {
-          const category = getPOCategory(form) || 'อะไหล่'
-          const poImageUrl = getPOImageUrl(form)
-          await SparePartAPI.create({
-            Part_Code: targetPartCode,
-            Part_Name_TH: '',
-            Part_Name_EN: targetPartName || targetPartCode,
-            Category: category,
-            Unit: '',
-            Stock_Qty: 0,
-            Min_Qty: 0,
-            Location_Store: '',
-            Supplier: form.Supplier || '',
-            Unit_Price: toNumber(form.UnitPrice),
-            Compatible_Machines: [],
-            Status: 'OUT_OF_STOCK',
-            Remark: appendSparePartImageMeta(`สร้างอัตโนมัติจากใบสั่งซื้อ ${form.PO_Number || ''}`, {
-              imageUrl: poImageUrl,
-            }),
-          })
-          await loadParts()
+        if (!code && name) {
+          code = generatePartCode(updatedPartsList)
         }
+
+        if (code) {
+          const existing = updatedPartsList.find((p) =>
+            String(p.Part_Code || '').trim().toLowerCase() === code.toLowerCase()
+          )
+
+          if (!existing) {
+            const category = item.Category || getPOCategory(form) || 'อะไหล่'
+            const poImageUrl = getPOImageUrl(form)
+            const created = await SparePartAPI.create({
+              Part_Code: code,
+              Part_Name_TH: '',
+              Part_Name_EN: name || code,
+              Category: category,
+              Unit: '',
+              Stock_Qty: 0,
+              Min_Qty: 0,
+              Location_Store: '',
+              Supplier: form.Supplier || '',
+              Unit_Price: toNumber(item.UnitPrice),
+              Compatible_Machines: [],
+              Status: 'OUT_OF_STOCK',
+              Remark: appendSparePartImageMeta(`สร้างอัตโนมัติจากใบสั่งซื้อ ${form.PO_Number || ''}`, {
+                imageUrl: poImageUrl,
+              }),
+            })
+            if (created) updatedPartsList.push(created)
+          }
+        }
+
+        updatedItems.push({
+          ...item,
+          Part_Code: code,
+          Part_Name_EN: name,
+        })
       }
 
-      const syncedForm = await syncInventoryOnStatusChange(form, currentRecord)
+      await loadParts()
+
+      const formWithUpdatedItems = {
+        ...form,
+        Items: updatedItems,
+        Part_Code: updatedItems[0]?.Part_Code || form.Part_Code || '',
+        Part_Name_EN: updatedItems[0]?.Part_Name_EN || form.Part_Name_EN || '',
+        Category: updatedItems[0]?.Category || form.Category || '',
+      }
+
+      const syncedForm = await syncInventoryOnStatusChange(formWithUpdatedItems, currentRecord)
       const payload = buildPurchasePayload({
         ...syncedForm,
         LastUpdated: format(new Date(), 'yyyy-MM-dd'),
@@ -716,7 +1028,7 @@ export default function Purchasing() {
       } else {
         toast.success(
           isEdit ? 'แก้ไขใบสั่งซื้อสำเร็จ' : 'เพิ่มใบสั่งซื้อสำเร็จ',
-          `PO: ${form.PO_Number}`
+          `PO: ${form.PO_Number} (${updatedItems.length} รายการ)`
         )
       }
       setModal(false)
@@ -765,10 +1077,31 @@ export default function Purchasing() {
     }
 
     if (col.field === 'Part_Code') {
-      return <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{String(val)}</span>
+      const items = parsePOItems(row)
+      const primaryCode = String(val)
+      const extraCount = items.length > 1 ? items.length - 1 : 0
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{primaryCode || '—'}</span>
+          {extraCount > 0 && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              +{extraCount} รายการ
+            </span>
+          )}
+        </div>
+      )
     }
 
     if (col.field === 'Part_Name_EN') {
+      const items = parsePOItems(row)
+      if (items.length > 1) {
+        return (
+          <div className="max-w-[200px] truncate" title={items.map((it) => it.Part_Name_EN || it.Part_Code).join(', ')}>
+            <span className="font-bold text-slate-800 dark:text-slate-100">{String(val)}</span>
+            <span className="text-[10px] text-slate-400 ml-1 font-normal">และอื่นๆ</span>
+          </div>
+        )
+      }
       return <span className="font-bold text-slate-800 dark:text-slate-100">{String(val)}</span>
     }
 
@@ -892,8 +1225,14 @@ export default function Purchasing() {
             rows={displayRows}
             totalCount={data.length}
             valueGetters={{
-              Part_Code: getPOPartCode,
-              Part_Name_EN: getPOPartName,
+              Part_Code: (row) => {
+                const items = parsePOItems(row)
+                return items.map((it) => it.Part_Code).filter(Boolean).join(', ') || getPOPartCode(row)
+              },
+              Part_Name_EN: (row) => {
+                const items = parsePOItems(row)
+                return items.map((it) => it.Part_Name_EN || it.Detail).filter(Boolean).join(', ') || getPOPartName(row)
+              },
               Category: getPOCategory,
               ImageUrl: getPOImageUrl,
               ImagePreview: getPOImageUrl,
@@ -1032,9 +1371,7 @@ export default function Purchasing() {
               { label: 'เลข PO', value: detailRec.PO_Number, mono: true },
               { label: 'วันที่สั่ง', value: detailRec.Order_Date },
               { label: 'วันที่รับ', value: detailRec.Received_Date },
-              { label: 'รหัสอะไหล่', value: getPOPartCode(detailRec), mono: true },
-              { label: 'ชื่ออะไหล่', value: getPOPartName(detailRec) },
-              { label: 'หมวดหมู่', value: getPOCategory(detailRec) },
+              { label: 'ผู้จัดจำหน่าย', value: detailRec.Supplier },
               { label: 'รายละเอียด', value: detailRec.Detail },
               ...(getPOImageUrl(detailRec) ? [{
                 label: 'รูปถ่ายใบสั่งซื้อ / อะไหล่',
@@ -1053,12 +1390,63 @@ export default function Purchasing() {
             ].filter((f) => f && (f.node || f.value)),
           },
           {
-            label: 'จำนวนและยอดเงิน',
+            label: `รายการอะไหล่ในใบสั่งซื้อ (${parsePOItems(detailRec).length} รายการ)`,
+            single: true,
             fields: [
-              { label: 'จำนวน', value: detailRec.Qty },
-              { label: 'ราคาต่อหน่วย', value: detailRec.UnitPrice ? `฿${Number(detailRec.UnitPrice).toLocaleString()}` : null },
-              { label: 'ราคารวม', value: detailRec.Total_Amount ? `฿${Number(detailRec.Total_Amount).toLocaleString()}` : null },
-            ].filter((f) => f.value),
+              {
+                label: 'รายการอะไหล่ทั้งหมด',
+                full: true,
+                node: (
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto shadow-2xs mt-1">
+                    <table className="w-full text-left text-xs border-collapse min-w-[500px]">
+                      <thead>
+                        <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[11px]">
+                          <th className="py-2 px-2.5">ลำดับ</th>
+                          <th className="py-2 px-2.5">รหัสอะไหล่</th>
+                          <th className="py-2 px-2.5">ชื่ออะไหล่</th>
+                          <th className="py-2 px-2.5">หมวดหมู่</th>
+                          <th className="py-2 px-2.5 text-right">จำนวน</th>
+                          <th className="py-2 px-2.5 text-right">ราคา/หน่วย</th>
+                          <th className="py-2 px-2.5 text-right">ราคารวม</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-[11px]">
+                        {parsePOItems(detailRec).map((item, idx) => {
+                          const q = Number(item.Qty) || 0
+                          const p = Number(item.UnitPrice) || 0
+                          const tot = item.Total_Amount !== undefined && item.Total_Amount !== null && item.Total_Amount !== ''
+                            ? Number(item.Total_Amount)
+                            : (q * p)
+                          return (
+                            <tr key={item.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
+                              <td className="py-2 px-2.5 font-mono text-slate-400">{idx + 1}</td>
+                              <td className="py-2 px-2.5 font-mono font-semibold text-blue-600 dark:text-blue-400">{item.Part_Code || '—'}</td>
+                              <td className="py-2 px-2.5 font-medium text-slate-800 dark:text-slate-200">{item.Part_Name_EN || item.Detail || '—'}</td>
+                              <td className="py-2 px-2.5 text-slate-500">{item.Category || '—'}</td>
+                              <td className="py-2 px-2.5 text-right font-mono font-semibold">{q.toLocaleString()}</td>
+                              <td className="py-2 px-2.5 text-right font-mono text-slate-600 dark:text-slate-400">{p ? `฿${p.toLocaleString()}` : '—'}</td>
+                              <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-100">{tot ? `฿${tot.toLocaleString()}` : '—'}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-slate-50 dark:bg-slate-800/60 font-bold border-t border-slate-200 dark:border-slate-700 text-[11px]">
+                          <td colSpan={4} className="py-2 px-2.5 text-right text-slate-500">รวมทั้งหมด:</td>
+                          <td className="py-2 px-2.5 text-right font-mono text-blue-600 dark:text-blue-400">
+                            {calculatePOTotals(parsePOItems(detailRec)).totalQty.toLocaleString()} ชิ้น
+                          </td>
+                          <td className="py-2 px-2.5"></td>
+                          <td className="py-2 px-2.5 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                            ฿{calculatePOTotals(parsePOItems(detailRec)).totalAmount.toLocaleString()}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ),
+              },
+            ],
           },
           {
             label: 'ผู้จัดจำหน่าย & ติดต่อ',
@@ -1121,88 +1509,218 @@ export default function Purchasing() {
             </div>
           </div>
 
-          {/* Section 2: Part & Price */}
-          <div className="space-y-2">
+          {/* Section 2: Dynamic Items Table */}
+          <div className="space-y-3">
             <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between text-xs pb-1 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-1.5">
                 <Layers size={14} className="text-blue-500" />
-                <span>รายการอะไหล่และราคา</span>
+                <span>รายการอะไหล่และสินค้าในใบสั่งซื้อ ({(form.Items || []).length} รายการ)</span>
               </div>
-              {parts?.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-slate-400">เลือกจากอะไหล่ที่มี:</span>
-                  <select
-                    className="select text-[11px] py-0.5 px-2 max-w-[180px]"
-                    onChange={(e) => applyPartToForm(e.target.value)}
-                    value=""
-                  >
-                    <option value="">— เลือกอะไหล่ —</option>
-                    {parts.map((p) => (
-                      <option key={p.Part_Code} value={p.Part_Code}>
-                        {p.Part_Code} - {p.Part_Name_EN}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1 shadow-xs"
+              >
+                <Plus size={13} />
+                <span>เพิ่มรายการ</span>
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Tag size={12} className="text-blue-500" />
-                    <span>รหัสอะไหล่</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleGenerateNextPartCode}
-                    className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors"
-                    title="สร้างรหัสอะไหล่ใหม่ถัดไปอัตโนมัติ"
+            <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+              {(form.Items || []).map((item, idx) => {
+                const itemQty = Number(item.Qty) || 0
+                const itemPrice = Number(item.UnitPrice) || 0
+                const itemTotal = item.Total_Amount !== undefined && item.Total_Amount !== null && item.Total_Amount !== ''
+                  ? Number(item.Total_Amount)
+                  : (itemQty * itemPrice)
+
+                const isNewPart = !parts?.some((p) =>
+                  String(p.Part_Name_EN || '').toLowerCase() === String(item.Part_Name_EN || '').trim().toLowerCase()
+                ) && Boolean(item.Part_Name_EN?.trim())
+
+                return (
+                  <div
+                    key={item.id || idx}
+                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 space-y-2.5 transition-all hover:border-blue-300 dark:hover:border-blue-800"
                   >
-                    <Sparkles size={11} className="text-amber-500" />
-                    <span>สร้างรหัสอัตโนมัติ</span>
-                  </button>
-                </div>
-                <SearchableDropdown
-                  id="Part_Code"
-                  value={form.Part_Code || ''}
-                  onChange={(val) => applyPartToForm(val)}
-                  options={partCodeOptions}
-                  placeholder="เช่น SP-001 หรือเลือกจากดรอปดาวน์..."
-                  inputClassName="font-mono font-bold text-blue-600 dark:text-blue-400"
-                  helperText="เลือกจากอะไหล่เดิม หรือพิมพ์รหัสใหม่"
-                />
-              </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 font-bold text-[11px] flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 text-xs">
+                          รายการที่ {idx + 1}
+                        </span>
+                        {item.Part_Code && (
+                          <span className="font-mono text-[11px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">
+                            {item.Part_Code}
+                          </span>
+                        )}
+                        {isNewPart && (
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                            อะไหล่ใหม่
+                          </span>
+                        )}
+                      </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                    <Package size={12} className="text-indigo-500" />
-                    <span>ชื่ออะไหล่</span>
-                  </label>
-                  {!parts?.some((p) => String(p.Part_Name_EN || '').toLowerCase() === String(form.Part_Name_EN || '').trim().toLowerCase()) && form.Part_Name_EN?.trim() && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                      อะไหล่ใหม่
-                    </span>
-                  )}
-                </div>
-                <SearchableDropdown
-                  id="Part_Name_EN"
-                  value={form.Part_Name_EN || ''}
-                  onChange={(val) => applyPartNameToForm(val)}
-                  options={partNameOptions}
-                  placeholder="ชื่ออะไหล่ หรือเลือกจากดรอปดาวน์..."
-                  helperText="เลือกจากอะไหล่เดิม หรือพิมพ์ชื่อใหม่"
-                />
-              </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400">ราคารวมแถวนี้: </span>
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
+                            ฿{itemTotal.toLocaleString()}
+                          </span>
+                        </div>
+                        {(form.Items || []).length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(idx)}
+                            className="p-1 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                            title="ลบรายการนี้"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-              <F form={form} setForm={setForm} label="หมวดหมู่" id="Category" opts={categoryOptions} />
-              <F form={form} setForm={setForm} label="จำนวน" id="Qty" type="number" placeholder="0" />
-              <F form={form} setForm={setForm} label="ราคาต่อหน่วย" id="UnitPrice" type="number" placeholder="0" />
-              <F form={form} setForm={setForm} label="ราคารวม" id="Total_Amount" type="number" placeholder="0" />
-              <div className="sm:col-span-3">
-                <F form={form} setForm={setForm} label="รายละเอียดเพิ่มเติมของรายการ" id="Detail" placeholder="สเปกเฉพาะ หรือข้อกำหนดการจัดซื้อ" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5">
+                      {/* Part Code */}
+                      <div className="lg:col-span-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                            <Tag size={11} className="text-blue-500" />
+                            <span>รหัสอะไหล่</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleGenerateItemCode(idx)}
+                            className="text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                            title="สร้างรหัสอะไหล่ใหม่ถัดไปอัตโนมัติ"
+                          >
+                            <Sparkles size={10} className="text-amber-500" />
+                            <span>รหัสอัตโนมัติ</span>
+                          </button>
+                        </div>
+                        <SearchableDropdown
+                          id={`item-code-${item.id || idx}`}
+                          value={item.Part_Code || ''}
+                          onChange={(val) => handleItemPartCodeChange(idx, val)}
+                          options={partCodeOptions}
+                          placeholder="เช่น SP-001..."
+                          inputClassName="font-mono font-bold text-blue-600 dark:text-blue-400 text-xs"
+                          helperText="เลือกจากอะไหล่เดิม หรือพิมพ์ใหม่"
+                        />
+                      </div>
+
+                      {/* Part Name */}
+                      <div className="lg:col-span-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                            <Package size={11} className="text-indigo-500" />
+                            <span>ชื่ออะไหล่</span>
+                          </label>
+                        </div>
+                        <SearchableDropdown
+                          id={`item-name-${item.id || idx}`}
+                          value={item.Part_Name_EN || ''}
+                          onChange={(val) => handleItemPartNameChange(idx, val)}
+                          options={partNameOptions}
+                          placeholder="ชื่ออะไหล่ หรือเลือกจากดรอปดาวน์..."
+                          inputClassName="text-xs"
+                          helperText="เลือกจากอะไหล่เดิม หรือพิมพ์ใหม่"
+                        />
+                      </div>
+
+                      {/* Category */}
+                      <div className="lg:col-span-2">
+                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                          หมวดหมู่
+                        </label>
+                        <select
+                          className="select text-xs py-1.5 px-2 w-full"
+                          value={item.Category || ''}
+                          onChange={(e) => handleItemFieldChange(idx, 'Category', e.target.value)}
+                        >
+                          <option value="">— เลือก —</option>
+                          {categoryOptions.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Qty */}
+                      <div className="lg:col-span-1">
+                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                          จำนวน
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          className="input text-xs py-1.5 px-2 w-full font-mono text-center font-bold"
+                          value={item.Qty !== undefined ? item.Qty : ''}
+                          onChange={(e) => handleItemFieldChange(idx, 'Qty', e.target.value)}
+                          placeholder="1"
+                        />
+                      </div>
+
+                      {/* Unit Price */}
+                      <div className="lg:col-span-2">
+                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                          ราคา/หน่วย
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          className="input text-xs py-1.5 px-2 w-full font-mono text-right"
+                          value={item.UnitPrice !== undefined ? item.UnitPrice : ''}
+                          onChange={(e) => handleItemFieldChange(idx, 'UnitPrice', e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      {/* Row Detail */}
+                      <div className="lg:col-span-12">
+                        <input
+                          type="text"
+                          className="input text-[11px] py-1 px-2.5 w-full text-slate-600 dark:text-slate-400 bg-white/60 dark:bg-slate-900/60"
+                          value={item.Detail || ''}
+                          onChange={(e) => handleItemFieldChange(idx, 'Detail', e.target.value)}
+                          placeholder="รายละเอียด/สเปกเฉพาะของรายการนี้ (ถ้ามี)"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Items Table Footer Summary */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="btn-outline text-xs py-1.5 px-3 flex items-center gap-1.5 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+              >
+                <Plus size={13} />
+                <span>+ เพิ่มรายการอะไหล่</span>
+              </button>
+
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block">จำนวนชิ้นรวม</span>
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    {formTotals.totalQty.toLocaleString()} ชิ้น
+                  </span>
+                </div>
+                <div className="w-[1px] h-6 bg-slate-300 dark:bg-slate-600" />
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block">มูลค่ารวมทั้งใบ PO</span>
+                  <span className="font-mono font-black text-blue-600 dark:text-blue-400 text-sm">
+                    ฿{formTotals.totalAmount.toLocaleString()}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

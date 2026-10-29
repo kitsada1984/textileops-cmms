@@ -829,50 +829,121 @@ export function generateSparePartPdfProps(sp, context = {}) {
   }
 }
 
-/* ── 9. PURCHASE REQUEST ──────────────────────────────────────────────────── */
+/* ── 9. PURCHASE REQUEST & PURCHASE ORDER ─────────────────────────────────── */
 export function generatePurchasingPdfProps(pr, context = {}) {
   if (!pr) return null
   const prImages = pr.images || pr.Images || pr.ImageUrl || pr.image_url
-  const images = normalizeImagesList(prImages, `รูปถ่ายสินค้า / อะไหล่ ${pr.PRNumber || ''}`.trim())
+  const images = normalizeImagesList(prImages, `รูปถ่ายสินค้า / อะไหล่ ${pr.PRNumber || pr.PO_Number || ''}`.trim())
 
-  const qty = Number(pr.Quantity || 1)
-  const unitPrice = Number(pr.EstimatedUnitPrice || pr.UnitPrice || 0)
-  const totalAmount = pr.TotalAmount ? Number(pr.TotalAmount) : (qty * unitPrice || null)
+  let items = []
+  if (Array.isArray(pr.Items)) {
+    items = pr.Items
+  } else if (typeof pr.Items === 'string' && pr.Items.trim()) {
+    try {
+      const parsed = JSON.parse(pr.Items)
+      if (Array.isArray(parsed)) items = parsed
+    } catch {
+      // fallback if invalid JSON
+    }
+  }
+
+  if (!items || items.length === 0) {
+    const fallbackQty = Number(pr.Qty || pr.Quantity || 1)
+    const fallbackUnitPrice = Number(pr.UnitPrice || pr.EstimatedUnitPrice || 0)
+    const fallbackTotal = pr.Total_Amount != null && pr.Total_Amount !== ''
+      ? Number(pr.Total_Amount)
+      : pr.TotalAmount != null && pr.TotalAmount !== ''
+        ? Number(pr.TotalAmount)
+        : (fallbackQty * fallbackUnitPrice || 0)
+
+    items = [
+      {
+        Part_Code: pr.Part_Code || '',
+        Part_Name_EN: pr.Part_Name_EN || pr.ItemName || pr.PartName || '',
+        Category: pr.Category || '',
+        Qty: fallbackQty,
+        UnitPrice: fallbackUnitPrice,
+        Total_Amount: fallbackTotal,
+        Detail: pr.Detail || pr.Reason || '',
+      },
+    ]
+  }
+
+  const totalQty = items.reduce((sum, item) => sum + (Number(item.Qty) || 0), 0)
+  const totalAmount = pr.Total_Amount != null && pr.Total_Amount !== ''
+    ? Number(pr.Total_Amount)
+    : pr.TotalAmount != null && pr.TotalAmount !== ''
+      ? Number(pr.TotalAmount)
+      : items.reduce((sum, item) => sum + (Number(item.Total_Amount) || ((Number(item.Qty) || 0) * (Number(item.UnitPrice) || 0))), 0)
+
+  const docNo = pr.PO_Number || pr.PRNumber || pr.OrderNo || `PO-${pr.id || pr._id}`
+  const docDate = pr.Order_Date || pr.RequestDate || pr.created_at || new Date()
+  const primaryItemName = items.length === 1
+    ? (items[0].Part_Name_EN || items[0].Part_Code || '—')
+    : `${items[0]?.Part_Name_EN || items[0]?.Part_Code || 'สินค้า'} และอื่นๆ (${items.length} รายการ)`
+
+  const tableRows = items.map((item, idx) => [
+    idx + 1,
+    item.Part_Code || '—',
+    item.Part_Name_EN || item.Detail || '—',
+    item.Category || '—',
+    `${Number(item.Qty) || 0} ${item.Unit || pr.Unit || 'หน่วย'}`,
+    item.UnitPrice != null && item.UnitPrice !== '' ? Number(item.UnitPrice).toLocaleString() : '—',
+    item.Total_Amount != null && item.Total_Amount !== ''
+      ? Number(item.Total_Amount).toLocaleString()
+      : item.UnitPrice != null ? ((Number(item.Qty) || 0) * (Number(item.UnitPrice) || 0)).toLocaleString() : '—',
+  ])
+
+  if (items.length > 1) {
+    tableRows.push([
+      'รวม',
+      '',
+      `ยอดรวมทั้งหมด (${items.length} รายการ)`,
+      '',
+      `${totalQty} หน่วย`,
+      '',
+      `${totalAmount.toLocaleString()} บาท`,
+    ])
+  }
 
   return {
     docType: 'purchasing',
-    title: 'ใบขอสั่งซื้ออะไหล่และอุปกรณ์ / PURCHASE REQUEST',
-    docNo: pr.PRNumber || pr.OrderNo || `PR-${pr.id || pr._id}`,
-    docDate: pr.RequestDate || pr.created_at || new Date(),
-    status: pr.Status || 'รออนุมัติ',
+    title: 'ใบสั่งซื้ออะไหล่และอุปกรณ์ / PURCHASE ORDER',
+    docNo,
+    docDate,
+    status: pr.Status || 'ORDERED',
     priority: pr.Priority || 'ปกติ',
-    remarks: pr.Notes || pr.Reason || '',
+    remarks: pr.Notes || pr.Note || pr.Reason || '',
     sections: [
       {
-        title: 'ข้อมูลการขอสั่งซื้อ (Purchase Request Information)',
+        title: 'ข้อมูลการสั่งซื้อ (Purchase Order Information)',
         fields: [
-          { label: 'เลขที่เอกสาร (PR No.)', value: pr.PRNumber || pr.OrderNo, mono: true },
-          { label: 'วันที่ขอสั่งซื้อ (Date)', value: safeFormatDate(pr.RequestDate, 'dd/MM/yyyy') },
-          { label: 'ผู้ขอสั่งซื้อ (Requester)', value: pr.Requester || pr.CreatedBy || '—' },
-          { label: 'แผนก (Department)', value: pr.Department || 'ฝ่ายซ่อมบำรุง (Maintenance)' },
-          { label: 'ความเร่งด่วน (Urgency)', value: pr.Priority || 'ปกติ' },
-          { label: 'สถานะการอนุมัติ (Status)', value: pr.Status || 'รออนุมัติ' },
+          { label: 'เลขที่เอกสาร (PO/PR No.)', value: docNo, mono: true },
+          { label: 'วันที่สั่งซื้อ (Order Date)', value: safeFormatDate(docDate, 'dd/MM/yyyy') },
+          { label: 'ผู้จัดจำหน่าย (Supplier)', value: pr.Supplier || '—' },
+          { label: 'สถานะ (Status)', value: pr.Status || 'ORDERED' },
+          { label: 'ผู้ขอ/ผู้บันทึก', value: pr.Requester || pr.CreatedBy || 'ฝ่ายซ่อมบำรุง' },
+          { label: 'เบอร์ติดต่อ/LINE', value: [pr.Phone, pr.Line].filter(Boolean).join(' / ') || '—' },
         ],
       },
       {
         title: 'รายการสินค้าที่ต้องการสั่งซื้อ (Requested Items & Costs)',
         fields: [
-          { label: 'รายการอะไหล่ / สินค้า', value: pr.ItemName || pr.PartName || '—', full: true },
-          { label: 'จำนวนที่ขอสั่งซื้อ', value: `${qty} ${pr.Unit || 'หน่วย'}` },
-          { label: 'ราคาประเมินต่อหน่วย', value: unitPrice ? `${unitPrice.toLocaleString()} บาท` : '—' },
+          { label: 'รายการอะไหล่ / สินค้า', value: primaryItemName, full: true },
+          { label: 'จำนวนรวมที่สั่งซื้อ', value: `${totalQty} ${pr.Unit || 'หน่วย'}` },
           { label: 'ยอดรวมประเมิน (Total Amount)', value: totalAmount ? `${totalAmount.toLocaleString()} บาท` : '—' },
-          { label: 'เหตุผลความจำเป็น', value: pr.Reason || 'ใช้สำหรับงานซ่อมบำรุงเครื่องจักร', full: true },
+          { label: 'เหตุผลความจำเป็น / รายละเอียด', value: pr.Detail || pr.Reason || 'ใช้สำหรับงานซ่อมบำรุงเครื่องจักร', full: true },
         ],
       },
     ],
+    tableData: {
+      title: 'รายการอะไหล่และสินค้าที่สั่งซื้อ (Ordered Items)',
+      headers: ['ลำดับ', 'รหัสอะไหล่', 'รายการอะไหล่ / สเปก', 'หมวดหมู่', 'จำนวน', 'ราคา/หน่วย (บาท)', 'ราคารวม (บาท)'],
+      rows: tableRows,
+    },
     images,
     signatories: [
-      { title: 'ผู้ขอสั่งซื้อ', name: pr.Requester || '', date: safeFormatDate(pr.RequestDate || pr.created_at, 'dd/MM/yyyy') },
+      { title: 'ผู้จัดทำ / ผู้ขอซื้อ', name: pr.Requester || pr.CreatedBy || '', date: safeFormatDate(docDate, 'dd/MM/yyyy') },
       { title: 'หัวหน้าแผนกตรวจสอบ', name: '', date: '' },
       { title: 'ฝ่ายจัดซื้อตรวจสอบราคา', name: '', date: '' },
       { title: 'ผู้จัดการโรงงานอนุมัติ', name: '', date: '' },

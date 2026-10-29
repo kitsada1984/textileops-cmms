@@ -5,6 +5,13 @@ import {
   buildStockMovementPartNameOptions,
   findMatchingSparePart,
 } from '../utils/stockMovementMC'
+import {
+  createEmptyPOItem,
+  parsePOItems,
+  calculatePOTotals,
+  buildPurchasePayload,
+  getPOAppliedItems,
+} from './Purchasing'
 
 describe('Purchasing Part Auto-Fill & Auto-Creation Logic', () => {
   const mockParts = [
@@ -110,5 +117,108 @@ describe('Purchasing Part Auto-Fill & Auto-Creation Logic', () => {
     expect(newPartPayload.Part_Name_EN).toBe('มู่เล่ 11600')
     expect(newPartPayload.Stock_Qty).toBe(0)
     expect(newPartPayload.Status).toBe('OUT_OF_STOCK')
+  })
+
+  describe('Multi-Item PO Support & Backward Compatibility', () => {
+    it('creates an empty PO item with sensible defaults', () => {
+      const item = createEmptyPOItem()
+      expect(item.id).toMatch(/^item-/)
+      expect(item.Qty).toBe(1)
+      expect(item.Part_Code).toBe('')
+      expect(item.Part_Name_EN).toBe('')
+    })
+
+    it('parsePOItems handles legacy single-item PO seamlessly', () => {
+      const legacyRow = {
+        PO_Number: 'PO-2026-LEGACY',
+        Part_Code: 'SP-001',
+        Part_Name_EN: 'Timing Belt 5M',
+        Category: 'สายพานส่งด้าย',
+        Qty: 3,
+        UnitPrice: 350,
+        Total_Amount: 1050,
+        Detail: 'สายพานเครื่องถัก',
+        Items: null,
+      }
+
+      const items = parsePOItems(legacyRow)
+      expect(items).toHaveLength(1)
+      expect(items[0].Part_Code).toBe('SP-001')
+      expect(items[0].Part_Name_EN).toBe('Timing Belt 5M')
+      expect(items[0].Category).toBe('สายพานส่งด้าย')
+      expect(items[0].Qty).toBe(3)
+      expect(items[0].UnitPrice).toBe(350)
+      expect(items[0].Total_Amount).toBe(1050)
+    })
+
+    it('parsePOItems handles multi-item PO stored as JSON string', () => {
+      const multiRow = {
+        PO_Number: 'PO-2026-MULTI',
+        Items: JSON.stringify([
+          { Part_Code: 'SP-001', Part_Name_EN: 'Item 1', Category: 'สายพาน', Qty: 2, UnitPrice: 350, Total_Amount: 700 },
+          { Part_Code: 'SP-002', Part_Name_EN: 'Item 2', Category: 'ลูกปืน', Qty: 5, UnitPrice: 120, Total_Amount: 600 },
+        ]),
+      }
+
+      const items = parsePOItems(multiRow)
+      expect(items).toHaveLength(2)
+      expect(items[0].Part_Code).toBe('SP-001')
+      expect(items[0].Qty).toBe(2)
+      expect(items[1].Part_Code).toBe('SP-002')
+      expect(items[1].Qty).toBe(5)
+    })
+
+    it('calculatePOTotals computes totalQty and totalAmount accurately', () => {
+      const items = [
+        { Part_Code: 'SP-001', Qty: 2, UnitPrice: 350, Total_Amount: 700 },
+        { Part_Code: 'SP-002', Qty: 5, UnitPrice: 120, Total_Amount: 600 },
+        { Part_Code: 'SP-030', Qty: 1, UnitPrice: 1000, Total_Amount: 1000 },
+      ]
+
+      const totals = calculatePOTotals(items)
+      expect(totals.totalQty).toBe(8)
+      expect(totals.totalAmount).toBe(2300)
+    })
+
+    it('buildPurchasePayload aggregates totals and serializes Items to JSON', () => {
+      const form = {
+        PO_Number: 'PO-2026-BUILD',
+        Supplier: 'ไทยเบลท์ จำกัด',
+        Status: 'ORDERED',
+        Note: 'ด่วนมาก',
+        Items: [
+          { Part_Code: 'SP-001', Part_Name_EN: 'Timing Belt 5M', Category: 'สายพาน', Qty: 2, UnitPrice: 350, Total_Amount: 700 },
+          { Part_Code: 'SP-002', Part_Name_EN: 'Bearing 6204', Category: 'ลูกปืน', Qty: 5, UnitPrice: 120, Total_Amount: 600 },
+        ],
+      }
+
+      const payload = buildPurchasePayload(form)
+      expect(payload.PO_Number).toBe('PO-2026-BUILD')
+      expect(payload.Qty).toBe(7)
+      expect(payload.Total_Amount).toBe(1300)
+      expect(payload.Detail).toBe('SP-001, SP-002 (+2 รายการ)')
+      expect(typeof payload.Items).toBe('string')
+      const parsedItems = JSON.parse(payload.Items)
+      expect(parsedItems).toHaveLength(2)
+      expect(payload.Note).toContain('PartCode: SP-001')
+      expect(payload.Note).toContain('Category: สายพาน')
+    })
+
+    it('getPOAppliedItems retrieves applied inventory mapping or falls back to legacy', () => {
+      // Modern multi-item Note
+      const modernRow = {
+        Note: 'Order details\nInventoryAppliedItems: {"SP-001":2,"SP-002":5}',
+      }
+      expect(getPOAppliedItems(modernRow)).toEqual({ 'SP-001': 2, 'SP-002': 5 })
+
+      // Legacy single-item Note
+      const legacyRow = {
+        Note: 'Legacy notes\nInventoryAppliedQty: 4\nInventoryAppliedPartCode: SP-003',
+      }
+      expect(getPOAppliedItems(legacyRow)).toEqual({ 'SP-003': 4 })
+
+      // Empty Note
+      expect(getPOAppliedItems({ Note: '' })).toEqual({})
+    })
   })
 })

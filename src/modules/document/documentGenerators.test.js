@@ -344,6 +344,36 @@ describe('Document Generation Deep Module', () => {
       const itemsSection = result.sections.find((s) => s.title.includes('Requested Items & Costs'))
       const totalField = itemsSection.fields.find((f) => f.label.includes('Total Amount'))
       expect(totalField.value).toBe('6,000 บาท')
+      expect(result.tableData.rows).toHaveLength(1)
+    })
+
+    it('generatePurchasingPdfProps renders multi-item purchase order tableData and totals correctly', () => {
+      const po = {
+        id: 'po-101',
+        PO_Number: 'PO-2026-MULTI',
+        Supplier: 'ไทยเบลท์ จำกัด',
+        Status: 'ORDERED',
+        Items: JSON.stringify([
+          { Part_Code: 'SP-001', Part_Name_EN: 'Timing Belt 5M', Category: 'สายพาน', Qty: 2, UnitPrice: 350, Total_Amount: 700 },
+          { Part_Code: 'SP-002', Part_Name_EN: 'Bearing 6204', Category: 'ลูกปืน', Qty: 5, UnitPrice: 120, Total_Amount: 600 },
+          { Part_Code: 'SP-030', Part_Name_EN: 'มอเตอร์ขับสายพาน', Category: 'มอเตอร์', Qty: 1, UnitPrice: 1000, Total_Amount: 1000 },
+        ]),
+      }
+
+      const result = generatePurchasingPdfProps(po)
+      expect(result).not.toBeNull()
+      expect(result.tableData).toBeDefined()
+      expect(result.tableData.headers).toContain('รหัสอะไหล่')
+      expect(result.tableData.headers).toContain('ราคารวม (บาท)')
+      // 3 item rows + 1 total summary row = 4 rows
+      expect(result.tableData.rows).toHaveLength(4)
+      expect(result.tableData.rows[0][1]).toBe('SP-001')
+      expect(result.tableData.rows[0][4]).toBe('2 หน่วย')
+      expect(result.tableData.rows[1][1]).toBe('SP-002')
+      expect(result.tableData.rows[2][1]).toBe('SP-030')
+      expect(result.tableData.rows[3][0]).toBe('รวม')
+      expect(result.tableData.rows[3][4]).toBe('8 หน่วย')
+      expect(result.tableData.rows[3][6]).toBe('2,300 บาท')
     })
   })
 
