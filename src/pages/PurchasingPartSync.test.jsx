@@ -271,5 +271,59 @@ describe('Purchasing Part Auto-Fill & Auto-Creation Logic', () => {
       expect(quickReceivePayload.Items[0].Part_Code).toBe('SP-002')
       expect(quickReceivePayload.Items[0].Qty).toBe(10)
     })
+
+    it('buildQuickReceivePayload keeps Status as ORDERED when only partial items are selected', () => {
+      const multiPo = {
+        PO_Number: 'PO-2026-PARTIAL-01',
+        Supplier: 'Mayer',
+        Status: 'ORDERED',
+        Items: [
+          { Part_Code: 'SP-063', Part_Name_EN: 'Control Board A', Qty: 1 },
+          { Part_Code: 'SP-064', Part_Name_EN: 'Control Board B', Qty: 2 },
+          { Part_Code: 'SP-065', Part_Name_EN: 'Fabric Sensor', Qty: 1 },
+          { Part_Code: 'SP-066', Part_Name_EN: 'Conversion Kit', Qty: 1 },
+        ],
+      }
+
+      // Receive only SP-063 and SP-064
+      const partialPayload = buildQuickReceivePayload({
+        po: multiPo,
+        receivedDate: '2026-10-29',
+        note: 'มาส่งรอบแรก 2 รายการ',
+        selectedItemCodes: ['SP-063', 'SP-064'],
+      })
+
+      expect(partialPayload.Status).toBe('ORDERED')
+      expect(partialPayload.Received_Date).toBe('2026-10-29')
+      expect(partialPayload.Note).toContain('[รับของบางส่วนเมื่อ 2026-10-29 (2/4 รายการ)]: มาส่งรอบแรก 2 รายการ')
+    })
+
+    it('buildQuickReceivePayload sets Status to RECEIVED when remaining unreceived items are received', () => {
+      const partialPo = {
+        PO_Number: 'PO-2026-PARTIAL-02',
+        Supplier: 'Mayer',
+        Status: 'ORDERED',
+        // Previously SP-063 and SP-064 were received
+        Note: 'InventoryAppliedItems:{"SP-063":1,"SP-064":2}',
+        Items: [
+          { Part_Code: 'SP-063', Part_Name_EN: 'Control Board A', Qty: 1 },
+          { Part_Code: 'SP-064', Part_Name_EN: 'Control Board B', Qty: 2 },
+          { Part_Code: 'SP-065', Part_Name_EN: 'Fabric Sensor', Qty: 1 },
+          { Part_Code: 'SP-066', Part_Name_EN: 'Conversion Kit', Qty: 1 },
+        ],
+      }
+
+      // Receive the remaining items SP-065 and SP-066
+      const completePayload = buildQuickReceivePayload({
+        po: partialPo,
+        receivedDate: '2026-10-30',
+        note: 'มาส่งรอบสองครบถ้วน',
+        selectedItemCodes: ['SP-065', 'SP-066'],
+      })
+
+      expect(completePayload.Status).toBe('RECEIVED')
+      expect(completePayload.Received_Date).toBe('2026-10-30')
+      expect(completePayload.Note).toContain('[รับของเมื่อ 2026-10-30]: มาส่งรอบสองครบถ้วน')
+    })
   })
 })

@@ -175,19 +175,26 @@ export function calculatePOTotals(items = []) {
   return { totalQty, totalAmount }
 }
 
-function StatusPill({ value }) {
+function StatusPill({ value, row }) {
   const cfg = STATUS_CFG[value] || {}
+  const appliedItems = row ? getPOAppliedItems(row) : {}
+  const items = row ? parsePOItems(row) : []
+  const appliedCount = Object.keys(appliedItems).filter((k) => toNumber(appliedItems[k]) > 0).length
+  const totalCount = items.length
+
+  const isPartial = value === 'ORDERED' && totalCount > 0 && appliedCount > 0 && appliedCount < totalCount
+
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
       style={{
-        background: cfg.bg || 'var(--bg-card)',
-        border: `1px solid ${cfg.border || 'var(--border)'}`,
-        color: cfg.color || 'var(--text-500)',
+        background: isPartial ? 'rgba(245, 158, 11, 0.12)' : (cfg.bg || 'var(--bg-card)'),
+        border: `1px solid ${isPartial ? 'rgba(245, 158, 11, 0.35)' : (cfg.border || 'var(--border)')}`,
+        color: isPartial ? '#d97706' : (cfg.color || 'var(--text-500)'),
       }}
     >
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot || 'currentColor', flexShrink: 0 }} />
-      {STATUS_TH[value] || value}
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: isPartial ? '#d97706' : (cfg.dot || 'currentColor'), flexShrink: 0 }} />
+      {isPartial ? `รอของ (รับแล้ว ${appliedCount}/${totalCount})` : (STATUS_TH[value] || value)}
     </span>
   )
 }
@@ -393,17 +400,41 @@ export function buildPurchasePayload(form = {}) {
   })
 }
 
-export function buildQuickReceivePayload({ po, receivedDate, note = '' } = {}) {
+export function buildQuickReceivePayload({ po, receivedDate, note = '', selectedItemCodes = null } = {}) {
   if (!po) return null
   const items = parsePOItems(po)
   const cleanNote = stripHiddenNoteMeta(po.Note || '')
-  const nextNote = note && note.trim()
-    ? (cleanNote ? `${cleanNote}\n[รับของเมื่อ ${receivedDate}]: ${note.trim()}` : `[รับของเมื่อ ${receivedDate}]: ${note.trim()}`)
+  const previouslyApplied = getPOAppliedItems(po)
+
+  const allCodes = items.map((it) => String(it.Part_Code || '').trim()).filter(Boolean)
+
+  const effectiveSelectedCodes = Array.isArray(selectedItemCodes)
+    ? selectedItemCodes.map((c) => String(c).trim()).filter(Boolean)
+    : allCodes.filter((c) => !previouslyApplied[c] || previouslyApplied[c] <= 0)
+
+  const combinedReceivedCodes = new Set([
+    ...Object.keys(previouslyApplied).filter((k) => previouslyApplied[k] > 0),
+    ...effectiveSelectedCodes,
+  ])
+
+  const isAllReceived = allCodes.length > 0 && allCodes.every((c) => combinedReceivedCodes.has(c))
+  const isPartial = !isAllReceived && effectiveSelectedCodes.length > 0
+
+  let summaryText = ''
+  if (isPartial) {
+    const noteText = note && note.trim() ? `: ${note.trim()}` : ''
+    summaryText = `[รับของบางส่วนเมื่อ ${receivedDate} (${effectiveSelectedCodes.length}/${allCodes.length} รายการ)]${noteText}`
+  } else if (note && note.trim()) {
+    summaryText = `[รับของเมื่อ ${receivedDate}]: ${note.trim()}`
+  }
+
+  const nextNote = summaryText
+    ? (cleanNote ? `${cleanNote}\n${summaryText}` : summaryText)
     : cleanNote
 
   return {
     ...po,
-    Status: 'RECEIVED',
+    Status: isAllReceived ? 'RECEIVED' : (po.Status || 'ORDERED'),
     Received_Date: receivedDate,
     Items: items,
     Note: appendPOMetaToNote(nextNote, {
@@ -471,6 +502,7 @@ export default function Purchasing() {
   const [pdfItem, setPdfItem] = useState(null)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [receiveItem, setReceiveItem] = useState(null)
+  const [selectedReceiveCodes, setSelectedReceiveCodes] = useState([])
   const [receiveDate, setReceiveDate] = useState('')
   const [receiveNote, setReceiveNote] = useState('')
   const [receiving, setReceiving] = useState(false)
@@ -910,16 +942,32 @@ export default function Purchasing() {
     })
   }
 
-  const syncInventoryOnStatusChange = async (nextForm, currentRecord) => {
+  const syncInventoryOnStatusChange = async (nextForm, currentRecord, selectedCodes = null) => {
     const nextStatus = nextForm.Status
     const previousStatus = currentRecord?.Status || 'ORDERED'
     const items = parsePOItems(nextForm)
     if (!items || items.length === 0) return nextForm
 
     const previousAppliedItems = getPOAppliedItems(currentRecord)
-    const nextAppliedItems = {}
+    const nextAppliedItems = { ...previousAppliedItems }
 
-    if (nextStatus === 'RECEIVED') {
+    if (Array.isArray(selectedCodes)) {
+      // Partial or specific selected items receive
+      for (const item of items) {
+        const code = String(item.Part_Code || '').trim()
+        if (!code || !selectedCodes.includes(code)) continue
+
+        const targetQty = toNumber(item.Qty)
+        const prevQty = toNumber(previousAppliedItems[code])
+        const delta = targetQty - prevQty
+
+        if (delta !== 0) {
+          await updateSparePartStock(code, delta, nextForm, item)
+        }
+        nextAppliedItems[code] = targetQty
+      }
+      await loadParts()
+    } else if (nextStatus === 'RECEIVED') {
       for (const item of items) {
         const code = String(item.Part_Code || '').trim()
         if (!code) continue
@@ -954,6 +1002,9 @@ export default function Purchasing() {
         if (prevQty > 0) {
           await updateSparePartStock(prevCode, -prevQty, nextForm, { Part_Code: prevCode })
         }
+      }
+      for (const key of Object.keys(nextAppliedItems)) {
+        delete nextAppliedItems[key]
       }
       await loadParts()
     }
@@ -1088,7 +1139,14 @@ export default function Purchasing() {
 
   const openQuickReceive = (po) => {
     if (!po) return
+    const items = parsePOItems(po)
+    const appliedItems = getPOAppliedItems(po)
+    const unappliedCodes = items
+      .map((it) => String(it.Part_Code || '').trim())
+      .filter((code) => code && (!appliedItems[code] || appliedItems[code] <= 0))
+
     setReceiveItem(po)
+    setSelectedReceiveCodes(unappliedCodes)
     setReceiveDate(format(new Date(), 'yyyy-MM-dd'))
     setReceiveNote('')
   }
@@ -1100,6 +1158,11 @@ export default function Purchasing() {
       return
     }
 
+    if (!selectedReceiveCodes || selectedReceiveCodes.length === 0) {
+      toast.warning('กรุณาเลือกรายการ', 'กรุณาติ๊กเลือกรายการอะไหล่ที่ต้องการรับอย่างน้อย 1 รายการ')
+      return
+    }
+
     setReceiving(true)
     try {
       const currentRecord = receiveItem
@@ -1108,10 +1171,11 @@ export default function Purchasing() {
         po: receiveItem,
         receivedDate: receiveDate,
         note: receiveNote,
+        selectedItemCodes: selectedReceiveCodes,
       })
 
-      // Sync inventory for all items in the PO
-      const syncedForm = await syncInventoryOnStatusChange(formToSync, currentRecord)
+      // Sync inventory for selected items
+      const syncedForm = await syncInventoryOnStatusChange(formToSync, currentRecord, selectedReceiveCodes)
       const payload = buildPurchasePayload({
         ...syncedForm,
         LastUpdated: format(new Date(), 'yyyy-MM-dd'),
@@ -1119,17 +1183,19 @@ export default function Purchasing() {
 
       await saveWithColumnFallback(payload)
 
+      const isComplete = syncedForm.Status === 'RECEIVED'
       toast.success(
-        'รับสินค้าเข้าสต็อกสำเร็จ',
-        `PO: ${receiveItem.PO_Number} (${items.length} รายการ, วันที่รับ: ${receiveDate})`
+        isComplete ? 'รับสินค้าเข้าสต็อกครบทุกรายการแล้ว' : 'รับสินค้าเข้าสต็อกบางส่วนแล้ว',
+        `PO: ${receiveItem.PO_Number} (รับ ${selectedReceiveCodes.length} จาก ${items.length} รายการ, วันที่รับ: ${receiveDate})`
       )
 
       if (detailRec && (detailRec.id || detailRec._id) === (receiveItem.id || receiveItem._id)) {
         setDetailRec({
           ...detailRec,
           ...syncedForm,
-          Status: 'RECEIVED',
+          Status: syncedForm.Status,
           Received_Date: receiveDate,
+          Note: syncedForm.Note,
         })
       }
 
@@ -1165,7 +1231,7 @@ export default function Purchasing() {
     }
 
     if (col.field === 'Status') {
-      return <StatusPill value={val} />
+      return <StatusPill value={val} row={row} />
     }
 
     if (col.field === 'Part_Code') {
@@ -1457,7 +1523,7 @@ export default function Purchasing() {
         subtitle={detailRec ? `${getPOPartCode(detailRec)} · ${getPOPartName(detailRec)}` : ''}
         icon={ShoppingCart}
         accentColor="#2563eb"
-        badge={detailRec && <StatusPill value={detailRec.Status} />}
+        badge={detailRec && <StatusPill value={detailRec.Status} row={detailRec} />}
         canEdit={canEdit}
         canDelete={canDelete}
         extraActions={
@@ -1959,7 +2025,7 @@ export default function Purchasing() {
               type="button"
               className="btn-primary px-5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
               onClick={confirmQuickReceive}
-              disabled={receiving}
+              disabled={receiving || selectedReceiveCodes.length === 0}
             >
               {receiving ? (
                 <>
@@ -1969,7 +2035,9 @@ export default function Purchasing() {
               ) : (
                 <>
                   <Check size={14} />
-                  <span>ยืนยันรับของเข้าสต็อก</span>
+                  <span>
+                    ยืนยันรับของเข้าสต็อก{selectedReceiveCodes.length > 0 ? ` (${selectedReceiveCodes.length} รายการ)` : ''}
+                  </span>
                 </>
               )}
             </button>
@@ -1979,6 +2047,14 @@ export default function Purchasing() {
         {receiveItem && (() => {
           const items = parsePOItems(receiveItem)
           const totals = calculatePOTotals(items)
+          const appliedItems = getPOAppliedItems(receiveItem)
+          const unappliedCodes = items
+            .map((it) => String(it.Part_Code || '').trim())
+            .filter((code) => code && (!appliedItems[code] || appliedItems[code] <= 0))
+
+          const selectedItems = items.filter((it) => selectedReceiveCodes.includes(String(it.Part_Code || '').trim()))
+          const selectedTotalQty = selectedItems.reduce((sum, it) => sum + (Number(it.Qty) || 1), 0)
+
           return (
             <div className="space-y-4 text-xs">
               {/* Header Card */}
@@ -1999,41 +2075,141 @@ export default function Purchasing() {
                 )}
               </div>
 
-              {/* Items summary */}
+              {/* Items checklist */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                  <span>รายการอะไหล่ที่จะรับเข้าสต็อก ({items.length} รายการ)</span>
-                  <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">
-                    รวม {totals.totalQty.toLocaleString()} ชิ้น
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center gap-1.5">
+                    <span>เลือกรายการที่จะรับเข้าสต็อก</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 font-mono">
+                      {selectedReceiveCodes.length} / {unappliedCodes.length} รายการ
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 hidden sm:inline">
+                      ↔ เลื่อนซ้าย-ขวาได้
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReceiveCodes(unappliedCodes)}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 dark:text-blue-400 font-semibold underline cursor-pointer"
+                    >
+                      เลือกทั้งหมด
+                    </button>
+                    <span className="text-slate-300 dark:text-slate-700">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReceiveCodes([])}
+                      className="text-[10px] text-slate-500 hover:text-slate-700 dark:text-slate-400 font-semibold underline cursor-pointer"
+                    >
+                      ล้างการเลือก
+                    </button>
+                  </div>
                 </div>
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10.5px] uppercase font-bold">
-                        <th className="py-2 px-2.5">ลำดับ</th>
+
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto overflow-y-auto max-h-56 shadow-2xs">
+                  <table className="w-full text-left text-xs border-collapse min-w-[480px]">
+                    <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10.5px] uppercase font-bold z-10">
+                      <tr>
+                        <th className="py-2 px-2.5 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={unappliedCodes.length > 0 && selectedReceiveCodes.length === unappliedCodes.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedReceiveCodes(unappliedCodes)
+                              } else {
+                                setSelectedReceiveCodes([])
+                              }
+                            }}
+                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                            title="เลือก/ยกเลิกทั้งหมด"
+                          />
+                        </th>
+                        <th className="py-2 px-2">ลำดับ</th>
                         <th className="py-2 px-2.5">รหัสอะไหล่</th>
                         <th className="py-2 px-2.5">ชื่ออะไหล่</th>
+                        <th className="py-2 px-2.5 text-center">สถานะ</th>
                         <th className="py-2 px-2.5 text-right">จำนวน</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-[11px]">
-                      {items.map((it, idx) => (
-                        <tr key={it.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                          <td className="py-1.5 px-2.5 font-mono text-slate-400">{idx + 1}</td>
-                          <td className="py-1.5 px-2.5 font-mono font-bold text-blue-600 dark:text-blue-400">
-                            {it.Part_Code || '—'}
-                          </td>
-                          <td className="py-1.5 px-2.5 font-medium text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
-                            {it.Part_Name_EN || it.Detail || '—'}
-                          </td>
-                          <td className="py-1.5 px-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-100">
-                            {Number(it.Qty || 1).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
+                      {items.map((it, idx) => {
+                        const code = String(it.Part_Code || '').trim()
+                        const isAlreadyApplied = Boolean(code && appliedItems[code] && appliedItems[code] > 0)
+                        const isSelected = selectedReceiveCodes.includes(code)
+                        const qty = Number(it.Qty || 1)
+
+                        return (
+                          <tr
+                            key={it.id || idx}
+                            className={`transition-colors ${
+                              isAlreadyApplied
+                                ? 'bg-slate-50/50 dark:bg-slate-900/30 opacity-70'
+                                : isSelected
+                                ? 'bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-50/70'
+                                : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
+                            }`}
+                          >
+                            <td className="py-1.5 px-2.5 text-center">
+                              {isAlreadyApplied ? (
+                                <input
+                                  type="checkbox"
+                                  checked
+                                  disabled
+                                  className="rounded border-slate-300 text-slate-400 opacity-60 cursor-not-allowed"
+                                  title="รับเข้าสต็อกไปแล้ว"
+                                />
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    if (isSelected) {
+                                      setSelectedReceiveCodes(selectedReceiveCodes.filter((c) => c !== code))
+                                    } else {
+                                      setSelectedReceiveCodes([...selectedReceiveCodes, code])
+                                    }
+                                  }}
+                                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                              )}
+                            </td>
+                            <td className="py-1.5 px-2 font-mono text-slate-400">{idx + 1}</td>
+                            <td className="py-1.5 px-2.5 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                              {it.Part_Code || '—'}
+                            </td>
+                            <td className="py-1.5 px-2.5 font-medium text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                              {it.Part_Name_EN || it.Detail || '—'}
+                            </td>
+                            <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
+                              {isAlreadyApplied ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                                  ✓ รับแล้ว
+                                </span>
+                              ) : isSelected ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                  จะรับเข้า
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                  รอของ
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-1.5 px-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                              {qty.toLocaleString()}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+                  <span>💡 ปัดซ้าย-ขวาบนตารางเพื่อดูข้อมูลเพิ่มเติม</span>
+                  <span className="font-mono font-bold text-slate-600 dark:text-slate-300">
+                    เลือกรับ {selectedTotalQty.toLocaleString()} จาก {totals.totalQty.toLocaleString()} ชิ้น
+                  </span>
                 </div>
               </div>
 
@@ -2072,9 +2248,21 @@ export default function Purchasing() {
               {/* Informational Notice */}
               <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px] flex items-start gap-2">
                 <CheckCircle2 size={15} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-                <span>
-                  เมื่อกดยืนยัน ระบบจะปรับสถานะใบสั่งซื้อเป็น <strong>"รับสินค้าแล้ว" (RECEIVED)</strong> และเพิ่มจำนวนสต็อกเข้าคลังอะไหล่ (SparePart & Stock Transactions) ครบทุกรายการทันที
-                </span>
+                <div>
+                  {selectedReceiveCodes.length === unappliedCodes.length && unappliedCodes.length > 0 ? (
+                    <span>
+                      เมื่อกดยืนยัน ระบบจะปรับสถานะใบสั่งซื้อเป็น <strong>"รับสินค้าแล้ว" (RECEIVED)</strong> และเพิ่มจำนวนสต็อกเข้าคลังอะไหล่ ({selectedReceiveCodes.length} รายการ) ทันที
+                    </span>
+                  ) : selectedReceiveCodes.length > 0 ? (
+                    <span>
+                      เมื่อกดยืนยัน ระบบจะเพิ่มสต็อกเฉพาะ <strong>{selectedReceiveCodes.length} รายการที่เลือก</strong> และคงสถานะใบสั่งซื้อเป็น <strong>"รอของ (รับบางส่วน)"</strong> จนกว่าจะรับครบ
+                    </span>
+                  ) : (
+                    <span className="text-amber-700 dark:text-amber-400">
+                      กรุณาเลือกรายการที่ต้องการรับเข้าสต็อกอย่างน้อย 1 รายการ
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )
