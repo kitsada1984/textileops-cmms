@@ -296,32 +296,39 @@ function appendPOMetaToNote(note = '', {
   ].filter(Boolean).join('\n')
 }
 
-function getPOImageUrl(row = {}) {
+function getPOImageUrl(row) {
+  if (!row) return ''
   return row.ImageUrl || extractHiddenNoteValue(row.Note, IMAGE_NOTE_PREFIX) || ''
 }
 
-function getPOCategory(row = {}) {
+function getPOCategory(row) {
+  if (!row) return ''
   return row.Category || extractHiddenNoteValue(row.Note, CATEGORY_NOTE_PREFIX) || ''
 }
 
-function getPOPartCode(row = {}) {
+function getPOPartCode(row) {
+  if (!row) return ''
   return row.Part_Code || extractHiddenNoteValue(row.Note, PART_CODE_NOTE_PREFIX) || ''
 }
 
-function getPOPartName(row = {}) {
+function getPOPartName(row) {
+  if (!row) return ''
   return row.Part_Name_EN || extractHiddenNoteValue(row.Note, PART_NAME_NOTE_PREFIX) || row.Detail || ''
 }
 
-function getPOAppliedQty(row = {}) {
+function getPOAppliedQty(row) {
+  if (!row) return 0
   return toNumber(extractHiddenNoteValue(row.Note, APPLIED_QTY_NOTE_PREFIX))
 }
 
-function getPOAppliedPartCode(row = {}) {
+function getPOAppliedPartCode(row) {
+  if (!row) return ''
   return extractHiddenNoteValue(row.Note, APPLIED_PART_NOTE_PREFIX) || getPOPartCode(row)
 }
 
-export function getPOAppliedItems(row = {}) {
-  const raw = extractHiddenNoteValue(row?.Note, APPLIED_ITEMS_NOTE_PREFIX)
+export function getPOAppliedItems(row) {
+  if (!row) return {}
+  const raw = extractHiddenNoteValue(row.Note, APPLIED_ITEMS_NOTE_PREFIX)
   if (raw) {
     try {
       const parsed = JSON.parse(raw)

@@ -220,6 +220,10 @@ describe('Purchasing Part Auto-Fill & Auto-Creation Logic', () => {
 
       // Empty Note
       expect(getPOAppliedItems({ Note: '' })).toEqual({})
+
+      // Null and undefined safety (prevent Cannot read properties of null (reading 'Note'))
+      expect(getPOAppliedItems(null)).toEqual({})
+      expect(getPOAppliedItems(undefined)).toEqual({})
     })
 
     it('buildQuickReceivePayload prepares PO with RECEIVED status, received date, and optional note', () => {
