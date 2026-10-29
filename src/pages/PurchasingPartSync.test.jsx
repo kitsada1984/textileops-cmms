@@ -11,6 +11,7 @@ import {
   calculatePOTotals,
   buildPurchasePayload,
   buildQuickReceivePayload,
+  buildCancelPOPayload,
   getPOAppliedItems,
 } from './Purchasing'
 
@@ -324,6 +325,54 @@ describe('Purchasing Part Auto-Fill & Auto-Creation Logic', () => {
       expect(completePayload.Status).toBe('RECEIVED')
       expect(completePayload.Received_Date).toBe('2026-10-30')
       expect(completePayload.Note).toContain('[รับของเมื่อ 2026-10-30]: มาส่งรอบสองครบถ้วน')
+    })
+
+    it('buildCancelPOPayload sets Status to CANCELLED and appends cancellation reason to Note', () => {
+      const po = {
+        PO_Number: 'PO-2026-CANCEL-01',
+        Supplier: 'Mayer',
+        Status: 'ORDERED',
+        Note: 'งานด่วนมาก',
+        Items: [
+          { Part_Code: 'SP-063', Part_Name_EN: 'Control Board A', Qty: 1 },
+        ],
+      }
+
+      const cancelledPayload = buildCancelPOPayload({
+        po,
+        cancelDate: '2026-10-29',
+        reason: 'ซัพพลายเออร์แจ้งเลิกผลิต',
+      })
+
+      expect(cancelledPayload.Status).toBe('CANCELLED')
+      expect(cancelledPayload.LastUpdated).toBe('2026-10-29')
+      expect(cancelledPayload.Note).toContain('[ยกเลิกใบสั่งซื้อเมื่อ 2026-10-29]: ซัพพลายเออร์แจ้งเลิกผลิต')
+      expect(cancelledPayload.Note).toContain('งานด่วนมาก')
+    })
+
+    it('buildCancelPOPayload preserves existing InventoryAppliedItems metadata when partially received', () => {
+      const partiallyReceivedPO = {
+        PO_Number: 'PO-2026-CANCEL-PARTIAL',
+        Supplier: 'Mayer',
+        Status: 'ORDERED',
+        Note: 'InventoryAppliedItems:{"SP-063":1}\n[รับของบางส่วนเมื่อ 2026-10-28 (1/2 รายการ)]',
+        Items: [
+          { Part_Code: 'SP-063', Part_Name_EN: 'Control Board A', Qty: 1 },
+          { Part_Code: 'SP-064', Part_Name_EN: 'Control Board B', Qty: 2 },
+        ],
+      }
+
+      const cancelledPayload = buildCancelPOPayload({
+        po: partiallyReceivedPO,
+        cancelDate: '2026-10-29',
+        reason: 'รายการที่ 2 ของขาดตลาด ยกเลิกส่วนที่เหลือ',
+      })
+
+      expect(cancelledPayload.Status).toBe('CANCELLED')
+      expect(cancelledPayload.Note).toContain('[ยกเลิกใบสั่งซื้อเมื่อ 2026-10-29]: รายการที่ 2 ของขาดตลาด ยกเลิกส่วนที่เหลือ')
+      // Applied items for SP-063 must still be preserved so stock history remains intact!
+      const applied = getPOAppliedItems(cancelledPayload)
+      expect(applied).toEqual({ 'SP-063': 1 })
     })
   })
 })

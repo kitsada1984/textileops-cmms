@@ -24,6 +24,8 @@ import {
   User,
   Building,
   FileText,
+  Ban,
+  AlertTriangle,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -449,6 +451,29 @@ export function buildQuickReceivePayload({ po, receivedDate, note = '', selected
   }
 }
 
+export function buildCancelPOPayload({ po, cancelDate, reason = '' } = {}) {
+  if (!po) return null
+  const cleanNote = stripHiddenNoteMeta(po.Note || '')
+  const reasonText = reason && reason.trim() ? `: ${reason.trim()}` : ''
+  const cancelLog = `[ยกเลิกใบสั่งซื้อเมื่อ ${cancelDate}]${reasonText}`
+  const nextNote = cleanNote ? `${cleanNote}\n${cancelLog}` : cancelLog
+
+  return {
+    ...po,
+    Status: 'CANCELLED',
+    LastUpdated: cancelDate,
+    Note: appendPOMetaToNote(nextNote, {
+      imageUrl: getPOImageUrl(po),
+      category: getPOCategory(po),
+      partCode: getPOPartCode(po),
+      partName: getPOPartName(po),
+      appliedQty: getPOAppliedQty(po),
+      appliedPartCode: getPOAppliedPartCode(po),
+      appliedItems: extractHiddenNoteValue(po.Note, APPLIED_ITEMS_NOTE_PREFIX),
+    }),
+  }
+}
+
 function omitKeys(item, keys) {
   const clone = { ...item }
   keys.forEach((key) => {
@@ -506,6 +531,9 @@ export default function Purchasing() {
   const [receiveDate, setReceiveDate] = useState('')
   const [receiveNote, setReceiveNote] = useState('')
   const [receiving, setReceiving] = useState(false)
+  const [cancelPOItem, setCancelPOItem] = useState(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancellingPO, setCancellingPO] = useState(false)
 
   // Summary statistics
   const stats = useMemo(() => {
@@ -1205,6 +1233,49 @@ export default function Purchasing() {
       toast.error('เกิดข้อผิดพลาดในการรับสินค้า', e.message)
     }
     setReceiving(false)
+  }
+
+  const openCancelPOConfirm = (po) => {
+    if (!po) return
+    setCancelPOItem(po)
+    setCancelReason('')
+  }
+
+  const handleConfirmCancelPO = async () => {
+    if (!cancelPOItem) return
+    setCancellingPO(true)
+    try {
+      const todayStr = format(new Date(), 'yyyy-MM-dd')
+      const payload = buildPurchasePayload(
+        buildCancelPOPayload({
+          po: cancelPOItem,
+          cancelDate: todayStr,
+          reason: cancelReason,
+        })
+      )
+
+      await saveWithColumnFallback(payload)
+
+      toast.success(
+        'ยกเลิกใบสั่งซื้อสำเร็จ',
+        `PO: ${cancelPOItem.PO_Number} สถานะเปลี่ยนเป็นยกเลิก (CANCELLED)`
+      )
+
+      if (detailRec && (detailRec.id || detailRec._id) === (cancelPOItem.id || cancelPOItem._id)) {
+        setDetailRec({
+          ...detailRec,
+          Status: 'CANCELLED',
+          Note: payload.Note,
+        })
+      }
+
+      setCancelPOItem(null)
+      setReceiveItem(null)
+      await load()
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาดในการยกเลิกใบสั่งซื้อ', e.message)
+    }
+    setCancellingPO(false)
   }
 
   const renderCellContent = (row, col) => {
@@ -2012,20 +2083,34 @@ export default function Purchasing() {
         title="📦 รับสินค้าเข้าสต็อก (Quick Receive)"
         size="md"
         footer={
-          <div className="flex items-center justify-end gap-2 w-full">
+          <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-outline px-3.5 text-xs"
+                onClick={() => setReceiveItem(null)}
+                disabled={receiving || cancellingPO}
+              >
+                ปิด
+              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 transition-colors flex items-center gap-1 cursor-pointer"
+                  onClick={() => openCancelPOConfirm(receiveItem)}
+                  disabled={receiving || cancellingPO}
+                  title="ยกเลิกใบสั่งซื้อนี้ (มีป๊อปอัปยืนยัน)"
+                >
+                  <Ban size={13} />
+                  <span>ยกเลิกใบสั่งซื้อ</span>
+                </button>
+              )}
+            </div>
             <button
               type="button"
-              className="btn-outline px-4 text-xs"
-              onClick={() => setReceiveItem(null)}
-              disabled={receiving}
-            >
-              {t('cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn-primary px-5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
+              className="btn-primary px-4 sm:px-5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
               onClick={confirmQuickReceive}
-              disabled={receiving || selectedReceiveCodes.length === 0}
+              disabled={receiving || cancellingPO || selectedReceiveCodes.length === 0}
             >
               {receiving ? (
                 <>
@@ -2267,6 +2352,72 @@ export default function Purchasing() {
             </div>
           )
         })()}
+      </Modal>
+
+      {/* ── CANCEL PO CONFIRMATION MODAL (2-STEP) ──────────────── */}
+      <Modal
+        open={!!cancelPOItem}
+        onClose={() => !cancellingPO && setCancelPOItem(null)}
+        title="⚠️ ยืนยันการยกเลิกใบสั่งซื้อ"
+        size="sm"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              className="btn-outline px-4 text-xs"
+              onClick={() => setCancelPOItem(null)}
+              disabled={cancellingPO}
+            >
+              กลับ
+            </button>
+            <button
+              type="button"
+              className="btn-primary px-4 text-xs bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5"
+              onClick={handleConfirmCancelPO}
+              disabled={cancellingPO}
+            >
+              {cancellingPO ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin" />
+                  <span>กำลังยกเลิก PO...</span>
+                </>
+              ) : (
+                <>
+                  <Ban size={14} />
+                  <span>ยืนยันยกเลิกใบสั่งซื้อนี้</span>
+                </>
+              )}
+            </button>
+          </div>
+        }
+      >
+        {cancelPOItem && (
+          <div className="space-y-3.5 text-xs">
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-start gap-3 text-rose-900 dark:text-rose-200">
+              <AlertTriangle size={20} className="text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm">ต้องการยกเลิกใบสั่งซื้อ {cancelPOItem.PO_Number}?</p>
+                <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
+                  เมื่อยืนยัน สถานะของใบสั่งซื้อนี้จะเปลี่ยนเป็น <strong>"ยกเลิก" (CANCELLED)</strong> และปุ่มรับของจะปิดการทำงาน (รายการที่เคยรับเข้าคลังไปแล้วจะยังคงอยู่ในสต็อกตามเดิม)
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="label font-bold text-slate-700 dark:text-slate-300">
+                เหตุผลในการยกเลิก (Optional)
+              </label>
+              <input
+                type="text"
+                className="input text-xs py-1.5 px-3 w-full"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="เช่น สินค้าหมดสต็อก, ซัพพลายเออร์ยกเลิกคำสั่งซื้อ"
+                autoFocus
+              />
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
