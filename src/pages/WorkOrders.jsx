@@ -5110,36 +5110,34 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDailyLogModalOpen(false)}
+                  className="btn-outline px-2.5 sm:px-3.5 py-2 text-xs shrink-0 font-medium"
+                  disabled={dailyLogSubmitting || cancellingJobSubmitting}
+                >
+                  ปิด
+                </button>
+                {canEdit && (
                   <button
                     type="button"
-                    onClick={() => setDailyLogModalOpen(false)}
-                    className="btn-outline px-3.5 text-xs"
+                    onClick={openCancelJobConfirm}
+                    className="px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 transition-colors flex items-center justify-center gap-1 shrink-0 whitespace-nowrap cursor-pointer"
                     disabled={dailyLogSubmitting || cancellingJobSubmitting}
+                    title="ยกเลิกใบสั่งงานนี้ (มีป๊อปอัปยืนยัน)"
                   >
-                    ปิด
+                    <Ban size={13} className="shrink-0" />
+                    <span>ยกเลิกงานนี้</span>
                   </button>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={openCancelJobConfirm}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 transition-colors flex items-center gap-1 cursor-pointer"
-                      disabled={dailyLogSubmitting || cancellingJobSubmitting}
-                      title="ยกเลิกใบสั่งงานนี้ (มีป๊อปอัปยืนยัน)"
-                    >
-                      <Ban size={13} />
-                      <span>ยกเลิกงานนี้</span>
-                    </button>
-                  )}
-                </div>
+                )}
                 <button
                   type="button"
                   onClick={handleSaveDailyLog}
                   disabled={dailyLogSubmitting || cancellingJobSubmitting || !dailyLogDetails.trim()}
-                  className="btn-primary px-5 text-xs flex items-center gap-1.5"
+                  className="btn-primary flex-1 sm:flex-initial sm:ml-auto px-2.5 sm:px-5 py-2 text-xs flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap"
                 >
-                  <Check size={14} />
+                  <Check size={14} className="shrink-0" />
                   <span>{dailyLogSubmitting ? 'กำลังบันทึก...' : '💾 บันทึกความคืบหน้า'}</span>
                 </button>
               </div>
