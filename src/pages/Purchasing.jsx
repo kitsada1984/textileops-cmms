@@ -2083,45 +2083,47 @@ export default function Purchasing() {
         title="📦 รับสินค้าเข้าสต็อก (Quick Receive)"
         size="md"
         footer={
-          <div className="flex flex-wrap items-center justify-between gap-2 w-full">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="btn-outline px-3.5 text-xs"
-                onClick={() => setReceiveItem(null)}
-                disabled={receiving || cancellingPO}
-              >
-                ปิด
-              </button>
-              {canEdit && (
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 transition-colors flex items-center gap-1 cursor-pointer"
-                  onClick={() => openCancelPOConfirm(receiveItem)}
-                  disabled={receiving || cancellingPO}
-                  title="ยกเลิกใบสั่งซื้อนี้ (มีป๊อปอัปยืนยัน)"
-                >
-                  <Ban size={13} />
-                  <span>ยกเลิกใบสั่งซื้อ</span>
-                </button>
-              )}
-            </div>
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full">
             <button
               type="button"
-              className="btn-primary px-4 sm:px-5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
+              className="btn-outline px-2.5 sm:px-3.5 py-2 text-xs shrink-0 font-medium"
+              onClick={() => setReceiveItem(null)}
+              disabled={receiving || cancellingPO}
+            >
+              ปิด
+            </button>
+            {canEdit && (
+              <button
+                type="button"
+                className="px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 transition-colors flex items-center justify-center gap-1 shrink-0 whitespace-nowrap cursor-pointer"
+                onClick={() => openCancelPOConfirm(receiveItem)}
+                disabled={receiving || cancellingPO}
+                title="ยกเลิกใบสั่งซื้อนี้ (มีป๊อปอัปยืนยัน)"
+              >
+                <Ban size={13} className="shrink-0" />
+                <span>ยกเลิกใบสั่งซื้อ</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn-primary flex-1 sm:flex-initial sm:ml-auto px-2.5 sm:px-5 py-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap"
               onClick={confirmQuickReceive}
               disabled={receiving || cancellingPO || selectedReceiveCodes.length === 0}
             >
               {receiving ? (
                 <>
-                  <RefreshCw size={13} className="animate-spin" />
-                  <span>กำลังบันทึกรับของ...</span>
+                  <RefreshCw size={13} className="animate-spin shrink-0" />
+                  <span className="hidden sm:inline">กำลังบันทึกรับของ...</span>
+                  <span className="sm:hidden">กำลังบันทึก...</span>
                 </>
               ) : (
                 <>
-                  <Check size={14} />
-                  <span>
+                  <Check size={14} className="shrink-0" />
+                  <span className="hidden sm:inline">
                     ยืนยันรับของเข้าสต็อก{selectedReceiveCodes.length > 0 ? ` (${selectedReceiveCodes.length} รายการ)` : ''}
+                  </span>
+                  <span className="sm:hidden">
+                    ยืนยันรับของ{selectedReceiveCodes.length > 0 ? ` (${selectedReceiveCodes.length})` : ''}
                   </span>
                 </>
               )}
