@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>TextileOps CMMS · Executive Presentation (Offline Kit)</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+      background: #050811;
+      color: #e2e8f0;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #38bdf8; text-decoration: none; }
+    p, h1, h2, h3, h4, span, div {
+      overflow-wrap: anywhere;
+    }
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(5, 8, 17, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #1e293b;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      max-width: 100%;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      color: #ffffff;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      background: rgba(56, 189, 248, 0.1);
+      color: #38bdf8;
+      max-width: 100%;
+    }
+    .hero {
+      padding: 48px 16px 36px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      font-size: clamp(1.75rem, 6.5vw, 3.8rem);
+      font-weight: 900;
+      line-height: 1.2;
+      color: #ffffff;
+      margin: 16px 0;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #38bdf8, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subhead {
+      font-size: clamp(1rem, 3.5vw, 1.8rem);
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+    }
+    .lead {
+      font-size: clamp(0.875rem, 2.5vw, 1.15rem);
+      color: #94a3b8;
+      max-width: 780px;
+      margin: 0 auto 32px;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto 48px;
+    }
+    @media (min-width: 640px) {
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (min-width: 1024px) {
+      .kpi-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .card {
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      border-radius: 20px;
+      padding: 20px;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-kpi {
+      font-size: clamp(1.75rem, 5vw, 2.5rem);
+      font-weight: 900;
+      font-family: monospace;
+      color: #34d399;
+      margin-bottom: 4px;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .card-sub {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .section {
+      padding: 48px 0;
+      border-top: 1px solid #1e293b;
+    }
+    .section-title {
+      font-size: clamp(1.35rem, 4.5vw, 2.2rem);
+      font-weight: 900;
+      color: #ffffff;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .section-desc {
+      font-size: 14px;
+      color: #94a3b8;
+      text-align: center;
+      max-width: 680px;
+      margin: 0 auto 32px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 768px) {
+      .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .simulator {
+      background: #070b17;
+      border: 2px solid rgba(52, 211, 153, 0.4);
+      border-radius: 24px;
+      padding: 16px;
+      max-width: 100%;
+    }
+    .sim-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+      font-size: 11px;
+      color: #34d399;
+      font-weight: 800;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      max-width: 100%;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0d9488);
+      color: #ffffff;
+    }
+    .btn-line {
+      background: #059669;
+      color: #ffffff;
+      width: 100%;
+      margin-top: 10px;
+    }
+    footer {
+      border-top: 1px solid #1e293b;
+      padding: 32px 16px;
+      text-align: center;
+      color: #64748b;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span>GEMMA KNITS · TEXTILEOPS</span>
+    </div>
+    <span class="badge">OFFLINE KIT</span>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="badge">Gemma Knits Operational Excellence</div>
+      <h1>TEXTILE<span class="gradient-text">OPS</span> CMMS</h1>
+      <div class="subhead">แพลตฟอร์มบริหารงานซ่อมบำรุงและเครื่องจักรโรงทออัจฉริยะ</div>
+      <p class="lead">
+        “เปลี่ยนความสูญเสียจากเครื่องจักรหยุดชะงัก (Unplanned Downtime) สู่ประสิทธิภาพการผลิตสูงสุด
+        ด้วยข้อมูล Real-Time, การแจ้งเตือนผ่าน LINE และเทคโนโลยี AI”
+      </p>
+
+      <div class="kpi-grid">
+        <div class="card">
+          <div class="card-kpi">-30%</div>
+          <div class="card-title">ลดเวลาเครื่องจอดเสีย</div>
+          <div class="card-sub">Unplanned Downtime</div>
+        </div>
+        <div class="card">
+          <div class="card-kpi">&lt; 1 นาที</div>
+          <div class="card-title">เวลาตอบสนองงานซ่อม</div>
+          <div class="card-sub">LINE Real-Time Alert</div>
+        </div>
+        <div class="card">
+          <div class="card-kpi">99.5%</div>
+          <div class="card-title">ความแม่นยำสต็อกคลัง</div>
+          <div class="card-sub">เข็มทอและอะไหล่สำคัญ</div>
+        </div>
+        <div class="card">
+          <div class="card-kpi">100%</div>
+          <div class="card-title">ตรวจสอบย้อนหลังได้ครบ</div>
+          <div class="card-sub">Audit & Traceability</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">นวัตกรรมจำลองการสแกนแจ้งซ่อมผ่าน LINE</div>
+      <div class="section-desc">สแกนป้าย Smart Tag หน้าเครื่องจักร แจ้งซ่อมใน 30 วินาที เด้งเตือนช่างทันที</div>
+
+      <div class="grid-2">
+        <div class="simulator">
+          <div class="sim-header">
+            <span>🚨 LINE Flex Notification</span>
+            <span>10:14 AM</span>
+          </div>
+          <div style="background: #ffffff; color: #0f172a; border-radius: 16px; padding: 16px; margin-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 900; color: #e11d48; margin-bottom: 4px;">🚨 แจ้งซ่อมด่วน (URGENT) · MC-12</div>
+            <div style="font-size: 16px; font-weight: 900; margin-bottom: 4px;">เครื่องจักร: MC-12 (โซน A)</div>
+            <div style="font-size: 13px; color: #334155;">อาการ: เข็มหัก / เส้นด้ายขาดซ้ำซ้อน</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;">
+              <div>ผู้แจ้ง: สมชาย (ช่างทอ กะเช้า)</div>
+              <div>เวลาแจ้ง: 10:14 น. · อาคารโรงทอ 1</div>
+            </div>
+            <button class="btn btn-line">⚡ กดรับงานซ่อมนี้ทันที</button>
+          </div>
+          <div style="text-align: center; font-size: 11px; color: #34d399; font-weight: 700;">
+            เวลาตอบสนอง: &lt; 1 นาที · LINE Official Webhook
+          </div>
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; justify-content: center;">
+          <h3 style="font-size: 18px; font-weight: 900; color: #ffffff; margin-bottom: 12px;">จุดเด่นที่ไม่กระทบระบบเดิม 100%</h3>
+          <ul style="font-size: 13px; color: #94a3b8; display: flex; flex-direction: column; gap: 8px; padding-left: 20px;">
+            <li><strong style="color: #ffffff;">Zero Disruption:</strong> ฐานข้อมูล D1, QR Scanner, Work Orders และ Inventory ทำงานคู่ขนานสมบูรณ์</li>
+            <li><strong style="color: #ffffff;">Mobile-First Layout:</strong> ปรับขยายอัตโนมัติบนจอ 360px, 390px, 412px โดยไม่มีแถบเลื่อนแนวนอน</li>
+            <li><strong style="color: #ffffff;">PWA & Offline:</strong> เปิดได้แม้อยู่ในจุดอับสัญญาณโรงงาน</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 บริษัท เจมม่า นิตส์ จำกัด (Gemma Knits Co., Ltd.) · TextileOps CMMS</p>
+  </footer>
+</body>
+</html>

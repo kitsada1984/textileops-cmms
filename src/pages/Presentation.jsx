@@ -195,26 +195,27 @@ function SectionHeader({ eyebrow, title, subtitle, accentColor = 'cyan' }) {
   }
 
   return (
-    <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+    <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 px-1 min-w-0">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 0.65, delay: 0.1, ease: EASE_EXECUTIVE }}
-        className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold uppercase tracking-widest mb-4 ${
+        className={`inline-flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-2xl sm:rounded-full border text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest mb-4 max-w-full text-center leading-snug ${
           badgePalette[accentColor] || badgePalette.cyan
         }`}
       >
-        <Sparkles size={13} />
-        <span>{eyebrow}</span>
+        <Sparkles size={13} className="shrink-0" />
+        <span className="break-words">{eyebrow}</span>
       </motion.div>
 
       <motion.h2
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 0.78, delay: 0.28, ease: EASE_EXECUTIVE }}
-        className="text-2xl sm:text-4xl lg:text-[2.6rem] font-black text-white tracking-tight leading-[1.32]"
+        className="font-black text-white tracking-tight leading-[1.32] break-words"
+        style={{ fontSize: 'clamp(1.3rem, 4.8vw, 2.5rem)' }}
       >
         {title}
       </motion.h2>
@@ -225,7 +226,7 @@ function SectionHeader({ eyebrow, title, subtitle, accentColor = 'cyan' }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, amount: 0.3 }}
           transition={{ duration: 0.72, delay: 0.46, ease: EASE_EXECUTIVE }}
-          className="text-sm sm:text-base lg:text-lg text-slate-300 mt-4 leading-relaxed"
+          className="text-xs sm:text-base lg:text-lg text-slate-300 mt-3.5 sm:mt-4 leading-relaxed break-words"
         >
           {subtitle}
         </motion.p>
@@ -236,7 +237,7 @@ function SectionHeader({ eyebrow, title, subtitle, accentColor = 'cyan' }) {
         whileInView={{ scaleX: 1, opacity: 1 }}
         viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 0.85, delay: 0.6, ease: EASE_EXECUTIVE }}
-        className="h-[2px] w-24 mx-auto mt-6 bg-gradient-to-r from-transparent via-cyan-400 to-transparent origin-center"
+        className="h-[2px] w-24 mx-auto mt-5 sm:mt-6 bg-gradient-to-r from-transparent via-cyan-400 to-transparent origin-center"
       />
     </div>
   )
@@ -359,7 +360,7 @@ function InteractiveQrRepairSimulator({ motionEnabled = true }) {
   }
 
   return (
-    <div className="w-full max-w-[360px] sm:max-w-[400px] mx-auto rounded-3xl bg-[#070b17] border-2 border-emerald-500/45 shadow-2xl p-3 sm:p-5 flex flex-col justify-between relative overflow-hidden">
+    <div className="w-full max-w-full sm:max-w-[400px] mx-auto rounded-3xl bg-[#070b17] border-2 border-emerald-500/45 shadow-2xl p-3 sm:p-5 flex flex-col justify-between relative overflow-hidden">
       {/* Top Header of the Simulated Smartphone Frame */}
       <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-800">
         <span className="text-xs font-bold text-emerald-400 flex items-center gap-2">
@@ -387,7 +388,7 @@ function InteractiveQrRepairSimulator({ motionEnabled = true }) {
       </div>
 
       {/* Interactive Step Navigator Tabs */}
-      <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800 mb-3 text-[10px] font-bold">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800 mb-3 text-[11px] sm:text-[10px] font-bold">
         {[
           { step: 1, label: '1. สแกน' },
           { step: 2, label: '2. อาการ' },
@@ -513,9 +514,9 @@ function InteractiveQrRepairSimulator({ motionEnabled = true }) {
                           : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800'
                       }`}
                     >
-                      <div className="flex items-center gap-2 truncate">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm shrink-0">{issue.icon}</span>
-                        <span className="truncate">{issue.label}</span>
+                        <span className="break-words leading-tight">{issue.label}</span>
                       </div>
                       {isSelected && <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />}
                     </button>
@@ -615,7 +616,7 @@ function InteractiveQrRepairSimulator({ motionEnabled = true }) {
             </div>
 
             {/* Replay & Live Repair Buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2.5">
               <button
                 type="button"
                 onClick={() => handleStepClick(1)}
@@ -749,12 +750,32 @@ export default function Presentation() {
     <MotionConfig reducedMotion={motionEnabled ? 'never' : 'always'}>
       <div
         ref={pageRef}
-        className="min-h-screen w-full max-w-full bg-[#050811] text-slate-100 relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200"
+        className="presentation-page min-h-screen w-full max-w-full bg-[#050811] text-slate-100 relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200"
         style={{
           fontFamily:
             "'Noto Sans Thai', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
         }}
       >
+        <style>{`
+          .presentation-page *, .presentation-page *::before, .presentation-page *::after {
+            box-sizing: border-box !important;
+          }
+          .presentation-page {
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+          }
+          .presentation-page p, .presentation-page h1, .presentation-page h2, .presentation-page h3, .presentation-page h4, .presentation-page span, .presentation-page div {
+            overflow-wrap: anywhere;
+          }
+          .pres-tab-strip {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .pres-tab-strip::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
         {/* ── AMBIENT ARCHITECTURAL GRID & CONTAINED FLOATING GLOWS ───── */}
         <div
           aria-hidden="true"
@@ -770,18 +791,18 @@ export default function Presentation() {
             aria-hidden="true"
             animate={{ x: [0, 24, -20, 0], y: [0, -20, 16, 0] }}
             transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute -top-36 left-1/4 w-[320px] sm:w-[520px] h-[320px] sm:h-[520px] rounded-full bg-blue-600/15 blur-[100px] sm:blur-[130px]"
+            className="absolute -top-36 left-1/2 -translate-x-1/2 w-[min(70vw,20rem)] sm:w-[min(75vw,32.5rem)] h-[min(70vw,20rem)] sm:h-[min(75vw,32.5rem)] rounded-full bg-blue-600/15 blur-[100px] sm:blur-[130px]"
           />
           <motion.div
             aria-hidden="true"
             animate={{ x: [0, -28, 20, 0], y: [0, 24, -18, 0] }}
             transition={{ duration: 24, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute bottom-0 right-1/5 w-[280px] sm:w-[480px] h-[280px] sm:h-[480px] rounded-full bg-emerald-500/10 blur-[100px] sm:blur-[140px]"
+            className="absolute bottom-0 right-1/2 translate-x-1/2 w-[min(70vw,17.5rem)] sm:w-[min(75vw,30rem)] h-[min(70vw,17.5rem)] sm:h-[min(75vw,30rem)] rounded-full bg-emerald-500/10 blur-[100px] sm:blur-[140px]"
           />
         </div>
 
         {/* ── STICKY GLASSMORPHIC EXECUTIVE NAVBAR ─────────────────────── */}
-        <header className="sticky top-0 left-0 right-0 z-50 bg-[#050811]/85 backdrop-blur-xl border-b border-slate-800/80">
+        <header className="fixed top-0 left-0 right-0 z-50 w-full max-w-full bg-[#050811]/85 backdrop-blur-xl border-b border-slate-800/80">
           {/* Top Scroll-Linked Spring Progress Bar */}
           <div className="w-full h-1 bg-slate-900 overflow-hidden">
             <motion.div
@@ -790,27 +811,27 @@ export default function Presentation() {
             />
           </div>
 
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="max-w-7xl mx-auto px-2.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3">
             {/* Brand Lockup */}
             <button
               type="button"
               onClick={() => scrollToSection('hero')}
-              className="flex items-center gap-2 sm:gap-3 text-left cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 sm:gap-3 text-left cursor-pointer min-w-0 shrink"
             >
               <img
                 src={gemmaLogo}
                 alt="Gemma Knits"
-                className="h-7 sm:h-8 w-auto object-contain drop-shadow"
+                className="h-6 sm:h-8 w-auto object-contain drop-shadow shrink-0"
               />
-              <div className="flex flex-col">
-                <span className="text-[11px] sm:text-xs font-black text-white tracking-wider leading-tight">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] sm:text-xs font-black text-white tracking-wider leading-tight truncate">
                   GEMMA KNITS · TEXTILEOPS
                 </span>
                 <span
-                  className="text-[9px] sm:text-[10px] text-cyan-400 font-bold tracking-widest"
+                  className="text-[8px] sm:text-[10px] text-cyan-400 font-bold tracking-widest truncate"
                   style={{ fontFamily: "'JetBrains Mono', monospace" }}
                 >
-                  EXECUTIVE LANDING · {APP_VERSION}
+                  EXECUTIVE · {APP_VERSION}
                 </span>
               </div>
             </button>
@@ -840,12 +861,12 @@ export default function Presentation() {
             </nav>
 
             {/* Presenter Action Controls */}
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setReplayKey((prev) => prev + 1)}
                 title="เล่นอนิเมชั่นเปิดตัวซ้ำ (กดปุ่ม R)"
-                className="p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-cyan-300 hover:border-cyan-500/40 cursor-pointer flex items-center gap-1"
+                className="hidden sm:flex p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-cyan-300 hover:border-cyan-500/40 cursor-pointer items-center gap-1"
               >
                 <RotateCcw size={13} />
                 <span className="hidden md:inline">เล่นซ้ำ</span>
@@ -887,7 +908,7 @@ export default function Presentation() {
                 type="button"
                 onClick={toggleFullscreen}
                 title={isFullscreen ? 'ออกจากโหมดเต็มจอ (F)' : 'ขยายเต็มหน้าจอ (F)'}
-                className="p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-white cursor-pointer"
+                className="hidden sm:flex p-1.5 sm:p-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 border border-slate-700/80 hover:text-white cursor-pointer"
               >
                 {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
               </button>
@@ -914,7 +935,7 @@ export default function Presentation() {
           </div>
 
           {/* Mobile/Tablet Quick Section Strip */}
-          <div className="xl:hidden flex items-center gap-1.5 px-3 sm:px-4 pb-2 sm:pb-2.5 overflow-x-auto no-scrollbar scroll-smooth">
+          <div className="xl:hidden flex items-center gap-1.5 px-3 sm:px-4 pb-2 sm:pb-2.5 pres-tab-strip scroll-smooth">
             {LANDING_SECTIONS.map((sec) => {
               const isActive = activeSectionId === sec.id
               return (
@@ -936,7 +957,7 @@ export default function Presentation() {
         </header>
 
         {/* ── MAIN SCROLLYTELLING CONTENT (REPLAYABLE VIA KEY) ─────────── */}
-        <main key={replayKey} className="relative z-10">
+        <main key={replayKey} className="relative z-10 pt-24 sm:pt-28 xl:pt-20">
           {/* ==============================================================
               SECTION 1: EXECUTIVE HERO & SEQUENTIAL KPI STRIP
              ============================================================== */}
@@ -953,7 +974,7 @@ export default function Presentation() {
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-cyan-500/10 border border-cyan-400/35 text-cyan-300 text-[11px] sm:text-sm font-bold uppercase tracking-wider mb-5 sm:mb-7 shadow-lg shadow-cyan-500/10 max-w-full text-center"
               >
                 <Sparkles size={13} className="text-cyan-400 shrink-0" />
-                <span className="truncate">Gemma Knits Operational Excellence · {APP_VERSION}</span>
+                <span className="break-words">Gemma Knits Operational Excellence · {APP_VERSION}</span>
               </motion.div>
 
               {/* Step 2: 0.40s delay — Gemma Knits Corporate Identity */}
@@ -987,14 +1008,15 @@ export default function Presentation() {
                 initial={{ opacity: 0, y: 38 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.85, delay: 0.7, ease: EASE_EXECUTIVE }}
-                className="text-3xl sm:text-5xl lg:text-7xl font-black tracking-tight text-white mb-4 sm:mb-6 leading-[1.2] max-w-full break-words"
+                className="font-black tracking-tight text-white mb-4 sm:mb-6 leading-[1.2] max-w-full break-words"
+                style={{ fontSize: 'clamp(1.75rem, 6.5vw, 4.5rem)' }}
               >
                 TEXTILE
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400">
                   OPS
                 </span>{' '}
                 CMMS
-                <span className="block text-base sm:text-2xl lg:text-4xl font-extrabold text-slate-200 mt-2 sm:mt-3 leading-snug break-words">
+                <span className="block font-extrabold text-slate-200 mt-2 sm:mt-3 leading-snug break-words" style={{ fontSize: 'clamp(1rem, 3.8vw, 2.25rem)' }}>
                   แพลตฟอร์มบริหารงานซ่อมบำรุงและเครื่องจักรโรงทออัจฉริยะ
                 </span>
               </motion.h1>
@@ -1047,7 +1069,7 @@ export default function Presentation() {
                 custom={1.65}
                 initial="hidden"
                 animate="visible"
-                className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 w-full max-w-4xl px-1 sm:px-0"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 w-full max-w-4xl px-1 sm:px-0"
               >
                 <motion.div
                   variants={staggerCardVariants}
@@ -1056,8 +1078,8 @@ export default function Presentation() {
                 >
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500" />
                   <div
-                    className="text-2xl sm:text-4xl font-extrabold text-emerald-400 mb-1"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                    className="font-extrabold text-emerald-400 mb-1"
+                    style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.75rem, 5.5vw, 2.25rem)' }}
                   >
                     <AnimatedCounter
                       to={30}
@@ -1070,7 +1092,7 @@ export default function Presentation() {
                   <div className="text-[11px] sm:text-sm text-white font-bold leading-tight">
                     ลดเวลาเครื่องจอดเสีย
                   </div>
-                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Unplanned Downtime</div>
+                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 break-words">Unplanned Downtime</div>
                 </motion.div>
 
                 <motion.div
@@ -1080,8 +1102,8 @@ export default function Presentation() {
                 >
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-cyan-400 to-blue-500" />
                   <div
-                    className="text-2xl sm:text-4xl font-extrabold text-cyan-400 mb-1"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                    className="font-extrabold text-cyan-400 mb-1"
+                    style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.75rem, 5.5vw, 2.25rem)' }}
                   >
                     &lt;{' '}
                     <AnimatedCounter
@@ -1095,7 +1117,7 @@ export default function Presentation() {
                   <div className="text-[11px] sm:text-sm text-white font-bold leading-tight">
                     เวลาตอบสนองงานซ่อม
                   </div>
-                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate">LINE Real-Time Alert</div>
+                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 break-words">LINE Real-Time Alert</div>
                 </motion.div>
 
                 <motion.div
@@ -1105,8 +1127,8 @@ export default function Presentation() {
                 >
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-purple-400 to-fuchsia-500" />
                   <div
-                    className="text-2xl sm:text-4xl font-extrabold text-purple-400 mb-1"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                    className="font-extrabold text-purple-400 mb-1"
+                    style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.75rem, 5.5vw, 2.25rem)' }}
                   >
                     <AnimatedCounter
                       to={99.5}
@@ -1119,7 +1141,7 @@ export default function Presentation() {
                   <div className="text-[11px] sm:text-sm text-white font-bold leading-tight">
                     ความแม่นยำสต็อกคลัง
                   </div>
-                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate">เข็มทอและอะไหล่สำคัญ</div>
+                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 break-words">เข็มทอและอะไหล่สำคัญ</div>
                 </motion.div>
 
                 <motion.div
@@ -1129,8 +1151,8 @@ export default function Presentation() {
                 >
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
                   <div
-                    className="text-2xl sm:text-4xl font-extrabold text-amber-400 mb-1"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                    className="font-extrabold text-amber-400 mb-1"
+                    style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.75rem, 5.5vw, 2.25rem)' }}
                   >
                     <AnimatedCounter
                       to={100}
@@ -1142,7 +1164,7 @@ export default function Presentation() {
                   <div className="text-[11px] sm:text-sm text-white font-bold leading-tight">
                     ตรวจสอบย้อนหลังได้ครบ
                   </div>
-                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 truncate">Audit & Traceability</div>
+                  <div className="text-[9px] sm:text-[11px] text-slate-400 mt-0.5 break-words">Audit & Traceability</div>
                 </motion.div>
               </motion.div>
 
@@ -1527,8 +1549,8 @@ export default function Presentation() {
                 {/* ── INNOVATION #1: GEMINI AI VISION WITH LASER SCAN ────── */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-6 sm:p-10 rounded-3xl bg-slate-900/80 border border-purple-500/30 shadow-2xl">
                   <motion.div
-                    initial={{ opacity: 0, x: -36 }}
-                    whileInView={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.8, delay: 0.2, ease: EASE_EXECUTIVE }}
                     className="lg:col-span-6 space-y-5"
@@ -1548,7 +1570,7 @@ export default function Presentation() {
                       เพียงใช้สมาร์ทโฟนถ่ายรูปชิ้นส่วนที่ชำรุด ระบบ AI จะสแกนรูปทรงเทียบกับฐานข้อมูลคลัง
                       พร้อมชี้เป้าตู้และกล่องจัดเก็บทันที
                     </p>
-                    <div className="grid grid-cols-3 gap-3 pt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 pt-2">
                       <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
                         <span className="text-base font-black text-white block">1. ถ่ายภาพ</span>
                         <span className="text-[11px] text-slate-400">จากมือถือหน้าเครื่อง</span>
@@ -1570,8 +1592,8 @@ export default function Presentation() {
 
                   {/* Delayed Right Mockup (0.65s delay) with Live Laser Scan Bar */}
                   <motion.div
-                    initial={{ opacity: 0, x: 36, scale: 0.96 }}
-                    whileInView={{ opacity: 1, x: 0, scale: 1 }}
+                    initial={{ opacity: 0, y: 24, scale: 0.96 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.85, delay: 0.65, ease: EASE_EXECUTIVE }}
                     className="lg:col-span-6"
@@ -1614,7 +1636,7 @@ export default function Presentation() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                           <div className="p-3.5 rounded-2xl bg-slate-900/95 border border-slate-700/80">
                             <div className="text-[11px] text-slate-400">พิกัดตู้จัดเก็บ</div>
                             <div className="text-sm font-black text-cyan-300 mt-0.5">
@@ -1653,8 +1675,8 @@ export default function Presentation() {
 
                   {/* Right: Descriptive Value Proposition & Direct Action */}
                   <motion.div
-                    initial={{ opacity: 0, x: 36 }}
-                    whileInView={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: false, amount: 0.25 }}
                     transition={{ duration: 0.8, delay: 0.2, ease: EASE_EXECUTIVE }}
                     className="lg:col-span-6 space-y-4 sm:space-y-5 order-1 lg:order-2"
@@ -1853,7 +1875,7 @@ export default function Presentation() {
                             <div className="text-xs font-black">2,520</div>
                           </div>
                         </div>
-                        <div className="text-[9px] text-slate-600 font-medium truncate border-t border-slate-200 pt-1">
+                        <div className="text-[9px] text-slate-600 font-medium break-words border-t border-slate-200 pt-1">
                           Remark: ตรวจเช็คความเที่ยงตรงศูนย์กระบอกเรียบร้อย พร้อมขึ้นเครื่องทอ
                         </div>
                       </div>
@@ -2007,7 +2029,7 @@ export default function Presentation() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: false, amount: 0.16 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12"
+                className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-12"
               >
                 <motion.div
                   variants={staggerCardVariants}
