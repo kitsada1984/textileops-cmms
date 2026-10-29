@@ -26,6 +26,7 @@ import {
   FileText,
   Ban,
   AlertTriangle,
+  Filter,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -62,6 +63,40 @@ const STATUS_CFG = {
   CANCELLED: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)', color: '#dc2626', dot: '#dc2626' },
 }
 const STATUS_TH = Object.fromEntries(PO_STATUS.map((s) => [s.value, s.label]))
+
+export const PURCHASING_STATUS_OPTIONS = [
+  {
+    value: 'ORDERED',
+    label: 'รอของ',
+    icon: '🟡',
+    activeClass: 'bg-blue-600 text-white border-blue-600 shadow-xs',
+  },
+  {
+    value: 'RECEIVED',
+    label: 'รับของแล้ว',
+    icon: '🟢',
+    activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
+  },
+  {
+    value: 'CANCELLED',
+    label: 'ยกเลิก',
+    icon: '🔴',
+    activeClass: 'bg-rose-600 text-white border-rose-600 shadow-xs',
+  },
+]
+
+export function matchesPOStatusFilter(poStatus, statusFilters = []) {
+  if (!statusFilters || statusFilters.length === 0 || statusFilters.includes('ALL')) return true
+  const norm = String(poStatus || 'ORDERED').toUpperCase().trim()
+  return statusFilters.some((f) => {
+    const fUpper = String(f).toUpperCase().trim()
+    if (fUpper === norm) return true
+    if (fUpper === 'ORDERED' && (norm === 'ORDERED' || norm === 'รอของ')) return true
+    if (fUpper === 'RECEIVED' && (norm === 'RECEIVED' || norm === 'ได้รับของแล้ว' || norm === 'รับของแล้ว')) return true
+    if (fUpper === 'CANCELLED' && (norm === 'CANCELLED' || norm === 'ยกเลิก')) return true
+    return false
+  })
+}
 const CATEGORY_OPTIONS = DEFAULT_SPARE_PART_CATEGORIES
 const MISSING_COLUMN_RE = /Could not find the '([^']+)' column of 'purchaseorders'/i
 const IMAGE_NOTE_PREFIX = 'ImageUrl:'
@@ -535,17 +570,43 @@ export default function Purchasing() {
   const [cancelReason, setCancelReason] = useState('')
   const [cancellingPO, setCancellingPO] = useState(false)
 
+  // Status Multi-Select Filter State
+  const [statusFilters, setStatusFilters] = useState([]) // [] = ALL
+
+  const toggleStatusFilter = (statusVal) => {
+    setStatusFilters((prev) =>
+      prev.includes(statusVal) ? prev.filter((s) => s !== statusVal) : [...prev, statusVal]
+    )
+  }
+
+  // Live counts for status filter cards
+  const statusCounts = useMemo(() => {
+    const counts = { ALL: data.length, ORDERED: 0, RECEIVED: 0, CANCELLED: 0 }
+    data.forEach((p) => {
+      const s = String(p.Status || 'ORDERED').toUpperCase().trim()
+      if (s === 'CANCELLED' || s === 'ยกเลิก') counts.CANCELLED += 1
+      else if (s === 'RECEIVED' || s === 'ได้รับของแล้ว' || s === 'รับของแล้ว') counts.RECEIVED += 1
+      else counts.ORDERED += 1
+    })
+    return counts
+  }, [data])
+
   // Summary statistics
   const stats = useMemo(() => {
     const total = data.length
-    const ordered = data.filter((p) => p.Status === 'ORDERED').length
-    const received = data.filter((p) => p.Status === 'RECEIVED').length
+    const ordered = statusCounts.ORDERED
+    const received = statusCounts.RECEIVED
+    const cancelled = statusCounts.CANCELLED
     const totalAmount = data.reduce((acc, p) => acc + (Number(p.Total_Amount) || 0), 0)
-    return { total, ordered, received, totalAmount }
-  }, [data])
+    return { total, ordered, received, cancelled, totalAmount }
+  }, [data, statusCounts])
 
   const baseRows = useMemo(() => {
     return data.filter((p) => {
+      // 1. Status Filter (Multi-select)
+      if (!matchesPOStatusFilter(p.Status, statusFilters)) return false
+
+      // 2. Search Filter
       const items = parsePOItems(p)
       const itemTexts = items.map((it) => `${it.Part_Code} ${it.Part_Name_EN} ${it.Category} ${it.Detail}`).join(' ')
       return [
@@ -561,7 +622,7 @@ export default function Purchasing() {
         String(v || '').toLowerCase().includes(search.toLowerCase())
       )
     })
-  }, [data, search])
+  }, [data, search, statusFilters])
 
   const { categories: sparePartCategories } = useSparePartCategories(parts)
 
@@ -1388,7 +1449,7 @@ export default function Purchasing() {
   return (
     <div className="space-y-5">
       {/* ── SUMMARY STATS CARDS ──────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ใบสั่งซื้อทั้งหมด</div>
@@ -1426,6 +1487,18 @@ export default function Purchasing() {
         </div>
 
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">ยกเลิก (Cancelled)</div>
+            <div className="text-xl font-black mt-0.5 text-rose-600 dark:text-rose-400">
+              {stats.cancelled} <span className="text-xs font-normal text-slate-400">ใบ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold">
+            <Ban size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800 col-span-2 sm:col-span-1">
           <div>
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">มูลค่าสั่งซื้อรวม</div>
             <div className="text-xl font-black mt-0.5 text-blue-600 dark:text-blue-400">
@@ -1492,6 +1565,68 @@ export default function Purchasing() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* ── STATUS FILTER CARDS (MULTI-SELECT) ──────────────── */}
+      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+        <span className="text-xs font-bold text-slate-500 flex items-center gap-1 mr-1">
+          <Filter size={13} />
+          <span>สถานะ:</span>
+        </span>
+
+        {/* All Statuses Card */}
+        <button
+          type="button"
+          onClick={() => setStatusFilters([])}
+          className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+            statusFilters.length === 0
+              ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
+              : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+          }`}
+        >
+          <span>ทั้งหมด</span>
+          <span
+            className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+              statusFilters.length === 0
+                ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
+                : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            {statusCounts.ALL}
+          </span>
+        </button>
+
+        {/* Individual Status Cards */}
+        {PURCHASING_STATUS_OPTIONS.map((opt) => {
+          const isSelected = statusFilters.includes(opt.value)
+          const count = statusCounts[opt.value] || 0
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => toggleStatusFilter(opt.value)}
+              className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                isSelected
+                  ? opt.activeClass
+                  : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+              title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 สถานะ)"
+            >
+              {isSelected && <Check size={12} strokeWidth={3} />}
+              <span>{opt.icon}</span>
+              <span>{opt.label}</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  isSelected
+                    ? 'bg-white/25 text-white'
+                    : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* ── DATA TABLE ────────────────────────────────────────── */}
@@ -1577,7 +1712,11 @@ export default function Purchasing() {
                   <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
                     <ShoppingCart size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
                     <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
-                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ สร้างใบสั่งซื้อ" เพื่อเริ่มต้นบันทึก</p>
+                    <p className="text-[11px] mt-0.5 text-slate-400">
+                      {statusFilters.length > 0
+                        ? 'ไม่พบใบสั่งซื้อตามสถานะที่เลือก ลองเลือกสถานะอื่น หรือกดปุ่ม "ทั้งหมด"'
+                        : 'กดปุ่ม "+ สร้างใบสั่งซื้อ" เพื่อเริ่มต้นบันทึก'}
+                    </p>
                   </td>
                 </tr>
               )}

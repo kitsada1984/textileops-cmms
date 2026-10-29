@@ -13,6 +13,8 @@ import {
   buildQuickReceivePayload,
   buildCancelPOPayload,
   getPOAppliedItems,
+  matchesPOStatusFilter,
+  PURCHASING_STATUS_OPTIONS,
 } from './Purchasing'
 
 describe('Purchasing Part Auto-Fill & Auto-Creation Logic', () => {
@@ -373,6 +375,48 @@ describe('Purchasing Part Auto-Fill & Auto-Creation Logic', () => {
       // Applied items for SP-063 must still be preserved so stock history remains intact!
       const applied = getPOAppliedItems(cancelledPayload)
       expect(applied).toEqual({ 'SP-063': 1 })
+    })
+  })
+
+  describe('matchesPOStatusFilter & PURCHASING_STATUS_OPTIONS', () => {
+    it('defines 3 status filter options with correct values and Thai labels', () => {
+      expect(PURCHASING_STATUS_OPTIONS).toHaveLength(3)
+      expect(PURCHASING_STATUS_OPTIONS.map((o) => o.value)).toEqual(['ORDERED', 'RECEIVED', 'CANCELLED'])
+      expect(PURCHASING_STATUS_OPTIONS.map((o) => o.label)).toEqual(['รอของ', 'รับของแล้ว', 'ยกเลิก'])
+    })
+
+    it('returns true when filter is empty or includes ALL', () => {
+      expect(matchesPOStatusFilter('ORDERED', [])).toBe(true)
+      expect(matchesPOStatusFilter('RECEIVED', [])).toBe(true)
+      expect(matchesPOStatusFilter('CANCELLED', [])).toBe(true)
+      expect(matchesPOStatusFilter('ORDERED', ['ALL'])).toBe(true)
+      expect(matchesPOStatusFilter('CANCELLED', ['ALL'])).toBe(true)
+    })
+
+    it('matches single status correctly across English codes and Thai labels', () => {
+      expect(matchesPOStatusFilter('ORDERED', ['ORDERED'])).toBe(true)
+      expect(matchesPOStatusFilter('รอของ', ['ORDERED'])).toBe(true)
+      expect(matchesPOStatusFilter('RECEIVED', ['ORDERED'])).toBe(false)
+
+      expect(matchesPOStatusFilter('RECEIVED', ['RECEIVED'])).toBe(true)
+      expect(matchesPOStatusFilter('รับของแล้ว', ['RECEIVED'])).toBe(true)
+      expect(matchesPOStatusFilter('ได้รับของแล้ว', ['RECEIVED'])).toBe(true)
+      expect(matchesPOStatusFilter('ORDERED', ['RECEIVED'])).toBe(false)
+
+      expect(matchesPOStatusFilter('CANCELLED', ['CANCELLED'])).toBe(true)
+      expect(matchesPOStatusFilter('ยกเลิก', ['CANCELLED'])).toBe(true)
+      expect(matchesPOStatusFilter('ORDERED', ['CANCELLED'])).toBe(false)
+    })
+
+    it('supports multi-select status filtering', () => {
+      const activeFilters = ['ORDERED', 'RECEIVED']
+      expect(matchesPOStatusFilter('ORDERED', activeFilters)).toBe(true)
+      expect(matchesPOStatusFilter('RECEIVED', activeFilters)).toBe(true)
+      expect(matchesPOStatusFilter('CANCELLED', activeFilters)).toBe(false)
+
+      const cancelOnly = ['CANCELLED']
+      expect(matchesPOStatusFilter('CANCELLED', cancelOnly)).toBe(true)
+      expect(matchesPOStatusFilter('ORDERED', cancelOnly)).toBe(false)
     })
   })
 })
