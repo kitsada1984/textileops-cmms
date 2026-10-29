@@ -20,6 +20,8 @@ import {
   ShoppingCart,
   Printer,
   Camera,
+  Ban,
+  Activity,
 } from 'lucide-react'
 import useEntity from '../hooks/useEntity'
 import { SparePartAPI, PART_STATUS } from '../api/entities'
@@ -89,6 +91,55 @@ const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
 const SP_FILTER_KEYS = ['Part_Name_EN', 'Location_Store', 'Category', 'Status']
 const SP_SORT_ONLY_KEYS = ['Part_Name_EN']
 const SP_INIT_FS = { sort: { key: 'Part_Name_EN', dir: 'asc' }, filters: {} }
+
+export const PART_STATUS_FILTER_OPTIONS = [
+  {
+    value: 'IN_STOCK',
+    label: 'มีของ (In Stock)',
+    icon: '🟢',
+    activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
+  },
+  {
+    value: 'LOW_STOCK',
+    label: 'สต็อกต่ำ (Low Stock)',
+    icon: '🟡',
+    activeClass: 'bg-amber-600 text-white border-amber-600 shadow-xs',
+  },
+  {
+    value: 'OUT_OF_STOCK',
+    label: 'หมดสต็อก (Out of Stock)',
+    icon: '🔴',
+    activeClass: 'bg-rose-600 text-white border-rose-600 shadow-xs',
+  },
+]
+
+export function calculateSparePartStats(rows = []) {
+  const data = Array.isArray(rows) ? rows : []
+  const total = data.length
+  const inStock = data.filter((p) => getSparePartStatus(p) === 'IN_STOCK').length
+  const lowStock = data.filter((p) => getSparePartStatus(p) === 'LOW_STOCK').length
+  const outOfStock = data.filter((p) => getSparePartStatus(p) === 'OUT_OF_STOCK').length
+  const totalValue = data.reduce((acc, p) => acc + (Number(p.Stock_Qty) || 0) * (Number(p.Unit_Price) || 0), 0)
+  return { total, inStock, lowStock, outOfStock, totalValue }
+}
+
+export function filterSparePartsByCards(rows = [], { categoryFilters = [], statusFilters = [] } = {}) {
+  const list = Array.isArray(rows) ? rows : []
+  return list.filter((p) => {
+    if (categoryFilters && categoryFilters.length > 0) {
+      const pCat = String(p?.Category || '').trim().toLowerCase()
+      const matchCat = categoryFilters.some(
+        (fCat) => String(fCat || '').trim().toLowerCase() === pCat
+      )
+      if (!matchCat) return false
+    }
+    if (statusFilters && statusFilters.length > 0) {
+      const pStatus = getSparePartStatus(p)
+      if (!statusFilters.includes(pStatus)) return false
+    }
+    return true
+  })
+}
 
 function optionRawValue(option) {
   if (option && typeof option === 'object') return option.value ?? option.id ?? option.label ?? ''
@@ -250,6 +301,22 @@ export default function SpareParts() {
   const [editingCategory, setEditingCategory] = useState(null)
   const [editingCategoryValue, setEditingCategoryValue] = useState('')
   const [categoryActionLoading, setCategoryActionLoading] = useState(false)
+
+  // Multi-Select Quick Filters
+  const [categoryFilters, setCategoryFilters] = useState([])
+  const [statusFilters, setStatusFilters] = useState([])
+
+  const toggleCategoryFilter = (cat) => {
+    setCategoryFilters((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    )
+  }
+
+  const toggleStatusFilter = (statusVal) => {
+    setStatusFilters((prev) =>
+      prev.includes(statusVal) ? prev.filter((s) => s !== statusVal) : [...prev, statusVal]
+    )
+  }
 
   const handleAddCategory = async (e) => {
     e?.preventDefault?.()
@@ -413,14 +480,8 @@ export default function SpareParts() {
     })
   }
 
-  // Summary statistics
-  const stats = useMemo(() => {
-    const total = data.length
-    const inStock = data.filter((p) => getSparePartStatus(p) === 'IN_STOCK').length
-    const lowStock = data.filter((p) => getSparePartStatus(p) !== 'IN_STOCK').length
-    const totalValue = data.reduce((acc, p) => acc + (Number(p.Stock_Qty) || 0) * (Number(p.Unit_Price) || 0), 0)
-    return { total, inStock, lowStock, totalValue }
-  }, [data])
+  // Summary statistics (5 KPI cards)
+  const stats = useMemo(() => calculateSparePartStats(data), [data])
 
   const baseRows = useMemo(() => {
     return data.filter((p) =>
@@ -429,6 +490,30 @@ export default function SpareParts() {
       )
     )
   }, [data, search])
+
+  // Real-time counts for Quick Filter Cards
+  const categoryFilterCounts = useMemo(() => {
+    const counts = { ALL: baseRows.length }
+    allCategories.forEach((cat) => {
+      counts[cat] = baseRows.filter(
+        (p) => String(p?.Category || '').trim().toLowerCase() === String(cat || '').trim().toLowerCase()
+      ).length
+    })
+    return counts
+  }, [baseRows, allCategories])
+
+  const statusFilterCounts = useMemo(() => {
+    const counts = { ALL: baseRows.length }
+    PART_STATUS_FILTER_OPTIONS.forEach((opt) => {
+      counts[opt.value] = baseRows.filter((p) => getSparePartStatus(p) === opt.value).length
+    })
+    return counts
+  }, [baseRows])
+
+  // Multi-Select Card Filtering (Category + Stock Status)
+  const cardFilteredRows = useMemo(() => {
+    return filterSparePartsByCards(baseRows, { categoryFilters, statusFilters })
+  }, [baseRows, categoryFilters, statusFilters])
 
   const wbCols = useWebBuilderMenu('/spareparts')
   const cols = resolveSPColumns(wbCols, t)
@@ -464,7 +549,7 @@ export default function SpareParts() {
     },
   }), [categoryFilterOptions, cols, locationFilterOptions, statusFilterOptions])
 
-  const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
+  const displayRows = useMemo(() => applyFilterSort(cardFilteredRows, FS_COLS, filterSort), [cardFilteredRows, FS_COLS, filterSort])
 
   const reportFilterContext = useMemo(() => {
     const parts = []
@@ -816,8 +901,8 @@ export default function SpareParts() {
 
   return (
     <div className="space-y-5">
-      {/* ── SUMMARY STATS CARDS ──────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* ── SUMMARY STATS CARDS (5 CARDS) ──────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รายการอะไหล่ทั้งหมด</div>
@@ -844,19 +929,31 @@ export default function SpareParts() {
 
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">สต๊อกต่ำกว่าเกณฑ์</div>
-            <div className="text-xl font-black mt-0.5 text-rose-600 dark:text-rose-400">
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">สต๊อกต่ำ (Low Stock)</div>
+            <div className="text-xl font-black mt-0.5 text-amber-600 dark:text-amber-400">
               {stats.lowStock} <span className="text-xs font-normal text-slate-400">รายการ</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
             <AlertTriangle size={18} />
           </div>
         </div>
 
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">มูลค่าสต๊อกรวม</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">หมดสต็อก (Out of Stock)</div>
+            <div className="text-xl font-black mt-0.5 text-rose-600 dark:text-rose-400">
+              {stats.outOfStock} <span className="text-xs font-normal text-slate-400">รายการ</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold">
+            <Ban size={18} />
+          </div>
+        </div>
+
+        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800 col-span-2 sm:col-span-1">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">มูลค่าสต็อกรวม</div>
             <div className="text-xl font-black mt-0.5 text-blue-600 dark:text-blue-400">
               ฿{stats.totalValue.toLocaleString()}
             </div>
@@ -945,6 +1042,135 @@ export default function SpareParts() {
               <span>{t('sp_add')}</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* ── QUICK FILTER CARDS (CATEGORY & STATUS MULTI-SELECT) ── */}
+      <div className="space-y-2.5 p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+        {/* ROW 1: CATEGORY FILTER CARDS */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1 min-w-[75px]">
+            <Layers size={13} className="text-blue-600 dark:text-blue-400" />
+            <span>หมวดหมู่:</span>
+          </span>
+
+          {/* All Categories Card */}
+          <button
+            type="button"
+            onClick={() => setCategoryFilters([])}
+            className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+              categoryFilters.length === 0
+                ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+            }`}
+          >
+            <span>ทั้งหมด</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                categoryFilters.length === 0
+                  ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              {categoryFilterCounts.ALL}
+            </span>
+          </button>
+
+          {/* Dynamic Category Cards */}
+          {allCategories.map((cat) => {
+            const isSelected = categoryFilters.includes(cat)
+            const count = categoryFilterCounts[cat] || 0
+            const isTool = String(cat).includes('เครื่องมือ')
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => toggleCategoryFilter(cat)}
+                className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                  isSelected
+                    ? isTool
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                      : 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+                title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 หมวดหมู่)"
+              >
+                {isSelected && <Check size={12} strokeWidth={3} />}
+                <span>{cat}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    isSelected
+                      ? 'bg-white/25 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ROW 2: STOCK STATUS FILTER CARDS */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1 min-w-[75px]">
+            <Activity size={13} className="text-emerald-600 dark:text-emerald-400" />
+            <span>สถานะ:</span>
+          </span>
+
+          {/* All Statuses Card */}
+          <button
+            type="button"
+            onClick={() => setStatusFilters([])}
+            className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+              statusFilters.length === 0
+                ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+            }`}
+          >
+            <span>ทั้งหมด</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                statusFilters.length === 0
+                  ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              {statusFilterCounts.ALL}
+            </span>
+          </button>
+
+          {/* Status Cards (IN_STOCK, LOW_STOCK, OUT_OF_STOCK) */}
+          {PART_STATUS_FILTER_OPTIONS.map((opt) => {
+            const isSelected = statusFilters.includes(opt.value)
+            const count = statusFilterCounts[opt.value] || 0
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => toggleStatusFilter(opt.value)}
+                className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                  isSelected
+                    ? opt.activeClass
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+                title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 สถานะ)"
+              >
+                {isSelected && <Check size={12} strokeWidth={3} />}
+                <span>{opt.icon}</span>
+                <span>{opt.label}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    isSelected
+                      ? 'bg-white/25 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
