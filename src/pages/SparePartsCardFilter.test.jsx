@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
+  SP_FILTER_STORAGE_KEYS,
   PART_STATUS_FILTER_OPTIONS,
   calculateSparePartStats,
   filterSparePartsByCards,
@@ -207,6 +208,49 @@ describe('SpareParts - Category and Status Card Filters', () => {
       // 4. Clear all
       activeCategories = []
       expect(filterSparePartsByCards(sampleParts, { categoryFilters: activeCategories })).toHaveLength(6)
+    })
+  })
+
+  describe('SP_FILTER_STORAGE_KEYS & Collapsible Persistence', () => {
+    it('defines distinct localStorage keys for category and status panels', () => {
+      expect(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN).toBe('textileops_sp_filter_category_open')
+      expect(SP_FILTER_STORAGE_KEYS.STATUS_OPEN).toBe('textileops_sp_filter_status_open')
+      expect(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN).not.toBe(SP_FILTER_STORAGE_KEYS.STATUS_OPEN)
+    })
+
+    it('simulates independent collapsible state toggle and persistence', () => {
+      const mockStorage = {}
+      const getInitialState = (key) => {
+        const saved = mockStorage[key]
+        return saved !== undefined ? saved === 'true' : true // default expanded
+      }
+
+      // Default state: both expanded
+      let catOpen = getInitialState(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN)
+      let statusOpen = getInitialState(SP_FILTER_STORAGE_KEYS.STATUS_OPEN)
+      expect(catOpen).toBe(true)
+      expect(statusOpen).toBe(true)
+
+      // Toggle category to collapsed independently
+      catOpen = !catOpen
+      mockStorage[SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN] = String(catOpen)
+
+      expect(getInitialState(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN)).toBe(false)
+      expect(getInitialState(SP_FILTER_STORAGE_KEYS.STATUS_OPEN)).toBe(true) // Status remains open
+
+      // Toggle status to collapsed independently
+      statusOpen = !statusOpen
+      mockStorage[SP_FILTER_STORAGE_KEYS.STATUS_OPEN] = String(statusOpen)
+
+      expect(getInitialState(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN)).toBe(false)
+      expect(getInitialState(SP_FILTER_STORAGE_KEYS.STATUS_OPEN)).toBe(false)
+
+      // Re-expand category
+      catOpen = !catOpen
+      mockStorage[SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN] = String(catOpen)
+
+      expect(getInitialState(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN)).toBe(true)
+      expect(getInitialState(SP_FILTER_STORAGE_KEYS.STATUS_OPEN)).toBe(false)
     })
   })
 })

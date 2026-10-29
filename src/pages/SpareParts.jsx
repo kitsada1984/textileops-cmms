@@ -22,6 +22,8 @@ import {
   Camera,
   Ban,
   Activity,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import useEntity from '../hooks/useEntity'
 import { SparePartAPI, PART_STATUS } from '../api/entities'
@@ -91,6 +93,11 @@ const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
 const SP_FILTER_KEYS = ['Part_Name_EN', 'Location_Store', 'Category', 'Status']
 const SP_SORT_ONLY_KEYS = ['Part_Name_EN']
 const SP_INIT_FS = { sort: { key: 'Part_Name_EN', dir: 'asc' }, filters: {} }
+
+export const SP_FILTER_STORAGE_KEYS = {
+  CATEGORY_OPEN: 'textileops_sp_filter_category_open',
+  STATUS_OPEN: 'textileops_sp_filter_status_open',
+}
 
 export const PART_STATUS_FILTER_OPTIONS = [
   {
@@ -305,6 +312,45 @@ export default function SpareParts() {
   // Multi-Select Quick Filters
   const [categoryFilters, setCategoryFilters] = useState([])
   const [statusFilters, setStatusFilters] = useState([])
+
+  // Collapsible Filter Panels with localStorage persistence
+  const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN)
+      return saved !== null ? saved === 'true' : true
+    } catch {
+      return true
+    }
+  })
+
+  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SP_FILTER_STORAGE_KEYS.STATUS_OPEN)
+      return saved !== null ? saved === 'true' : true
+    } catch {
+      return true
+    }
+  })
+
+  const toggleCategoryFilterOpen = () => {
+    setIsCategoryFilterOpen((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN, String(next))
+      } catch {}
+      return next
+    })
+  }
+
+  const toggleStatusFilterOpen = () => {
+    setIsStatusFilterOpen((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(SP_FILTER_STORAGE_KEYS.STATUS_OPEN, String(next))
+      } catch {}
+      return next
+    })
+  }
 
   const toggleCategoryFilter = (cat) => {
     setCategoryFilters((prev) =>
@@ -1045,132 +1091,200 @@ export default function SpareParts() {
         </div>
       </div>
 
-      {/* ── QUICK FILTER CARDS (CATEGORY & STATUS MULTI-SELECT) ── */}
-      <div className="space-y-2.5 p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-        {/* ROW 1: CATEGORY FILTER CARDS */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1 min-w-[75px]">
-            <Layers size={13} className="text-blue-600 dark:text-blue-400" />
-            <span>หมวดหมู่:</span>
-          </span>
-
-          {/* All Categories Card */}
-          <button
-            type="button"
-            onClick={() => setCategoryFilters([])}
-            className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-              categoryFilters.length === 0
-                ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-            }`}
-          >
-            <span>ทั้งหมด</span>
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                categoryFilters.length === 0
-                  ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-              }`}
+      {/* ── QUICK FILTER CARDS (SEPARATE & COLLAPSIBLE) ── */}
+      <div className="space-y-2">
+        {/* BOX 1: หมวดหมู่อะไหล่ (CATEGORY) */}
+        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs overflow-hidden transition-all">
+          {/* Header & Toggle */}
+          <div className="flex items-center justify-between px-3.5 py-2">
+            <button
+              type="button"
+              onClick={toggleCategoryFilterOpen}
+              className={`flex items-center gap-2 text-left font-bold text-xs text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer group select-none`}
             >
-              {categoryFilterCounts.ALL}
-            </span>
-          </button>
+              <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+                <Layers size={13} />
+              </div>
+              <span>หมวดหมู่อะไหล่</span>
+              {categoryFilters.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                  เลือกอยู่ {categoryFilters.length} หมวดหมู่
+                </span>
+              )}
+              <div className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-transform">
+                {isCategoryFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </div>
+            </button>
 
-          {/* Dynamic Category Cards */}
-          {allCategories.map((cat) => {
-            const isSelected = categoryFilters.includes(cat)
-            const count = categoryFilterCounts[cat] || 0
-            const isTool = String(cat).includes('เครื่องมือ')
-            return (
+            {categoryFilters.length > 0 && (
               <button
-                key={cat}
                 type="button"
-                onClick={() => toggleCategoryFilter(cat)}
+                onClick={() => setCategoryFilters([])}
+                className="text-[11px] font-medium text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                title="ล้างตัวกรองหมวดหมู่ทั้งหมด"
+              >
+                <X size={11} />
+                <span>ล้างตัวกรอง</span>
+              </button>
+            )}
+          </div>
+
+          {/* Content */}
+          {isCategoryFilterOpen && (
+            <div className="px-3.5 pb-3 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center gap-1.5 animate-fadeIn">
+              {/* All Categories Card */}
+              <button
+                type="button"
+                onClick={() => setCategoryFilters([])}
                 className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                  isSelected
-                    ? isTool
-                      ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                      : 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  categoryFilters.length === 0
+                    ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
                     : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
-                title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 หมวดหมู่)"
               >
-                {isSelected && <Check size={12} strokeWidth={3} />}
-                <span>{cat}</span>
+                <span>ทั้งหมด</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                    isSelected
-                      ? 'bg-white/25 text-white'
+                    categoryFilters.length === 0
+                      ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  {count}
+                  {categoryFilterCounts.ALL}
                 </span>
               </button>
-            )
-          })}
+
+              {/* Dynamic Category Cards */}
+              {allCategories.map((cat) => {
+                const isSelected = categoryFilters.includes(cat)
+                const count = categoryFilterCounts[cat] || 0
+                const isTool = String(cat).includes('เครื่องมือ')
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => toggleCategoryFilter(cat)}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      isSelected
+                        ? isTool
+                          ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                          : 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                    title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 หมวดหมู่)"
+                  >
+                    {isSelected && <Check size={12} strokeWidth={3} />}
+                    <span>{cat}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        isSelected
+                          ? 'bg-white/25 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {/* ROW 2: STOCK STATUS FILTER CARDS */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1 min-w-[75px]">
-            <Activity size={13} className="text-emerald-600 dark:text-emerald-400" />
-            <span>สถานะ:</span>
-          </span>
-
-          {/* All Statuses Card */}
-          <button
-            type="button"
-            onClick={() => setStatusFilters([])}
-            className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-              statusFilters.length === 0
-                ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-            }`}
-          >
-            <span>ทั้งหมด</span>
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                statusFilters.length === 0
-                  ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-              }`}
+        {/* BOX 2: สถานะสต็อก (STATUS) */}
+        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs overflow-hidden transition-all">
+          {/* Header & Toggle */}
+          <div className="flex items-center justify-between px-3.5 py-2">
+            <button
+              type="button"
+              onClick={toggleStatusFilterOpen}
+              className={`flex items-center gap-2 text-left font-bold text-xs text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group select-none`}
             >
-              {statusFilterCounts.ALL}
-            </span>
-          </button>
+              <div className="p-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                <Activity size={13} />
+              </div>
+              <span>สถานะสต็อก</span>
+              {statusFilters.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
+                  เลือกอยู่ {statusFilters.length} สถานะ
+                </span>
+              )}
+              <div className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-transform">
+                {isStatusFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </div>
+            </button>
 
-          {/* Status Cards (IN_STOCK, LOW_STOCK, OUT_OF_STOCK) */}
-          {PART_STATUS_FILTER_OPTIONS.map((opt) => {
-            const isSelected = statusFilters.includes(opt.value)
-            const count = statusFilterCounts[opt.value] || 0
-            return (
+            {statusFilters.length > 0 && (
               <button
-                key={opt.value}
                 type="button"
-                onClick={() => toggleStatusFilter(opt.value)}
+                onClick={() => setStatusFilters([])}
+                className="text-[11px] font-medium text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                title="ล้างตัวกรองสถานะทั้งหมด"
+              >
+                <X size={11} />
+                <span>ล้างตัวกรอง</span>
+              </button>
+            )}
+          </div>
+
+          {/* Content */}
+          {isStatusFilterOpen && (
+            <div className="px-3.5 pb-3 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center gap-1.5 animate-fadeIn">
+              {/* All Statuses Card */}
+              <button
+                type="button"
+                onClick={() => setStatusFilters([])}
                 className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                  isSelected
-                    ? opt.activeClass
+                  statusFilters.length === 0
+                    ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
                     : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
-                title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 สถานะ)"
               >
-                {isSelected && <Check size={12} strokeWidth={3} />}
-                <span>{opt.icon}</span>
-                <span>{opt.label}</span>
+                <span>ทั้งหมด</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                    isSelected
-                      ? 'bg-white/25 text-white'
+                    statusFilters.length === 0
+                      ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  {count}
+                  {statusFilterCounts.ALL}
                 </span>
               </button>
-            )
-          })}
+
+              {/* Status Cards (IN_STOCK, LOW_STOCK, OUT_OF_STOCK) */}
+              {PART_STATUS_FILTER_OPTIONS.map((opt) => {
+                const isSelected = statusFilters.includes(opt.value)
+                const count = statusFilterCounts[opt.value] || 0
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggleStatusFilter(opt.value)}
+                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                      isSelected
+                        ? opt.activeClass
+                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                    title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 สถานะ)"
+                  >
+                    {isSelected && <Check size={12} strokeWidth={3} />}
+                    <span>{opt.icon}</span>
+                    <span>{opt.label}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        isSelected
+                          ? 'bg-white/25 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
