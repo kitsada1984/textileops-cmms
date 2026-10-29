@@ -477,6 +477,198 @@ export function TechSkillBar({ skillLevel = 'Senior' }) {
           )
         })}
       </div>
+      {/* ── CREATE WORK ORDER MODAL (ป๊อปอัพเปิดใบสั่งงาน) ── */}
+      {createModalOpen && (
+        <Modal
+          open={createModalOpen}
+          onClose={() => !submittingStart && setCreateModalOpen(false)}
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h2 className="text-sm sm:text-base font-extrabold flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
+                  <Plus size={16} className="text-blue-500" />
+                  <span>บันทึกเริ่มงานซ่อม / เปิดใบสั่งงาน (Create Work Order)</span>
+                </h2>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--text-500)' }}>
+                  กรอกข้อมูลเพื่อเริ่มงาน ระบบจะสร้างรหัส Job ID และจับเวลาการทำงานให้อัตโนมัติ
+                </div>
+              </div>
+              <div className="text-[11px] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-mono">
+                ผู้บันทึก: <b className="text-blue-600 dark:text-blue-400">{user?.username || user?.full_name || 'ช่างประจำกะ'}</b>
+              </div>
+            </div>
+
+            <form onSubmit={handleStartJob} className="space-y-4 text-xs">
+              {/* 1. M/C, KI, Design, Roll No */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="label">รหัสเครื่อง (M/C) *</label>
+                  <input
+                    type="text"
+                    placeholder="เช่น MC-01"
+                    value={mc}
+                    onChange={(e) => setMc(e.target.value)}
+                    className="input font-mono font-bold uppercase"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">รหัสงาน (KI) *</label>
+                  <input
+                    type="text"
+                    placeholder="เช่น KI-9012"
+                    value={ki}
+                    onChange={(e) => setKi(e.target.value)}
+                    className="input font-mono font-bold uppercase"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">แบบงาน (Design)</label>
+                  <input
+                    type="text"
+                    placeholder="ระบุแบบงาน / ลายผ้า"
+                    value={design}
+                    onChange={(e) => setDesign(e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">เลขม้วน (Roll No)</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="ระบุเลขม้วน"
+                    value={rollNo}
+                    onChange={(e) => setRollNo(e.target.value)}
+                    className="input font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* 2. ประเภท, สาเหตุปัญหา, รายละเอียด, สถานะ */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-3">
+                  <label className="label">ประเภทงาน (Job Type)</label>
+                  <select
+                    value={jobType}
+                    onChange={(e) => setJobType(e.target.value)}
+                    className="select font-semibold"
+                  >
+                    <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
+                    <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
+                    <option value="PM">🧹 PM / ล้างเครื่อง</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="label">สาเหตุปัญหา (Root Cause)</label>
+                  <select
+                    value={problemCause}
+                    onChange={(e) => setProblemCause(e.target.value)}
+                    className="select font-semibold"
+                  >
+                    <option value="">-- ไม่ระบุ / ระบุภายหลัง --</option>
+                    {PROBLEM_CAUSE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.icon} {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-4">
+                  <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
+                  <input
+                    type="text"
+                    placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="label">สถานะ (Status)</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="select font-semibold"
+                  >
+                    {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.icon} {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Technicians Multi-Select Checklist */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="label flex items-center gap-1.5">
+                    <Wrench size={13} className="text-blue-500" />
+                    <span>ช่างปรับผู้ปฏิบัติงาน (เลือกได้มากกว่า 1 คน) *</span>
+                  </label>
+                  <span className="badge badge-blue text-[11px] font-bold">
+                    เลือกแล้ว: {selectedTechs.length} คน
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 max-h-48 overflow-y-auto">
+                  {technicians.filter((t) => t.Status !== 'INACTIVE').map((tech, idx) => {
+                    const isChecked = selectedTechs.includes(tech.Name)
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => toggleTechSelection(tech.Name)}
+                        className={`flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold transition-all border ${
+                          isChecked
+                            ? 'bg-blue-500/15 border-blue-500 text-blue-600 dark:text-blue-400'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                        }`}
+                      >
+                        <div
+                          className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
+                            isChecked
+                              ? 'bg-blue-600 border-blue-600 text-white'
+                              : 'border-slate-300 dark:border-slate-600'
+                          }`}
+                        >
+                          {isChecked && <Check size={11} strokeWidth={3} />}
+                        </div>
+                        <span className="truncate">{tech.Name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setCreateModalOpen(false)}
+                  disabled={submittingStart}
+                  className="btn-outline px-4 py-2 text-xs font-semibold cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingStart}
+                  className="btn-primary px-4 py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20"
+                >
+                  <Send size={14} />
+                  <span>{submittingStart ? 'กำลังบันทึก...' : 'ยืนยันเปิดใบสั่งงาน (เริ่มงาน)'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
+
     </div>
   )
 }
@@ -879,6 +1071,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [submittingStart, setSubmittingStart] = useState(false)
 
   // Modals State
+  const [createModalOpen, setCreateModalOpen] = useState(false)
   const [completeModalOpen, setCompleteModalOpen] = useState(false)
   const [compJob, setCompJob] = useState(null)
   const [compEndDate, setCompEndDate] = useState('')
@@ -1465,6 +1658,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       setSelectedTechs([])
       setComment('')
       setStatus('IN_PROGRESS')
+      setCreateModalOpen(false)
     } catch (err) {
       toast.error('ไม่สามารถเปิดใบสั่งงานได้', err.message)
     } finally {
@@ -2797,184 +2991,6 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       {/* ══════════════════════════════════════════════════════════ */}
       {currentTab === 'records' && (
         <div className="space-y-6">
-          {/* WORK ORDER ENTRY FORM (เปิดใบสั่งงาน) */}
-          {canAdd && (
-            <div className="card p-5 space-y-4 border border-blue-500/25 bg-blue-500/[0.02]">
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div>
-                  <h2 className="text-sm sm:text-base font-extrabold flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
-                    <Plus size={16} className="text-blue-500" />
-                    <span>บันทึกเริ่มงานซ่อม / เปิดใบสั่งงาน (Create Work Order)</span>
-                  </h2>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-500)' }}>
-                    กรอกข้อมูลเพื่อเริ่มงาน ระบบจะสร้างรหัส Job ID และจับเวลาการทำงานให้อัตโนมัติ
-                  </div>
-                </div>
-                <div className="text-[11px] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-mono">
-                  ผู้บันทึก: <b className="text-blue-600 dark:text-blue-400">{user?.username || user?.full_name || 'ช่างประจำกะ'}</b>
-                </div>
-              </div>
-
-              <form onSubmit={handleStartJob} className="space-y-4 text-xs">
-                {/* 1. M/C, KI, Design, Roll No */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className="label">รหัสเครื่อง (M/C) *</label>
-                    <input
-                      type="text"
-                      placeholder="เช่น MC-01"
-                      value={mc}
-                      onChange={(e) => setMc(e.target.value)}
-                      className="input font-mono font-bold uppercase"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="label">รหัสงาน (KI) *</label>
-                    <input
-                      type="text"
-                      placeholder="เช่น KI-9012"
-                      value={ki}
-                      onChange={(e) => setKi(e.target.value)}
-                      className="input font-mono font-bold uppercase"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="label">แบบงาน (Design)</label>
-                    <input
-                      type="text"
-                      placeholder="ระบุแบบงาน / ลายผ้า"
-                      value={design}
-                      onChange={(e) => setDesign(e.target.value)}
-                      className="input"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">เลขม้วน (Roll No)</label>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="ระบุเลขม้วน"
-                      value={rollNo}
-                      onChange={(e) => setRollNo(e.target.value)}
-                      className="input font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* 2. ประเภท, สาเหตุปัญหา, รายละเอียด, สถานะ */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                  <div className="sm:col-span-3">
-                    <label className="label">ประเภทงาน (Job Type)</label>
-                    <select
-                      value={jobType}
-                      onChange={(e) => setJobType(e.target.value)}
-                      className="select font-semibold"
-                    >
-                      <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
-                      <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
-                      <option value="PM">🧹 PM / ล้างเครื่อง</option>
-                    </select>
-                  </div>
-                  <div className="sm:col-span-3">
-                    <label className="label">สาเหตุปัญหา (Root Cause)</label>
-                    <select
-                      value={problemCause}
-                      onChange={(e) => setProblemCause(e.target.value)}
-                      className="select font-semibold"
-                    >
-                      <option value="">-- ไม่ระบุ / ระบุภายหลัง --</option>
-                      {PROBLEM_CAUSE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.icon} {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="sm:col-span-4">
-                    <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
-                    <input
-                      type="text"
-                      placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      className="input"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="label">สถานะ (Status)</label>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="select font-semibold"
-                    >
-                      {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.icon} {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Technicians Multi-Select Checklist */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="label flex items-center gap-1.5">
-                      <Wrench size={13} className="text-blue-500" />
-                      <span>ช่างปรับผู้ปฏิบัติงาน (เลือกได้มากกว่า 1 คน) *</span>
-                    </label>
-                    <span className="badge badge-blue text-[11px] font-bold">
-                      เลือกแล้ว: {selectedTechs.length} คน
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 max-h-40 overflow-y-auto">
-                    {technicians.filter((t) => t.Status !== 'INACTIVE').map((tech, idx) => {
-                      const isChecked = selectedTechs.includes(tech.Name)
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => toggleTechSelection(tech.Name)}
-                          className={`flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold transition-all border ${
-                            isChecked
-                              ? 'bg-blue-500/15 border-blue-500 text-blue-600 dark:text-blue-400'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
-                              isChecked
-                                ? 'bg-blue-600 border-blue-600 text-white'
-                                : 'border-slate-300 dark:border-slate-600'
-                            }`}
-                          >
-                            {isChecked && <Check size={11} strokeWidth={3} />}
-                          </div>
-                          <span className="truncate">{tech.Name}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    disabled={submittingStart}
-                    className="btn-primary w-full sm:w-auto"
-                  >
-                    <Send size={14} />
-                    <span>{submittingStart ? 'กำลังบันทึก...' : 'ยืนยันเปิดใบสั่งงาน (เริ่มงาน)'}</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
           {/* Search & Filter Toolbar */}
           <div className="card p-3.5 sm:p-4 space-y-3 text-xs shadow-xs">
             {/* Top Row: Search Input + Deleted Items Checkbox + Reset Button */}
@@ -2989,6 +3005,18 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
 
               <div className="flex items-center gap-2.5 flex-wrap">
+                {canAdd && (
+                  <button
+                    type="button"
+                    onClick={() => setCreateModalOpen(true)}
+                    className="btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
+                    title="เปิดหน้าต่างบันทึกเริ่มงานซ่อม / เปิดใบสั่งงาน"
+                  >
+                    <Plus size={15} />
+                    <span>เปิดใบสั่งงาน</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setReportModalOpen(true)}
