@@ -20,10 +20,6 @@ import {
   ShoppingCart,
   Printer,
   Camera,
-  Ban,
-  Activity,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react'
 import useEntity from '../hooks/useEntity'
 import { SparePartAPI, PART_STATUS } from '../api/entities'
@@ -93,60 +89,6 @@ const WAREHOUSE_OPTIONS = ['GMK1', 'GMK3', 'Store']
 const SP_FILTER_KEYS = ['Part_Name_EN', 'Location_Store', 'Category', 'Status']
 const SP_SORT_ONLY_KEYS = ['Part_Name_EN']
 const SP_INIT_FS = { sort: { key: 'Part_Name_EN', dir: 'asc' }, filters: {} }
-
-export const SP_FILTER_STORAGE_KEYS = {
-  CATEGORY_OPEN: 'textileops_sp_filter_category_open',
-  STATUS_OPEN: 'textileops_sp_filter_status_open',
-}
-
-export const PART_STATUS_FILTER_OPTIONS = [
-  {
-    value: 'IN_STOCK',
-    label: 'มีของ (In Stock)',
-    icon: '🟢',
-    activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
-  },
-  {
-    value: 'LOW_STOCK',
-    label: 'สต็อกต่ำ (Low Stock)',
-    icon: '🟡',
-    activeClass: 'bg-amber-600 text-white border-amber-600 shadow-xs',
-  },
-  {
-    value: 'OUT_OF_STOCK',
-    label: 'หมดสต็อก (Out of Stock)',
-    icon: '🔴',
-    activeClass: 'bg-rose-600 text-white border-rose-600 shadow-xs',
-  },
-]
-
-export function calculateSparePartStats(rows = []) {
-  const data = Array.isArray(rows) ? rows : []
-  const total = data.length
-  const inStock = data.filter((p) => getSparePartStatus(p) === 'IN_STOCK').length
-  const lowStock = data.filter((p) => getSparePartStatus(p) === 'LOW_STOCK').length
-  const outOfStock = data.filter((p) => getSparePartStatus(p) === 'OUT_OF_STOCK').length
-  const totalValue = data.reduce((acc, p) => acc + (Number(p.Stock_Qty) || 0) * (Number(p.Unit_Price) || 0), 0)
-  return { total, inStock, lowStock, outOfStock, totalValue }
-}
-
-export function filterSparePartsByCards(rows = [], { categoryFilters = [], statusFilters = [] } = {}) {
-  const list = Array.isArray(rows) ? rows : []
-  return list.filter((p) => {
-    if (categoryFilters && categoryFilters.length > 0) {
-      const pCat = String(p?.Category || '').trim().toLowerCase()
-      const matchCat = categoryFilters.some(
-        (fCat) => String(fCat || '').trim().toLowerCase() === pCat
-      )
-      if (!matchCat) return false
-    }
-    if (statusFilters && statusFilters.length > 0) {
-      const pStatus = getSparePartStatus(p)
-      if (!statusFilters.includes(pStatus)) return false
-    }
-    return true
-  })
-}
 
 function optionRawValue(option) {
   if (option && typeof option === 'object') return option.value ?? option.id ?? option.label ?? ''
@@ -308,61 +250,6 @@ export default function SpareParts() {
   const [editingCategory, setEditingCategory] = useState(null)
   const [editingCategoryValue, setEditingCategoryValue] = useState('')
   const [categoryActionLoading, setCategoryActionLoading] = useState(false)
-
-  // Multi-Select Quick Filters
-  const [categoryFilters, setCategoryFilters] = useState([])
-  const [statusFilters, setStatusFilters] = useState([])
-
-  // Collapsible Filter Panels with localStorage persistence
-  const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(() => {
-    try {
-      const saved = localStorage.getItem(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN)
-      return saved !== null ? saved === 'true' : true
-    } catch {
-      return true
-    }
-  })
-
-  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(() => {
-    try {
-      const saved = localStorage.getItem(SP_FILTER_STORAGE_KEYS.STATUS_OPEN)
-      return saved !== null ? saved === 'true' : true
-    } catch {
-      return true
-    }
-  })
-
-  const toggleCategoryFilterOpen = () => {
-    setIsCategoryFilterOpen((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(SP_FILTER_STORAGE_KEYS.CATEGORY_OPEN, String(next))
-      } catch {}
-      return next
-    })
-  }
-
-  const toggleStatusFilterOpen = () => {
-    setIsStatusFilterOpen((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(SP_FILTER_STORAGE_KEYS.STATUS_OPEN, String(next))
-      } catch {}
-      return next
-    })
-  }
-
-  const toggleCategoryFilter = (cat) => {
-    setCategoryFilters((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-    )
-  }
-
-  const toggleStatusFilter = (statusVal) => {
-    setStatusFilters((prev) =>
-      prev.includes(statusVal) ? prev.filter((s) => s !== statusVal) : [...prev, statusVal]
-    )
-  }
 
   const handleAddCategory = async (e) => {
     e?.preventDefault?.()
@@ -526,8 +413,14 @@ export default function SpareParts() {
     })
   }
 
-  // Summary statistics (5 KPI cards)
-  const stats = useMemo(() => calculateSparePartStats(data), [data])
+  // Summary statistics
+  const stats = useMemo(() => {
+    const total = data.length
+    const inStock = data.filter((p) => getSparePartStatus(p) === 'IN_STOCK').length
+    const lowStock = data.filter((p) => getSparePartStatus(p) !== 'IN_STOCK').length
+    const totalValue = data.reduce((acc, p) => acc + (Number(p.Stock_Qty) || 0) * (Number(p.Unit_Price) || 0), 0)
+    return { total, inStock, lowStock, totalValue }
+  }, [data])
 
   const baseRows = useMemo(() => {
     return data.filter((p) =>
@@ -536,30 +429,6 @@ export default function SpareParts() {
       )
     )
   }, [data, search])
-
-  // Real-time counts for Quick Filter Cards
-  const categoryFilterCounts = useMemo(() => {
-    const counts = { ALL: baseRows.length }
-    allCategories.forEach((cat) => {
-      counts[cat] = baseRows.filter(
-        (p) => String(p?.Category || '').trim().toLowerCase() === String(cat || '').trim().toLowerCase()
-      ).length
-    })
-    return counts
-  }, [baseRows, allCategories])
-
-  const statusFilterCounts = useMemo(() => {
-    const counts = { ALL: baseRows.length }
-    PART_STATUS_FILTER_OPTIONS.forEach((opt) => {
-      counts[opt.value] = baseRows.filter((p) => getSparePartStatus(p) === opt.value).length
-    })
-    return counts
-  }, [baseRows])
-
-  // Multi-Select Card Filtering (Category + Stock Status)
-  const cardFilteredRows = useMemo(() => {
-    return filterSparePartsByCards(baseRows, { categoryFilters, statusFilters })
-  }, [baseRows, categoryFilters, statusFilters])
 
   const wbCols = useWebBuilderMenu('/spareparts')
   const cols = resolveSPColumns(wbCols, t)
@@ -595,7 +464,7 @@ export default function SpareParts() {
     },
   }), [categoryFilterOptions, cols, locationFilterOptions, statusFilterOptions])
 
-  const displayRows = useMemo(() => applyFilterSort(cardFilteredRows, FS_COLS, filterSort), [cardFilteredRows, FS_COLS, filterSort])
+  const displayRows = useMemo(() => applyFilterSort(baseRows, FS_COLS, filterSort), [baseRows, FS_COLS, filterSort])
 
   const reportFilterContext = useMemo(() => {
     const parts = []
@@ -947,8 +816,8 @@ export default function SpareParts() {
 
   return (
     <div className="space-y-5">
-      {/* ── SUMMARY STATS CARDS (5 CARDS) ──────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {/* ── SUMMARY STATS CARDS ──────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รายการอะไหล่ทั้งหมด</div>
@@ -975,31 +844,19 @@ export default function SpareParts() {
 
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">สต๊อกต่ำ (Low Stock)</div>
-            <div className="text-xl font-black mt-0.5 text-amber-600 dark:text-amber-400">
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">สต๊อกต่ำกว่าเกณฑ์</div>
+            <div className="text-xl font-black mt-0.5 text-rose-600 dark:text-rose-400">
               {stats.lowStock} <span className="text-xs font-normal text-slate-400">รายการ</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold">
             <AlertTriangle size={18} />
           </div>
         </div>
 
         <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
           <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">หมดสต็อก (Out of Stock)</div>
-            <div className="text-xl font-black mt-0.5 text-rose-600 dark:text-rose-400">
-              {stats.outOfStock} <span className="text-xs font-normal text-slate-400">รายการ</span>
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold">
-            <Ban size={18} />
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800 col-span-2 sm:col-span-1">
-          <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">มูลค่าสต็อกรวม</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">มูลค่าสต๊อกรวม</div>
             <div className="text-xl font-black mt-0.5 text-blue-600 dark:text-blue-400">
               ฿{stats.totalValue.toLocaleString()}
             </div>
@@ -1087,203 +944,6 @@ export default function SpareParts() {
               <Plus size={15} />
               <span>{t('sp_add')}</span>
             </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── QUICK FILTER CARDS (SEPARATE & COLLAPSIBLE) ── */}
-      <div className="space-y-2">
-        {/* BOX 1: หมวดหมู่อะไหล่ (CATEGORY) */}
-        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs overflow-hidden transition-all">
-          {/* Header & Toggle */}
-          <div className="flex items-center justify-between px-3.5 py-2">
-            <button
-              type="button"
-              onClick={toggleCategoryFilterOpen}
-              className={`flex items-center gap-2 text-left font-bold text-xs text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer group select-none`}
-            >
-              <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-                <Layers size={13} />
-              </div>
-              <span>หมวดหมู่อะไหล่</span>
-              {categoryFilters.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                  เลือกอยู่ {categoryFilters.length} หมวดหมู่
-                </span>
-              )}
-              <div className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-transform">
-                {isCategoryFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </div>
-            </button>
-
-            {categoryFilters.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setCategoryFilters([])}
-                className="text-[11px] font-medium text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
-                title="ล้างตัวกรองหมวดหมู่ทั้งหมด"
-              >
-                <X size={11} />
-                <span>ล้างตัวกรอง</span>
-              </button>
-            )}
-          </div>
-
-          {/* Content */}
-          {isCategoryFilterOpen && (
-            <div className="px-3.5 pb-3 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center gap-1.5 animate-fadeIn">
-              {/* All Categories Card */}
-              <button
-                type="button"
-                onClick={() => setCategoryFilters([])}
-                className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                  categoryFilters.length === 0
-                    ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                <span>ทั้งหมด</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                    categoryFilters.length === 0
-                      ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  {categoryFilterCounts.ALL}
-                </span>
-              </button>
-
-              {/* Dynamic Category Cards */}
-              {allCategories.map((cat) => {
-                const isSelected = categoryFilters.includes(cat)
-                const count = categoryFilterCounts[cat] || 0
-                const isTool = String(cat).includes('เครื่องมือ')
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => toggleCategoryFilter(cat)}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                      isSelected
-                        ? isTool
-                          ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                          : 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
-                    title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 หมวดหมู่)"
-                  >
-                    {isSelected && <Check size={12} strokeWidth={3} />}
-                    <span>{cat}</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                        isSelected
-                          ? 'bg-white/25 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* BOX 2: สถานะสต็อก (STATUS) */}
-        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs overflow-hidden transition-all">
-          {/* Header & Toggle */}
-          <div className="flex items-center justify-between px-3.5 py-2">
-            <button
-              type="button"
-              onClick={toggleStatusFilterOpen}
-              className={`flex items-center gap-2 text-left font-bold text-xs text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group select-none`}
-            >
-              <div className="p-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
-                <Activity size={13} />
-              </div>
-              <span>สถานะสต็อก</span>
-              {statusFilters.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
-                  เลือกอยู่ {statusFilters.length} สถานะ
-                </span>
-              )}
-              <div className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-transform">
-                {isStatusFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </div>
-            </button>
-
-            {statusFilters.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setStatusFilters([])}
-                className="text-[11px] font-medium text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
-                title="ล้างตัวกรองสถานะทั้งหมด"
-              >
-                <X size={11} />
-                <span>ล้างตัวกรอง</span>
-              </button>
-            )}
-          </div>
-
-          {/* Content */}
-          {isStatusFilterOpen && (
-            <div className="px-3.5 pb-3 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center gap-1.5 animate-fadeIn">
-              {/* All Statuses Card */}
-              <button
-                type="button"
-                onClick={() => setStatusFilters([])}
-                className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                  statusFilters.length === 0
-                    ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                <span>ทั้งหมด</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                    statusFilters.length === 0
-                      ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  {statusFilterCounts.ALL}
-                </span>
-              </button>
-
-              {/* Status Cards (IN_STOCK, LOW_STOCK, OUT_OF_STOCK) */}
-              {PART_STATUS_FILTER_OPTIONS.map((opt) => {
-                const isSelected = statusFilters.includes(opt.value)
-                const count = statusFilterCounts[opt.value] || 0
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => toggleStatusFilter(opt.value)}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                      isSelected
-                        ? opt.activeClass
-                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
-                    title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 สถานะ)"
-                  >
-                    {isSelected && <Check size={12} strokeWidth={3} />}
-                    <span>{opt.icon}</span>
-                    <span>{opt.label}</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                        isSelected
-                          ? 'bg-white/25 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
           )}
         </div>
       </div>
