@@ -8,6 +8,54 @@
 /** Needle conditions that mean "should be replaced" → cylinder needs service. */
 export const WORN_NEEDLE_STATUSES = ['สึกมาก', 'สึกมาก(ควรเปลี่ยน)', 'BROKEN']
 
+/** Standard cylinder types commonly used in knitting */
+export const STANDARD_CYLINDER_TYPES = [
+  'Single Jersey',
+  'Double Jersey',
+  'Jacquard',
+  'Interlock',
+  'Rib',
+]
+
+/**
+ * Normalizes cylinder type code or abbreviation from the Cylinders menu / database.
+ * - 'S', 's', 'single', 'single jersey' -> 'Single Jersey'
+ * - 'D', 'd', 'double', 'double jersey' -> 'Double Jersey'
+ * - 'Jac.', 'jac.', 'jac', 'jacquard'   -> 'Jacquard'
+ * - other non-empty strings (e.g. 'Interlock', 'Rib', 'Terry') -> preserved as-is
+ * - empty/falsy -> 'Single Jersey'
+ */
+export function normalizeCylinderType(typeStr) {
+  const raw = String(typeStr || '').trim()
+  if (!raw) return 'Single Jersey'
+  const lower = raw.toLowerCase()
+
+  if (lower === 's' || lower.includes('single')) return 'Single Jersey'
+  if (lower === 'd' || lower.includes('double')) return 'Double Jersey'
+  if (lower.startsWith('jac') || lower.includes('jacquard')) return 'Jacquard'
+  if (lower === 'interlock') return 'Interlock'
+  if (lower === 'rib') return 'Rib'
+
+  return raw
+}
+
+/**
+ * Extracts all unique cylinder types available in the cylinders database,
+ * merged with standard options, ensuring no duplicates.
+ */
+export function getCylinderTypeOptions(cylinders = []) {
+  const typesSet = new Set(STANDARD_CYLINDER_TYPES)
+  if (Array.isArray(cylinders)) {
+    for (const cyl of cylinders) {
+      if (cyl?.Type) {
+        const normalized = normalizeCylinderType(cyl.Type)
+        if (normalized) typesSet.add(normalized)
+      }
+    }
+  }
+  return Array.from(typesSet)
+}
+
 /** Cylinder status used while waiting for a needle/service job (see CYL_STATUS). */
 export const CYLINDER_NEEDS_SERVICE = 'WAIT_SERVICE'
 

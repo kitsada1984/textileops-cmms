@@ -5,6 +5,9 @@ import {
   CYLINDER_NEEDS_SERVICE,
   CYLINDER_STANDARD,
   WORN_NEEDLE_STATUSES,
+  normalizeCylinderType,
+  getCylinderTypeOptions,
+  STANDARD_CYLINDER_TYPES,
 } from './needleConditionSync'
 
 describe('buildCylinderInspectionSync', () => {
@@ -77,5 +80,87 @@ describe('sortInspectionsNewestFirst', () => {
     expect(out[0]).toBe('z')
     expect(out).toHaveLength(3)
     expect(sortInspectionsNewestFirst(undefined)).toEqual([])
+  })
+})
+
+describe('normalizeCylinderType', () => {
+  it('normalizes single jersey abbreviations to Single Jersey', () => {
+    expect(normalizeCylinderType('S')).toBe('Single Jersey')
+    expect(normalizeCylinderType('s')).toBe('Single Jersey')
+    expect(normalizeCylinderType('Single')).toBe('Single Jersey')
+    expect(normalizeCylinderType('single')).toBe('Single Jersey')
+    expect(normalizeCylinderType('Single Jersey')).toBe('Single Jersey')
+    expect(normalizeCylinderType('  Single Jersey 4 Track  ')).toBe('Single Jersey')
+  })
+
+  it('normalizes double jersey abbreviations to Double Jersey', () => {
+    expect(normalizeCylinderType('D')).toBe('Double Jersey')
+    expect(normalizeCylinderType('d')).toBe('Double Jersey')
+    expect(normalizeCylinderType('Double')).toBe('Double Jersey')
+    expect(normalizeCylinderType('double')).toBe('Double Jersey')
+    expect(normalizeCylinderType('Double Jersey')).toBe('Double Jersey')
+  })
+
+  it('normalizes jacquard abbreviations to Jacquard', () => {
+    expect(normalizeCylinderType('Jac.')).toBe('Jacquard')
+    expect(normalizeCylinderType('jac.')).toBe('Jacquard')
+    expect(normalizeCylinderType('Jac')).toBe('Jacquard')
+    expect(normalizeCylinderType('jac')).toBe('Jacquard')
+    expect(normalizeCylinderType('Jacquard')).toBe('Jacquard')
+  })
+
+  it('preserves known knitting types like Interlock and Rib', () => {
+    expect(normalizeCylinderType('Interlock')).toBe('Interlock')
+    expect(normalizeCylinderType('interlock')).toBe('Interlock')
+    expect(normalizeCylinderType('Rib')).toBe('Rib')
+    expect(normalizeCylinderType('rib')).toBe('Rib')
+  })
+
+  it('preserves custom types entered in the cylinders menu', () => {
+    expect(normalizeCylinderType('Terry')).toBe('Terry')
+    expect(normalizeCylinderType('Fleece')).toBe('Fleece')
+  })
+
+  it('falls back to Single Jersey on empty or null values', () => {
+    expect(normalizeCylinderType('')).toBe('Single Jersey')
+    expect(normalizeCylinderType(null)).toBe('Single Jersey')
+    expect(normalizeCylinderType(undefined)).toBe('Single Jersey')
+    expect(normalizeCylinderType('   ')).toBe('Single Jersey')
+  })
+})
+
+describe('getCylinderTypeOptions', () => {
+  it('includes all standard types by default', () => {
+    const opts = getCylinderTypeOptions([])
+    for (const st of STANDARD_CYLINDER_TYPES) {
+      expect(opts).toContain(st)
+    }
+  })
+
+  it('extracts and normalizes unique types from cylinder list', () => {
+    const cyls = [
+      { Type: 'S' },
+      { Type: 'D' },
+      { Type: 'Jac.' },
+      { Type: 'Terry' },
+      { Type: 'Rib' },
+      { Type: '' },
+      { Type: null },
+    ]
+    const opts = getCylinderTypeOptions(cyls)
+    expect(opts).toContain('Single Jersey')
+    expect(opts).toContain('Double Jersey')
+    expect(opts).toContain('Jacquard')
+    expect(opts).toContain('Terry')
+    expect(opts).toContain('Rib')
+    // No duplicate or raw 'S'/'D'
+    expect(opts).not.toContain('S')
+    expect(opts).not.toContain('D')
+    expect(opts).not.toContain('Jac.')
+  })
+
+  it('handles invalid cylinders input safely', () => {
+    expect(getCylinderTypeOptions(null)).toEqual(STANDARD_CYLINDER_TYPES)
+    expect(getCylinderTypeOptions(undefined)).toEqual(STANDARD_CYLINDER_TYPES)
   })
 })

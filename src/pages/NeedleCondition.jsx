@@ -57,7 +57,12 @@ import { generateNeedleConditionPdfProps } from '../utils/pdfDocGenerators'
 import { applyFilterSort } from '../utils/filterSort'
 import { getDirectImageUrl, getImageFallbackUrls } from '../utils/imageUrlUtils'
 import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../modules/media'
-import { buildCylinderInspectionSync, sortInspectionsNewestFirst } from '../utils/needleConditionSync'
+import {
+  buildCylinderInspectionSync,
+  sortInspectionsNewestFirst,
+  normalizeCylinderType,
+  getCylinderTypeOptions,
+} from '../utils/needleConditionSync'
 import { buildCounterFields, computeCounterDiff, normalizeCounter, pickPreviousWithCounter } from '../utils/counterDiff'
 
 const NEEDLE_IMAGE_FOLDER = 'สภาพเข็ม'
@@ -242,12 +247,24 @@ export default function NeedleCondition() {
     cylinders.forEach((cyl) => {
       const sOld = normalizeSerial(cyl.Serial_OLD)
       const sNow = normalizeSerial(cyl.Serial_NOW)
-      const mc = normalizeMachine(cyl.NewMC || cyl.Standard || cyl.Machine_Ref)
+      const sId = cyl.id ? String(cyl.id).toUpperCase() : ''
       if (sOld) map.set(sOld, cyl)
       if (sNow) map.set(sNow, cyl)
-      if (mc && !map.has(mc)) map.set(mc, cyl)
+      if (sId) map.set(sId, cyl)
+
+      const mcNew = normalizeMachine(cyl.NewMC)
+      const mcStd = normalizeMachine(cyl.Standard)
+      const mcRef = normalizeMachine(cyl.Machine_Ref)
+      if (mcNew && !map.has(mcNew)) map.set(mcNew, cyl)
+      if (mcStd && !map.has(mcStd)) map.set(mcStd, cyl)
+      if (mcRef && !map.has(mcRef)) map.set(mcRef, cyl)
     })
     return map
+  }, [cylinders])
+
+  // Dynamic Cylinder Types from DB + knitting standards
+  const cylinderTypeOptions = useMemo(() => {
+    return getCylinderTypeOptions(cylinders)
   }, [cylinders])
 
   // Group inspections to get the LATEST state per Serial/Cylinder
@@ -347,7 +364,7 @@ export default function NeedleCondition() {
   )
 
   // Auto-populate when Serial is selected/scanned
-  const populateFromSerial = (inputSerial) => {
+  const populateFromSerial = (inputSerial, { silent = false } = {}) => {
     const raw = String(inputSerial || '').trim()
     if (!raw) return
 
@@ -362,6 +379,11 @@ export default function NeedleCondition() {
     const cyl = cylinderMap.get(key)
     const mcObj = machines.find((m) => normalizeMachine(m.Mc || m.Machine_MC || m.name) === key)
 
+    // If typing manually and no matching cylinder/machine is resolved yet, do not overwrite fields
+    if (!cyl && !mcObj && silent) {
+      return
+    }
+
     // Lookup the most recent earlier inspection that actually has a counter,
     // so the difference can be worked out when the new reading is typed in.
     const prevCondition = pickPreviousWithCounter(records, {
@@ -373,25 +395,65 @@ export default function NeedleCondition() {
     const serialOld = cyl?.Serial_OLD || cyl?.Serial_NOW || cleanCode
     const machineMc = cyl?.NewMC || cyl?.Standard || mcObj?.Mc || mcObj?.Machine_MC || ''
     const location = cyl?.Location || mcObj?.Location || 'In-use'
-    const type = cyl?.Type || mcObj?.Type || 'Single Jersey'
+    const resolvedType = normalizeCylinderType(cyl?.Type || mcObj?.Type)
 
     setFormData((prev) => ({
       ...prev,
       serial: serialOld,
-      machine_mc: machineMc,
-      location: location,
-      type: type,
-      doc_date: format(new Date(), 'yyyy-MM-dd'),
-      inspector: user?.full_name || user?.username || 'ช่างประจำกะ',
-      counter: '',
-      counter_prev: prevCondition ? String(normalizeCounter(prevCondition.counter)) : '',
-      counter_prev_date: prevCondition?.doc_date || '',
-      counter_diff: 0,
+      machine_mc: machineMc || prev.machine_mc,
+      location: location || prev.location,
+      type: resolvedType || prev.type || 'Single Jersey',
+      doc_date: prev.doc_date || format(new Date(), 'yyyy-MM-dd'),
+      inspector: prev.inspector || user?.full_name || user?.username || 'ช่างประจำกะ',
+      counter: prev.counter || '',
+      counter_prev: prevCondition ? String(normalizeCounter(prevCondition.counter)) : (prev.counter_prev || ''),
+      counter_prev_date: prevCondition?.doc_date || prev.counter_prev_date || '',
+      counter_diff: prev.counter ? computeCounterDiff(prev.counter, prevCondition?.counter) : 0,
+    }))
+
+    if (!silent || cyl || mcObj) {
+      toast.success(
+        'ดึงข้อมูลกระบอกอัตโนมัติสำเร็จ',
+        `ซีเรียล: ${serialOld} · เครื่อง: ${machineMc || '—'} · ประเภท: ${resolvedType}`
+      )
+    }
+  }
+
+  // Auto-populate when Machine MC is selected/changed
+  const populateFromMachine = (inputMachine) => {
+    const raw = String(inputMachine || '').trim()
+    if (!raw) return
+
+    const key = normalizeMachine(raw)
+    const cyl = cylinderMap.get(key)
+    const mcObj = machines.find((m) => normalizeMachine(m.Mc || m.Machine_MC || m.name) === key)
+
+    if (!cyl && !mcObj) return
+
+    const serialOld = cyl?.Serial_OLD || cyl?.Serial_NOW || ''
+    const location = cyl?.Location || mcObj?.Location || 'In-use'
+    const resolvedType = normalizeCylinderType(cyl?.Type || mcObj?.Type)
+
+    const prevCondition = pickPreviousWithCounter(records, {
+      matches: (r) => normalizeMachine(r.machine_mc) === key || (serialOld && normalizeSerial(r.serial) === normalizeSerial(serialOld)),
+      excludeId: formData.id || undefined,
+      getCounter: (r) => r.counter,
+    })
+
+    setFormData((prev) => ({
+      ...prev,
+      machine_mc: raw,
+      serial: prev.serial || serialOld,
+      location: prev.location || location,
+      type: resolvedType || prev.type || 'Single Jersey',
+      counter_prev: prevCondition ? String(normalizeCounter(prevCondition.counter)) : prev.counter_prev,
+      counter_prev_date: prevCondition?.doc_date || prev.counter_prev_date,
+      counter_diff: prev.counter ? computeCounterDiff(prev.counter, prevCondition?.counter) : prev.counter_diff,
     }))
 
     toast.success(
-      'ดึงข้อมูลอัตโนมัติสำเร็จ',
-      `ซีเรียล: ${serialOld} · เครื่อง: ${machineMc || '—'} · ตำแหน่ง: ${location}`
+      'ดึงข้อมูลเครื่องและกระบอกสำเร็จ',
+      `เครื่อง: ${raw} · กระบอก: ${serialOld || '—'} · ประเภท: ${resolvedType}`
     )
   }
 
@@ -643,7 +705,7 @@ export default function NeedleCondition() {
       serial: item.serial || '',
       machine_mc: item.machine_mc || '',
       location: item.location || '',
-      type: item.type || 'Single Jersey',
+      type: normalizeCylinderType(item.type) || 'Single Jersey',
       doc_date: item.doc_date || format(new Date(), 'yyyy-MM-dd'),
       counter: item.counter ? String(item.counter) : '',
       counter_prev: item.counter_prev ? String(item.counter_prev) : '',
@@ -911,7 +973,7 @@ export default function NeedleCondition() {
                     {/* Type */}
                     <td className="py-2.5 px-3 whitespace-nowrap">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-                        {row.type || 'Single Jersey'}
+                        {normalizeCylinderType(row.type)}
                       </span>
                     </td>
 
@@ -1189,8 +1251,9 @@ export default function NeedleCondition() {
                 list="needle-serial-datalist"
                 value={formData.serial}
                 onChange={(e) => {
-                  setFormData({ ...formData, serial: e.target.value })
-                  populateFromSerial(e.target.value)
+                  const val = e.target.value
+                  setFormData((prev) => ({ ...prev, serial: val }))
+                  populateFromSerial(val, { silent: true })
                 }}
                 placeholder="เช่น SN-2024-001 หรือเลือกจากลิสต์"
                 className="input font-mono font-bold text-blue-600 dark:text-blue-400"
@@ -1201,7 +1264,7 @@ export default function NeedleCondition() {
                   <option
                     key={i}
                     value={cyl.Serial_OLD || cyl.Serial_NOW}
-                    label={`${cyl.NewMC || cyl.Standard || ''} (${cyl.Type || ''})`}
+                    label={`${cyl.NewMC || cyl.Standard || ''} (${normalizeCylinderType(cyl.Type)})`}
                   />
                 ))}
               </datalist>
@@ -1214,7 +1277,11 @@ export default function NeedleCondition() {
                 type="text"
                 list="needle-machine-datalist"
                 value={formData.machine_mc}
-                onChange={(e) => setFormData({ ...formData, machine_mc: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setFormData((prev) => ({ ...prev, machine_mc: val }))
+                  populateFromMachine(val)
+                }}
                 placeholder="เช่น MC-01"
                 className="input font-bold"
               />
@@ -1239,17 +1306,31 @@ export default function NeedleCondition() {
 
             {/* Type */}
             <div>
-              <label className="label font-bold">ประเภทเครื่อง / กระบอก</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="label font-bold mb-0">ประเภทเครื่อง / กระบอก</label>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                  (ดึงจากเมนูกระบอก)
+                </span>
+              </div>
               <select
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className="select"
+                className="select font-semibold"
               >
-                <option value="Single Jersey">Single Jersey (S)</option>
-                <option value="Double Jersey">Double Jersey (D)</option>
-                <option value="Jacquard">Jacquard (Jac.)</option>
-                <option value="Interlock">Interlock</option>
-                <option value="Rib">Rib</option>
+                {cylinderTypeOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt === 'Single Jersey'
+                      ? 'Single Jersey (S)'
+                      : opt === 'Double Jersey'
+                      ? 'Double Jersey (D)'
+                      : opt === 'Jacquard'
+                      ? 'Jacquard (Jac.)'
+                      : opt}
+                  </option>
+                ))}
+                {formData.type && !cylinderTypeOptions.includes(formData.type) && (
+                  <option value={formData.type}>{formData.type}</option>
+                )}
               </select>
             </div>
 
@@ -1554,7 +1635,7 @@ export default function NeedleCondition() {
                 { label: 'ซีเรียล (Serial)', value: detailItem.serial, mono: true },
                 { label: 'เครื่องจักร (MC)', value: detailItem.machine_mc },
                 { label: 'ตำแหน่ง (Location)', value: detailItem.location },
-                { label: 'ประเภท (Type)', value: detailItem.type },
+                { label: 'ประเภท (Type)', value: normalizeCylinderType(detailItem.type) },
                 { label: 'Counter ล่าสุด', value: detailItem.counter ? `${Number(detailItem.counter).toLocaleString()} รอบ` : '—', mono: true },
                 { label: 'Counter ครั้งก่อน', value: (detailItem.counter_prev ?? detailItem.counter_total) ? `${Number(detailItem.counter_prev ?? 0).toLocaleString()} รอบ` : '—', mono: true },
                 { label: 'ผลต่างรอบ', value: computeCounterDiff(detailItem.counter, detailItem.counter_prev ?? detailItem.counter_total) > 0 ? `+${computeCounterDiff(detailItem.counter, detailItem.counter_prev ?? detailItem.counter_total).toLocaleString()} รอบ` : '—', mono: true },
