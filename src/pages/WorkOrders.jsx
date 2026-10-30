@@ -32,6 +32,8 @@ import {
   PieChart,
   Ban,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../hooks/useEntity'
@@ -477,198 +479,6 @@ export function TechSkillBar({ skillLevel = 'Senior' }) {
           )
         })}
       </div>
-      {/* ── CREATE WORK ORDER MODAL (ป๊อปอัพเปิดใบสั่งงาน) ── */}
-      {createModalOpen && (
-        <Modal
-          open={createModalOpen}
-          onClose={() => !submittingStart && setCreateModalOpen(false)}
-          size="lg"
-        >
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div>
-                <h2 className="text-sm sm:text-base font-extrabold flex items-center gap-2" style={{ color: 'var(--text-900)' }}>
-                  <Plus size={16} className="text-blue-500" />
-                  <span>บันทึกเริ่มงานซ่อม / เปิดใบสั่งงาน (Create Work Order)</span>
-                </h2>
-                <div className="text-xs mt-0.5" style={{ color: 'var(--text-500)' }}>
-                  กรอกข้อมูลเพื่อเริ่มงาน ระบบจะสร้างรหัส Job ID และจับเวลาการทำงานให้อัตโนมัติ
-                </div>
-              </div>
-              <div className="text-[11px] px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-mono">
-                ผู้บันทึก: <b className="text-blue-600 dark:text-blue-400">{user?.username || user?.full_name || 'ช่างประจำกะ'}</b>
-              </div>
-            </div>
-
-            <form onSubmit={handleStartJob} className="space-y-4 text-xs">
-              {/* 1. M/C, KI, Design, Roll No */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="label">รหัสเครื่อง (M/C) *</label>
-                  <input
-                    type="text"
-                    placeholder="เช่น MC-01"
-                    value={mc}
-                    onChange={(e) => setMc(e.target.value)}
-                    className="input font-mono font-bold uppercase"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">รหัสงาน (KI) *</label>
-                  <input
-                    type="text"
-                    placeholder="เช่น KI-9012"
-                    value={ki}
-                    onChange={(e) => setKi(e.target.value)}
-                    className="input font-mono font-bold uppercase"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">แบบงาน (Design)</label>
-                  <input
-                    type="text"
-                    placeholder="ระบุแบบงาน / ลายผ้า"
-                    value={design}
-                    onChange={(e) => setDesign(e.target.value)}
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label className="label">เลขม้วน (Roll No)</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="ระบุเลขม้วน"
-                    value={rollNo}
-                    onChange={(e) => setRollNo(e.target.value)}
-                    className="input font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* 2. ประเภท, สาเหตุปัญหา, รายละเอียด, สถานะ */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                <div className="sm:col-span-3">
-                  <label className="label">ประเภทงาน (Job Type)</label>
-                  <select
-                    value={jobType}
-                    onChange={(e) => setJobType(e.target.value)}
-                    className="select font-semibold"
-                  >
-                    <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
-                    <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
-                    <option value="PM">🧹 PM / ล้างเครื่อง</option>
-                  </select>
-                </div>
-                <div className="sm:col-span-3">
-                  <label className="label">สาเหตุปัญหา (Root Cause)</label>
-                  <select
-                    value={problemCause}
-                    onChange={(e) => setProblemCause(e.target.value)}
-                    className="select font-semibold"
-                  >
-                    <option value="">-- ไม่ระบุ / ระบุภายหลัง --</option>
-                    {PROBLEM_CAUSE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.icon} {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="sm:col-span-4">
-                  <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
-                  <input
-                    type="text"
-                    placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    className="input"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="label">สถานะ (Status)</label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="select font-semibold"
-                  >
-                    {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.icon} {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Technicians Multi-Select Checklist */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between">
-                  <label className="label flex items-center gap-1.5">
-                    <Wrench size={13} className="text-blue-500" />
-                    <span>ช่างปรับผู้ปฏิบัติงาน (เลือกได้มากกว่า 1 คน) *</span>
-                  </label>
-                  <span className="badge badge-blue text-[11px] font-bold">
-                    เลือกแล้ว: {selectedTechs.length} คน
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 max-h-48 overflow-y-auto">
-                  {technicians.filter((t) => t.Status !== 'INACTIVE').map((tech, idx) => {
-                    const isChecked = selectedTechs.includes(tech.Name)
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => toggleTechSelection(tech.Name)}
-                        className={`flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold transition-all border ${
-                          isChecked
-                            ? 'bg-blue-500/15 border-blue-500 text-blue-600 dark:text-blue-400'
-                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-                        }`}
-                      >
-                        <div
-                          className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
-                            isChecked
-                              ? 'bg-blue-600 border-blue-600 text-white'
-                              : 'border-slate-300 dark:border-slate-600'
-                          }`}
-                        >
-                          {isChecked && <Check size={11} strokeWidth={3} />}
-                        </div>
-                        <span className="truncate">{tech.Name}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Modal Footer Actions */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setCreateModalOpen(false)}
-                  disabled={submittingStart}
-                  className="btn-outline px-4 py-2 text-xs font-semibold cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingStart}
-                  className="btn-primary px-4 py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20"
-                >
-                  <Send size={14} />
-                  <span>{submittingStart ? 'กำลังบันทึก...' : 'ยืนยันเปิดใบสั่งงาน (เริ่มงาน)'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </Modal>
-      )}
-
     </div>
   )
 }
@@ -961,6 +771,12 @@ function WorkOrderCard({
 
 const DEFAULT_TECHS = []
 
+export const WO_FILTER_STORAGE_KEYS = {
+  TYPE_OPEN: 'textileops_wo_filter_type_open',
+  STATUS_OPEN: 'textileops_wo_filter_status_open',
+  CAUSE_OPEN: 'textileops_wo_filter_cause_open',
+}
+
 export default function WorkOrders({ defaultTab = 'records' }) {
   const { t } = useT()
   const { isMobile, isTablet, isDesktop } = useDeviceView()
@@ -1002,6 +818,65 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [statusFilters, setStatusFilters] = useState([]) // [] = ALL, or ['IN_PROGRESS', 'WAITING_TECH', ...]
   const [causeFilter, setCauseFilter] = useState('') // '' = ALL, 'คน', 'เครื่องจักร', 'วัตถุดิบ', 'UNSPECIFIED'
   const [showDeleted, setShowDeleted] = useState(false)
+
+  // Collapsible Filter Panels with localStorage persistence
+  const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(WO_FILTER_STORAGE_KEYS.TYPE_OPEN)
+      return saved !== null ? saved === 'true' : true
+    } catch {
+      return true
+    }
+  })
+
+  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(WO_FILTER_STORAGE_KEYS.STATUS_OPEN)
+      return saved !== null ? saved === 'true' : true
+    } catch {
+      return true
+    }
+  })
+
+  const [isCauseFilterOpen, setIsCauseFilterOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem(WO_FILTER_STORAGE_KEYS.CAUSE_OPEN)
+      return saved !== null ? saved === 'true' : true
+    } catch {
+      return true
+    }
+  })
+
+  const toggleTypeFilterOpen = () => {
+    setIsTypeFilterOpen((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(WO_FILTER_STORAGE_KEYS.TYPE_OPEN, String(next))
+      } catch {}
+      return next
+    })
+  }
+
+  const toggleStatusFilterOpen = () => {
+    setIsStatusFilterOpen((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(WO_FILTER_STORAGE_KEYS.STATUS_OPEN, String(next))
+      } catch {}
+      return next
+    })
+  }
+
+  const toggleCauseFilterOpen = () => {
+    setIsCauseFilterOpen((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(WO_FILTER_STORAGE_KEYS.CAUSE_OPEN, String(next))
+      } catch {}
+      return next
+    })
+  }
+
 
   // Multi-select toggle helpers for Job Type and Status Cards
   const toggleTypeFilter = (val) => {
@@ -3059,259 +2934,361 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
             </div>
 
-            {/* Filter Cards Section */}
-            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
-              {/* Row 1: ประเภทงาน (Job Type Cards) */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
-                <div className="flex items-center gap-1.5 font-bold text-slate-600 dark:text-slate-300 min-w-[70px] flex-shrink-0">
-                  <Tag size={13} className="text-blue-500" />
-                  <span>ประเภท:</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                  {/* All Types Card */}
+            {/* Filter Cards Section — 3 Independent Collapsible Cards */}
+            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+              {/* BOX 1: ประเภทงาน (Job Type) */}
+              <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs overflow-hidden transition-all">
+                <div className="flex items-center justify-between px-3.5 py-2">
                   <button
                     type="button"
-                    onClick={() => setTypeFilters([])}
-                    className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
-                      typeFilters.length === 0
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
+                    onClick={toggleTypeFilterOpen}
+                    className="flex items-center gap-2 text-left cursor-pointer group select-none flex-1"
+                    title={isTypeFilterOpen ? 'คลิกเพื่อพับเก็บ' : 'คลิกเพื่อขยายตัวกรองประเภท'}
                   >
-                    <span>ทุกประเภท</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-700 dark:text-slate-200">
+                      <Tag size={13} className="text-blue-500" />
+                      <span>ประเภทงาน (Job Type)</span>
+                    </div>
+
+                    {typeFilters.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 animate-in fade-in">
+                        เลือกแล้ว {typeFilters.length} ประเภท
+                      </span>
+                    )}
+
+                    <div className="text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors ml-1">
+                      {isTypeFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </div>
+                  </button>
+
+                  {typeFilters.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setTypeFilters([])}
+                      className="text-[11px] font-medium text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                      title="ล้างตัวกรองประเภททั้งหมด"
+                    >
+                      <X size={11} />
+                      <span>ล้าง</span>
+                    </button>
+                  )}
+                </div>
+
+                {isTypeFilterOpen && (
+                  <div className="px-3.5 pb-3 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center gap-1.5 animate-fadeIn">
+                    {/* All Types Card */}
+                    <button
+                      type="button"
+                      onClick={() => setTypeFilters([])}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                         typeFilters.length === 0
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
-                      {typeCounts.ALL}
-                    </span>
-                  </button>
-
-                  {/* Individual Job Type Cards */}
-                  {WORK_ORDER_TYPE_OPTIONS.map((opt) => {
-                    const isSelected = typeFilters.includes(opt.value)
-                    const count = typeCounts[opt.value] || 0
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => toggleTypeFilter(opt.value)}
-                        className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
-                          isSelected
-                            ? opt.activeClass
-                            : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                      <span>ทุกประเภท</span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          typeFilters.length === 0
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}
-                        title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 ประเภท)"
                       >
-                        {isSelected && <Check size={12} strokeWidth={3} />}
-                        <span>{opt.icon}</span>
-                        <span>{opt.label}</span>
-                        <span
-                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        {typeCounts.ALL}
+                      </span>
+                    </button>
+
+                    {/* Individual Job Type Cards */}
+                    {WORK_ORDER_TYPE_OPTIONS.map((opt) => {
+                      const isSelected = typeFilters.includes(opt.value)
+                      const count = typeCounts[opt.value] || 0
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => toggleTypeFilter(opt.value)}
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                             isSelected
-                              ? 'bg-white/25 text-white'
-                              : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                              ? opt.activeClass
+                              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                           }`}
+                          title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 ประเภท)"
                         >
-                          {count}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
+                          {isSelected && <Check size={12} strokeWidth={3} />}
+                          <span>{opt.icon}</span>
+                          <span>{opt.label}</span>
+                          <span
+                            className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                              isSelected
+                                ? 'bg-white/25 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Row 2: สถานะงาน (Status Cards) */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
-                <div className="flex items-center gap-1.5 font-bold text-slate-600 dark:text-slate-300 min-w-[70px] flex-shrink-0">
-                  <Clock size={13} className="text-amber-500" />
-                  <span>สถานะ:</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                  {/* All Statuses Card */}
+              {/* BOX 2: สถานะงาน (Job Status) */}
+              <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs overflow-hidden transition-all">
+                <div className="flex items-center justify-between px-3.5 py-2">
                   <button
                     type="button"
-                    onClick={() => setStatusFilters([])}
-                    className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
-                      statusFilters.length === 0
-                        ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
+                    onClick={toggleStatusFilterOpen}
+                    className="flex items-center gap-2 text-left cursor-pointer group select-none flex-1"
+                    title={isStatusFilterOpen ? 'คลิกเพื่อพับเก็บ' : 'คลิกเพื่อขยายตัวกรองสถานะ'}
                   >
-                    <span>ทั้งหมด</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-700 dark:text-slate-200">
+                      <Clock size={13} className="text-amber-500" />
+                      <span>สถานะงาน (Job Status)</span>
+                    </div>
+
+                    {statusFilters.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-in fade-in">
+                        เลือกแล้ว {statusFilters.length} สถานะ
+                      </span>
+                    )}
+
+                    <div className="text-slate-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors ml-1">
+                      {isStatusFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </div>
+                  </button>
+
+                  {statusFilters.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilters([])}
+                      className="text-[11px] font-medium text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                      title="ล้างตัวกรองสถานะทั้งหมด"
+                    >
+                      <X size={11} />
+                      <span>ล้าง</span>
+                    </button>
+                  )}
+                </div>
+
+                {isStatusFilterOpen && (
+                  <div className="px-3.5 pb-3 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center gap-1.5 animate-fadeIn">
+                    {/* All Statuses Card */}
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilters([])}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                         statusFilters.length === 0
-                          ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
-                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
-                      {statusCounts.ALL}
-                    </span>
-                  </button>
-
-                  {/* Individual Status Cards */}
-                  {WORK_ORDER_STATUS_OPTIONS.map((opt) => {
-                    const isSelected = statusFilters.includes(opt.value)
-                    const count = statusCounts[opt.value] || 0
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => toggleStatusFilter(opt.value)}
-                        className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
-                          isSelected
-                            ? opt.activeClass
-                            : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                      <span>ทั้งหมด</span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          statusFilters.length === 0
+                            ? 'bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}
-                        title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 สถานะ)"
                       >
-                        {isSelected && <Check size={12} strokeWidth={3} />}
-                        <span>{opt.icon}</span>
-                        <span>{opt.label}</span>
-                        <span
-                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                        {statusCounts.ALL}
+                      </span>
+                    </button>
+
+                    {/* Individual Status Cards */}
+                    {WORK_ORDER_STATUS_OPTIONS.map((opt) => {
+                      const isSelected = statusFilters.includes(opt.value)
+                      const count = statusCounts[opt.value] || 0
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => toggleStatusFilter(opt.value)}
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                             isSelected
-                              ? 'bg-white/25 text-white'
-                              : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                              ? opt.activeClass
+                              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                           }`}
+                          title="คลิกเพื่อเลือกหรือยกเลิก (เลือกได้มากกว่า 1 สถานะ)"
                         >
-                          {count}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
+                          {isSelected && <Check size={12} strokeWidth={3} />}
+                          <span>{opt.icon}</span>
+                          <span>{opt.label}</span>
+                          <span
+                            className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                              isSelected
+                                ? 'bg-white/25 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Row 3: สาเหตุปัญหา (Problem Cause Cards) */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
-                <div className="flex items-center gap-1.5 font-bold text-slate-600 dark:text-slate-300 min-w-[70px] flex-shrink-0">
-                  <PieChart size={13} className="text-indigo-500" />
-                  <span>สาเหตุ:</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                  {/* All Causes Card */}
+              {/* BOX 3: สาเหตุปัญหา (Problem Cause) */}
+              <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/90 dark:border-slate-800/90 shadow-xs overflow-hidden transition-all">
+                <div className="flex items-center justify-between px-3.5 py-2">
                   <button
                     type="button"
-                    onClick={() => setCauseFilter('')}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                      !causeFilter
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
+                    onClick={toggleCauseFilterOpen}
+                    className="flex items-center gap-2 text-left cursor-pointer group select-none flex-1"
+                    title={isCauseFilterOpen ? 'คลิกเพื่อพับเก็บ' : 'คลิกเพื่อขยายตัวกรองสาเหตุ'}
                   >
-                    <span>ทุกสาเหตุ</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-700 dark:text-slate-200">
+                      <PieChart size={13} className="text-indigo-500" />
+                      <span>สาเหตุปัญหา (Problem Cause)</span>
+                    </div>
+
+                    {Boolean(causeFilter) && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 animate-in fade-in">
+                        เลือก: {causeFilter === 'UNSPECIFIED' ? 'ยังไม่ระบุ' : causeFilter}
+                      </span>
+                    )}
+
+                    <div className="text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors ml-1">
+                      {isCauseFilterOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </div>
+                  </button>
+
+                  {Boolean(causeFilter) && (
+                    <button
+                      type="button"
+                      onClick={() => setCauseFilter('')}
+                      className="text-[11px] font-medium text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+                      title="ล้างตัวกรองสาเหตุทั้งหมด"
+                    >
+                      <X size={11} />
+                      <span>ล้าง</span>
+                    </button>
+                  )}
+                </div>
+
+                {isCauseFilterOpen && (
+                  <div className="px-3.5 pb-3 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 flex flex-wrap items-center gap-1.5 animate-fadeIn">
+                    {/* All Causes Card */}
+                    <button
+                      type="button"
+                      onClick={() => setCauseFilter('')}
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                         !causeFilter
-                          ? 'bg-indigo-500 text-white'
-                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
-                      {causeCounts.ALL}
-                    </span>
-                  </button>
+                      <span>ทุกสาเหตุ</span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          !causeFilter
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        {causeCounts.ALL}
+                      </span>
+                    </button>
 
-                  {/* 1. คน */}
-                  <button
-                    type="button"
-                    onClick={() => toggleCauseFilter('คน')}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                      causeFilter === 'คน'
-                        ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
-                  >
-                    {causeFilter === 'คน' && <Check size={12} strokeWidth={3} />}
-                    <span>👤</span>
-                    <span>คน</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    {/* 1. คน */}
+                    <button
+                      type="button"
+                      onClick={() => toggleCauseFilter('คน')}
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                         causeFilter === 'คน'
-                          ? 'bg-white/25 text-white'
-                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
-                      {causeCounts.คน}
-                    </span>
-                  </button>
+                      {causeFilter === 'คน' && <Check size={12} strokeWidth={3} />}
+                      <span>👤</span>
+                      <span>คน</span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          causeFilter === 'คน'
+                            ? 'bg-white/25 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        {causeCounts.คน}
+                      </span>
+                    </button>
 
-                  {/* 2. เครื่องจักร */}
-                  <button
-                    type="button"
-                    onClick={() => toggleCauseFilter('เครื่องจักร')}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                      causeFilter === 'เครื่องจักร'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
-                  >
-                    {causeFilter === 'เครื่องจักร' && <Check size={12} strokeWidth={3} />}
-                    <span>⚙️</span>
-                    <span>เครื่องจักร</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    {/* 2. เครื่องจักร */}
+                    <button
+                      type="button"
+                      onClick={() => toggleCauseFilter('เครื่องจักร')}
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                         causeFilter === 'เครื่องจักร'
-                          ? 'bg-white/25 text-white'
-                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
-                      {causeCounts.เครื่องจักร}
-                    </span>
-                  </button>
+                      {causeFilter === 'เครื่องจักร' && <Check size={12} strokeWidth={3} />}
+                      <span>⚙️</span>
+                      <span>เครื่องจักร</span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          causeFilter === 'เครื่องจักร'
+                            ? 'bg-white/25 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        {causeCounts.เครื่องจักร}
+                      </span>
+                    </button>
 
-                  {/* 3. วัตถุดิบ */}
-                  <button
-                    type="button"
-                    onClick={() => toggleCauseFilter('วัตถุดิบ')}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                      causeFilter === 'วัตถุดิบ'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
-                  >
-                    {causeFilter === 'วัตถุดิบ' && <Check size={12} strokeWidth={3} />}
-                    <span>🧵</span>
-                    <span>วัตถุดิบ</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    {/* 3. วัตถุดิบ */}
+                    <button
+                      type="button"
+                      onClick={() => toggleCauseFilter('วัตถุดิบ')}
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                         causeFilter === 'วัตถุดิบ'
-                          ? 'bg-white/25 text-white'
-                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
-                      {causeCounts.วัตถุดิบ}
-                    </span>
-                  </button>
+                      {causeFilter === 'วัตถุดิบ' && <Check size={12} strokeWidth={3} />}
+                      <span>🧵</span>
+                      <span>วัตถุดิบ</span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          causeFilter === 'วัตถุดิบ'
+                            ? 'bg-white/25 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        {causeCounts.วัตถุดิบ}
+                      </span>
+                    </button>
 
-                  {/* 4. ยังไม่ระบุ */}
-                  <button
-                    type="button"
-                    onClick={() => toggleCauseFilter('UNSPECIFIED')}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
-                      causeFilter === 'UNSPECIFIED'
-                        ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
-                  >
-                    {causeFilter === 'UNSPECIFIED' && <Check size={12} strokeWidth={3} />}
-                    <span>❓</span>
-                    <span>ยังไม่ระบุ</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    {/* 4. ยังไม่ระบุ */}
+                    <button
+                      type="button"
+                      onClick={() => toggleCauseFilter('UNSPECIFIED')}
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
                         causeFilter === 'UNSPECIFIED'
-                          ? 'bg-white/25 text-white'
-                          : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
-                      {causeCounts.UNSPECIFIED}
-                    </span>
-                  </button>
-                </div>
+                      {causeFilter === 'UNSPECIFIED' && <Check size={12} strokeWidth={3} />}
+                      <span>❓</span>
+                      <span>ยังไม่ระบุ</span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          causeFilter === 'UNSPECIFIED'
+                            ? 'bg-white/25 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        {causeCounts.UNSPECIFIED}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -5244,6 +5221,214 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           </Modal>
         )
       })()}
+
+      {/* ── CREATE WORK ORDER MODAL (ป๊อปอัพเปิดใบสั่งงาน) ── */}
+      {createModalOpen && (
+        <Modal
+          open={createModalOpen}
+          onClose={() => !submittingStart && setCreateModalOpen(false)}
+          size="lg"
+        >
+          <div className="flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between gap-2 px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+              <div className="min-w-0 pr-2">
+                <h2 className="text-sm sm:text-base font-extrabold flex items-center gap-2 truncate" style={{ color: 'var(--text-900)' }}>
+                  <Plus size={18} className="text-blue-500 shrink-0" />
+                  <span className="truncate">บันทึกเริ่มงานซ่อม / เปิดใบสั่งงาน (Create Work Order)</span>
+                </h2>
+                <div className="text-[11px] sm:text-xs mt-0.5 text-slate-500 dark:text-slate-400 truncate">
+                  กรอกข้อมูลเพื่อเริ่มงาน ระบบจะสร้างรหัส Job ID และจับเวลาการทำงานให้อัตโนมัติ
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-mono">
+                  ผู้บันทึก: <b className="text-blue-600 dark:text-blue-400 ml-1">{user?.username || user?.full_name || 'admin'}</b>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => !submittingStart && setCreateModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="ปิดหน้าต่าง"
+                  aria-label="ปิดหน้าต่าง"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body Form */}
+            <form onSubmit={handleStartJob} className="flex flex-col flex-1 min-h-0 overflow-hidden text-xs">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                {/* 1. M/C, KI, Design, Roll No */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="label">รหัสเครื่อง (M/C) *</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น MC-01"
+                      value={mc}
+                      onChange={(e) => setMc(e.target.value)}
+                      className="input font-mono font-bold uppercase"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="label">รหัสงาน (KI) *</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น KI-9012"
+                      value={ki}
+                      onChange={(e) => setKi(e.target.value)}
+                      className="input font-mono font-bold uppercase"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label">แบบงาน (DESIGN)</label>
+                    <input
+                      type="text"
+                      placeholder="ระบุแบบงาน / ลายผ้า"
+                      value={design}
+                      onChange={(e) => setDesign(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">เลขม้วน (ROLL NO)</label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="ระบุเลขม้วน"
+                      value={rollNo}
+                      onChange={(e) => setRollNo(e.target.value)}
+                      className="input font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. ประเภท, สาเหตุปัญหา, รายละเอียด, สถานะ */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-3">
+                    <label className="label">ประเภทงาน (JOB TYPE)</label>
+                    <select
+                      value={jobType}
+                      onChange={(e) => setJobType(e.target.value)}
+                      className="select font-semibold"
+                    >
+                      <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
+                      <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
+                      <option value="PM">🧹 PM / ล้างเครื่อง</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className="label">สาเหตุปัญหา (ROOT CAUSE)</label>
+                    <select
+                      value={problemCause}
+                      onChange={(e) => setProblemCause(e.target.value)}
+                      className="select font-semibold"
+                    >
+                      <option value="">-- ไม่ระบุ / ระบุภายหลัง --</option>
+                      {PROBLEM_CAUSE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.icon} {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-4">
+                    <label className="label">รายละเอียด / อาการเสียงานซ่อม</label>
+                    <input
+                      type="text"
+                      placeholder="ระบุอาการเสีย หรือรายละเอียดการปรับแต่ง..."
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="label">สถานะ (STATUS)</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="select font-semibold"
+                    >
+                      {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.icon} {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Technicians Multi-Select Checklist */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="label flex items-center gap-1.5">
+                      <Wrench size={13} className="text-blue-500" />
+                      <span>ช่างปรับผู้ปฏิบัติงาน (เลือกได้มากกว่า 1 คน) *</span>
+                    </label>
+                    <span className="badge badge-blue text-[11px] font-bold">
+                      เลือกแล้ว: {selectedTechs.length} คน
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 max-h-48 overflow-y-auto">
+                    {technicians.filter((t) => t.Status !== 'INACTIVE').map((tech, idx) => {
+                      const isChecked = selectedTechs.includes(tech.Name)
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => toggleTechSelection(tech.Name)}
+                          className={`flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold transition-all border cursor-pointer ${
+                            isChecked
+                              ? 'bg-blue-500/15 border-blue-500 text-blue-600 dark:text-blue-400 shadow-xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-md flex items-center justify-center border transition-all ${
+                              isChecked
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : 'border-slate-300 dark:border-slate-600'
+                            }`}
+                          >
+                            {isChecked && <Check size={11} strokeWidth={3} />}
+                          </div>
+                          <span className="truncate">{tech.Name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-end gap-2 px-5 py-3 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCreateModalOpen(false)}
+                  disabled={submittingStart}
+                  className="btn-outline px-4 py-2 text-xs font-semibold cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingStart}
+                  className="btn-primary px-4 py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20"
+                >
+                  <Send size={14} />
+                  <span>{submittingStart ? 'กำลังบันทึก...' : 'ยืนยันเปิดใบสั่งงาน (เริ่มงาน)'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
 
       {/* Mobile Floating Action Button (FAB) for Opening Work Order */}
       {currentTab === 'records' && canAdd && (

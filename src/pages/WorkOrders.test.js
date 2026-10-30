@@ -13,6 +13,7 @@ import {
   getJobDailyLogs,
   getLatestDailyLog,
   buildCancelJobPayload,
+  WO_FILTER_STORAGE_KEYS,
 } from './WorkOrders.jsx'
 
 describe('WorkOrders utilities', () => {
@@ -445,6 +446,14 @@ describe('WorkOrders utilities', () => {
       expect(parsedLogs[1].recorded_by).toBe('สมชาย ช่างกล')
       expect(parsedLogs[1].date).toBe('2026-10-29')
       expect(result.daily_logs).toBe(result.DailyLogs)
+    })
+  })
+
+  describe('WO_FILTER_STORAGE_KEYS', () => {
+    it('defines distinct localStorage keys for type, status, and cause filters', () => {
+      expect(WO_FILTER_STORAGE_KEYS.TYPE_OPEN).toBe('textileops_wo_filter_type_open')
+      expect(WO_FILTER_STORAGE_KEYS.STATUS_OPEN).toBe('textileops_wo_filter_status_open')
+      expect(WO_FILTER_STORAGE_KEYS.CAUSE_OPEN).toBe('textileops_wo_filter_cause_open')
     })
   })
 })
