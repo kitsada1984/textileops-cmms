@@ -573,14 +573,44 @@ export default function DesignBom() {
       </div>
 
       {/* ── TOOLBAR ───────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="ค้นหา MC / แบบงาน / KI / BOM..."
-            className="w-full sm:w-80"
-          />
+      <div className="space-y-2">
+        {/* Tier 1: Search & Desktop Actions */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="ค้นหา MC / แบบงาน / KI / BOM..."
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={load}
+              className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5"
+              title="รีเฟรชข้อมูล"
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">รีเฟรช</span>
+            </button>
+
+            {canAdd && (
+              <button
+                type="button"
+                onClick={openNew}
+                className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[38px] hidden sm:flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+              >
+                <Plus size={15} />
+                <span>เพิ่ม Design/BOM</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tier 2: Horizontal Utility Scroll Strip */}
+        <div className="toolbar-scroll-strip text-xs">
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
           <GoogleSheetSyncButton
             sheetName="Design BOM"
@@ -595,29 +625,6 @@ export default function DesignBom() {
               Comment: (row) => stripDesignImagesMeta(row.Comment),
             }}
           />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={load}
-            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5"
-            title="รีเฟรชข้อมูล"
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">รีเฟรช</span>
-          </button>
-
-          {canAdd && (
-            <button
-              type="button"
-              onClick={openNew}
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
-            >
-              <Plus size={15} />
-              <span>เพิ่ม Design/BOM</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1107,6 +1114,19 @@ export default function DesignBom() {
         url={previewImageModal?.url}
         title={previewImageModal?.title || 'รูปภาพเอกสาร Design/BOM'}
       />
+
+      {/* Mobile Floating Action Button (FAB) for Adding Design/BOM */}
+      {canAdd && (
+        <button
+          type="button"
+          onClick={openNew}
+          className="btn-fab"
+          title="เพิ่ม Design/BOM"
+          aria-label="เพิ่ม Design/BOM"
+        >
+          <Plus size={26} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   )
 }

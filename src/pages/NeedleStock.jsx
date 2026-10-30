@@ -660,22 +660,23 @@ export default function NeedleStock() {
           </div>
         </div>
 
-        {/* Header Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto justify-end">
+        {/* Header Action Buttons in Scrollable/Responsive Strip */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 flex-nowrap w-full sm:w-auto justify-start sm:justify-end">
           <button
             type="button"
             onClick={() => loadData(true)}
             disabled={refreshing}
-            className="p-2 text-slate-500 hover:text-sky-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+            className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
             title="รีเฟรชข้อมูล"
           >
-            <RotateCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-sky-600' : ''}`} />
+            <RotateCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-sky-600' : ''}`} />
+            <span className="hidden sm:inline">รีเฟรช</span>
           </button>
 
           <button
             type="button"
             onClick={activeTab === 'inventory' ? exportSetsCSV : exportLedgerCSV}
-            className="inline-flex items-center space-x-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+            className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
@@ -686,7 +687,7 @@ export default function NeedleStock() {
               <button
                 type="button"
                 onClick={() => openStockModal(null)}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition shadow-blue-500/20 cursor-pointer"
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 min-h-[38px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition shadow-blue-500/20 cursor-pointer flex-shrink-0"
                 title="ทำรายการสต็อกเข็ม (เบิกออก / รับเข้า / ตัดยอด / ตัดทิ้ง)"
               >
                 <ArrowLeftRight className="w-4 h-4" />
@@ -696,7 +697,7 @@ export default function NeedleStock() {
               <button
                 type="button"
                 onClick={() => setAddModalOpen(true)}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition shadow-sky-600/30 cursor-pointer"
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 min-h-[38px] bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-semibold shadow-xs transition shadow-sky-600/30 cursor-pointer flex-shrink-0 hidden sm:inline-flex"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>เพิ่มชุดเข็มใหม่</span>
@@ -709,7 +710,7 @@ export default function NeedleStock() {
       {/* MAIN CONTENT AREA */}
       <div className="w-full space-y-5">
         {/* TABS: INVENTORY vs LEDGER */}
-        <div className="flex items-center space-x-2 border-b border-slate-200 pb-3" role="tablist">
+        <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 overflow-x-auto no-scrollbar flex-nowrap" role="tablist">
           <button
             type="button"
             onClick={() => setActiveTab('inventory')}
@@ -2280,6 +2281,19 @@ export default function NeedleStock() {
             if (currentGallerySet) openUpdate(currentGallerySet)
           }}
         />
+      )}
+
+      {/* Mobile Floating Action Button (FAB) for Needle Stock */}
+      {canAdd && (
+        <button
+          type="button"
+          onClick={() => openStockModal(null)}
+          className="btn-fab"
+          title="ทำรายการสต็อกเข็ม"
+          aria-label="ทำรายการสต็อกเข็ม"
+        >
+          <ArrowLeftRight size={24} strokeWidth={2.5} />
+        </button>
       )}
     </div>
   )

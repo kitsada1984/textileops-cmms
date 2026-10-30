@@ -868,25 +868,57 @@ export default function SpareParts() {
       </div>
 
       {/* ── TOOLBAR ───────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 flex-1">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder={t('sp_search')}
-            className="w-full sm:w-80"
-          />
+      <div className="space-y-2">
+        {/* Tier 1: Search & Primary Desktop Actions */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder={t('sp_search')}
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={load}
+              className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5"
+              title={t('refresh')}
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">{t('refresh')}</span>
+            </button>
+
+            {canAdd && (
+              <button
+                type="button"
+                onClick={openNew}
+                className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[38px] hidden sm:flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+              >
+                <Plus size={15} />
+                <span>{t('sp_add')}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tier 2: Horizontal Utility Scroll Strip */}
+        <div className="toolbar-scroll-strip text-xs">
           <button
             type="button"
             onClick={() => setVisualSearchOpen(true)}
-            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5 border-blue-200 dark:border-blue-800 hover:border-blue-400 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/30 shadow-xs font-semibold rounded-xl transition-all"
+            className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5 border-blue-200 dark:border-blue-800 hover:border-blue-400 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/30 shadow-xs font-semibold rounded-xl transition-all flex-shrink-0"
             title="ค้นหาอะไหล่ด้วยภาพถ่าย (Visual Reverse Image Search)"
             aria-label="ค้นหาอะไหล่ด้วยภาพถ่าย"
           >
             <Camera size={14} className="text-blue-600 dark:text-blue-400" />
             <span>ค้นหาด้วยรูป</span>
           </button>
+
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+
           <GoogleSheetSyncButton
             sheetName="อะไหล่"
             columns={cols}
@@ -900,32 +932,21 @@ export default function SpareParts() {
               Status: getSparePartStatus,
             }}
           />
+
           <button
             type="button"
             onClick={() => setReportModalOpen(true)}
-            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5 border-slate-300 dark:border-slate-700 hover:border-blue-400 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 shadow-xs"
+            className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5 border-slate-300 dark:border-slate-700 hover:border-blue-400 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 shadow-xs flex-shrink-0"
             title="พิมพ์รายงานตารางรายการอะไหล่ (A4 Portrait)"
           >
             <Printer size={14} className="text-blue-600 dark:text-blue-400" />
             <span>พิมพ์รายงาน A4</span>
           </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={load}
-            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5"
-            title={t('refresh')}
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">{t('refresh')}</span>
-          </button>
 
           <button
             type="button"
             onClick={() => setCategoryModalOpen(true)}
-            className="btn-outline text-xs px-3 py-2 flex items-center gap-1.5 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 font-semibold"
+            className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 font-semibold flex-shrink-0"
             title="จัดการหมวดหมู่อะไหล่ (เพิ่ม ลบ แก้ไข)"
           >
             <Layers size={14} className="text-blue-600 dark:text-blue-400" />
@@ -934,17 +955,6 @@ export default function SpareParts() {
               {allCategories.length}
             </span>
           </button>
-
-          {canAdd && (
-            <button
-              type="button"
-              onClick={openNew}
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-md shadow-blue-500/20"
-            >
-              <Plus size={15} />
-              <span>{t('sp_add')}</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1570,6 +1580,19 @@ export default function SpareParts() {
             handle1ClickPR(part)
           }}
         />
+      )}
+
+      {/* Mobile Floating Action Button (FAB) for Adding Spare Part */}
+      {canAdd && (
+        <button
+          type="button"
+          onClick={openNew}
+          className="btn-fab"
+          title={t('sp_add')}
+          aria-label={t('sp_add')}
+        >
+          <Plus size={26} strokeWidth={2.5} />
+        </button>
       )}
     </div>
   )

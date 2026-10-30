@@ -2993,9 +2993,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <div className="space-y-6">
           {/* Search & Filter Toolbar */}
           <div className="card p-3.5 sm:p-4 space-y-3 text-xs shadow-xs">
-            {/* Top Row: Search Input + Deleted Items Checkbox + Reset Button */}
-            <div className="flex flex-wrap items-center justify-between gap-2.5">
-              <div className="flex-1 min-w-[220px]">
+            {/* Top Row: Search Input + Actions in Scrollable/Responsive Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex-1 w-full">
                 <SearchInput
                   value={search}
                   onChange={setSearch}
@@ -3004,12 +3004,12 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 />
               </div>
 
-              <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 flex-nowrap w-full sm:w-auto">
                 {canAdd && (
                   <button
                     type="button"
                     onClick={() => setCreateModalOpen(true)}
-                    className="btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
+                    className="btn-primary text-xs px-3.5 py-2 min-h-[38px] flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer flex-shrink-0"
                     title="เปิดหน้าต่างบันทึกเริ่มงานซ่อม / เปิดใบสั่งงาน"
                   >
                     <Plus size={15} />
@@ -3020,7 +3020,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 <button
                   type="button"
                   onClick={() => setReportModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors font-bold text-xs shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors font-bold text-xs shadow-2xs flex-shrink-0 cursor-pointer"
                   title="พิมพ์รายงานใบสั่งงานตามเงื่อนไขที่กรองบนหน้าเว็บ"
                 >
                   <Printer size={13} />
@@ -3039,7 +3039,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       setCauseFilter('')
                       setSearch('')
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-bold text-xs"
+                    className="inline-flex items-center gap-1 px-3 py-2 min-h-[38px] rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-bold text-xs flex-shrink-0 cursor-pointer"
                     title="ล้างตัวกรองทั้งหมดกลับเป็นค่าเริ่มต้น"
                   >
                     <RotateCcw size={12} />
@@ -3047,7 +3047,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   </button>
                 )}
 
-                <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 cursor-pointer select-none px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium">
+                <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 cursor-pointer select-none px-2.5 py-1.5 min-h-[38px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium flex-shrink-0">
                   <input
                     type="checkbox"
                     checked={showDeleted}
@@ -3072,7 +3072,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <button
                     type="button"
                     onClick={() => setTypeFilters([])}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
                       typeFilters.length === 0
                         ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                         : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3099,7 +3099,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                         key={opt.value}
                         type="button"
                         onClick={() => toggleTypeFilter(opt.value)}
-                        className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
                           isSelected
                             ? opt.activeClass
                             : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3135,7 +3135,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <button
                     type="button"
                     onClick={() => setStatusFilters([])}
-                    className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
                       statusFilters.length === 0
                         ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
                         : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3162,7 +3162,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                         key={opt.value}
                         type="button"
                         onClick={() => toggleStatusFilter(opt.value)}
-                        className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[32px] cursor-pointer active:scale-[0.98] ${
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
                           isSelected
                             ? opt.activeClass
                             : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3643,8 +3643,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                             {/* Complete Job Button (if in progress) */}
                             {!isCompleted && !job.IsDeleted && canEdit && (
                               <button
+                                type="button"
                                 onClick={() => openCompleteModal(job)}
-                                className="btn-success px-2.5 py-1 text-xs"
+                                className="btn-success px-3 py-1.5 text-xs min-h-[36px] rounded-xl font-bold flex items-center gap-1"
                                 title="บันทึกจบงาน"
                               >
                                 <CheckCircle2 size={13} />
@@ -5243,6 +5244,19 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           </Modal>
         )
       })()}
+
+      {/* Mobile Floating Action Button (FAB) for Opening Work Order */}
+      {currentTab === 'records' && canAdd && (
+        <button
+          type="button"
+          onClick={() => setCreateModalOpen(true)}
+          className="btn-fab"
+          title="เปิดใบสั่งงาน"
+          aria-label="เปิดใบสั่งงาน"
+        >
+          <Plus size={26} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   )
 }

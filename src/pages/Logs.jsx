@@ -461,7 +461,7 @@ export default function Logs() {
             type="button"
             onClick={handleExportCsv}
             disabled={displayRows.length === 0}
-            className="btn-outline flex items-center gap-1.5 py-1.5 px-3 text-xs font-semibold"
+            className="btn-outline min-h-[38px] flex items-center gap-1.5 py-2 px-3.5 text-xs font-semibold cursor-pointer"
             title="ส่งออกรายงานเป็นไฟล์ CSV"
           >
             <Download size={14} />
@@ -471,7 +471,7 @@ export default function Logs() {
             type="button"
             onClick={load}
             disabled={loading}
-            className="btn-outline flex items-center gap-1.5 py-1.5 px-3 text-xs font-semibold"
+            className="btn-outline min-h-[38px] flex items-center gap-1.5 py-2 px-3.5 text-xs font-semibold cursor-pointer"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             <span>{t('refresh')}</span>
@@ -563,7 +563,7 @@ export default function Logs() {
                 key={id}
                 type="button"
                 onClick={() => setDateRange(id)}
-                className={`py-1 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                className={`min-h-[34px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center justify-center cursor-pointer ${
                   dateRange === id
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -760,7 +760,7 @@ export default function Logs() {
                           e.stopPropagation()
                           setInspectLog(l)
                         }}
-                        className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+                        className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                         title="ดูรายละเอียดการเปลี่ยนแปลง"
                       >
                         <Eye size={14} />

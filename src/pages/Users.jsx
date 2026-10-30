@@ -435,11 +435,15 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder="ค้นหาผู้ใช้..." />
-        <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-        <button className="btn-outline ml-auto" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
-        {canAdd && <button className="btn-primary" onClick={openNew}><Plus size={15}/> เพิ่มผู้ใช้</button>}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex-1 w-full">
+          <SearchInput value={search} onChange={setSearch} placeholder="ค้นหาผู้ใช้..." className="w-full" />
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 flex-nowrap w-full sm:w-auto">
+          <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
+          <button className="btn-outline min-h-[38px] text-xs px-3 py-2 flex items-center gap-1.5 flex-shrink-0 cursor-pointer" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
+          {canAdd && <button className="btn-primary min-h-[38px] text-xs px-3.5 py-2 hidden sm:flex items-center gap-1.5 flex-shrink-0 cursor-pointer" onClick={openNew}><Plus size={15}/> เพิ่มผู้ใช้</button>}
+        </div>
       </div>
 
       <div className="table-wrap">
@@ -538,8 +542,8 @@ export default function UsersPage() {
                   </td>
                   <td>
                     <div className="flex gap-2">
-                      {canEdit && <button className="btn-outline py-1 px-2 text-xs" onClick={() => openEdit(u)} title="แก้ไข"><Pencil size={12}/></button>}
-                      {canDelete && <button className="btn-danger py-1 px-2 text-xs" onClick={() => del(u._id || u.id)} title="ลบ"><Trash2 size={12}/></button>}
+                      {canEdit && <button className="btn-outline min-h-[36px] min-w-[36px] p-2 rounded-xl text-xs flex items-center justify-center cursor-pointer" onClick={() => openEdit(u)} title="แก้ไข"><Pencil size={14}/></button>}
+                      {canDelete && <button className="btn-danger min-h-[36px] min-w-[36px] p-2 rounded-xl text-xs flex items-center justify-center cursor-pointer" onClick={() => del(u._id || u.id)} title="ลบ"><Trash2 size={14}/></button>}
                       {!canEdit && !canDelete && (
                         <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
                       )}
@@ -747,6 +751,19 @@ export default function UsersPage() {
           </div>
         )}
       </Modal>
+
+      {/* Mobile Floating Action Button (FAB) for Adding User */}
+      {canAdd && (
+        <button
+          type="button"
+          onClick={openNew}
+          className="btn-fab"
+          title="เพิ่มผู้ใช้"
+          aria-label="เพิ่มผู้ใช้"
+        >
+          <Plus size={26} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   )
 }

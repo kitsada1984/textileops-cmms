@@ -134,6 +134,32 @@ html.dark {
     border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
+  /* ── Mobile Ergonomics & Toolbar Tokens ───────────────────── */
+  .toolbar-scroll-strip {
+    @apply flex items-center gap-2 overflow-x-auto py-1 flex-nowrap;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .toolbar-scroll-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .btn-touch-target {
+    @apply min-h-[38px] min-w-[38px] rounded-xl flex items-center justify-center;
+  }
+
+  .btn-mobile-toolbar {
+    @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold
+           min-h-[38px] transition-all duration-150 active:scale-95 whitespace-nowrap cursor-pointer select-none;
+  }
+
+  .btn-fab {
+    @apply fixed bottom-24 right-4 z-40 w-14 h-14 rounded-2xl
+           bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700
+           text-white shadow-xl shadow-blue-500/35 flex items-center justify-center
+           active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30 cursor-pointer sm:hidden;
+  }
+
   /* ── Cards ───────────────────────────────────────────────── */
   .card {
     @apply rounded-2xl;
