@@ -2,13 +2,13 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <title>คู่มือการใช้งานระบบ TextileOps CMMS ฉบับสมบูรณ์</title>
+  <title>คู่มือการใช้งานระบบ TextileOps CMMS ฉบับประกอบภาพจริงจากระบบ</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
 
     @page {
       size: A4;
-      margin: 18mm 15mm 20mm 15mm;
+      margin: 14mm 12mm 14mm 12mm;
       @bottom-right {
         content: counter(page);
       }
@@ -22,8 +22,8 @@
 
     body {
       font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif;
-      font-size: 10pt;
-      line-height: 1.55;
+      font-size: 9.5pt;
+      line-height: 1.5;
       color: #1e293b;
       background: #ffffff;
       margin: 0;
@@ -44,13 +44,14 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      height: 250mm;
-      padding: 30mm 15mm 15mm 15mm;
-      background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 60%, #2563eb 100%);
+      min-height: 255mm;
+      padding: 24mm 18mm 18mm 18mm;
+      background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
       color: #ffffff;
       border-radius: 12px;
       position: relative;
       overflow: hidden;
+      margin-bottom: 20px;
     }
 
     .cover-badge {
@@ -59,7 +60,7 @@
       border-radius: 9999px;
       background: rgba(255, 255, 255, 0.15);
       border: 1px solid rgba(255, 255, 255, 0.3);
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: 700;
       letter-spacing: 1px;
       text-transform: uppercase;
@@ -68,81 +69,81 @@
     }
 
     .cover-title {
-      font-size: 32pt;
+      font-size: 28pt;
       font-weight: 800;
-      line-height: 1.2;
+      line-height: 1.25;
       margin: 0 0 10px 0;
       color: #ffffff;
       text-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
 
     .cover-subtitle {
-      font-size: 15pt;
+      font-size: 13pt;
       font-weight: 500;
       color: #cbd5e1;
-      margin: 0 0 25px 0;
+      margin: 0 0 20px 0;
       line-height: 1.4;
     }
 
     .cover-meta {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      background: rgba(15, 23, 42, 0.6);
-      padding: 20px;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.65);
+      padding: 16px;
       border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      font-size: 10pt;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 9.5pt;
     }
 
     .cover-meta-item strong {
       display: block;
       color: #93c5fd;
-      font-size: 9pt;
+      font-size: 8.5pt;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .cover-meta-item span {
-      font-size: 11pt;
+      font-size: 10.5pt;
       color: #f8fafc;
       font-weight: 600;
     }
 
     /* Headings */
     h1 {
-      font-size: 17pt;
+      font-size: 15pt;
       font-weight: 800;
       color: #0f172a;
-      margin-top: 0;
-      margin-bottom: 12px;
-      padding-bottom: 6px;
+      margin-top: 18px;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
       border-bottom: 2px solid #2563eb;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     h2 {
-      font-size: 13pt;
+      font-size: 12pt;
       font-weight: 700;
       color: #1e3a8a;
-      margin-top: 16px;
-      margin-bottom: 8px;
+      margin-top: 14px;
+      margin-bottom: 6px;
       padding-left: 8px;
       border-left: 4px solid #3b82f6;
     }
 
     h3 {
-      font-size: 11pt;
+      font-size: 10.5pt;
       font-weight: 700;
       color: #334155;
-      margin-top: 12px;
-      margin-bottom: 6px;
+      margin-top: 10px;
+      margin-bottom: 4px;
     }
 
     p {
-      margin: 0 0 10px 0;
+      margin: 0 0 8px 0;
       text-align: justify;
     }
 
@@ -151,31 +152,27 @@
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 10px;
-      padding: 18px 24px;
-      margin-bottom: 25px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+
+    .toc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 16px;
     }
 
     .toc-item {
       display: flex;
       justify-content: space-between;
-      padding: 6px 0;
-      border-bottom: 1px dashed #cbd5e1;
-      font-size: 10pt;
-    }
-
-    .toc-item:last-child {
-      border-bottom: none;
+      padding: 4px 0;
+      border-bottom: 1px dashed #e2e8f0;
+      font-size: 9pt;
     }
 
     .toc-title {
       font-weight: 600;
       color: #1e293b;
-    }
-
-    .toc-dots {
-      flex: 1;
-      border-bottom: 1px dotted #94a3b8;
-      margin: 0 8px 5px 8px;
     }
 
     .toc-page {
@@ -184,13 +181,79 @@
       color: #2563eb;
     }
 
+    /* Illustrated Figure & Screenshots */
+    .manual-figure {
+      margin: 10px 0 14px 0;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      padding: 8px;
+      page-break-inside: avoid;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    }
+
+    .manual-figure img {
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      display: block;
+    }
+
+    .manual-caption {
+      margin-top: 6px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #334155;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .step-callouts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 6px 12px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #cbd5e1;
+    }
+
+    .step-callout-item {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 8.5pt;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 7.5pt;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
     /* Callout & Alert Boxes */
     .callout {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-radius: 8px;
-      margin: 12px 0;
-      font-size: 9.5pt;
-      line-height: 1.5;
+      margin: 10px 0;
+      font-size: 9pt;
+      line-height: 1.45;
     }
 
     .callout-blue {
@@ -219,7 +282,7 @@
 
     .callout-title {
       font-weight: 700;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -229,8 +292,8 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0;
-      font-size: 9pt;
+      margin: 10px 0;
+      font-size: 8.5pt;
     }
 
     th {
@@ -238,7 +301,7 @@
       color: #334155;
       font-weight: 700;
       text-align: left;
-      padding: 7px 10px;
+      padding: 6px 10px;
       border: 1px solid #cbd5e1;
     }
 
@@ -252,595 +315,401 @@
       background: #f8fafc;
     }
 
-    /* Badges */
+    /* Code & Tag */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8pt;
+      background: #f1f5f9;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #0f172a;
+      border: 1px solid #e2e8f0;
+    }
+
     .badge {
       display: inline-block;
-      padding: 2px 8px;
-      border-radius: 9999px;
-      font-size: 8.5pt;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 7.5pt;
       font-weight: 700;
-      line-height: 1.2;
+      text-transform: uppercase;
     }
 
-    .badge-blue { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-    .badge-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .badge-yellow { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
-    .badge-red { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-    .badge-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-    .badge-gray { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
 
-    /* Steps list */
-    .steps {
-      list-style: none;
-      counter-reset: step-counter;
-      padding-left: 0;
-      margin: 12px 0;
-    }
-
-    .steps li {
-      position: relative;
-      padding-left: 36px;
-      margin-bottom: 10px;
-    }
-
-    .steps li::before {
-      content: counter(step-counter);
-      counter-increment: step-counter;
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 24px;
-      height: 24px;
-      background: #2563eb;
-      color: #ffffff;
-      border-radius: 50%;
-      text-align: center;
-      line-height: 24px;
-      font-size: 9pt;
-      font-weight: 700;
-    }
-
-    /* Grid cards */
-    .card-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin: 10px 0;
-    }
-
-    .feature-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 9pt;
-    }
-
-    .feature-card strong {
-      color: #1e3a8a;
-      display: block;
-      margin-bottom: 3px;
-      font-size: 9.5pt;
-    }
-
-    .footer-note {
-      font-size: 8pt;
-      color: #94a3b8;
-      text-align: center;
-      margin-top: 25px;
-      padding-top: 10px;
-      border-top: 1px solid #e2e8f0;
+    /* Web manual navbar */
+    @media screen {
+      body {
+        background: #f1f5f9;
+        padding: 20px;
+      }
+      .page-container {
+        max-width: 960px;
+        margin: 0 auto;
+        background: #ffffff;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      }
+      .web-top-bar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: #0f172a;
+        color: #ffffff;
+        padding: 12px 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .btn-download {
+        background: #2563eb;
+        color: #ffffff;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 9pt;
+      }
     }
   </style>
 </head>
 <body>
 
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 0. COVER PAGE                                                            -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-container">
+
+  <!-- Cover Page -->
   <div class="cover-page">
     <div>
-      <span class="cover-badge">Gemma Knits · Textile Manufacturing CMMS</span>
-      <h1 class="cover-title">คู่มือการใช้งานระบบ<br>TextileOps CMMS</h1>
-      <p class="cover-subtitle">คู่มือปฏิบัติการฉบับสมบูรณ์ สอนการใช้งานทุกฟังก์ชันและทุกเมนู<br>พร้อมระบบจับเวลาทำงานช่าง 12 ชม./วัน, ระบบแจ้งเตือน LINE, และคุมเครื่องจักรทอผ้า</p>
+      <span class="cover-badge">Official Standard Operating Procedure</span>
+      <h1 class="cover-title">คู่มือการใช้งานระบบ TextileOps CMMS<br><span style="font-size: 20pt; font-weight: 600; color: #93c5fd;">ฉบับประกอบภาพหน้าจอจริงจากระบบ (Step-by-Step)</span></h1>
+      <p class="cover-subtitle">ระบบบริหารจัดการงานซ่อมบำรุง คลังอะไหล่ และแผน PM โรงงานทอผ้าแบบครบวงจร พร้อมระบบคำนวณ SLA ทำงาน 12 ชม./วัน</p>
     </div>
 
     <div class="cover-meta">
       <div class="cover-meta-item">
         <strong>ระบบปฏิบัติการ</strong>
-        <span>TextileOps Platform v1.3.215</span>
+        <span>TextileOps — CMMS Platform</span>
       </div>
       <div class="cover-meta-item">
-        <strong>สถาปัตยกรรมข้อมูล</strong>
-        <span>Cloudflare D1 High-Speed Edge</span>
+        <strong>เวอร์ชันระบบ (App Version)</strong>
+        <span>v1.3.215 (Latest Enterprise Build)</span>
       </div>
       <div class="cover-meta-item">
-        <strong>กลุ่มผู้ใช้งาน</strong>
-        <span>ช่างซ่อมบำรุง, หัวหน้ากะ, ฝ่ายผลิต, แอดมิน</span>
+        <strong>ฐานข้อมูลและความปลอดภัย</strong>
+        <span>Cloudflare D1 + Google Sheets Multi-Cloud</span>
       </div>
       <div class="cover-meta-item">
-        <strong>วันที่ปรับปรุงล่าสุด</strong>
-        <span>30 ตุลาคม 2026 (ฉบับอัปเดตทางการ)</span>
+        <strong>วันที่จัดทำเอกสาร</strong>
+        <span>30 ตุลาคม 2026 (ปรับปรุงล่าสุด)</span>
       </div>
     </div>
   </div>
 
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 1. TABLE OF CONTENTS                                                     -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>สารบัญคู่มือการใช้งาน (Table of Contents)</h1>
-  <p>คู่มือฉบับนี้จัดทำขึ้นเพื่อให้พนักงานช่างซ่อมบำรุง, หัวหน้าแผนก, และผู้ดูแลระบบ สามารถทำความเข้าใจและใช้งานระบบ TextileOps CMMS ได้อย่างมีประสิทธิภาพสูงสุด ครอบคลุมการทำงานทั้งบนคอมพิวเตอร์และมือถือ</p>
-
-  <div class="toc">
-    <div class="toc-item">
-      <span class="toc-title">บทนำ: ภาพรวมระบบและการเข้าสู่ระบบ (Login & Architecture)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 3</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 1: แดชบอร์ดภาพรวมและการวิเคราะห์สถานะ (Dashboard)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 4</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 2: ทะเบียนเครื่องจักรกลทอผ้า (Machines Registry)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 5</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 3: ทะเบียนกระบอกและการจัดกลุ่มสเปก (Cylinders)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 6</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 4: ใบสั่งงาน, ระบบเวลา 12 ชม./วัน & ทะเบียนช่าง (Work Orders)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 7-8</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 5: แผนบำรุงรักษาเชิงป้องกัน & Center Check (PM Plan)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 9</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 6: โครงสร้างแบบผ้าและลายทอ (Design BOM)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 10</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 7: คลังเข็มทอผ้าและการเบิกจ่าย (Needle Stock)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 11</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 8: คลังอะไหล่และการค้นหาด้วยภาพ (Spare Parts)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 12</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 9: ระบบจัดซื้อและสั่งอะไหล่ (Purchasing)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 13</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 10: การเคลื่อนไหวสต็อกอะไหล่ (Stock Movement)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 14</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 11: รายงานวิเคราะห์ผลงานและสถิติ (Reports & Analytics)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 15</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 12: ประวัติบันทึกการใช้งานระบบ (Audit Logs)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 16</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 13: จัดการผู้ใช้งาน, สิทธิ์ & บัญชี LINE (Users & Permissions)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 17</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">เมนูที่ 14: การตั้งค่าระบบและการเชื่อมต่อภายนอก (Settings)</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 18</span>
-    </div>
-    <div class="toc-item">
-      <span class="toc-title">ภาคผนวก: การใช้งานบนมือถือ (PWA Mobile Guide) & คำถามพบบ่อย</span>
-      <span class="toc-dots"></span>
-      <span class="toc-page">หน้า 19</span>
+  <!-- Table of Contents -->
+  <div class="toc no-break">
+    <h2 style="margin-top: 0; border-left: none; padding-left: 0; color: #0f172a; font-size: 13pt;">สารบัญเนื้อหา (Table of Contents)</h2>
+    <div class="toc-grid">
+      <div class="toc-item"><span class="toc-title">00. การเข้าสู่ระบบและการยืนยันตัวตน (Login)</span><span class="toc-page">บทนำ</span></div>
+      <div class="toc-item"><span class="toc-title">01. แดชบอร์ดภาพรวมโรงงาน (Dashboard)</span><span class="toc-page">บทที่ 1</span></div>
+      <div class="toc-item"><span class="toc-title">02. ทะเบียนเครื่องจักรและพิมพ์ป้ายแท็ก (Machines)</span><span class="toc-page">บทที่ 2</span></div>
+      <div class="toc-item"><span class="toc-title">03. ทะเบียนกระบอกและการ์ดกลุ่มสเปก (Cylinders)</span><span class="toc-page">บทที่ 3</span></div>
+      <div class="toc-item"><span class="toc-title">04. ใบสั่งงานและระบบ SLA 12 ชม./วัน (Work Orders)</span><span class="toc-page">บทที่ 4</span></div>
+      <div class="toc-item"><span class="toc-title">05. แผนการบำรุงรักษาเชิงป้องกัน (PM Plan)</span><span class="toc-page">บทที่ 5</span></div>
+      <div class="toc-item"><span class="toc-title">06. แบบลายผ้าและสูตรเส้นด้าย (Design BOM)</span><span class="toc-page">บทที่ 6</span></div>
+      <div class="toc-item"><span class="toc-title">07. บริหารสต็อกเข็มทอผ้า (Needle Stock)</span><span class="toc-page">บทที่ 7</span></div>
+      <div class="toc-item"><span class="toc-title">08. คลังอะไหล่และค้นหาด้วยภาพ (Spare Parts)</span><span class="toc-page">บทที่ 8</span></div>
+      <div class="toc-item"><span class="toc-title">09. จัดซื้อและติดตามพัสดุ (Purchasing)</span><span class="toc-page">บทที่ 9</span></div>
+      <div class="toc-item"><span class="toc-title">10. บันทึกรับ-จ่าย-ปรับสต็อก (Stock Movement)</span><span class="toc-page">บทที่ 10</span></div>
+      <div class="toc-item"><span class="toc-title">11. การวิเคราะห์ Downtime และรายงาน (Reports)</span><span class="toc-page">บทที่ 11</span></div>
+      <div class="toc-item"><span class="toc-title">12. ประวัติการแก้ไขและความปลอดภัย (Audit Logs)</span><span class="toc-page">บทที่ 12</span></div>
+      <div class="toc-item"><span class="toc-title">13. ผู้ใช้งานและการกำหนดสิทธิ์ (Users & Permissions)</span><span class="toc-page">บทที่ 13</span></div>
+      <div class="toc-item"><span class="toc-title">14. ตั้งค่าระบบและการแจ้งเตือน LINE (Settings)</span><span class="toc-page">บทที่ 14</span></div>
+      <div class="toc-item"><span class="toc-title">ภาคผนวก: การใช้งานผ่านมือถือ (Mobile PWA)</span><span class="toc-page">ภาคผนวก</span></div>
     </div>
   </div>
 
+  <!-- Chapter 0: Login -->
   <div class="page-break"></div>
+  <h1>บทนำ: การเข้าสู่ระบบและการยืนยันตัวตน (Authentication)</h1>
+  <p>ระบบ TextileOps CMMS รองรับการเข้าสู่ระบบได้ 3 รูปแบบ เพื่อความยืดหยุ่นและความสะดวกของทีมงานทั้งหน้าเครื่องและฝ่ายบริหาร</p>
 
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 2. INTRODUCTION & LOGIN                                                  -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>บทนำ: ภาพรวมระบบและการเข้าสู่ระบบ</h1>
-  <p><strong>TextileOps CMMS</strong> คือระบบบริหารจัดการงานซ่อมบำรุงและควบคุมการผลิตเครื่องจักรทอผ้าวงกลม (Circular Knitting Machines) พัฒนาขึ้นด้วยเทคโนโลยี Cloudflare D1 High-Speed Serverless Database เพื่อความเร็วในการตอบสนอง รองรับการใช้งานทั้งคอมพิวเตอร์และสมาร์ทโฟน (Responsive PWA) แบบไร้รอยต่อ</p>
-
-  <h2>1. วิธีการเข้าสู่ระบบ (3 ช่องทางการเข้าใช้งาน)</h2>
-  <div class="card-grid">
-    <div class="feature-card">
-      <strong>1. ชื่อผู้ใช้และรหัสผ่าน (Username / Password)</strong>
-      กรอก Username และ Password ที่ได้รับจากแอดมิน เหมาะสำหรับการใช้งานประจำบนเครื่อง PC แผนกซ่อมบำรุง
-    </div>
-    <div class="feature-card">
-      <strong>2. สแกน QR Code เข้าสู่ระบบด่วน</strong>
-      กดแท็บ "สแกน QR Code" ส่องกล้องมือถือกับ QR ประจำตัวพนักงาน เข้าสู่ระบบได้ทันทีโดยไม่ต้องพิมพ์
-    </div>
-    <div class="feature-card" style="grid-column: span 2;">
-      <strong>3. เข้าสู่ระบบด้วย LINE (LINE OAuth Login) — แนะนำสำหรับช่างหน้างาน</strong>
-      เพียงคลิกปุ่ม <strong>"เข้าสู่ระบบด้วย LINE"</strong> สีเขียว ระบบจะเชื่อมต่อกับแอป LINE บนมือถือของท่าน:
-      <ul style="margin: 6px 0; padding-left: 20px;">
-        <li>ระบบสร้างบัญชีให้อัตโนมัติ (Auto-Provisioning) ดึงชื่อและรูปโปรไฟล์จาก LINE ทันที</li>
-        <li>เชื่อมโยง LINE User ID เข้ากับทะเบียนช่าง เพื่อให้ระบบส่งการแจ้งเตือนงานซ่อมตรงถึงตัวช่าง</li>
-        <li>เข้าใช้งานครั้งต่อไปเพียงคลิกเดียว ไม่ต้องจำรหัสผ่าน</li>
-      </ul>
-    </div>
-  </div>
-
-  <h2>2. ระดับบทบาทผู้ใช้งาน (User Roles & Permissions)</h2>
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 20%;">บทบาท (Role)</th>
-        <th style="width: 35%;">สิทธิ์การเข้าถึง (Permissions)</th>
-        <th style="width: 45%;">หน้าที่ความรับผิดชอบ</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><span class="badge badge-yellow">admin</span></td>
-        <td>เต็มสิทธิ์ทุกเมนู (Full Control)</td>
-        <td>ผู้ดูแลระบบสูงสุด ตั้งค่าระบบ, จัดการผู้ใช้, มอบหมายสิทธิ์</td>
-      </tr>
-      <tr>
-        <td><span class="badge badge-purple">supervisor</span></td>
-        <td>ดู, เพิ่ม, แก้ไข, ลบ งานซ่อม/ช่าง</td>
-        <td>หัวหน้าแผนก/ผู้จัดการโรงงาน ตรวจสอบ KPI, อนุมัติการสั่งซื้อ</td>
-      </tr>
-      <tr>
-        <td><span class="badge badge-blue">technician</span></td>
-        <td>เปิดใบสั่งงาน, ปิดงาน, เบิกอะไหล่</td>
-        <td>ช่างปรับ/ช่างซ่อมบำรุง รับงานซ่อม, อัปเดตสถานะ, ทำแผน PM</td>
-      </tr>
-      <tr>
-        <td><span class="badge badge-gray">viewer / user</span></td>
-        <td>ดูข้อมูลได้อย่างเดียว (Read-Only)</td>
-        <td>ฝ่ายผลิต, ผู้สังเกตการณ์ ตรวจดูสถานะเครื่องจักรและคลังสินค้า</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 3. DASHBOARD                                                             -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 1: แดชบอร์ดภาพรวม (Dashboard Overview)</h1>
-  <p>หน้าแรกของระบบสำหรับดูสถานะโรงงานแบบ Real-time รวมตัวชี้วัดประสิทธิภาพงานซ่อมบำรุงและการแจ้งเตือนด่วน</p>
-
-  <h2>ส่วนประกอบสำคัญบนหน้าจอ</h2>
-  <div class="card-grid">
-    <div class="feature-card">
-      <strong>1. สรุปสถานะเครื่องจักร (Machine Status Chips)</strong>
-      แสดงจำนวนเครื่องจักรทั้งหมด แยกเป็น <span class="badge badge-green">RUNNING</span> กำลังเดินเครื่องปกติ, <span class="badge badge-red">STOP</span> เครื่องหยุดรอแก้ไข, และ <span class="badge badge-yellow">MAINTENANCE</span> กำลังซ่อมบำรุง คลิกที่ชิปเพื่อกรองตารางทันที
-    </div>
-    <div class="feature-card">
-      <strong>2. ตัวชี้วัดสถิติซ่อมบำรุง (Maintenance KPIs)</strong>
-      คำนวณค่าเฉลี่ย <strong>MTTR</strong> (เวลาเฉลี่ยในการซ่อม), <strong>MTBF</strong> (เวลาเฉลี่ยระหว่างการหยุดเครื่อง), และ <strong>SLA On-time Rate</strong> (เปอร์เซ็นต์งานซ่อมที่เสร็จทันเกณฑ์)
-    </div>
-    <div class="feature-card">
-      <strong>3. กราฟวิเคราะห์สาเหตุปัญหา (Problem Cause)</strong>
-      แจกแจงสัดส่วนต้นตอของปัญหาเครื่องหยุด: ปัญหาจากคน (Personnel), เครื่องจักร (Machine), วัตถุดิบ/เส้นด้าย (Material), หรือยังไม่ระบุ
-    </div>
-    <div class="feature-card">
-      <strong>4. รายการงานซ่อมด่วนล่าสุด (Urgent Work Orders)</strong>
-      แสดงใบสั่งงานที่กำลังดำเนินการอยู่ พร้อมเวลานับถอยหลัง SLA เตือนช่างไม่ให้ทำงานเกินเกณฑ์
+  <div class="manual-figure">
+    <img src="./images/00_login.png" alt="หน้าจอเข้าสู่ระบบ TextileOps" />
+    <div class="manual-caption">รูปที่ 0: หน้าจอเข้าสู่ระบบ (Login) รองรับรหัสผ่าน, QR Code และ LINE Login</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>Username & Password:</strong> สำหรับพนักงานและผู้ดูแลระบบ กรอกชื่อผู้ใช้และรหัสผ่านเพื่อเข้าใช้งานทันที</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>สแกน QR Code:</strong> ช่างหน้างานสามารถใช้มือถือสแกนคิวอาร์โค้ดบนจอเพื่อล็อกอินอัตโนมัติไม่ต้องพิมพ์รหัส</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>เข้าสู่ระบบด้วย LINE:</strong> กดปุ่มสีเขียวเพื่อยืนยันตัวตนผ่าน LINE OA ผูกสิทธิ์และรับการแจ้งเตือนแบบเรียลไทม์</span></div>
     </div>
   </div>
 
   <div class="callout callout-blue">
-    <div class="callout-title">💡 เคล็ดลับการใช้งานแดชบอร์ด</div>
-    สามารถคลิกที่แถบสถานะหรือชิปโซนผลิตเพื่อเจาะลึก (Drill-down) ไปยังรายการเครื่องจักรของโซนนั้นๆ ได้โดยตรง
+    <div class="callout-title">💡 เคล็ดลับการเข้าใช้งานครั้งแรก</div>
+    เมื่อผู้ใช้ล็อกอินผ่าน LINE เป็นครั้งแรก ระบบจะสร้างบัญชีผู้ใช้ชั่วคราวและแจ้งไปยังหัวหน้างาน (Supervisor) หรือ Admin เพื่อกำหนดแผนก สิทธิ์ และบทบาทให้ตรงกับหน้าที่
   </div>
 
+  <!-- Chapter 1: Dashboard -->
   <div class="page-break"></div>
+  <h1>บทที่ 1: แดชบอร์ดภาพรวมโรงงาน (Dashboard)</h1>
+  <p>แดชบอร์ดเป็นศูนย์กลางการตรวจสอบประสิทธิภาพการทำงานของโรงงานทอผ้าแบบเรียลไทม์ (Real-Time Factory Cockpit) สรุปข้อมูลดัชนีชี้วัดความพร้อมและสถานะการเดินเครื่องจักร</p>
 
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 4. MACHINES                                                              -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 2: ทะเบียนเครื่องจักร (Machines Registry)</h1>
-  <p>เมนูควบคุมและบันทึกประวัติเครื่องจักรทอผ้าวงกลมทุกเครื่องในโรงงาน รองรับการคุมโซนและพิมพ์ป้าย Tag ประจำเครื่อง</p>
-
-  <h2>ขั้นตอนการทำงานหลัก</h2>
-  <ol class="steps">
-    <li>
-      <strong>ค้นหาและกรองเครื่องจักร:</strong>
-      ใช้แถบตัวกรองด้านบนเลือกตาม <em>Zone / Line ผลิต</em> (เช่น GMK-1, GMK-2, GMK-3), ยี่ห้อเครื่อง (Mayer, Terrot, Fukuhara, Santec) หรือพิมพ์รหัสเครื่อง (เช่น DA-345M) ในช่องค้นหา
-    </li>
-    <li>
-      <strong>ดูรายละเอียดและประวัติเครื่อง (Detail Drawer):</strong>
-      คลิกที่แถวเครื่องจักรเพื่อเปิดลิ้นชักข้อมูลด้านข้าง จะแสดงสเปกละเอียด: ขนาดเส้นผ่าศูนย์กลาง (Diameter), เกจ (Gauge), จำนวนฟีดเดอร์ (Feeder), รอบความเร็ว, วันที่ติดตั้ง และประวัติใบสั่งงานซ่อมย้อนหลังทั้งหมดของเครื่องนี้
-    </li>
-    <li>
-      <strong>เพิ่ม / แก้ไขข้อมูลเครื่องจักร:</strong>
-      กดปุ่ม <span class="badge badge-blue">+ เพิ่มเครื่องจักร</span> กรอกข้อมูลรหัสเครื่อง, รุ่น, โซน, สเปกเข็ม และอัปโหลดภาพถ่ายเครื่องจักร
-    </li>
-    <li>
-      <strong>พิมพ์ป้าย Tack Tag และ QR Code ประจำเครื่อง:</strong>
-      เลือกเครื่องแล้วกดปุ่มพิมพ์ ระบบจะสร้างป้ายมาตรฐานขนาด 20cm x 7cm พร้อม QR Code สำหรับนำไปติดที่ตัวเครื่อง เพื่อให้ช่างหน้างานสแกนเปิดดูประวัติและแจ้งซ่อมได้ทันที
-    </li>
-  </ol>
-
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 5. CYLINDERS                                                             -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 3: ทะเบียนกระบอกทอผ้า (Cylinders)</h1>
-  <p>บริหารจัดการกระบอกทอผ้า (Cylinders) ทั้งที่ติดตั้งอยู่ในเครื่อง (In-use) และกระบอกสำรองในสต็อก (Spare)</p>
-
-  <h2>1. การ์ดสรุปกลุ่มสเปกแบบโต้ตอบ (Interactive Spec Group Cards)</h2>
-  <p>ระบบจัดกลุ่มกระบอกทอผ้าตาม 3 มิติหลัก: <strong>ประเภท (Type)</strong>, <strong>เส้นผ่าศูนย์กลาง (Diameter)</strong>, และ <strong>เกจ (Gauge)</strong> แสดงผลในรูปแบบเข้าใจง่าย เช่น <span class="badge badge-blue">D · 30" · 32G = 15</span> (Double, 30 นิ้ว, 32 เกจ จำนวน 15 กระบอก):</p>
-  <ul>
-    <li><strong>เปิดแสดงเป็นค่าเริ่มต้น (Default Open):</strong> เห็นภาพรวมการกระจายตัวของกระบอกทั้งโรงงานทันทีเมื่อเข้าหน้านี้</li>
-    <li><strong>คลิกเพื่อกรองข้อมูล:</strong> คลิกที่การ์ดกลุ่มใด ระบบจะกรองรายการในตารางให้แสดงเฉพาะกลุ่มนั้นทันที พร้อมขึ้นกรอบแสงสีฟ้า</li>
-    <li><strong>ปุ่มล้างตัวกรอง:</strong> มีปุ่มล้างตัวกรองที่หัวการ์ด หรือคลิกซ้ำที่การ์ดเดิมเพื่อกลับสู่การแสดงผลทั้งหมด</li>
-  </ul>
-
-  <h2>2. การสลับเปลี่ยนกระบอก (Swap Cylinder Workflow)</h2>
-  <p>เมื่อมีการเปลี่ยนลายผ้าหรือเปลี่ยนสเปกเครื่อง ช่างสามารถกดปุ่ม <strong>"สลับกระบอก (Swap)"</strong>:</p>
-  <ol class="steps">
-    <li>เลือกรหัสเครื่องจักรเป้าหมายที่ต้องการเปลี่ยนกระบอก</li>
-    <li>ระบบจะดึงกระบอกเดิมที่อยู่ในเครื่องออกมาเป็นสถานะสำรอง (Spare) อัตโนมัติ</li>
-    <li>เลือกกระบอกใหม่จากคลังสำรองใส่เข้าไปในเครื่องจักร</li>
-    <li>ระบบบันทึกประวัติการสลับ วันที่ และชื่อช่างผู้ทำรายการลงใน Cylinder History ทันที</li>
-  </ol>
-
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 6. WORK ORDERS                                                           -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 4: ใบสั่งงาน & แจ้งซ่อม (Work Orders)</h1>
-  <p>ศูนย์กลางการควบคุมงานซ่อมบำรุงและปรับแต่งเครื่องจักร ออกแบบให้ประหยัดพื้นที่หน้าจอและคำนวณเวลาทำงานสอดคล้องกับกะโรงงานจริง</p>
-
-  <h2>1. การเปิดใบสั่งงานใหม่ผ่านป๊อปอัพ (Create Work Order Modal)</h2>
-  <p>เพื่อประหยัดพื้นที่หน้าจอ ระบบได้ย้ายฟอร์มเปิดงานซ่อมมาเป็น <strong>ป๊อปอัพโมดอล (Modal)</strong> โดยกดปุ่ม <strong>"+ เปิดใบสั่งงาน"</strong> หรือกดปุ่ม <strong>"+" ลอยบนหน้าจอมือถือ (FAB)</strong>:</p>
-  <ol class="steps">
-    <li><strong>ระบุเครื่องจักรและงาน:</strong> ใส่รหัสเครื่อง (M/C), รหัสงาน (KI), แบบงาน (Design), เลขม้วน (Roll No.)</li>
-    <li><strong>เลือกประเภทงาน (Job Type):</strong> 🛠️ แก้ไข (Repair), 🎨 ปรับแบบ (Design), หรือ 🧹 PM / ล้างเครื่อง</li>
-    <li><strong>ระบุสาเหตุปัญหา (Root Cause):</strong> 👤 คน, ⚙️ เครื่องจักร, 🧵 วัตถุดิบ, หรือยังไม่ระบุ</li>
-    <li><strong>เลือกช่างผู้ปฏิบัติงาน (Technicians):</strong> ติ๊กเลือกช่างที่รับผิดชอบ (เลือกได้หลายคนพร้อมกัน)</li>
-    <li><strong>กด "ยืนยันเปิดใบสั่งงาน":</strong> ระบบจะออกรหัส Job ID (เช่น JOB-20261030-0001) และเริ่มจับเวลาทำงานอัตโนมัติ</li>
-  </ol>
-
-  <h2>2. ระบบคิดเวลาทำงานสุทธิฐาน 12 ชม./วัน (12h/Day Working Shift Model)</h2>
-  <div class="callout callout-emerald">
-    <div class="callout-title">⏰ กฎการคำนวณเวลาทำงานของโรงงาน (Factory Shift Rules)</div>
-    <ul>
-      <li><strong>กะทำงานปกติ (Monday - Saturday):</strong> นับเวลาทำงานเฉพาะช่วง <strong>08:00 - 20:00 น. (12 ชม./วัน)</strong></li>
-      <li><strong>เวลากลางคืนนอกกะ (Off-Shift):</strong> หักช่วงเวลา <strong>20:00 - 08:00 น. (12 ชม./คืน)</strong> ออกอัตโนมัติ ไม่นับเป็นเวลาช่าง</li>
-      <li><strong>วันอาทิตย์ (Sunday):</strong> วันหยุดโรงงาน หักออกเต็ม 24 ชั่วโมง</li>
-      <li><strong>เวลาหยุดรอ (Lost Time):</strong> หักเวลาหยุดรอช่าง/รออะไหล่ตามบันทึกจริง</li>
-    </ul>
-    <strong>ตัวอย่าง:</strong> งานเริ่ม 08:00 น. เมื่อวาน และสิ้นสุด 11:06 น. วันนี้ (เวลานาฬิการวม 27.1 ชม.) ระบบจะหักเวลานอน 12 ชม. ออก เหลือเวลาทำงานสุทธิจริง = <strong>15.1 ชม.</strong> เมื่อเทียบกับเป้าหมาย 2 วัน (24 ชม.) จึงได้สถานะ <span class="badge badge-green">อยู่ในเกณฑ์ (15.1/24ชม.)</span> ไม่เกิน KPI ผิดพลาด!
-  </div>
-
-  <h2>3. การบันทึกงานแทรกและเวลาหยุดรอ (Interruption Logs)</h2>
-  <p>หากระหว่างซ่อมต้องหยุดรออะไหล่ หรือช่างถูกเรียกไปดูเครื่องด่วนอื่น ช่างสามารถกดปุ่ม <strong>"พักงาน / งานแทรก"</strong> ระบบจะจับเวลาหยุดรอแยกไว้ และนำไปหักออกจากเวลาทำงานสุทธิให้อัตโนมัติ</p>
-
-  <h2>4. การปิดงานซ่อม (Complete Work Order Modal)</h2>
-  <p>เมื่อช่างซ่อมเสร็จ กดปุ่ม <strong>"จบงาน"</strong> สีเขียว ระบบจะเปิดหน้าต่างสรุปแจกแจงเวลาแบบโปร่งใส:</p>
-  <ul>
-    <li>⏱️ เวลารวมตามปฏิทิน (Gross Clock Time)</li>
-    <li>🌙 หักเวลานอกกะทำงาน (12 ชม./วัน)</li>
-    <li>🏖️ หักวันอาทิตย์ (วันหยุดโรงงาน)</li>
-    <li>⏸️ เวลาที่สูญเสียไปจากงานแทรก (Lost Time)</li>
-    <li>👉 <strong>เวลาทำงานสุทธิ (Net Working Time ใช้คิดประเมิน KPI)</strong></li>
-  </ul>
-
-  <h2>5. ทะเบียนช่างและการผูกบัญชี LINE (Technicians Registry)</h2>
-  <p>ในแท็บ "ทะเบียนช่าง" ระบบจะตรวจสอบบัญชีผู้ใช้ที่ล็อกอินผ่าน LINE และแสดงแถบเตือนสีเขียว <strong>"+ เพิ่มเป็นช่าง"</strong> ให้แอดมินกดดึงชื่อ รูปโปรไฟล์ และ LINE User ID มาบันทึกเป็นช่างประจำโรงงานได้ในคลิกเดียว</p>
-
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 7. PM PLAN & INSPECTIONS                                                 -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 5: แผนบำรุงรักษาเชิงป้องกัน (PM Plan)</h1>
-  <p>ระบบวางแผนบำรุงรักษาเชิงป้องกันเพื่อลดการหยุดเครื่องกะทันหัน พร้อมแบบฟอร์มตรวจสอบความเที่ยงตรงของเครื่องจักร</p>
-
-  <h2>1. ปฏิทินและตารางวางแผน PM (PM Schedule)</h2>
-  <p>แสดงเครื่องจักรที่ถึงรอบการตรวจเช็คตามรอบ 30 วัน, 90 วัน, 180 วัน พร้อมแถบสีเตือนสถานะ: <span class="badge badge-green">ปกติ</span>, <span class="badge badge-yellow">ใกล้ถึงกำหนด</span>, และ <span class="badge badge-red">เกินกำหนด</span></p>
-
-  <h2>2. การตรวจเช็คศูนย์กลางเครื่องจักร (Center Check Sheet)</h2>
-  <p>แบบฟอร์มตรวจเช็คความกลมและความเที่ยงตรงของเครื่องจักรทอผ้าวงกลม:</p>
-  <ul>
-    <li><strong>Single Jersey (10 จุดตรวจ):</strong> กลม cylinder, สูงต่ำ cylinder, กลม cambox, ระยะห่าง singer ฯลฯ</li>
-    <li><strong>Double Jersey (12 จุดตรวจ):</strong> เพิ่มการตรวจ กลม Dail, สูงต่ำ Dail, ระยะห่าง cambox Dail, กลมสามขา</li>
-    <li>ระบบคำนวณค่าเบี่ยงเบนและออกเลขที่เอกสารอัตโนมัติ (เช่น CS-S-20261030-001) พร้อมพิมพ์เอกสาร PDF</li>
-  </ul>
-
-  <h2>3. การตรวจสอบสภาพเข็มทอผ้า (Needle Condition Inspection)</h2>
-  <p>ตรวจเช็คสภาพการสึกหรอของเข็มทอผ้า (ปลายเข็มหัก, ลิ้นเข็มหลวม, คอเข็มคด) เพื่อประเมินรอบการเปลี่ยนยกชุด</p>
-
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 8. DESIGN BOM                                                            -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 6: โครงสร้างแบบผ้า & ลายทอ (Design BOM)</h1>
-  <p>ฐานข้อมูลวิศวกรรมแบบผ้า (Bill of Materials) เชื่อมโยงลายผ้าเข้ากับสเปกการตั้งเครื่องจักร</p>
-
-  <h2>ข้อมูลที่บันทึกใน Design BOM</h2>
-  <div class="card-grid">
-    <div class="feature-card">
-      <strong>1. ข้อมูลลายผ้า (Design Specs)</strong>
-      รหัสลายผ้า (เช่น IAC-211AA), ชนิดผ้า (Single Jersey, Interlock, Rib, Fleece), หน้ากว้างผ้า, น้ำหนักผ้า (GSM)
-    </div>
-    <div class="feature-card">
-      <strong>2. สูตรเส้นด้ายและการร้อยด้าย</strong>
-      เบอร์เส้นด้าย (Yarn Count), ชนิดเส้นด้าย (Cotton, Polyester, TC, CVC), อัตราการจ่ายเส้นด้ายแต่ละ Feed
-    </div>
-    <div class="feature-card">
-      <strong>3. การจัดเรียง Cam และสเปกเข็ม</strong>
-      แผนผังการเรียง Cam (Knit, Tuck, Miss), ชนิดเข็มที่ใช้, ความตึงด้าย (Yarn Tension)
-    </div>
-    <div class="feature-card">
-      <strong>4. ภาพถ่ายลายผ้าความละเอียดสูง</strong>
-      รูปภาพหน้าผ้าจริง เพื่อให้ช่างทอและฝ่าย QC เทียบเคียงก่อนเดินเครื่องเต็มกำลัง
+  <div class="manual-figure">
+    <img src="./images/01_dashboard.png" alt="หน้าแดชบอร์ด TextileOps" />
+    <div class="manual-caption">รูปที่ 1: หน้าแดชบอร์ดสรุป KPI และสถานะเครื่องจักร Real-time</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>ดัชนีชี้วัด OEE:</strong> ค่าประสิทธิผลโดยรวมของเครื่องจักร (ความพร้อม, สมรรถนะ, คุณภาพ)</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>MTTR & MTBF:</strong> เวลาเฉลี่ยที่ใช้ในการซ่อมแซม (MTTR) และช่วงเวลาเฉลี่ยก่อนเกิดการหยุดขัดข้อง (MTBF)</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>สถานะเครื่องจักรรายโซน:</strong> แถบสีแสดงจำนวนเครื่องที่กำลังเดินเครื่องปกติ (เขียว), หยุดซ่อม (ส้ม/แดง), หรือรออะไหล่</span></div>
+      <div class="step-callout-item"><span class="step-badge">4</span><span><strong>งานซ่อมคั่งค้าง:</strong> สรุปจำนวนใบสั่งซ่อมที่อยู่ระหว่างดำเนินการและงานที่ใกล้เกินกำหนด SLA</span></div>
     </div>
   </div>
 
+  <!-- Chapter 2: Machines -->
   <div class="page-break"></div>
+  <h1>บทที่ 2: ทะเบียนเครื่องจักรและการจัดโซน (Machines)</h1>
+  <p>เมนูทะเบียนเครื่องจักรใช้สำหรับลงทะเบียนเครื่องจักรทอผ้า, ควบคุมโซนพื้นที่ (Zone A, B, C), พิมพ์ป้ายประจำเครื่อง (Tack Tag), และผูกกับ QR Code</p>
 
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 9. NEEDLE STOCK & REQUESTS                                               -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 7: คลังเข็มทอผ้าและการเบิกจ่าย (Needle Stock)</h1>
-  <p>ควบคุมสต็อกเข็มทอผ้าซึ่งเป็นหัวใจสำคัญและมีมูลค่าสูงของโรงงานทอผ้า ป้องกันเข็มขาดสต็อก</p>
+  <div class="manual-figure">
+    <img src="./images/02_machines.png" alt="หน้าทะเบียนเครื่องจักร" />
+    <div class="manual-caption">รูปที่ 2: ทะเบียนเครื่องจักรทอผ้า พร้อมระบบแบ่งโซนและปุ่มพิมพ์แท็ก</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>แท็บแบ่งโซนโรงงาน:</strong> กดสลับดูเครื่องจักรเฉพาะโซน A, B, C หรือดูภาพรวมทั้งหมด</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>ปุ่มพิมพ์ Tack Tag (20x7 ซม.):</strong> พิมพ์ป้ายอะคริลิกประจำเครื่องจักร พร้อมชื่อเครื่อง สเปก และ QR Code สแกนแจ้งซ่อม</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>สถานะและประวัติ:</strong> คลิกที่ชื่อเครื่องเพื่อดูสมุดประวัติการซ่อมบำรุงย้อนหลัง รายการเปลี่ยนอะไหล่ และสเปกกระบอก</span></div>
+    </div>
+  </div>
 
-  <h2>1. การติดตามยอดสต็อกเข็ม (Stock Monitoring)</h2>
-  <p>แจกแจงสต็อกตามเบอร์เข็ม ยี่ห้อ (Groz-Beckert, Organ, Kern-Liebers) ตำแหน่งจัดเก็บในตู้ พร้อมระบบเตือน:</p>
-  <ul>
-    <li><span class="badge badge-green">สต็อกเพียงพอ</span> ยอดคงเหลือมากกว่า Min Stock</li>
-    <li><span class="badge badge-yellow">ถึงจุดสั่งซื้อ (Reorder Point)</span> ระบบแนะนำให้เปิดใบขอซื้อ</li>
-    <li><span class="badge badge-red">สต็อกวิกฤต (Low Stock)</span> ยอดคงเหลือน้อยกว่าขั้นต่ำ เสี่ยงกระทบการผลิต</li>
-  </ul>
-
-  <h2>2. ระบบขอเบิกเข็มสำรอง (Spare Needle Request Workflow)</h2>
-  <ol class="steps">
-    <li>ช่างกดปุ่ม <strong>"ขอเบิกเข็ม"</strong> ระบุเบอร์เข็ม จำนวนที่ต้องการ และรหัสเครื่องจักร</li>
-    <li>ระบบตัดยอดสต็อกคงคลังอัตโนมัติ และบันทึกลงในสมุดบัญชีเข็ม (Needle Ledger)</li>
-    <li>สามารถพิมพ์ใบเบิกเข็ม หรือส่งข้อความแจ้งเตือนผ่าน LINE Group คลังสินค้า</li>
-  </ol>
-
+  <!-- Chapter 3: Cylinders -->
   <div class="page-break"></div>
+  <h1>บทที่ 3: ทะเบียนกระบอกและการจัดกลุ่มสเปก (Cylinders)</h1>
+  <p>กระบอกทอผ้า (Cylinder) เป็นหัวใจสำคัญของโรงงานทอผ้า ระบบรองรับการติดตามประวัติการใช้งาน, การสลับเปลี่ยนกระบอกข้ามเครื่อง, และ<strong>ระบบการ์ดแสดงกลุ่มสเปกที่ตรงกัน (Spec Group Cards)</strong></p>
 
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 10. SPARE PARTS & VISUAL SEARCH                                          -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 8: คลังอะไหล่ & ค้นหาด้วยภาพ (Spare Parts)</h1>
-  <p>สารบัญอะไหล่เครื่องจักรกลทอผ้า พร้อมระบบค้นหาอัจฉริยะด้วยภาพถ่าย</p>
+  <div class="manual-figure">
+    <img src="./images/03_cylinders.png" alt="หน้าทะเบียนกระบอก" />
+    <div class="manual-caption">รูปที่ 3: ทะเบียนกระบอก พร้อมการ์ดสรุปกลุ่มสเปก (Type / Dia / Gauge)</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>การ์ดกลุ่มสเปก (Spec Groups):</strong> รวมกลุ่มกระบอกที่มี ประเภท, เส้นผ่าศูนย์กลาง, เกจ ตรงกัน เช่น <code>D, 30", 32G = 15 เครื่อง</code></span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>คลิกกรองทันที:</strong> คลิกที่การ์ดกลุ่มสเปกเพื่อกรองตารางให้แสดงเฉพาะเครื่องจักรและกระบอกในกลุ่มนั้นได้ในคลิกเดียว</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ปุ่มสลับกระบอก:</strong> บันทึกประวัติเมื่อมีการถอดสลับกระบอกไปใส่เครื่องอื่น เพื่อป้องกันความสับสนของแบบลายผ้า</span></div>
+    </div>
+  </div>
 
-  <h2>1. ระบบค้นหาอะไหล่ด้วยภาพ (Visual Spare Part Search)</h2>
-  <div class="callout callout-purple">
-    <div class="callout-title">📸 การทำงานของระบบ Visual Search</div>
-    บ่อยครั้งที่ช่างหน้างานไม่ทราบชื่อเรียกภาษาอังกฤษหรือรหัสอะไหล่:
-    <ol style="margin: 6px 0; padding-left: 20px;">
-      <li>กดปุ่มไอคอน <strong>"กล้องถ่ายรูป"</strong> ในแถบค้นหา</li>
-      <li>ถ่ายภาพอะไหล่ที่ชำรุด หรืออัปโหลดภาพจากโทรศัพท์มือถือ</li>
-      <li>ระบบปัญญาประดิษฐ์ (AI Vision & Image Embedding) จะเปรียบเทียบรูปทรงและแสดงรายการอะไหล่ที่ตรงกันขึ้นมาทันที พร้อมแจ้งรหัสและตำแหน่งตู้เก็บ</li>
+  <!-- Chapter 4: Work Orders -->
+  <div class="page-break"></div>
+  <h1>บทที่ 4: ใบสั่งงานและการติดตาม SLA 12 ชม./วัน (Work Orders)</h1>
+  <p>ศูนย์กลางการเปิดงานซ่อมและติดตามสถานะงานของช่าง โดยระบบใช้<strong>ตรรกะคำนวณ SLA ตามเวลาทำงานจริงวันละ 12 ชม. (08:00 - 20:00 น. จันทร์–เสาร์)</strong> ไม่นับเวลากลางคืนและวันอาทิตย์</p>
+
+  <div class="manual-figure">
+    <img src="./images/04_workorders_desktop.png" alt="หน้าใบสั่งงาน Desktop" />
+    <div class="manual-caption">รูปที่ 4.1: หน้ารายการใบสั่งงาน แสดงแถบ SLA Performance 12 ชม./วัน และปุ่มการจัดการ</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>ป้าย SLA Performance (12h Logic):</strong> แสดงเวลาทำงานจริงเทียบเกณฑ์ เช่น <code>ปกติ (4.5/24ชม.)</code> โดยหัก 12 ชม.เวลานอนออกอัตโนมัติ</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>ปุ่ม "+ เปิดใบสั่งงาน":</strong> เปิด Modal สร้างใบแจ้งซ่อมใหม่ พร้อมระบุอาการ ช่างผู้รับผิดชอบ และความเร่งด่วน</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ปุ่ม "จบงาน" & "บันทึกขัดจังหวะ":</strong> ช่างสามารถกดจบงาน หรือบันทึกเหตุขัดข้องชั่วคราว (รออะไหล่/ไฟดับ) เพื่อหยุดพักเวลา SLA</span></div>
+    </div>
+  </div>
+
+  <div class="manual-figure">
+    <img src="./images/04_workorders_modal.png" alt="Modal เปิดใบสั่งงาน" />
+    <div class="manual-caption">รูปที่ 4.2: หน้าต่างบันทึกเริ่มงานซ่อม / เปิดใบสั่งงานใหม่</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>เลือกเครื่องจักร:</strong> พิมพ์ค้นหาหรือเลือกเบอร์เครื่องจักรที่เกิดปัญหา</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>ประเภทงาน & สาเหตุ:</strong> ระบุว่าเป็นงานแก้ไข (Repair), ปรับแบบ (Setup), หรือ PM พร้อมระบุสาเหตุ (คน, เครื่องจักร, วัตถุดิบ)</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ช่างผู้รับผิดชอบ:</strong> มอบหมายงานให้ช่าง ระบบจะส่งการแจ้งเตือนเข้า LINE ของช่างท่านนั้นทันที</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 5: PM Plan -->
+  <div class="page-break"></div>
+  <h1>บทที่ 5: แผนการบำรุงรักษาเชิงป้องกัน (PM Plan)</h1>
+  <p>เมนูวางแผนและบันทึกผลการบำรุงรักษาเครื่องจักรตามรอบเวลา (Calendar-based) หรือตามรอบการทำงาน (Meter-based) พร้อมระบบตรวจเช็ก <strong>Center Check 10–12 จุด</strong></p>
+
+  <div class="manual-figure">
+    <img src="./images/05_pmplan.png" alt="หน้าแผน PM" />
+    <div class="manual-caption">รูปที่ 5: ปฏิทินและรายการแผน PM ประจำเดือน พร้อมเกณฑ์ Center Check</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>ปฏิทินตรวจเช็ก:</strong> ดูภาพรวมเครื่องจักรที่ถึงรอบต้องทำ PM ในแต่ละสัปดาห์</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>Center Check 10-12 จุด:</strong> เช็กเกียร์, ระบบหล่อลื่น, สายพาน, ความตึงด้าย, โบลเวอร์เป่าลม, เซนเซอร์ตัดด้าย</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>การตรวจสภาพเข็ม:</strong> บันทึกคะแนนสภาพเข็ม (สภาพดี, สึกหรอ, ควรเปลี่ยนยกชุด) เพื่อวางแผนจัดซื้อล่วงหน้า</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 6: Design BOM -->
+  <div class="page-break"></div>
+  <h1>บทที่ 6: แบบลายผ้าและสูตรเส้นด้าย (Design BOM)</h1>
+  <p>บันทึกโครงสร้างทางเทคนิคของผ้าแต่ละลาย (Bill of Materials) ควบคุมการติดตั้ง Cam, ประเภทเส้นด้าย, ความหนาแน่น, และอัตราการใช้เส้นด้ายต่อกิโลกรัม</p>
+
+  <div class="manual-figure">
+    <img src="./images/06_designbom.png" alt="หน้าแบบลายผ้า Design BOM" />
+    <div class="manual-caption">รูปที่ 6: ฐานข้อมูลโครงสร้างแบบลายผ้า และรายการ Cam Setup</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>รหัสลายผ้า (Pattern Code):</strong> ค้นหาและดูสเปกโครงสร้างผ้า เช่น Single Jersey, Interlock, Rib 1x1</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>สูตรเส้นด้าย (Yarn Recipe):</strong> สัดส่วนเบอร์เส้นด้าย (Ne / Denier), ความตึงด้าย (Tension), และเกจกระบอกที่รองรับ</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ผูกกับใบสั่งงาน:</strong> เมื่อมีการเปลี่ยนลายผ้า สามารถดึง BOM ไปสร้างใบสั่งงานประเภท "ปรับแบบ" ได้ทันที</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 7: Needle Stock -->
+  <div class="page-break"></div>
+  <h1>บทที่ 7: บริหารสต็อกเข็มทอผ้า (Needle Stock)</h1>
+  <p>ระบบควบคุมคลังเข็มทอผ้าเฉพาะทาง แยกตามเบอร์เข็ม (Needle Code), รุ่น, ยี่ห้อ (Groz-Beckert, Samsung ฯลฯ) พร้อมระบบแจ้งเตือนจุดสั่งซื้อใหม่ (Reorder Point)</p>
+
+  <div class="manual-figure">
+    <img src="./images/07_needlestock.png" alt="หน้าสต็อกเข็ม Needle Stock" />
+    <div class="manual-caption">รูปที่ 7: ระบบควบคุมสต็อกเข็มทอผ้า และการแจ้งเตือนจุดสั่งซื้อใหม่</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>ระดับสต็อกปลอดภัย (Min-Stock):</strong> แถบสีแจ้งเตือนเมื่อเข็มเบอร์ใดต่ำกว่าจุดปลอดภัย ป้องกันปัญหาเข็มขาดสต็อก</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>บันทึกเบิกเข็มตาม Job ID:</strong> ตัดยอดเข็มอัตโนมัติเมื่อช่างนำไปเปลี่ยนซ่อมในใบสั่งงาน</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ออกใบขอซื้อเข็ม (PR):</strong> กดปุ่มออกใบขอซื้อเข็มที่ใกล้หมดส่งต่อไปยังเมนูจัดซื้อได้ทันที</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 8: Spare Parts -->
+  <div class="page-break"></div>
+  <h1>บทที่ 8: คลังอะไหล่และการค้นหาอัจฉริยะ (Spare Parts)</h1>
+  <p>ฐานข้อมูลอะไหล่เครื่องจักรทอผ้าทั้งหมด ระบบควบคุมจำนวนคงเหลือ สถานที่จัดเก็บ (Bin Location) และฟังก์ชัน<strong>ค้นหาอะไหล่ด้วยภาพถ่าย AI (Visual Search)</strong></p>
+
+  <div class="manual-figure">
+    <img src="./images/08_spareparts.png" alt="หน้าคลังอะไหล่ Spare Parts" />
+    <div class="manual-caption">รูปที่ 8: คลังอะไหล่ พร้อมระบบค้นหาด้วยรูปภาพและตรวจสอบจำนวนคงคลัง</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>Visual AI Search:</strong> ถ่ายรูปอะไหล่ที่ชำรุด ระบบ AI จะเปรียบเทียบรูปภาพและดึงรหัสอะไหล่พร้อมตำแหน่งในคลังออกมาทันที</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>ตำแหน่งจัดเก็บ (Bin Location):</strong> แสดงแถว ลิ้นชัก และชั้นวางอะไหล่ ช่วยให้ช่างหาของได้อย่างรวดเร็ว</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ราคาและมูลค่าคงคลัง:</strong> สรุปมูลค่าต้นทุนอะไหล่หมุนเวียนในโรงงานแบบเรียลไทม์</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 9: Purchasing -->
+  <div class="page-break"></div>
+  <h1>บทที่ 9: จัดซื้อและติดตามพัสดุ (Purchasing)</h1>
+  <p>ขั้นตอนการจัดซื้ออะไหล่และอุปกรณ์ ตั้งแต่การเปิดใบขอซื้อ (Purchase Requisition - PR), การอนุมัติออกใบสั่งซื้อ (PO), และการบันทึกตรวจรับของเข้าคลัง</p>
+
+  <div class="manual-figure">
+    <img src="./images/09_purchasing.png" alt="หน้าจัดซื้อ Purchasing" />
+    <div class="manual-caption">รูปที่ 9: รายการเอกสารจัดซื้อ PR / PO และสถานะการจัดส่งของซัพพลายเออร์</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>สร้างใบขอซื้อ (PR):</strong> ฝ่ายช่างสามารถสร้าง PR อะไหล่ที่จำเป็นต้องใช้เพื่อรอหัวหน้างานอนุมัติ</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>ติดตามสถานะการจัดส่ง:</strong> ติดตามสถานะ (รออนุมัติ, สั่งซื้อแล้ว, อยู่ระหว่างขนส่ง, รับของแล้ว)</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>รับของเข้าสต็อกอัตโนมัติ:</strong> เมื่อกดรับพัสดุ ระบบจะเพิ่มจำนวนคงเหลือในคลังอะไหล่โดยอัตโนมัติ</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 10: Stock Movement -->
+  <div class="page-break"></div>
+  <h1>บทที่ 10: บันทึกรับ-จ่าย-ปรับสต็อก (Stock Movement)</h1>
+  <p>สมุดบันทึกความเคลื่อนไหวของสินค้าและอะไหล่ทั้งหมด (Stock Card Trail) ตรวจสอบความโปร่งใส ป้องกันสินค้าสูญหาย</p>
+
+  <div class="manual-figure">
+    <img src="./images/10_stockmovement.png" alt="หน้ารับ-จ่าย-ปรับสต็อก" />
+    <div class="manual-caption">รูปที่ 10: บันทึกประวัติการรับเข้า จ่ายออก และปรับยอดสต็อกอะไหล่</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>ประเภทรายการ:</strong> สัญลักษณ์สีระบุประเภท (รับเข้าจาก PO, จ่ายออกตามใบสั่งงาน, ตัดของเสีย, ปรับปรุงสต็อก)</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>อ้างอิงเอกสาร:</strong> ตรวจสอบได้ว่าอะไหล่ถูกเบิกไปใช้กับเครื่องจักรเบอร์ใด และใน Job ID ใด</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ผู้ทำรายการ:</strong> แสดงชื่อและวันที่เวลาอย่างละเอียด ป้องกันการแก้ไขยอดโดยไม่ได้รับอนุญาต</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 11: Reports -->
+  <div class="page-break"></div>
+  <h1>บทที่ 11: การวิเคราะห์ Downtime และรายงาน (Reports)</h1>
+  <p>เครื่องมือวิเคราะห์เชิงลึกสำหรับผู้จัดการโรงงานและหัวหน้าฝ่ายช่าง เพื่อลดเวลาสูญเสียและเพิ่มผลผลิตของเครื่องจักร</p>
+
+  <div class="manual-figure">
+    <img src="./images/11_reports.png" alt="หน้ารายงานสรุปและวิเคราะห์" />
+    <div class="manual-caption">รูปที่ 11: กราฟวิเคราะห์ Downtime, Pareto 80/20 และสถิติช่าง</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>Pareto Chart (80/20):</strong> แสดงสาเหตุปัญหาหลักที่ก่อให้เกิดเวลาสูญเสียมากที่สุด 80% เพื่อแก้ไขได้ตรงจุด</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>ประสิทธิภาพช่าง (SLA Ranking):</strong> สถิติการจบงานตรงเวลา, ค่าเฉลี่ย MTTR รายบุคคล, และสถิติการเปิดงาน</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ส่งออกข้อมูล (Export):</strong> ดาวน์โหลดรายงานสรุปเป็น Excel / CSV หรือซิงค์ขึ้น Google Sheets ทันที</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 12: Audit Logs -->
+  <div class="page-break"></div>
+  <h1>บทที่ 12: ประวัติการแก้ไขและความปลอดภัย (Audit Logs)</h1>
+  <p>ระบบบันทึกความปลอดภัยตามมาตรฐาน Enterprise ตรวจสอบย้อนหลังทุกการกดเพิ่ม แก้ไข ลบ หรือการเข้าสู่ระบบ</p>
+
+  <div class="manual-figure">
+    <img src="./images/12_auditlogs.png" alt="หน้าบันทึกความปลอดภัย Audit Logs" />
+    <div class="manual-caption">รูปที่ 12: บันทึกความปลอดภัย Audit Logs ตรวจสอบย้อนหลังทุกเหตุการณ์</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>โมดูลและแอ็กชัน:</strong> ระบุระบบย่อยที่มีการทำรายการ (AUTH, WORK_ORDER, SPARE_PART, MACHINE)</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>เปรียบเทียบค่าเดิมและค่าใหม่:</strong> แสดงชัดเจนว่าค่าเดิม (Old Value) ถูกเปลี่ยนเป็นค่าใด (New Value)</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>ระบบป้องกันการลบ:</strong> Audit Logs ทำงานในรูปแบบ Append-Only ไม่สามารถแก้ไขหรือลบได้โดยเด็ดขาด</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 13: Users & Permissions -->
+  <div class="page-break"></div>
+  <h1>บทที่ 13: ผู้ใช้งานและการกำหนดสิทธิ์ (Users & Permissions)</h1>
+  <p>การบริหารจัดการบัญชีผู้ใช้งานและการกำหนดสิทธิ์รายเมนู (Granular Access Control) แยกสิทธิ์ View, Add, Edit, Delete</p>
+
+  <div class="manual-figure">
+    <img src="./images/13_users.png" alt="หน้าผู้ใช้งานและสิทธิ์ Users" />
+    <div class="manual-caption">รูปที่ 13: ตารางผู้ใช้งาน และเมทริกซ์กำหนดสิทธิ์แบบละเอียดรายเมนู</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>บทบาทหลัก 4 ระดับ:</strong> Admin (ดูแลระบบ), Supervisor (หัวหน้างาน), Technician (ช่าง), Operator (พนักงานทอ)</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>กำหนดสิทธิ์รายฟังก์ชัน:</strong> ติ๊กเลือกสิทธิ์ View (ดู), Add (เพิ่ม), Edit (แก้ไข), Delete (ลบ) แยกตามแต่ละเมนู</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>การผูก LINE User ID:</strong> ผูกรหัส LINE ของพนักงาน เพื่อให้ระบบส่งการแจ้งเตือนงานซ่อมไปยังมือถือโดยตรง</span></div>
+    </div>
+  </div>
+
+  <!-- Chapter 14: Settings -->
+  <div class="page-break"></div>
+  <h1>บทที่ 14: ตั้งค่าระบบและการเชื่อมต่อภายนอก (Settings)</h1>
+  <p>เมนูตั้งค่าสำหรับผู้ดูแลระบบ เชื่อมต่อ LINE Notify, LINE Messaging API, Google Sheets Webhook, และโควตา Cloudflare D1</p>
+
+  <div class="manual-figure">
+    <img src="./images/14_settings.png" alt="หน้าตั้งค่าระบบ Settings" />
+    <div class="manual-caption">รูปที่ 14: หน้าตั้งค่าระบบ แจ้งเตือน LINE และตรวจสอบสุขภาพ Cloudflare D1</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>LINE Messaging & Notify:</strong> ใส่ Channel Access Token และ Channel Secret เพื่อส่งข้อความแจ้งเตือนอัตโนมัติ</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>Google Sheets Auto-Sync:</strong> ตั้งค่า Webhook URL สำหรับสำรองข้อมูลลง Google Sheets แบบสองทิศทาง</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>Cloudflare D1 Quota:</strong> ตรวจสอบปริมาณการอ่าน/เขียนฐานข้อมูล (Rows Read / Rows Written) เพื่อความเสถียร</span></div>
+    </div>
+  </div>
+
+  <!-- Appendix: Mobile PWA -->
+  <div class="page-break"></div>
+  <h1>ภาคผนวก: การใช้งานผ่านสมาร์ตโฟน (Mobile PWA Guide)</h1>
+  <p>TextileOps CMMS ถูกออกแบบมาเพื่อการใช้งานหน้างานอย่างแท้จริง (Mobile-First Experience) ผ่านสมาร์ตโฟนระบบ iOS และ Android</p>
+
+  <div class="manual-figure">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div>
+        <img src="./images/04_workorders_mobile.png" alt="การ์ดตัวกรองแบบพับเก็บได้และปุ่มลอย" />
+        <p style="font-size: 8pt; text-align: center; color: #475569; font-weight: 700; margin-top: 4px;">ก. การ์ดตัวกรองพับได้ & ปุ่มลอย (+) ล็อกตำแหน่ง</p>
+      </div>
+      <div>
+        <img src="./images/15_mobile_bottomnav.png" alt="แถบเมนูด้านล่าง Mobile Bottom Nav" />
+        <p style="font-size: 8pt; text-align: center; color: #475569; font-weight: 700; margin-top: 4px;">ข. เมนูลัดด้านล่าง (Mobile Bottom Navigation)</p>
+      </div>
+    </div>
+    <div class="manual-caption">รูปที่ 15: ฟังก์ชันพิเศษสำหรับหน้าจอมือถือ เพิ่มความคล่องตัวในการทำงานของช่าง</div>
+    <div class="step-callouts">
+      <div class="step-callout-item"><span class="step-badge">1</span><span><strong>การ์ดตัวกรองแบบพับเก็บได้:</strong> ปุ่มกรองแยกตามประเภท, สถานะ, และสาเหตุ สามารถกดพับเก็บได้เพื่อไม่ให้บังข้อมูลในตาราง</span></div>
+      <div class="step-callout-item"><span class="step-badge">2</span><span><strong>ปุ่มลอยเปิดงาน (+) แบบล็อกตำแหน่ง:</strong> ปุ่มเครื่องหมายบวกสีน้ำเงินม่วงถูกล็อกตำแหน่งที่มุมล่างขวา ไม่เลื่อนตามตาราง กดเปิดงานได้ทันที</span></div>
+      <div class="step-callout-item"><span class="step-badge">3</span><span><strong>Mobile Bottom Nav:</strong> แถบเมนูด้านล่างสุดช่วยให้ใช้นิ้วโป้งกดสลับเมนู แดชบอร์ด, เครื่องจักร, ใบสั่งงาน, และแผน PM ได้สะดวก</span></div>
+      <div class="step-callout-item"><span class="step-badge">4</span><span><strong>ติดตั้ง Add to Home Screen:</strong> กดปุ่มแชร์ใน Safari (iOS) หรือ Chrome (Android) แล้วเลือก "เพิ่มลงในหน้าจอโฮม" เพื่อใช้งานแบบแอปพลิเคชันเต็มจอ</span></div>
+    </div>
+  </div>
+
+  <div class="callout callout-emerald" style="margin-top: 20px;">
+    <div class="callout-title">✅ สรุปมาตรฐานการใช้งาน (SOP Checklist)</div>
+    <ol style="margin: 4px 0 0 16px; padding: 0;">
+      <li>เมื่อเครื่องหยุด ช่างหรือผู้คุมเครื่องต้องเปิดใบสั่งงานทันที เพื่อให้ระบบเริ่มนับ SLA อย่างแม่นยำ</li>
+      <li>หากต้องรออะไหล่หรือไฟฟ้าดับ ให้กดปุ่ม <strong>"บันทึกขัดจังหวะ"</strong> เพื่อหยุดเวลา SLA ชั่วคราว</li>
+      <li>เมื่อซ่อมเสร็จ ให้กด <strong>"จบงาน"</strong> พร้อมระบุอะไหล่ที่ใช้และให้หัวหน้าเซ็นรับรองผ่านหน้าจอ</li>
     </ol>
   </div>
 
-  <h2>2. การจัดการอะไหล่และพิมพ์สติกเกอร์บาร์โค้ด</h2>
-  <p>บันทึกรหัสอะไหล่, ชื่อไทย/อังกฤษ, ยี่ห้อเครื่องที่รองรับ, ราคาต่อหน่วย และตำแหน่งเก็บ (Rack / Bin) สามารถพิมพ์สติกเกอร์บาร์โค้ดสำหรับนำไปติดที่กล่องอะไหล่ได้ทันที</p>
-
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 11. PURCHASING, STOCK & REPORTS                                          -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 9 - 11: จัดซื้อ, สต็อก & รายงานวิเคราะห์</h1>
-
-  <h2>เมนูที่ 9: ระบบจัดซื้อและสั่งอะไหล่ (Purchasing)</h2>
-  <p>สร้างใบขอซื้อ (PR) และใบสั่งซื้อ (PO) จากรายการอะไหล่ที่ถึงจุดสั่งซื้อ ติดตามสถานะการส่งมอบ (รอสั่ง / สั่งแล้ว / ส่งมอบแล้ว) และพิมพ์ใบสั่งซื้อส่งให้ซัพพลายเออร์ทาง LINE หรืออีเมล</p>
-
-  <h2>เมนูที่ 10: การเคลื่อนไหวสต็อก (Stock Movement)</h2>
-  <p>บันทึกประวัติการรับเข้า (IN), จ่ายออก (OUT), และปรับยอด (ADJUST) ทุกรายการระบุผู้ทำรายการ วันเวลา และหมายเลขเครื่องจักรที่นำอะไหล่ไปใช้งาน สามารถตรวจสอบย้อนหลังได้ 100%</p>
-
-  <h2>เมนูที่ 11: รายงานและวิเคราะห์ข้อมูล (Reports & Analytics)</h2>
-  <div class="card-grid">
-    <div class="feature-card">
-      <strong>📊 รายงานสรุปงานซ่อมบำรุง</strong>
-      สรุปจำนวนครั้งที่เครื่องหยุด สถิติ Downtime ชั่วโมง และค่าใช้จ่ายอะไหล่แยกตามเดือน
-    </div>
-    <div class="feature-card">
-      <strong>📈 รายงานวิเคราะห์สาเหตุ (Pareto)</strong>
-      วิเคราะห์ปัญหา 80/20 เพื่อหาว่าเครื่องจักรตัวใดหรือสาเหตุใดทำให้เสียเวลาผลิตมากที่สุด
-    </div>
-    <div class="feature-card">
-      <strong>👷 รายงานประสิทธิภาพช่าง (SLA)</strong>
-      จัดอันดับความรวดเร็วและคุณภาพงานซ่อมของช่างแต่ละท่านเทียบกับเป้าหมาย KPI
-    </div>
-    <div class="feature-card">
-      <strong>📥 ส่งออกข้อมูล (Export)</strong>
-      สามารถดาวน์โหลดข้อมูลออกเป็นไฟล์ Excel หรือซิงค์อัตโนมัติกับ Google Sheets
-    </div>
-  </div>
-
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 12. LOGS, USERS & SETTINGS                                               -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>เมนูที่ 12 - 14: ประวัติ, สิทธิ์ & การตั้งค่าระบบ</h1>
-
-  <h2>เมนูที่ 12: ประวัติการใช้งานระบบ (Audit Logs)</h2>
-  <p>บันทึกความเปลี่ยนแปลงทุกอย่างในระบบ (Audit Trail): ใครเป็นผู้แก้ไข, ทำรายการเมื่อใด, โมดูลใด, ค่าเดิมคืออะไร และเปลี่ยนเป็นค่าใหม่อย่างไร เพื่อความโปร่งใสและตรวจสอบความถูกต้องย้อนหลัง</p>
-
-  <h2>เมนูที่ 13: จัดการผู้ใช้งานและสิทธิ์ (Users & Permissions)</h2>
-  <ul>
-    <li><strong>จัดการบัญชี LINE:</strong> ตรวจสอบรายชื่อผู้ใช้ที่ล็อกอินผ่าน LINE และกำหนดสิทธิ์การใช้งาน</li>
-    <li><strong>กำหนดสิทธิ์รายเมนู (Granular Permissions):</strong> ติ๊กเลือกสิทธิ์ ดู (View), เพิ่ม (Add), แก้ไข (Edit), ลบ (Delete) ได้แยกอิสระในทั้ง 14 เมนู</li>
-    <li><strong>สิทธิ์แบบสำเร็จรูป (Presets):</strong> กดปุ่มเลือก "เต็มสิทธิ์", "ช่างซ่อมบำรุง", "หัวหน้างาน", หรือ "ดูอย่างเดียว"</li>
-  </ul>
-
-  <h2>เมนูที่ 14: การตั้งค่าระบบ (Settings & Configurations)</h2>
-  <ul>
-    <li><strong>การแจ้งเตือน LINE:</strong> ตั้งค่า Channel ID, Channel Secret, Channel Access Token และ LINE Group ID</li>
-    <li><strong>Google Sheets Sync:</strong> กำหนด Webhook URL สำหรับสำรองข้อมูลอัตโนมัติไปยัง Google Drive / Sheets</li>
-    <li><strong>Cloudflare D1 Quota Monitor:</strong> ตรวจสอบปริมาณการอ่าน-เขียนฐานข้อมูล D1 แบบ Real-time</li>
-  </ul>
-
-  <div class="page-break"></div>
-
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- 13. APPENDIX & MOBILE TIPS                                               -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <h1>ภาคผนวก: คู่มือการใช้งานบนมือถือ (Mobile PWA)</h1>
-  <p>ระบบ TextileOps CMMS ได้รับการปรับแต่งให้ใช้งานบนสมาร์ทโฟนของช่างได้อย่างสะดวกรวดเร็ว</p>
-
-  <h2>1. วิธีติดตั้งแอปบนหน้าจอมือถือ (Add to Home Screen)</h2>
-  <ol class="steps">
-    <li>เปิดเบราว์เซอร์บนมือถือ (Chrome บน Android หรือ Safari บน iPhone) ไปที่ https://textileops-cmms.pages.dev</li>
-    <li>กดปุ่ม <strong>แชร์ / ตัวเลือก (สามจุด)</strong></li>
-    <li>เลือก <strong>"เพิ่มลงในหน้าจอโฮม" (Add to Home Screen)</strong></li>
-    <li>ระบบจะสร้างไอคอนแอป TextileOps บนหน้าจอมือถือ สามารถกดเปิดใช้งานเต็มหน้าจอได้เหมือนแอปจริงทันที</li>
-  </ol>
-
-  <h2>2. ปุ่มและแถบควบคุมบนมือถือ</h2>
-  <div class="card-grid">
-    <div class="feature-card">
-      <strong>📱 แถบเมนูด้านล่าง (Bottom Navigation)</strong>
-      เข้าถึง 4 เมนูหลักได้ด้วยนิ้วโป้งเดียว: แดชบอร์ด, เครื่องจักร, ใบสั่งงาน, แผน PM และปุ่ม "เมนูอื่น" เพื่อเปิดเมนูที่เหลือ
-    </div>
-    <div class="feature-card">
-      <strong>➕ ปุ่มลอยเปิดใบสั่งงาน (Fixed FAB)</strong>
-      ปุ่มสีน้ำเงิน "+" ที่มุมขวาล่างจะล็อกตำแหน่งอยู่กับที่เสมอ แม้จะเลื่อนหน้าจอลงมา สามารถกดเปิดงานซ่อมได้ทันที
-    </div>
-    <div class="feature-card">
-      <strong>📂 การ์ดตัวกรองแบบพับเก็บได้ (Collapsible Filters)</strong>
-      ตัวกรองประเภท, สถานะ, สาเหตุปัญหา สามารถกดพับเก็บได้เพื่อประหยัดพื้นที่หน้าจอ ให้เห็นรายการงานซ่อมได้เต็มตา
-    </div>
-    <div class="feature-card">
-      <strong>🔄 อัปเดตข้อมูลอัตโนมัติ (Real-time Sync)</strong>
-      ข้อมูลจะซิงค์อัตโนมัติเมื่อช่างสลับหน้าจอกลับเข้ามา ทำให้เห็นสถานะงานและใบสั่งงานล่าสุดทันที
-    </div>
-  </div>
-
-  <div class="footer-note">
-    TextileOps CMMS Platform · Complete Operations Manual · Copyright © 2026 Gemma Knits Co., Ltd. All Rights Reserved.
-  </div>
+</div>
 
 </body>
 </html>
