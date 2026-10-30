@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   SlidersHorizontal,
   ArrowUp,
@@ -39,6 +40,23 @@ export default function FilterSortPanel({ cols, columns, value = INIT_FS, onChan
       : false
   )
   const ref = useRef(null)
+  const buttonRef = useRef(null)
+  const panelRef = useRef(null)
+  const [btnCoords, setBtnCoords] = useState(null)
+
+  const updateCoords = useCallback(() => {
+    if (buttonRef.current) {
+      const r = buttonRef.current.getBoundingClientRect()
+      setBtnCoords({
+        top: r.top,
+        bottom: r.bottom,
+        left: r.left,
+        right: r.right,
+        width: r.width,
+        height: r.height,
+      })
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined
@@ -49,14 +67,34 @@ export default function FilterSortPanel({ cols, columns, value = INIT_FS, onChan
     return () => mq.removeEventListener?.('change', update)
   }, [])
 
+  const cancelChanges = useCallback(() => {
+    setDraftValue(cloneFilterSort(value))
+    setOpen(false)
+  }, [value])
+
   useEffect(() => {
     if (!open) return
     const h = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) cancelChanges()
+      if (ref.current && ref.current.contains(e.target)) return
+      if (buttonRef.current && buttonRef.current.contains(e.target)) return
+      if (panelRef.current && panelRef.current.contains(e.target)) return
+      cancelChanges()
     }
     document.addEventListener('pointerdown', h)
     return () => document.removeEventListener('pointerdown', h)
-  }, [open, value])
+  }, [open, cancelChanges])
+
+  useEffect(() => {
+    if (!open) return
+    updateCoords()
+    const handleScrollOrResize = () => updateCoords()
+    window.addEventListener('resize', handleScrollOrResize)
+    window.addEventListener('scroll', handleScrollOrResize, true)
+    return () => {
+      window.removeEventListener('resize', handleScrollOrResize)
+      window.removeEventListener('scroll', handleScrollOrResize, true)
+    }
+  }, [open, updateCoords])
 
   useEffect(() => {
     if (!open) setDraftValue(cloneFilterSort(value))
@@ -79,11 +117,8 @@ export default function FilterSortPanel({ cols, columns, value = INIT_FS, onChan
 
   const openPanel = () => {
     setDraftValue(cloneFilterSort(value))
+    updateCoords()
     setOpen(true)
-  }
-  const cancelChanges = () => {
-    setDraftValue(cloneFilterSort(value))
-    setOpen(false)
   }
   const commitChanges = () => {
     onChange?.(cloneFilterSort(draftValue))
@@ -108,6 +143,7 @@ export default function FilterSortPanel({ cols, columns, value = INIT_FS, onChan
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => open ? cancelChanges() : openPanel()}
         style={{
@@ -153,101 +189,103 @@ export default function FilterSortPanel({ cols, columns, value = INIT_FS, onChan
         )}
       </button>
 
-      {open && isMobile && (
-        <div
-          aria-hidden="true"
-          onClick={cancelChanges}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 998,
-            background: 'rgba(0,0,0,0.4)',
-            backdropFilter: 'blur(4px)',
-          }}
-        />
-      )}
+      {typeof document !== 'undefined' && document.body && open ? createPortal(
+        <>
+          {isMobile && (
+            <div
+              aria-hidden="true"
+              onClick={cancelChanges}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 9998,
+                background: 'rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(4px)',
+              }}
+            />
+          )}
+          <div ref={panelRef} style={panelStyle(isMobile, btnCoords)}>
+            <div style={{ height: 3, background: 'var(--accent-gradient)' }} />
 
-      {open && (
-        <div style={panelStyle(isMobile)}>
-          <div style={{ height: 3, background: 'var(--accent-gradient)' }} />
-
-          <div style={{
-            padding: isMobile ? '14px 14px 12px' : '16px 18px 14px',
-            flex: isMobile ? '1 1 auto' : undefined,
-            minHeight: isMobile ? 0 : undefined,
-            overflowY: isMobile ? 'auto' : 'visible',
-            WebkitOverflowScrolling: 'touch',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--text-900)' }}>ตัวกรองข้อมูล</div>
-                <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 2 }}>
-                  ค้นให้แคบลงด้วยคอลัมน์ วันที่ ตัวเลข สถานะ และข้อความ
+            <div style={{
+              padding: isMobile ? '14px 14px 12px' : '16px 18px 14px',
+              flex: '1 1 auto',
+              minHeight: 0,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--text-900)' }}>ตัวกรองข้อมูล</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 2 }}>
+                    ค้นให้แคบลงด้วยคอลัมน์ วันที่ ตัวเลข สถานะ และข้อความ
+                  </div>
                 </div>
-              </div>
-              {isMobile && (
-                <button type="button" onClick={cancelChanges} style={closeStyle()}>
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            {sortable.length > 0 && (
-              <section style={sectionStyle()}>
-                <SectionTitle icon={<ArrowUp size={13} />} label="เรียงลำดับ" tone="var(--accent)" />
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8 }}>
-                  <select
-                    className="select"
-                    value={sort.key}
-                    onChange={e => setSort(e.target.value)}
-                    style={{ minHeight: 40, fontSize: 12, fontWeight: 700 }}
-                  >
-                    <option value="">เลือกคอลัมน์</option>
-                    {sortable.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-                  </select>
-                  <DirButton active={Boolean(sort.key && sort.dir === 'asc')} disabled={!sort.key} onClick={() => setDir('asc')} icon={<ArrowUp size={13} />} label="น้อย" />
-                  <DirButton active={Boolean(sort.key && sort.dir === 'desc')} disabled={!sort.key} onClick={() => setDir('desc')} icon={<ArrowDown size={13} />} label="มาก" />
-                </div>
-              </section>
-            )}
-
-            <section style={{ ...sectionStyle(), marginTop: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <SectionTitle icon={<Filter size={13} />} label="เงื่อนไขกรองข้อมูล" tone="var(--accent)" />
-                {filterActive > 0 && (
-                  <button type="button" onClick={clearAll} style={miniClearStyle()}>
-                    <X size={10} /> ล้างเงื่อนไข
+                {isMobile && (
+                  <button type="button" onClick={cancelChanges} style={closeStyle()}>
+                    <X size={14} />
                   </button>
                 )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {filterable.map(col => {
-                  const val = filters[col.key]
-                  return (
-                    <FilterField
-                      key={col.key}
-                      col={col}
-                      value={val}
-                      onChange={nextVal => setFilter(col.key, nextVal)}
-                      onToggle={toggleOpt}
-                    />
-                  )
-                })}
-              </div>
-            </section>
-          </div>
+              {sortable.length > 0 && (
+                <section style={sectionStyle()}>
+                  <SectionTitle icon={<ArrowUp size={13} />} label="เรียงลำดับ" tone="var(--accent)" />
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto', gap: 8 }}>
+                    <select
+                      className="select"
+                      value={sort.key}
+                      onChange={e => setSort(e.target.value)}
+                      style={{ minHeight: 40, fontSize: 12, fontWeight: 700 }}
+                    >
+                      <option value="">เลือกคอลัมน์</option>
+                      {sortable.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    </select>
+                    <DirButton active={Boolean(sort.key && sort.dir === 'asc')} disabled={!sort.key} onClick={() => setDir('asc')} icon={<ArrowUp size={13} />} label="น้อย" />
+                    <DirButton active={Boolean(sort.key && sort.dir === 'desc')} disabled={!sort.key} onClick={() => setDir('desc')} icon={<ArrowDown size={13} />} label="มาก" />
+                  </div>
+                </section>
+              )}
 
-          <div style={footerStyle(isMobile)}>
-            <button type="button" onClick={cancelChanges} style={secondaryActionStyle(isMobile)}>
-              ยกเลิก
-            </button>
-            <button type="button" onClick={commitChanges} style={confirmActionStyle(isMobile)}>
-              {total > 0 ? `นำไปใช้ (${total})` : 'นำไปใช้'}
-            </button>
+              <section style={{ ...sectionStyle(), marginTop: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <SectionTitle icon={<Filter size={13} />} label="เงื่อนไขกรองข้อมูล" tone="var(--accent)" />
+                  {filterActive > 0 && (
+                    <button type="button" onClick={clearAll} style={miniClearStyle()}>
+                      <X size={10} /> ล้างเงื่อนไข
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {filterable.map(col => {
+                    const val = filters[col.key]
+                    return (
+                      <FilterField
+                        key={col.key}
+                        col={col}
+                        value={val}
+                        onChange={nextVal => setFilter(col.key, nextVal)}
+                        onToggle={toggleOpt}
+                      />
+                    )
+                  })}
+                </div>
+              </section>
+            </div>
+
+            <div style={footerStyle(isMobile)}>
+              <button type="button" onClick={cancelChanges} style={secondaryActionStyle(isMobile)}>
+                ยกเลิก
+              </button>
+              <button type="button" onClick={commitChanges} style={confirmActionStyle(isMobile)}>
+                {total > 0 ? `นำไปใช้ (${total})` : 'นำไปใช้'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        </>,
+        document.body
+      ) : null}
     </div>
   )
 }
@@ -280,8 +318,8 @@ function FilterField({ col, value, onChange, onToggle }) {
         </div>
         {active && (
           <button
-            type="button"
-            onClick={() => onChange(type === 'select' ? [] : type === 'number' || type === 'date' ? {} : '')}
+        type="button"
+        onClick={() => onChange(type === 'select' ? [] : type === 'number' || type === 'date' ? {} : '')}
             style={miniClearStyle()}
           >
             <X size={10} /> ล้าง
@@ -440,7 +478,7 @@ function FieldIcon({ type, active }) {
   )
 }
 
-function panelStyle(isMobile) {
+function panelStyle(isMobile, btnCoords) {
   if (isMobile) {
     return {
       position: 'fixed',
@@ -448,7 +486,7 @@ function panelStyle(isMobile) {
       right: 12,
       bottom: 12,
       maxHeight: 'calc(100dvh - 24px)',
-      zIndex: 999,
+      zIndex: 9999,
       display: 'flex',
       flexDirection: 'column',
       background: 'var(--bg-card)',
@@ -458,16 +496,43 @@ function panelStyle(isMobile) {
       overflow: 'hidden',
     }
   }
+
+  const winWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
+  const winHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+  const panelWidth = Math.min(440, winWidth - 32)
+
+  let left = btnCoords ? btnCoords.left : 16
+  if (left + panelWidth > winWidth - 16) {
+    left = Math.max(16, winWidth - panelWidth - 16)
+  }
+  if (left < 16) left = 16
+
+  const btnBottom = btnCoords ? btnCoords.bottom : 100
+  const btnTop = btnCoords ? btnCoords.top : 50
+  const spaceBelow = winHeight - btnBottom
+  const spaceAbove = btnTop
+  const preferAbove = spaceBelow < 420 && spaceAbove > spaceBelow
+
+  const top = preferAbove ? undefined : btnBottom + 8
+  const bottom = preferAbove ? Math.max(16, winHeight - btnTop + 8) : undefined
+  const maxHeight = preferAbove
+    ? Math.min(680, spaceAbove - 24)
+    : Math.min(680, spaceBelow - 24)
+
   return {
-    position: 'absolute',
-    top: 'calc(100% + 10px)',
-    left: 0,
-    width: 'min(440px, calc(100vw - 32px))',
-    zIndex: 250,
+    position: 'fixed',
+    top: top !== undefined ? `${top}px` : undefined,
+    bottom: bottom !== undefined ? `${bottom}px` : undefined,
+    left: `${left}px`,
+    width: `${panelWidth}px`,
+    maxHeight: `${maxHeight}px`,
+    zIndex: 9999,
+    display: 'flex',
+    flexDirection: 'column',
     background: 'var(--bg-card)',
     border: '1px solid var(--border)',
     borderRadius: 22,
-    boxShadow: '0 26px 72px rgba(15,23,42,0.18), 0 8px 22px rgba(15,23,42,0.08)',
+    boxShadow: '0 26px 72px rgba(15,23,42,0.22), 0 8px 24px rgba(15,23,42,0.12)',
     overflow: 'hidden',
   }
 }
@@ -491,8 +556,8 @@ function closeStyle() {
 function DirButton({ active, disabled, onClick, icon, label }) {
   return (
     <button
-      type="button"
-      onClick={onClick}
+        type="button"
+        onClick={onClick}
       disabled={disabled}
       style={{
         display: 'flex',

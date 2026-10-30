@@ -136,7 +136,7 @@ html.dark {
 
   /* ── Mobile Ergonomics & Toolbar Tokens ───────────────────── */
   .toolbar-scroll-strip {
-    @apply flex items-center gap-2 overflow-x-auto py-1 flex-nowrap;
+    @apply flex items-center gap-2 overflow-x-auto py-1 flex-nowrap sm:overflow-x-visible sm:flex-wrap;
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
