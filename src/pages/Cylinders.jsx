@@ -105,7 +105,7 @@ const TYPE_LABEL = { S: 'Single', D: 'Double', 'Jac.': 'Jacquard' }
 const formatCylType = (v) => TYPE_LABEL[v] || v || '—'
 
 // Build a Type/Diameter/Gauge grouping with counts, sorted numerically.
-function buildCylinderSummary(rows = []) {
+export function buildCylinderSummary(rows = []) {
   const groups = new Map()
   for (const c of rows) {
     const type = c?.Type || ''
@@ -137,6 +137,17 @@ export function buildMachineRefSummary(rows = []) {
 export function filterCylindersByMachineRef(cylinders = [], selectedRef = '') {
   if (!selectedRef) return cylinders
   return cylinders.filter((c) => String(c.Machine_Ref || '').trim() === selectedRef)
+}
+
+export function filterCylindersByGroup(cylinders = [], selectedGroupKey = '') {
+  if (!selectedGroupKey) return cylinders
+  return cylinders.filter((c) => {
+    const type = c?.Type || ''
+    const dia = c?.Diameter || ''
+    const gauge = c?.Gauge || ''
+    const key = `${type}|${dia}|${gauge}`
+    return key === selectedGroupKey
+  })
 }
 
 const CYL_FIELD_KEYS = {
@@ -711,20 +722,25 @@ export default function Cylinders() {
   }, [FS_COLS])
 
   const [selectedMachineRef, setSelectedMachineRef] = useState('')
+  const [selectedGroup, setSelectedGroup] = useState('')
 
   const handleToggleMachineRef = (val) => {
     setSelectedMachineRef((prev) => (prev === val ? '' : val))
   }
 
-  const machineRefFiltered = useMemo(() => filterCylindersByMachineRef(searched, selectedMachineRef), [searched, selectedMachineRef])
+  const handleToggleGroup = (groupKey) => {
+    setSelectedGroup((prev) => (prev === groupKey ? '' : groupKey))
+  }
 
-  const displayRows = useMemo(() => applyFilterSort(machineRefFiltered, FS_COLS, filterSort), [machineRefFiltered, FS_COLS, filterSort])
+  const machineRefFiltered = useMemo(() => filterCylindersByMachineRef(searched, selectedMachineRef), [searched, selectedMachineRef])
+  const groupFiltered = useMemo(() => filterCylindersByGroup(machineRefFiltered, selectedGroup), [machineRefFiltered, selectedGroup])
+  const displayRows = useMemo(() => applyFilterSort(groupFiltered, FS_COLS, filterSort), [groupFiltered, FS_COLS, filterSort])
 
   const [detailRec, setDetailRec] = useState(null)
   const [qrRec, setQrRec] = useState(null)
   const [batchQrOpen, setBatchQrOpen] = useState(false)
   const [showMachineRefSummary, setShowMachineRefSummary] = useState(true)
-  const [showSummary, setShowSummary] = useState(false)
+  const [showSummary, setShowSummary] = useState(true)
 
   const summary = useMemo(() => buildCylinderSummary(data), [data])
   const machineRefSummary = useMemo(() => buildMachineRefSummary(data), [data])
@@ -1265,12 +1281,26 @@ export default function Cylinders() {
       {/* ── SUMMARY ACCORDION (TYPE / DIA / GAUGE) ─────────────── */}
       {summary.length > 0 && (
         <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between p-3.5 bg-slate-50/80 dark:bg-slate-900/60">
-            <div className="flex items-center gap-2.5">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">สรุปจำนวนกระบอกตามกลุ่ม</span>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-                {data.length} กระบอก · {summary.length} กลุ่ม
+          <div className="flex items-center justify-between p-3.5 bg-slate-50/80 dark:bg-slate-900/60 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Layers size={14} className="text-blue-500" />
+                <span>สรุปสเปกกระบอก (ประเภท, เส้นผ่าศูนย์กลาง, เกจ)</span>
               </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                {selectedGroup ? `${displayRows.length} / ${data.length}` : data.length} กระบอก · {summary.length} กลุ่ม
+              </span>
+              {selectedGroup && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroup('')}
+                  className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors flex items-center gap-1 cursor-pointer"
+                  title="คลิกเพื่อล้างตัวกรองกลุ่มสเปกนี้"
+                >
+                  <span>ล้างตัวกรอง ({selectedGroup.replace(/\|/g, ', ')})</span>
+                  <X size={12} />
+                </button>
+              )}
             </div>
             <button
               type="button"
@@ -1284,22 +1314,57 @@ export default function Cylinders() {
 
           {showSummary && (
             <div className="p-3.5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-              {summary.map((g) => (
-                <div
-                  key={`${g.Type}|${g.Diameter}|${g.Gauge}`}
-                  className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs"
-                >
-                  <div className="min-w-0 pr-1 truncate">
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{formatCylType(g.Type)}</span>
-                    <span className="font-mono text-slate-500 text-[11px] ml-1.5">
-                      {g.Diameter || '—'}" · {g.Gauge || '—'}G
-                    </span>
+              {summary.map((g) => {
+                const key = `${g.Type}|${g.Diameter}|${g.Gauge}`
+                const isSelected = selectedGroup === key
+                const typeLabel = g.Type === 'D' ? 'D' : g.Type === 'S' ? 'S' : (g.Type || '—')
+                const typeBadgeClass =
+                  g.Type === 'D'
+                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                    : g.Type === 'S'
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+
+                return (
+                  <div
+                    key={key}
+                    onClick={() => handleToggleGroup(key)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleToggleGroup(key)
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-xs cursor-pointer select-none transition-all duration-150 flex items-center justify-between gap-1.5 ${
+                      isSelected
+                        ? 'bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500 shadow-sm scale-[1.02]'
+                        : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800/90'
+                    }`}
+                    title={`คลิกเพื่อกรองเฉพาะกลุ่ม: ${typeLabel}, ${g.Diameter || '—'}", ${g.Gauge || '—'}G`}
+                  >
+                    <div className="min-w-0 pr-1 flex items-center gap-1.5 flex-wrap">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${typeBadgeClass}`}>
+                        {typeLabel}
+                      </span>
+                      <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs whitespace-nowrap">
+                        {g.Diameter || '—'}" · {g.Gauge || '—'}G
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-[11px] font-bold text-slate-400">=</span>
+                      <span className={`px-2 py-0.5 rounded-md font-mono font-extrabold text-[12px] flex-shrink-0 ${
+                        isSelected
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20'
+                      }`}>
+                        {g.count}
+                      </span>
+                    </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-md font-mono font-bold text-[11px] bg-blue-500 text-white flex-shrink-0">
-                    {g.count}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

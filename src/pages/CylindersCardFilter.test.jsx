@@ -3,6 +3,8 @@ import {
   MACHINE_REF_OPTIONS,
   buildMachineRefSummary,
   filterCylindersByMachineRef,
+  buildCylinderSummary,
+  filterCylindersByGroup,
 } from './Cylinders'
 
 describe('Cylinders - Machine Ref Card Filter & Summary', () => {
@@ -86,5 +88,67 @@ describe('Cylinders - Machine Ref Card Filter & Summary', () => {
     toggle('Spare-GMK3')
     expect(selected).toBe('Spare-GMK3')
     expect(filterCylindersByMachineRef(sampleCylinders, selected)).toHaveLength(1)
+  })
+})
+
+describe('Cylinders - Spec Group Card Filter & Summary (Type, Diameter, Gauge)', () => {
+  const cylinders = [
+    { id: '1', Type: 'D', Diameter: '30', Gauge: '32', Serial_NOW: 'CYL-01' },
+    { id: '2', Type: 'D', Diameter: '30', Gauge: '32', Serial_NOW: 'CYL-02' },
+    { id: '3', Type: 'D', Diameter: '30', Gauge: '28', Serial_NOW: 'CYL-03' },
+    { id: '4', Type: 'S', Diameter: '30', Gauge: '28', Serial_NOW: 'CYL-04' },
+    { id: '5', Type: 'S', Diameter: '34', Gauge: '24', Serial_NOW: 'CYL-05' },
+    { id: '6', Type: 'Jac.', Diameter: '34', Gauge: '24', Serial_NOW: 'CYL-06' },
+  ]
+
+  it('buildCylinderSummary aggregates cylinders by Type, Diameter, and Gauge', () => {
+    const summary = buildCylinderSummary(cylinders)
+    expect(summary).toHaveLength(5)
+
+    // D, 30, 32 = 2
+    const d30_32 = summary.find((s) => s.Type === 'D' && s.Diameter === '30' && s.Gauge === '32')
+    expect(d30_32).toBeDefined()
+    expect(d30_32.count).toBe(2)
+
+    // D, 30, 28 = 1
+    const d30_28 = summary.find((s) => s.Type === 'D' && s.Diameter === '30' && s.Gauge === '28')
+    expect(d30_28).toBeDefined()
+    expect(d30_28.count).toBe(1)
+
+    // S, 30, 28 = 1
+    const s30_28 = summary.find((s) => s.Type === 'S' && s.Diameter === '30' && s.Gauge === '28')
+    expect(s30_28).toBeDefined()
+    expect(s30_28.count).toBe(1)
+  })
+
+  it('filterCylindersByGroup filters cylinders accurately by group key', () => {
+    // When no filter is set, returns all cylinders
+    expect(filterCylindersByGroup(cylinders, '')).toHaveLength(6)
+    expect(filterCylindersByGroup(cylinders, null)).toHaveLength(6)
+
+    // Filter by D|30|32 -> exactly 2
+    const filteredD = filterCylindersByGroup(cylinders, 'D|30|32')
+    expect(filteredD).toHaveLength(2)
+    expect(filteredD.map((c) => c.Serial_NOW)).toEqual(['CYL-01', 'CYL-02'])
+
+    // Filter by S|34|24 -> exactly 1
+    const filteredS = filterCylindersByGroup(cylinders, 'S|34|24')
+    expect(filteredS).toHaveLength(1)
+    expect(filteredS[0].Serial_NOW).toBe('CYL-05')
+  })
+
+  it('handles toggle behavior simulation for spec groups', () => {
+    let selected = ''
+    const toggle = (val) => { selected = (selected === val ? '' : val) }
+
+    // Click D|30|32
+    toggle('D|30|32')
+    expect(selected).toBe('D|30|32')
+    expect(filterCylindersByGroup(cylinders, selected)).toHaveLength(2)
+
+    // Click again -> toggles off
+    toggle('D|30|32')
+    expect(selected).toBe('')
+    expect(filterCylindersByGroup(cylinders, selected)).toHaveLength(6)
   })
 })
