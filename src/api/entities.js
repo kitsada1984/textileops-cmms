@@ -882,10 +882,57 @@ export function countWorkingDaysExcludingSundays(startDate, targetDate) {
 }
 
 /**
- * Calculates duration in decimal hours and human-readable Thai text,
- * automatically deducting Sundays (non-working factory day) and lost/interrupted time.
+ * Calculates working minutes between two timestamps based on a 12-hour daily shift (08:00 - 20:00).
+ * Excludes Sundays (Day 0) and off-shift night hours (20:00 - 08:00).
  */
-export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs = [], excludeSunday = true) {
+export function calculateShiftWorkingMinutes(
+  startTimestamp,
+  endTimestamp,
+  shiftStartHour = 8,
+  shiftEndHour = 20,
+  excludeSunday = true
+) {
+  if (!startTimestamp || !endTimestamp) return 0
+  const start = new Date(startTimestamp)
+  const end = new Date(endTimestamp)
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return 0
+
+  let totalWorkingMinutes = 0
+  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+
+  while (cur <= lastDay) {
+    if (!excludeSunday || cur.getDay() !== 0) { // 0 = Sunday
+      const dayShiftStart = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), shiftStartHour, 0, 0, 0)
+      const dayShiftEnd = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), shiftEndHour, 0, 0, 0)
+
+      const overlapStart = Math.max(start.getTime(), dayShiftStart.getTime())
+      const overlapEnd = Math.min(end.getTime(), dayShiftEnd.getTime())
+
+      if (overlapEnd > overlapStart) {
+        totalWorkingMinutes += Math.floor((overlapEnd - overlapStart) / (1000 * 60))
+      }
+    }
+    cur.setDate(cur.getDate() + 1)
+  }
+
+  return totalWorkingMinutes
+}
+
+/**
+ * Calculates duration in decimal hours and human-readable Thai text,
+ * automatically calculating working minutes based on a 12-hour daily shift (08:00 - 20:00, Mon-Sat),
+ * deducting Sundays (non-working factory day), off-shift night hours (20:00 - 08:00),
+ * and lost/interrupted time.
+ */
+export function calculateDuration(
+  startTimestamp,
+  endTimestamp,
+  interruptionLogs = [],
+  excludeSunday = true,
+  shiftStartHour = 8,
+  shiftEndHour = 20
+) {
   if (!startTimestamp || !endTimestamp) {
     return {
       hoursDecimal: 0,
@@ -895,6 +942,9 @@ export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs
       sundayMinutes: 0,
       sundayHoursDecimal: 0,
       sundayDurationText: '0 นาที',
+      offShiftMinutes: 0,
+      offShiftHoursDecimal: 0,
+      offShiftDurationText: '0 นาที',
       lostHoursDecimal: 0,
       lostDurationText: '0 นาที',
       netHoursDecimal: 0,
@@ -914,6 +964,9 @@ export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs
       sundayMinutes: 0,
       sundayHoursDecimal: 0,
       sundayDurationText: '0 นาที',
+      offShiftMinutes: 0,
+      offShiftHoursDecimal: 0,
+      offShiftDurationText: '0 นาที',
       lostHoursDecimal: 0,
       lostDurationText: '0 นาที',
       netHoursDecimal: 0,
@@ -931,11 +984,19 @@ export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs
   const sundayHoursDecimal = Math.round((sundayMinutes / 60) * 100) / 100
   const sundayDurationText = formatMinutesToThai(sundayMinutes)
 
-  // 2. Interruption / Lost Time deduction
+  // 2. Shift working minutes (12h/day: 08:00 - 20:00, Mon-Sat)
+  const workingShiftMinutes = calculateShiftWorkingMinutes(start, end, shiftStartHour, shiftEndHour, excludeSunday)
+
+  // 3. Off-shift night deduction (20:00 - 08:00)
+  const offShiftMinutes = Math.max(0, grossTotalMinutes - sundayMinutes - workingShiftMinutes)
+  const offShiftHoursDecimal = Math.round((offShiftMinutes / 60) * 100) / 100
+  const offShiftDurationText = formatMinutesToThai(offShiftMinutes)
+
+  // 4. Interruption / Lost Time deduction
   const { totalMinutes: lostMinutes, lostHoursDecimal, lostDurationText, activeLog } = calculateInterruptionTotal(interruptionLogs)
 
-  // 3. Net working time = Gross - Sunday - Interruption
-  const netMinutes = Math.max(0, grossTotalMinutes - sundayMinutes - lostMinutes)
+  // 5. Net working time = workingShiftMinutes - lostMinutes
+  const netMinutes = Math.max(0, workingShiftMinutes - lostMinutes)
   const netHoursDecimal = Math.round((netMinutes / 60) * 100) / 100
   const netDurationText = formatMinutesToThai(netMinutes)
 
@@ -947,6 +1008,9 @@ export function calculateDuration(startTimestamp, endTimestamp, interruptionLogs
     sundayMinutes,
     sundayHoursDecimal,
     sundayDurationText,
+    offShiftMinutes,
+    offShiftHoursDecimal,
+    offShiftDurationText,
     lostHoursDecimal,
     lostDurationText,
     netHoursDecimal,
@@ -963,8 +1027,32 @@ export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESI
   const targetDays = targetDaysMap[type] || 1.0
   const targetHours = targetDays * hoursPerDay
 
-  const startTimestamp = job.StartTimestamp || job['Start Timestamp'] || job.created_at || (job.StartDate && `${job.StartDate}T08:00:00Z`)
+  const startTimestamp = job.StartTimestamp || job['Start Timestamp'] || job.created_at || (job.StartDate && (job.StartTime ? `${job.StartDate}T${job.StartTime}` : `${job.StartDate}T08:00:00Z`))
   if (!startTimestamp) {
+    const directHours = parseFloat(job.WorkingHoursDecimal || job['Working Hours'] || job.Duration) || 0
+    if (directHours > 0) {
+      const isOnTime = directHours <= targetHours
+      const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
+      return {
+        targetDays,
+        targetHours,
+        hoursDecimal: directHours,
+        netHoursDecimal: directHours,
+        grossHoursDecimal: directHours,
+        lostHoursDecimal: 0,
+        sundayHoursDecimal: 0,
+        sundayMinutes: 0,
+        offShiftMinutes: 0,
+        offShiftHoursDecimal: 0,
+        isOnTime,
+        label: isCompleted
+          ? (isOnTime ? 'ทันเป้าหมาย (On-Time)' : 'เกินเป้าหมาย (Overdue)')
+          : (isOnTime ? `อยู่ในเกณฑ์ (${directHours}/${targetHours}ชม.)` : `เกินเวลา SLA (${directHours}/${targetHours}ชม.)`),
+        badgeClass: isCompleted
+          ? (isOnTime ? 'badge-green' : 'badge-red')
+          : (isOnTime ? 'badge-blue' : 'badge-red'),
+      }
+    }
     return {
       targetDays,
       targetHours,
@@ -977,16 +1065,22 @@ export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESI
       lostHoursDecimal: 0,
       sundayHoursDecimal: 0,
       sundayMinutes: 0,
+      offShiftMinutes: 0,
+      offShiftHoursDecimal: 0,
     }
   }
 
-  const endTimestamp = job.EndTimestamp || job['End Timestamp'] || (job.Status === 'COMPLETED' ? job.updated_at : new Date().toISOString())
+  const endTimestamp = job.EndTimestamp || job['End Timestamp'] || (job.EndDate && job.EndTime ? `${job.EndDate}T${job.EndTime}` : null) || (job.Status === 'COMPLETED' ? (job.completed_at || job.updated_at) : new Date().toISOString())
   const interruptions = job.Interruption_Logs || job.interruption_logs || job.Lost_Time_Logs || []
   const durationResult = calculateDuration(startTimestamp, endTimestamp, interruptions, excludeSunday)
-  const netHours = durationResult.netHoursDecimal
+  
+  const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
+  // If job is already COMPLETED and has an explicitly saved WorkingHoursDecimal, prefer that if durationResult cannot be calculated accurately (e.g. no endTimestamp)
+  const netHours = (isCompleted && typeof job.WorkingHoursDecimal === 'number' && job.WorkingHoursDecimal > 0 && !job.EndTimestamp && !job.EndDate)
+    ? job.WorkingHoursDecimal
+    : durationResult.netHoursDecimal
 
   const isOnTime = netHours <= targetHours
-  const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
 
   if (isCompleted) {
     return {

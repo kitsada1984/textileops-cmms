@@ -648,12 +648,18 @@ function WorkOrderCard({
           <div className="text-[10px] text-slate-400 font-medium">ระยะเวลา & SLA:</div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-              {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังทำ...')}
+              {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : (sla.durationText && sla.durationText !== '—' ? sla.durationText : 'กำลังทำ...'))}
             </span>
             <span className={`badge text-[9px] px-1.5 py-0 ${sla.badgeClass}`}>
               {sla.label}
             </span>
           </div>
+          {(sla.offShiftHoursDecimal > 0 || sla.sundayHoursDecimal > 0) && (
+            <div className="text-[9px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-medium">
+              {sla.offShiftHoursDecimal > 0 && <span className="text-indigo-600 dark:text-indigo-400">🌙 หักนอกกะ {sla.offShiftDurationText}</span>}
+              {sla.sundayHoursDecimal > 0 && <span className="text-sky-600 dark:text-sky-400">🏖️ หักอาทิตย์ {sla.sundayDurationText}</span>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1591,6 +1597,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         WorkingDurationText: durationResult.netDurationText,
         GrossDurationHours: durationResult.grossHoursDecimal,
         GrossDurationText: durationResult.grossDurationText,
+        OffShiftDurationHours: durationResult.offShiftHoursDecimal,
+        OffShiftDurationText: durationResult.offShiftDurationText,
         SundayDurationHours: durationResult.sundayHoursDecimal,
         SundayDurationText: durationResult.sundayDurationText,
         LostDurationHours: durationResult.lostHoursDecimal,
@@ -3540,8 +3548,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                         {/* Duration */}
                         <td className="font-mono" style={{ color: isCompleted ? 'var(--text-900)' : 'var(--text-400)' }}>
                           <div className="font-bold text-xs">
-                            {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : 'กำลังจับเวลา...')}
+                            {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : (sla.durationText && sla.durationText !== '—' ? sla.durationText : 'กำลังจับเวลา...'))}
                           </div>
+                          {sla.offShiftHoursDecimal > 0 && (
+                            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 flex items-center gap-0.5 mt-0.5 font-semibold">
+                              <span>🌙 หักนอกกะ {sla.offShiftDurationText}</span>
+                            </div>
+                          )}
                           {sla.sundayHoursDecimal > 0 && (
                             <div className="text-[10px] text-sky-600 dark:text-sky-400 flex items-center gap-0.5 mt-0.5 font-semibold">
                               <span>🏖️ หักวันอาทิตย์ {sla.sundayDurationText}</span>
@@ -3912,7 +3925,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <span>ตั้งค่าเป้าหมาย KPI (SLA Target Days)</span>
                 </h2>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-500)' }}>
-                  กำหนดจำนวนวันเป้าหมายสำหรับงานแต่ละประเภทเพื่อนำไปประเมินความสำเร็จ
+                  กำหนดจำนวนวันเป้าหมายสำหรับงานแต่ละประเภทเพื่อนำไปประเมินความสำเร็จ (คิดฐานกะทำงาน 12 ชม./วัน: จันทร์-เสาร์ 08:00 - 20:00 น. ไม่นับวันอาทิตย์และเวลากลางคืน)
                 </p>
               </div>
             </div>
@@ -4066,6 +4079,16 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 <span className="text-slate-500">เวลารวมทั้งหมด (Gross):</span>
                 <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{compCalcDuration.grossDurationText || '—'}</span>
               </div>
+              {compCalcDuration.offShiftMinutes > 0 && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-indigo-600 dark:text-indigo-400 flex items-center gap-1 font-semibold">
+                    <span>🌙 หักเวลานอกกะทำงาน (12 ชม./วัน):</span>
+                  </span>
+                  <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                    - {compCalcDuration.offShiftDurationText}
+                  </span>
+                </div>
+              )}
               {compCalcDuration.sundayMinutes > 0 && (
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-sky-600 dark:text-sky-400 flex items-center gap-1 font-semibold">
@@ -4536,7 +4559,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         >
           <div className="space-y-4 text-xs">
             <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] leading-relaxed">
-              💡 กำหนดจำนวนวันเป้าหมาย (SLA Target Days) สำหรับงานแต่ละประเภท ระบบจะนำไปคำนวณอัตราความสำเร็จบนแดชบอร์ดทันที
+              💡 กำหนดจำนวนวันเป้าหมาย (SLA Target Days) โดยคิดฐานเวลาทำงาน 12 ชม./วัน (จันทร์-เสาร์ 08:00 - 20:00 น. ไม่นับวันอาทิตย์และเวลานอนข้ามคืน) ระบบจะนำไปคำนวณเป้าชั่วโมงและอัตราความสำเร็จบนแดชบอร์ดทันที
             </div>
 
             <div>

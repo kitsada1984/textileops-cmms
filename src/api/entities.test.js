@@ -7,6 +7,9 @@ import {
   isSystemWorkOrder,
   calculateSundayMinutes,
   countWorkingDaysExcludingSundays,
+  calculateShiftWorkingMinutes,
+  calculateDuration,
+  calculateSlaPerformance,
   normalizeSpareNeedleRequest,
   SpareNeedleRequestAPI,
 } from './entities'
@@ -64,6 +67,111 @@ describe('Sunday Calculation Helpers', () => {
     // Saturday 2026-08-29 to Monday 2026-08-31: 2 working days (Sat, Mon; Sunday excluded)
     const workingDays = countWorkingDaysExcludingSundays('2026-08-29', '2026-08-31')
     expect(workingDays).toBe(1)
+  })
+})
+
+describe('12h/Day Working Shift & SLA Calculations', () => {
+  it('calculateShiftWorkingMinutes calculates same-day shift hours accurately', () => {
+    // 08:30 to 17:00 on the same weekday (8.5 hrs = 510 minutes)
+    const start = new Date(2026, 9, 29, 8, 30, 0)
+    const end = new Date(2026, 9, 29, 17, 0, 0)
+    const mins = calculateShiftWorkingMinutes(start, end)
+    expect(mins).toBe(510)
+  })
+
+  it('calculateShiftWorkingMinutes correctly deducts 12h off-shift night hours across overnight job', () => {
+    // Yesterday 08:00 to Today 11:06
+    // Gross = 27h 6m = 1626 min
+    // Day 1 shift (08:00 - 20:00) = 720 min
+    // Night off-shift (20:00 - 08:00) = 720 min (deducted!)
+    // Day 2 shift (08:00 - 11:06) = 186 min
+    // Working shift minutes = 720 + 186 = 906 min = 15.1 hours
+    const start = new Date(2026, 9, 29, 8, 0, 0)
+    const end = new Date(2026, 9, 30, 11, 6, 0)
+    const mins = calculateShiftWorkingMinutes(start, end)
+    expect(mins).toBe(906)
+  })
+
+  it('calculateDuration returns comprehensive breakdown with 12h shift and off-shift hours', () => {
+    const start = new Date(2026, 9, 29, 8, 0, 0)
+    const end = new Date(2026, 9, 30, 11, 6, 0)
+    const result = calculateDuration(start, end)
+    expect(result.grossHoursDecimal).toBe(27.1)
+    expect(result.offShiftHoursDecimal).toBe(12.0)
+    expect(result.offShiftDurationText).toBe('12 ชม.')
+    expect(result.sundayHoursDecimal).toBe(0)
+    expect(result.netHoursDecimal).toBe(15.1)
+    expect(result.netDurationText).toBe('15 ชม. 6 นาที')
+  })
+
+  it('calculateDuration handles weekend shift spanning Saturday to Monday', () => {
+    // Saturday 18:00 to Monday 10:00
+    // Sat: 18:00 - 20:00 = 2 hrs (120m)
+    // Sun: Sunday excluded = 0m (24h deducted)
+    // Mon: 08:00 - 10:00 = 2 hrs (120m)
+    // Total working shift = 4 hrs (240m)
+    // Gross = 40 hrs (2400m)
+    const sat = new Date(2026, 9, 24, 18, 0, 0)
+    const mon = new Date(2026, 9, 26, 10, 0, 0)
+    const result = calculateDuration(sat, mon)
+    expect(result.grossHoursDecimal).toBe(40.0)
+    expect(result.sundayHoursDecimal).toBe(24.0)
+    expect(result.offShiftHoursDecimal).toBe(12.0)
+    expect(result.netHoursDecimal).toBe(4.0)
+    expect(result.netDurationText).toBe('4 ชม.')
+  })
+
+  it('calculateSlaPerformance evaluates ongoing job against 24h KPI target without false overdue', () => {
+    // 27.1 calendar hours overnight job with target 2.0 days (24 working hours)
+    // Working hours = 15.1 hrs <= 24 hrs -> On Time!
+    const job = {
+      Job_ID: 'JOB-20261029-0001',
+      JobType: 'PM',
+      Status: 'IN_PROGRESS',
+      StartTimestamp: new Date(2026, 9, 29, 8, 0, 0).toISOString(),
+    }
+    const fixedNow = new Date(2026, 9, 30, 11, 6, 0)
+    const end = fixedNow.toISOString()
+    const targetMap = { PM: 2.0 } // 2 days * 12h = 24h
+    const sla = calculateSlaPerformance({ ...job, EndTimestamp: end }, targetMap, 12)
+    expect(sla.isOnTime).toBe(true)
+    expect(sla.netHoursDecimal).toBe(15.1)
+    expect(sla.targetHours).toBe(24)
+    expect(sla.label).toBe('อยู่ในเกณฑ์ (15.1/24ชม.)')
+    expect(sla.badgeClass).toBe('badge-blue')
+  })
+
+  it('calculateSlaPerformance marks job overdue when actual shift hours exceed KPI target', () => {
+    // 15.1 working hours with target 1.0 day (12 working hours) -> Overdue!
+    const job = {
+      Job_ID: 'JOB-20261029-0002',
+      JobType: 'REPAIR',
+      Status: 'IN_PROGRESS',
+      StartTimestamp: new Date(2026, 9, 29, 8, 0, 0).toISOString(),
+      EndTimestamp: new Date(2026, 9, 30, 11, 6, 0).toISOString(),
+    }
+    const targetMap = { REPAIR: 1.0 } // 1 day * 12h = 12h
+    const sla = calculateSlaPerformance(job, targetMap, 12)
+    expect(sla.isOnTime).toBe(false)
+    expect(sla.netHoursDecimal).toBe(15.1)
+    expect(sla.targetHours).toBe(12)
+    expect(sla.label).toBe('เกินเวลา SLA (15.1/12ชม.)')
+    expect(sla.badgeClass).toBe('badge-red')
+  })
+
+  it('calculateSlaPerformance marks completed job as On-Time or Overdue properly', () => {
+    const onTimeJob = {
+      Job_ID: 'JOB-20261029-0003',
+      JobType: 'REPAIR',
+      Status: 'COMPLETED',
+      StartTimestamp: new Date(2026, 9, 29, 8, 0, 0).toISOString(),
+      EndTimestamp: new Date(2026, 9, 29, 14, 0, 0).toISOString(), // 6 hours
+    }
+    const sla = calculateSlaPerformance(onTimeJob, { REPAIR: 1.0 }, 12)
+    expect(sla.isOnTime).toBe(true)
+    expect(sla.netHoursDecimal).toBe(6.0)
+    expect(sla.label).toBe('ทันเป้าหมาย (On-Time)')
+    expect(sla.badgeClass).toBe('badge-green')
   })
 })
 
