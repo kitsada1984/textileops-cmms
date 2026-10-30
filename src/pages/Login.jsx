@@ -396,6 +396,9 @@ export default function Login() {
           <div className="text-[11px] tracking-wide" style={{color:'rgba(248,250,252,0.45)'}}>
             Gemma Knits CMMS {APP_VERSION}
           </div>
+          <a href="/manual/" target="_blank" rel="noopener noreferrer" className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1" style={{textDecoration:'none'}}>
+            <span>📖 คู่มือการใช้งาน</span>
+          </a>
           <div className="text-[11px] font-semibold" style={{color:'#60a5fa'}}>
             {getActiveDbProvider() === 'd1' ? 'Cloudflare D1' : 'Supabase DB'}
           </div>

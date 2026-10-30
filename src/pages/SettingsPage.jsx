@@ -3,7 +3,7 @@ import { db } from '../api/dbClient'
 import {
   Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw,
   UserPlus, Smartphone, Download, MessageSquare, Bell, Eye, EyeOff, Copy,
-  Pencil, Trash2, Lock, ShieldAlert, AlertTriangle, KeyRound, Sparkles, ExternalLink
+  Pencil, Trash2, Lock, ShieldAlert, AlertTriangle, KeyRound, Sparkles, ExternalLink, BookOpen
 } from 'lucide-react'
 import { useT } from '../contexts/LanguageContext'
 import { useAuth, hashPassword } from '../contexts/AuthContext'
@@ -1612,6 +1612,38 @@ export default function SettingsPage() {
           <button className="btn-primary" onClick={changePassword} disabled={pwdLoading}>
             <Save size={14}/> {pwdLoading ? t('saving') : t('set_pwd_btn')}
           </button>
+        </div>
+      </SectionCard>
+
+{/* User Manual Documentation Card */}
+      <SectionCard icon={BookOpen} title="คู่มือการใช้งานระบบ (User Manual & Documentation)">
+        <div className="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          <p>
+            คู่มือการใช้งานระบบ TextileOps CMMS ฉบับสมบูรณ์ (v1.3.215) ครอบคลุม 14 เมนูหลัก พร้อมภาพประกอบจริงจากระบบ ขั้นตอนการบันทึกงานซ่อม การนับเวลา SLA 12 ชม./วัน และแนวปฏิบัติหน้างาน
+          </p>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <a
+              href="/manual/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary px-4 py-2 text-xs flex items-center gap-2"
+              style={{ background: 'linear-gradient(135deg, #059669, #10b981)', textDecoration: 'none', color: '#ffffff' }}
+            >
+              <BookOpen size={14} />
+              <span>เปิดดูคู่มือออนไลน์ (Interactive Web)</span>
+              <ExternalLink size={12} />
+            </a>
+            <a
+              href="/manual/TextileOps_CMMS_User_Manual.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 text-xs flex items-center gap-2 rounded-xl font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+              style={{ textDecoration: 'none' }}
+            >
+              <Download size={14} />
+              <span>ดาวน์โหลดคู่มือ PDF (A4 คมชัด)</span>
+            </a>
+          </div>
         </div>
       </SectionCard>
 

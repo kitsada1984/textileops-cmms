@@ -7,7 +7,7 @@ import {
   Package, ShoppingCart, BarChart3, Settings, Menu, X,
   ScrollText, ArrowLeftRight, Users, Layers, Sun, Moon, LogOut, Wrench,
   FileText, Monitor, Tablet, Smartphone, Sparkles, Target, Download, RefreshCw, Database,
-  ShieldAlert, Presentation
+  ShieldAlert, Presentation, BookOpen, ExternalLink
 } from 'lucide-react'
 import clsx from 'clsx'
 import { LanguageProvider, useT } from './contexts/LanguageContext'
@@ -340,6 +340,37 @@ function AppInner() {
           })}
         </nav>
 
+        {/* User Manual Link in Sidebar */}
+        <div style={{ padding: '0 12px 6px', flexShrink: 0 }}>
+          <a
+            href="/manual/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="เปิดดูคู่มือการใช้งานระบบ (Web & PDF)"
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              borderRadius: 12,
+              background: dark ? 'rgba(16,185,129,0.12)' : '#ecfdf5',
+              border: dark ? '1px solid rgba(16,185,129,0.25)' : '1px solid #a7f3d0',
+              color: dark ? '#34d399' : '#059669',
+              fontSize: 12,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'all 150ms',
+            }}
+          >
+            <BookOpen size={14} />
+            <span>คู่มือการใช้งานระบบ</span>
+            <ExternalLink size={12} style={{ opacity: 0.7 }} />
+          </a>
+        </div>
+
         {/* PWA Mobile App Quick Install in Sidebar */}
         <div style={{ padding: '0 12px 10px', flexShrink: 0 }}>
           <button
@@ -629,6 +660,35 @@ function AppInner() {
               <Presentation size={13} />
               <span className="hidden lg:inline">หน้านำเสนอ</span>
             </button>
+
+            {/* User Manual Button */}
+            <a
+              href="/manual/"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="เปิดดูคู่มือการใช้งานระบบ (User Manual & PDF)"
+              aria-label="เปิดดูคู่มือการใช้งานระบบ"
+              className="px-2 sm:px-3 active:scale-95 transition-all flex-shrink-0"
+              style={{
+                height: 30,
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #059669, #10b981)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: 11.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(16,185,129,0.3)',
+                whiteSpace: 'nowrap',
+                textDecoration: 'none',
+              }}
+            >
+              <BookOpen size={13} />
+              <span className="hidden sm:inline">คู่มือ</span>
+            </a>
 
             {/* PWA Install Button */}
             <button
