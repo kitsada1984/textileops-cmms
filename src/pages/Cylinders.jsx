@@ -104,10 +104,18 @@ function getMissingCylinderColumn(error) {
 const TYPE_LABEL = { S: 'Single', D: 'Double', 'Jac.': 'Jacquard' }
 const formatCylType = (v) => TYPE_LABEL[v] || v || '—'
 
+// Helper to verify whether a cylinder is mounted on an operable/running machine (In-use)
+export function isCylinderInUse(cylinder) {
+  const ref = String(cylinder?.Machine_Ref || '').trim().toLowerCase()
+  return ref.startsWith('in-use')
+}
+
 // Build a Type/Diameter/Gauge grouping with counts, sorted numerically.
-export function buildCylinderSummary(rows = []) {
+// By default onlyInUse=true so it accurately reflects runnable machines in operation.
+export function buildCylinderSummary(rows = [], { onlyInUse = true } = {}) {
+  const targetRows = onlyInUse ? rows.filter(isCylinderInUse) : rows
   const groups = new Map()
-  for (const c of rows) {
+  for (const c of targetRows) {
     const type = c?.Type || ''
     const dia = c?.Diameter || ''
     const gauge = c?.Gauge || ''
@@ -139,9 +147,10 @@ export function filterCylindersByMachineRef(cylinders = [], selectedRef = '') {
   return cylinders.filter((c) => String(c.Machine_Ref || '').trim() === selectedRef)
 }
 
-export function filterCylindersByGroup(cylinders = [], selectedGroupKey = '') {
+export function filterCylindersByGroup(cylinders = [], selectedGroupKey = '', { onlyInUse = true } = {}) {
   if (!selectedGroupKey) return cylinders
   return cylinders.filter((c) => {
+    if (onlyInUse && !isCylinderInUse(c)) return false
     const type = c?.Type || ''
     const dia = c?.Diameter || ''
     const gauge = c?.Gauge || ''
@@ -732,8 +741,11 @@ export default function Cylinders() {
     setSelectedGroup((prev) => (prev === groupKey ? '' : groupKey))
   }
 
+  const [specOnlyInUse, setSpecOnlyInUse] = useState(true)
+  const inUseCount = useMemo(() => data.filter(isCylinderInUse).length, [data])
+
   const machineRefFiltered = useMemo(() => filterCylindersByMachineRef(searched, selectedMachineRef), [searched, selectedMachineRef])
-  const groupFiltered = useMemo(() => filterCylindersByGroup(machineRefFiltered, selectedGroup), [machineRefFiltered, selectedGroup])
+  const groupFiltered = useMemo(() => filterCylindersByGroup(machineRefFiltered, selectedGroup, { onlyInUse: specOnlyInUse }), [machineRefFiltered, selectedGroup, specOnlyInUse])
   const displayRows = useMemo(() => applyFilterSort(groupFiltered, FS_COLS, filterSort), [groupFiltered, FS_COLS, filterSort])
 
   const [detailRec, setDetailRec] = useState(null)
@@ -742,7 +754,7 @@ export default function Cylinders() {
   const [showMachineRefSummary, setShowMachineRefSummary] = useState(true)
   const [showSummary, setShowSummary] = useState(true)
 
-  const summary = useMemo(() => buildCylinderSummary(data), [data])
+  const summary = useMemo(() => buildCylinderSummary(data, { onlyInUse: specOnlyInUse }), [data, specOnlyInUse])
   const machineRefSummary = useMemo(() => buildMachineRefSummary(data), [data])
 
   const openNew = () => {
@@ -1285,11 +1297,41 @@ export default function Cylinders() {
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                 <Layers size={14} className="text-blue-500" />
-                <span>สรุปสเปกกระบอก (ประเภท, เส้นผ่าศูนย์กลาง, เกจ)</span>
+                <span>{specOnlyInUse ? 'สรุปสเปกเครื่องเดินงาน (In-use)' : 'สรุปสเปกกระบอกทั้งหมด (รวม Spare)'}</span>
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-                {selectedGroup ? `${displayRows.length} / ${data.length}` : data.length} กระบอก · {summary.length} กลุ่ม
+                {selectedGroup
+                  ? `${displayRows.length} / ${specOnlyInUse ? inUseCount : data.length}`
+                  : (specOnlyInUse ? inUseCount : data.length)
+                } {specOnlyInUse ? 'เครื่องเดินงาน' : 'กระบอก'} · {summary.length} กลุ่มสเปก
               </span>
+              {/* Toggle Scope: In-use vs All */}
+              <div className="flex items-center rounded-lg p-0.5 bg-slate-200/70 dark:bg-slate-800 border border-slate-300/60 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setSpecOnlyInUse(true)}
+                  className={`px-2 py-0.5 text-[10.5px] font-bold rounded-md transition-all ${
+                    specOnlyInUse
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                  title="สรุปเฉพาะกระบอกที่กำลังใช้งานบนเครื่องเดินงาน (In-use)"
+                >
+                  เฉพาะ In-use ({inUseCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSpecOnlyInUse(false)}
+                  className={`px-2 py-0.5 text-[10.5px] font-bold rounded-md transition-all ${
+                    !specOnlyInUse
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                  title="สรุปกระบอกทั้งหมดในคลัง (รวม In-use และ Spare)"
+                >
+                  ทั้งหมด ({data.length})
+                </button>
+              </div>
               {selectedGroup && (
                 <button
                   type="button"
@@ -1354,12 +1396,13 @@ export default function Cylinders() {
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="text-[11px] font-bold text-slate-400">=</span>
-                      <span className={`px-2 py-0.5 rounded-md font-mono font-extrabold text-[12px] flex-shrink-0 ${
+                      <span className={`px-2 py-0.5 rounded-md font-mono font-extrabold text-[12px] flex items-center gap-0.5 flex-shrink-0 ${
                         isSelected
                           ? 'bg-blue-600 text-white'
                           : 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20'
                       }`}>
-                        {g.count}
+                        <span>{g.count}</span>
+                        <span className="text-[9px] font-bold opacity-80">{specOnlyInUse ? 'เครื่อง' : 'ตัว'}</span>
                       </span>
                     </div>
                   </div>

@@ -5,6 +5,7 @@ import {
   filterCylindersByMachineRef,
   buildCylinderSummary,
   filterCylindersByGroup,
+  isCylinderInUse,
 } from './Cylinders'
 
 describe('Cylinders - Machine Ref Card Filter & Summary', () => {
@@ -93,48 +94,85 @@ describe('Cylinders - Machine Ref Card Filter & Summary', () => {
 
 describe('Cylinders - Spec Group Card Filter & Summary (Type, Diameter, Gauge)', () => {
   const cylinders = [
-    { id: '1', Type: 'D', Diameter: '30', Gauge: '32', Serial_NOW: 'CYL-01' },
-    { id: '2', Type: 'D', Diameter: '30', Gauge: '32', Serial_NOW: 'CYL-02' },
-    { id: '3', Type: 'D', Diameter: '30', Gauge: '28', Serial_NOW: 'CYL-03' },
-    { id: '4', Type: 'S', Diameter: '30', Gauge: '28', Serial_NOW: 'CYL-04' },
-    { id: '5', Type: 'S', Diameter: '34', Gauge: '24', Serial_NOW: 'CYL-05' },
-    { id: '6', Type: 'Jac.', Diameter: '34', Gauge: '24', Serial_NOW: 'CYL-06' },
+    { id: '1', Type: 'D', Diameter: '30', Gauge: '32', Serial_NOW: 'CYL-01', Machine_Ref: 'In-use-GMK1' },
+    { id: '2', Type: 'D', Diameter: '30', Gauge: '32', Serial_NOW: 'CYL-02', Machine_Ref: 'In-use-GMK1' },
+    { id: '3', Type: 'D', Diameter: '30', Gauge: '28', Serial_NOW: 'CYL-03', Machine_Ref: 'Spare-GMK1' }, // SPARE
+    { id: '4', Type: 'S', Diameter: '30', Gauge: '28', Serial_NOW: 'CYL-04', Machine_Ref: 'In-use-GMK3' },
+    { id: '5', Type: 'S', Diameter: '34', Gauge: '24', Serial_NOW: 'CYL-05', Machine_Ref: 'in-use' },
+    { id: '6', Type: 'Jac.', Diameter: '34', Gauge: '24', Serial_NOW: 'CYL-06', Machine_Ref: 'Spare-GMK3' }, // SPARE
   ]
 
-  it('buildCylinderSummary aggregates cylinders by Type, Diameter, and Gauge', () => {
-    const summary = buildCylinderSummary(cylinders)
-    expect(summary).toHaveLength(5)
+  it('isCylinderInUse identifies in-use vs spare accurately', () => {
+    expect(isCylinderInUse({ Machine_Ref: 'In-use-GMK1' })).toBe(true)
+    expect(isCylinderInUse({ Machine_Ref: 'In-use-GMK3' })).toBe(true)
+    expect(isCylinderInUse({ Machine_Ref: 'in-use' })).toBe(true)
+    expect(isCylinderInUse({ Machine_Ref: 'Spare-GMK1' })).toBe(false)
+    expect(isCylinderInUse({ Machine_Ref: 'Spare-GMK3' })).toBe(false)
+    expect(isCylinderInUse({ Machine_Ref: null })).toBe(false)
+    expect(isCylinderInUse({})).toBe(false)
+  })
 
-    // D, 30, 32 = 2
+  it('buildCylinderSummary defaults to onlyInUse: true and excludes spare cylinders', () => {
+    // Only in-use (cylinders 1, 2, 4, 5) -> excludes spare cylinders 3 and 6
+    const summary = buildCylinderSummary(cylinders)
+    expect(summary).toHaveLength(3)
+
+    // D, 30, 32 = 2 (in-use)
     const d30_32 = summary.find((s) => s.Type === 'D' && s.Diameter === '30' && s.Gauge === '32')
     expect(d30_32).toBeDefined()
     expect(d30_32.count).toBe(2)
 
-    // D, 30, 28 = 1
+    // S, 30, 28 = 1 (in-use)
+    const s30_28 = summary.find((s) => s.Type === 'S' && s.Diameter === '30' && s.Gauge === '28')
+    expect(s30_28).toBeDefined()
+    expect(s30_28.count).toBe(1)
+
+    // S, 34, 24 = 1 (in-use)
+    const s34_24 = summary.find((s) => s.Type === 'S' && s.Diameter === '34' && s.Gauge === '24')
+    expect(s34_24).toBeDefined()
+    expect(s34_24.count).toBe(1)
+
+    // D, 30, 28 was Spare-GMK1 -> MUST NOT be in the summary
+    const d30_28 = summary.find((s) => s.Type === 'D' && s.Diameter === '30' && s.Gauge === '28')
+    expect(d30_28).toBeUndefined()
+
+    // Jac., 34, 24 was Spare-GMK3 -> MUST NOT be in the summary
+    const jac34_24 = summary.find((s) => s.Type === 'Jac.' && s.Diameter === '34' && s.Gauge === '24')
+    expect(jac34_24).toBeUndefined()
+  })
+
+  it('buildCylinderSummary with onlyInUse: false includes spare cylinders', () => {
+    const summary = buildCylinderSummary(cylinders, { onlyInUse: false })
+    expect(summary).toHaveLength(5)
+
+    // D, 30, 28 is included when onlyInUse is false
     const d30_28 = summary.find((s) => s.Type === 'D' && s.Diameter === '30' && s.Gauge === '28')
     expect(d30_28).toBeDefined()
     expect(d30_28.count).toBe(1)
 
-    // S, 30, 28 = 1
-    const s30_28 = summary.find((s) => s.Type === 'S' && s.Diameter === '30' && s.Gauge === '28')
-    expect(s30_28).toBeDefined()
-    expect(s30_28.count).toBe(1)
+    // Jac., 34, 24 is included when onlyInUse is false
+    const jac34_24 = summary.find((s) => s.Type === 'Jac.' && s.Diameter === '34' && s.Gauge === '24')
+    expect(jac34_24).toBeDefined()
+    expect(jac34_24.count).toBe(1)
   })
 
-  it('filterCylindersByGroup filters cylinders accurately by group key', () => {
-    // When no filter is set, returns all cylinders
+  it('filterCylindersByGroup defaults to onlyInUse: true and returns only in-use matching cylinders', () => {
+    // When no group filter is set, returns all cylinders
     expect(filterCylindersByGroup(cylinders, '')).toHaveLength(6)
-    expect(filterCylindersByGroup(cylinders, null)).toHaveLength(6)
 
-    // Filter by D|30|32 -> exactly 2
+    // Filter by D|30|32 -> exactly 2 (CYL-01, CYL-02)
     const filteredD = filterCylindersByGroup(cylinders, 'D|30|32')
     expect(filteredD).toHaveLength(2)
     expect(filteredD.map((c) => c.Serial_NOW)).toEqual(['CYL-01', 'CYL-02'])
 
-    // Filter by S|34|24 -> exactly 1
-    const filteredS = filterCylindersByGroup(cylinders, 'S|34|24')
-    expect(filteredS).toHaveLength(1)
-    expect(filteredS[0].Serial_NOW).toBe('CYL-05')
+    // Filter by D|30|28 (which is Spare) -> returns 0 because onlyInUse: true
+    const filteredSpare = filterCylindersByGroup(cylinders, 'D|30|28', { onlyInUse: true })
+    expect(filteredSpare).toHaveLength(0)
+
+    // Filter by D|30|28 with onlyInUse: false -> returns CYL-03
+    const filteredWithSpare = filterCylindersByGroup(cylinders, 'D|30|28', { onlyInUse: false })
+    expect(filteredWithSpare).toHaveLength(1)
+    expect(filteredWithSpare[0].Serial_NOW).toBe('CYL-03')
   })
 
   it('handles toggle behavior simulation for spec groups', () => {
