@@ -75,6 +75,7 @@ const DEFAULT_KPI_TARGETS = {
   REPAIR: 1.0,
   DESIGN: 3.0,
   PM: 2.0,
+  SETUP: 1.0,
 }
 
 const UI_SKILL_LEVELS = [
@@ -120,6 +121,13 @@ export const WORK_ORDER_TYPE_OPTIONS = [
     fullLabel: '🧹 PM / ล้างเครื่อง',
     icon: '🧹',
     activeClass: 'bg-amber-600 text-white border-amber-600 shadow-xs',
+  },
+  {
+    value: 'SETUP',
+    label: 'เตรียมเครื่อง',
+    fullLabel: '⚙️ เตรียมเครื่อง (Setup)',
+    icon: '⚙️',
+    activeClass: 'bg-indigo-600 text-white border-indigo-600 shadow-xs',
   },
 ]
 
@@ -565,10 +573,12 @@ function WorkOrderCard({
                 ? 'badge-purple'
                 : job.JobType === 'PM'
                 ? 'badge-yellow'
+                : job.JobType === 'SETUP'
+                ? 'badge-indigo'
                 : 'badge-blue'
             }`}
           >
-            {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : '🛠️ แก้ไข'}
+            {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : job.JobType === 'SETUP' ? '⚙️ เตรียมเครื่อง' : '🛠️ แก้ไข'}
           </span>
           {(job.ProblemCause || job.problem_cause) && (() => {
             const causeMeta = getProblemCauseMeta(job.ProblemCause || job.problem_cause)
@@ -1190,6 +1200,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           if (item.Key === 'kpi_target_repair') map.REPAIR = parseFloat(item.Value) || 1.0
           if (item.Key === 'kpi_target_design') map.DESIGN = parseFloat(item.Value) || 3.0
           if (item.Key === 'kpi_target_pm')     map.PM = parseFloat(item.Value) || 2.0
+          if (item.Key === 'kpi_target_setup')  map.SETUP = parseFloat(item.Value) || 1.0
         })
         setKpiTargets(map)
         setDraftKpi(map)
@@ -1282,7 +1293,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Live counts for Job Types filter cards
   const typeCounts = useMemo(() => {
-    const counts = { ALL: 0, REPAIR: 0, DESIGN: 0, PM: 0 }
+    const counts = { ALL: 0, REPAIR: 0, DESIGN: 0, PM: 0, SETUP: 0 }
     const relevant = allJobs.filter((j) => (showDeleted ? Boolean(j.IsDeleted) : !j.IsDeleted))
     counts.ALL = relevant.length
     relevant.forEach((j) => {
@@ -1403,8 +1414,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     const repairKpi = calcJobTypeKpi('REPAIR')
     const designKpi = calcJobTypeKpi('DESIGN')
     const pmKpi     = calcJobTypeKpi('PM')
+    const setupKpi  = calcJobTypeKpi('SETUP')
 
-    const totalOnTime = repairKpi.onTime + designKpi.onTime + pmKpi.onTime
+    const totalOnTime = repairKpi.onTime + designKpi.onTime + pmKpi.onTime + setupKpi.onTime
     const overallRate = total > 0 ? Math.round((totalOnTime / total) * 100) : 0
 
     // Problem cause analytics calculation
@@ -1426,6 +1438,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       repair: repairKpi,
       design: designKpi,
       pm: pmKpi,
+      setup: setupKpi,
       causeStats,
       userMetrics: Object.entries(userMetricsMap).map(([name, count]) => ({ name, count })),
       recentJobs: activeNonDeleted.slice(0, 5),
@@ -2051,6 +2064,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_repair', Value: String(draftKpi.REPAIR) }),
         KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_design', Value: String(draftKpi.DESIGN) }),
         KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_pm',     Value: String(draftKpi.PM) }),
+        KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_setup',  Value: String(draftKpi.SETUP || 1.0) }),
       ])
       setKpiTargets({ ...draftKpi })
       toast.success('บันทึกเป้าหมาย KPI สำเร็จ', 'อัปเดตระบบคำนวณ SLA เรียบร้อย')
@@ -2295,7 +2309,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* 1. Repair Card */}
               <div className="card p-5 space-y-3.5 border border-blue-500/25">
                 <div className="flex items-start justify-between">
@@ -2481,6 +2495,69 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <span>ระยะเวลาเฉลี่ย:</span>
                   <b className="font-mono" style={{ color: 'var(--text-900)' }}>
                     {kpiStats.pm.avgDurationText}
+                  </b>
+                </div>
+              </div>
+
+              {/* 4. Setup Card */}
+              <div className="card p-5 space-y-3.5 border border-indigo-500/25">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base">
+                      ⚙️
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                        งานเตรียมเครื่อง (Setup)
+                      </h3>
+                      <p className="text-[11px] font-mono text-indigo-500 font-semibold">
+                        เป้าหมาย SLA: <b>{kpiStats.setup?.targetDays || 1.0} วัน</b>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="badge badge-indigo text-xs font-bold">
+                    {kpiStats.setup?.rate || 0}%
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs" style={{ color: 'var(--text-500)' }}>
+                    <span>ความสำเร็จทันเป้าหมาย (On-Time)</span>
+                    <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                      {kpiStats.setup?.rate || 0}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${kpiStats.setup?.rate || 0}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                    <div className="text-[10px]" style={{ color: 'var(--text-400)' }}>ทั้งหมด</div>
+                    <div className="font-bold text-sm" style={{ color: 'var(--text-900)' }}>
+                      {kpiStats.setup?.total || 0}
+                    </div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <div className="text-[10px]">ทันเป้า</div>
+                    <div className="font-bold text-sm">{kpiStats.setup?.onTime || 0}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <div className="text-[10px]">เกินเป้า</div>
+                    <div className="font-bold text-sm">{kpiStats.setup?.overdue || 0}</div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between text-xs pt-1" style={{ color: 'var(--text-500)' }}>
+                  <span>ระยะเวลาเฉลี่ย:</span>
+                  <b className="font-mono" style={{ color: 'var(--text-900)' }}>
+                    {kpiStats.setup?.avgDurationText || '—'}
                   </b>
                 </div>
               </div>
@@ -3457,10 +3534,12 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                                 ? 'badge-purple'
                                 : job.JobType === 'PM'
                                 ? 'badge-yellow'
+                                : job.JobType === 'SETUP'
+                                ? 'badge-indigo'
                                 : 'badge-blue'
                             }`}
                           >
-                            {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : '🛠️ แก้ไข'}
+                            {job.JobType === 'DESIGN' ? '🎨 ปรับแบบ' : job.JobType === 'PM' ? '🧹 PM' : job.JobType === 'SETUP' ? '⚙️ เตรียมเครื่อง' : '🛠️ แก้ไข'}
                           </span>
                         </td>
 
@@ -3976,6 +4055,21 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 </div>
               </div>
 
+              <div>
+                <label className="label">⚙️ เป้าหมายงานเตรียมเครื่อง (Setup) (จำนวนวัน)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={draftKpi.SETUP ?? 1.0}
+                    onChange={(e) => setDraftKpi({ ...draftKpi, SETUP: parseFloat(e.target.value) || 1.0 })}
+                    className="input font-mono font-bold text-sm"
+                  />
+                  <span className="font-bold" style={{ color: 'var(--text-500)' }}>วัน</span>
+                </div>
+              </div>
+
               <div className="pt-2">
                 <button
                   onClick={handleSaveKpiSettings}
@@ -4227,6 +4321,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
                   <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
                   <option value="PM">🧹 PM / ล้างเครื่อง</option>
+                  <option value="SETUP">⚙️ เตรียมเครื่อง (Setup)</option>
                 </select>
               </div>
               <div>
@@ -4607,6 +4702,21 @@ export default function WorkOrders({ defaultTab = 'records' }) {
               </div>
             </div>
 
+            <div>
+              <label className="label">⚙️ งานเตรียมเครื่อง (Setup) (เป้าหมายวัน)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.5"
+                  value={draftKpi.SETUP ?? 1.0}
+                  onChange={(e) => setDraftKpi({ ...draftKpi, SETUP: parseFloat(e.target.value) || 1.0 })}
+                  className="input font-mono font-bold"
+                />
+                <span className="font-bold" style={{ color: 'var(--text-500)' }}>วัน</span>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
@@ -4875,7 +4985,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
             ...printJob,
             WONumber: printJob.Job_ID || printJob['Job ID'],
             OrderDate: printJob.StartDate,
-            WOType: printJob.JobType === 'DESIGN' ? 'ปรับแบบ (Design)' : printJob.JobType === 'PM' ? 'บำรุงรักษา (PM)' : 'แก้ไขเครื่อง (Repair)',
+            WOType: printJob.JobType === 'DESIGN' ? 'ปรับแบบ (Design)' : printJob.JobType === 'PM' ? 'บำรุงรักษา (PM)' : printJob.JobType === 'SETUP' ? 'เตรียมเครื่อง (Setup)' : 'แก้ไขเครื่อง (Repair)',
             MachineID: printJob.MC,
             KI: printJob.KI,
             Design: printJob.Design,
@@ -5329,6 +5439,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       <option value="REPAIR">🛠️ แก้ไข (Repair)</option>
                       <option value="DESIGN">🎨 ปรับแบบ (Design)</option>
                       <option value="PM">🧹 PM / ล้างเครื่อง</option>
+                      <option value="SETUP">⚙️ เตรียมเครื่อง (Setup)</option>
                     </select>
                   </div>
                   <div className="sm:col-span-3">

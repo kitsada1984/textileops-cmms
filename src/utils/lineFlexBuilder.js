@@ -924,6 +924,7 @@ export function buildWorkOrderAssignedFlexMessage(job = {}, assignedTechs = [], 
     REPAIR: '🔧 แก้ไข (Repair)',
     DESIGN: '🎨 ปรับแบบ (Design)',
     PM: '⚙️ PM / ล้างเครื่อง',
+    SETUP: '⚙️ เตรียมเครื่อง (Setup)',
   }
   const jobTypeDisplay = jobTypeLabels[jobType] || jobType
 

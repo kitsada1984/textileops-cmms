@@ -215,6 +215,7 @@ html.dark {
   .badge-gray   { background: rgba(100, 116, 139, 0.1); color: #475569; border: 1px solid rgba(100, 116, 139, 0.18); }
   .badge-orange { background: rgba(249, 115, 22, 0.1);  color: #ea580c; border: 1px solid rgba(249, 115, 22, 0.22); }
   .badge-purple { background: rgba(124, 58, 237, 0.1);  color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.22); }
+  .badge-indigo { background: rgba(99, 102, 241, 0.1);  color: #4f46e5; border: 1px solid rgba(99, 102, 241, 0.25); }
 
   html.dark .badge-green  { background: rgba(16, 185, 129, 0.15);  color: #34d399; border-color: rgba(16, 185, 129, 0.28); }
   html.dark .badge-red    { background: rgba(239, 68, 68, 0.15);   color: #f87171; border-color: rgba(239, 68, 68, 0.28); }
@@ -223,6 +224,7 @@ html.dark {
   html.dark .badge-gray   { background: rgba(255, 255, 255, 0.07); color: #94a3b8; border-color: rgba(255, 255, 255, 0.1); }
   html.dark .badge-orange { background: rgba(249, 115, 22, 0.15);  color: #fb923c; border-color: rgba(249, 115, 22, 0.28); }
   html.dark .badge-purple { background: rgba(139, 92, 246, 0.18);  color: #c084fc; border-color: rgba(139, 92, 246, 0.3); }
+  html.dark .badge-indigo { background: rgba(99, 102, 241, 0.18);  color: #818cf8; border-color: rgba(99, 102, 241, 0.32); }
 
   /* ── Tables ──────────────────────────────────────────────── */
   .table-wrap {

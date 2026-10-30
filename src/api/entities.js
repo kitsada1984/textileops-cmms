@@ -678,6 +678,7 @@ export const WO_JOB_TYPE = [
   { value: 'REPAIR', label: '🛠️ แก้ไข (Repair)' },
   { value: 'DESIGN', label: '🎨 ปรับแบบ (Design)' },
   { value: 'PM',     label: '🧹 PM / ล้างเครื่อง' },
+  { value: 'SETUP',  label: '⚙️ เตรียมเครื่อง (Setup)' },
 ]
 
 export const TECH_SKILL_LEVELS = [
@@ -1022,7 +1023,7 @@ export function calculateDuration(
 /**
  * Evaluates SLA Performance based on Job Type and KPI Target Days (12-hour shift base, excluding Sundays).
  */
-export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESIGN: 3.0, PM: 2.0 }, hoursPerDay = 12, excludeSunday = true) {
+export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESIGN: 3.0, PM: 2.0, SETUP: 1.0 }, hoursPerDay = 12, excludeSunday = true) {
   const type = String(job.JobType || job['Job Type'] || 'REPAIR').toUpperCase()
   const targetDays = targetDaysMap[type] || 1.0
   const targetHours = targetDays * hoursPerDay

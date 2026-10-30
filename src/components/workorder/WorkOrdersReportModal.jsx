@@ -657,6 +657,8 @@ ${origin}`
                       ? '🎨 ปรับแบบ'
                       : job.JobType === 'PM'
                       ? '🧹 PM'
+                      : job.JobType === 'SETUP'
+                      ? '⚙️ เตรียมเครื่อง'
                       : '🛠️ แก้ไข'
 
                   return (

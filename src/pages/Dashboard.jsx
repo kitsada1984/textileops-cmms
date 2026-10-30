@@ -614,8 +614,8 @@ export default function Dashboard() {
                   <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">{wo.MC}</td>
                   <td className="py-2.5 px-3 max-w-xs truncate text-slate-600 dark:text-slate-300">{getWorkOrderDetails(wo) || wo.Design || '—'}</td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
-                    <span className={`badge ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':'badge-blue'}`}>
-                      {wo.JobType==='DESIGN'?'🎨 ปรับแบบ':wo.JobType==='PM'?'🧹 PM':wo.JobType==='REPAIR'?'🛠️ แก้ไข':(statusLabel(wo.Priority) || '🛠️ แก้ไข')}
+                    <span className={`badge ${wo.JobType==='DESIGN'?'badge-purple':wo.JobType==='PM'?'badge-yellow':wo.JobType==='SETUP'?'badge-indigo text-indigo-700 bg-indigo-50 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800':'badge-blue'}`}>
+                      {wo.JobType==='DESIGN'?'🎨 ปรับแบบ':wo.JobType==='PM'?'🧹 PM':wo.JobType==='SETUP'?'⚙️ เตรียมเครื่อง':wo.JobType==='REPAIR'?'🛠️ แก้ไข':(statusLabel(wo.Priority) || '🛠️ แก้ไข')}
                     </span>
                   </td>
                   <td className="py-2.5 px-3 whitespace-nowrap">

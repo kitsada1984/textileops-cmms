@@ -187,13 +187,14 @@ describe('WorkOrders utilities', () => {
     })
 
     it('supports multi-select job type filter', () => {
-      expect(WORK_ORDER_TYPE_OPTIONS).toHaveLength(3)
-      expect(WORK_ORDER_TYPE_OPTIONS.map((o) => o.value)).toEqual(['REPAIR', 'DESIGN', 'PM'])
+      expect(WORK_ORDER_TYPE_OPTIONS).toHaveLength(4)
+      expect(WORK_ORDER_TYPE_OPTIONS.map((o) => o.value)).toEqual(['REPAIR', 'DESIGN', 'PM', 'SETUP'])
 
       // Single string matches (backward compatibility)
       expect(matchesWorkOrderTypeFilter('REPAIR', 'ALL')).toBe(true)
       expect(matchesWorkOrderTypeFilter('REPAIR', 'REPAIR')).toBe(true)
       expect(matchesWorkOrderTypeFilter('DESIGN', 'REPAIR')).toBe(false)
+      expect(matchesWorkOrderTypeFilter('SETUP', 'SETUP')).toBe(true)
       expect(matchesWorkOrderTypeFilter(null, 'REPAIR')).toBe(true) // defaults to REPAIR
 
       // Array multi-select
@@ -201,8 +202,10 @@ describe('WorkOrders utilities', () => {
       expect(matchesWorkOrderTypeFilter('REPAIR', ['ALL'])).toBe(true)
       expect(matchesWorkOrderTypeFilter('REPAIR', ['REPAIR', 'DESIGN'])).toBe(true)
       expect(matchesWorkOrderTypeFilter('DESIGN', ['REPAIR', 'DESIGN'])).toBe(true)
+      expect(matchesWorkOrderTypeFilter('SETUP', ['SETUP', 'DESIGN'])).toBe(true)
       expect(matchesWorkOrderTypeFilter('PM', ['REPAIR', 'DESIGN'])).toBe(false)
       expect(matchesWorkOrderTypeFilter('PM', ['PM'])).toBe(true)
+      expect(matchesWorkOrderTypeFilter('SETUP', ['PM'])).toBe(false)
     })
   })
 
