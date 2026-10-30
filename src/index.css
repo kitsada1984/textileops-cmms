@@ -457,9 +457,9 @@ html.dark .divide-y > * + * { border-color: var(--border-subtle) !important; }
 /* ── Smooth page transitions ───────────────────────────────── */
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
-main > * { animation: fadeSlideIn 200ms ease-out both; }
+main > * { animation: fadeSlideIn 200ms ease-out; }
 
 .cylinder-ref-panel {
   flex-shrink: 0;

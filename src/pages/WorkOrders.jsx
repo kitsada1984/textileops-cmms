@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Plus,
   Pencil,
@@ -3345,21 +3346,6 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   </p>
                 </div>
               )}
-
-              {/* Floating Action Button (FAB) for Mobile Work Order Creation */}
-              {canAdd && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  className="fixed bottom-24 right-4 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform focus:outline-none focus:ring-4 focus:ring-blue-500/30"
-                  title="สร้างใบสั่งงานใหม่"
-                  aria-label="สร้างใบสั่งงานใหม่"
-                >
-                  <Plus size={26} strokeWidth={2.5} />
-                </button>
-              )}
             </div>
           )}
 
@@ -5430,8 +5416,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         </Modal>
       )}
 
-      {/* Mobile Floating Action Button (FAB) for Opening Work Order */}
-      {currentTab === 'records' && canAdd && (
+      {/* Mobile Floating Action Button (FAB) for Opening Work Order (Portaled to document.body to lock viewport position) */}
+      {currentTab === 'records' && canAdd && typeof document !== 'undefined' && createPortal(
         <button
           type="button"
           onClick={() => setCreateModalOpen(true)}
@@ -5440,7 +5426,8 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           aria-label="เปิดใบสั่งงาน"
         >
           <Plus size={26} strokeWidth={2.5} />
-        </button>
+        </button>,
+        document.body
       )}
     </div>
   )
