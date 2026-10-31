@@ -14,6 +14,7 @@ import {
   getLatestDailyLog,
   buildCancelJobPayload,
   WO_FILTER_STORAGE_KEYS,
+  extractInUseMachinesFromCylinders,
 } from './WorkOrders.jsx'
 
 describe('WorkOrders utilities', () => {
@@ -457,6 +458,98 @@ describe('WorkOrders utilities', () => {
       expect(WO_FILTER_STORAGE_KEYS.TYPE_OPEN).toBe('textileops_wo_filter_type_open')
       expect(WO_FILTER_STORAGE_KEYS.STATUS_OPEN).toBe('textileops_wo_filter_status_open')
       expect(WO_FILTER_STORAGE_KEYS.CAUSE_OPEN).toBe('textileops_wo_filter_cause_open')
+    })
+  })
+
+  describe('extractInUseMachinesFromCylinders', () => {
+    it('returns empty array when cylinders is null, undefined or not an array', () => {
+      expect(extractInUseMachinesFromCylinders(null)).toEqual([])
+      expect(extractInUseMachinesFromCylinders(undefined)).toEqual([])
+      expect(extractInUseMachinesFromCylinders({})).toEqual([])
+      expect(extractInUseMachinesFromCylinders('string')).toEqual([])
+    })
+
+    it('filters strictly for cylinders with Machine_Ref starting with In-use and having NewMC', () => {
+      const mockCyls = [
+        {
+          id: 1,
+          NewMC: 'DA-306M',
+          Machine_Ref: 'In-use-GMK3',
+          Location: 'GK3',
+          Serial_OLD: '66936',
+          Diameter: 30,
+          Gauge: 28,
+        },
+        {
+          id: 2,
+          NewMC: 'SC-368M',
+          Machine_Ref: 'in-use-gmk1',
+          Location: 'GK1',
+          Serial_OLD: '62407',
+          Diameter: 30,
+          Gauge: 24,
+        },
+        {
+          id: 3,
+          NewMC: 'SP-999M',
+          Machine_Ref: 'Spare-GMK1',
+          Location: 'GK1',
+          Serial_OLD: '99999',
+        },
+        {
+          id: 4,
+          NewMC: '',
+          Machine_Ref: 'In-use-GMK3',
+          Location: 'GK3',
+        },
+        {
+          id: 5,
+          NewMC: null,
+          Machine_Ref: 'In-use-GMK1',
+          Location: 'GK1',
+        },
+      ]
+
+      const result = extractInUseMachinesFromCylinders(mockCyls)
+      expect(result).toHaveLength(2)
+      expect(result.map((m) => m.code)).toEqual(['DA-306M', 'SC-368M'])
+      expect(result[0]).toMatchObject({
+        code: 'DA-306M',
+        location: 'GK3',
+        serial: '66936',
+        diameter: 30,
+        gauge: 28,
+      })
+      expect(result[1]).toMatchObject({
+        code: 'SC-368M',
+        location: 'GK1',
+        serial: '62407',
+        diameter: 30,
+        gauge: 24,
+      })
+    })
+
+    it('deduplicates multiple cylinders sharing the same NewMC code case-insensitively', () => {
+      const mockCyls = [
+        { NewMC: 'SA-302M', Machine_Ref: 'In-use-GMK1', Location: 'GK1' },
+        { NewMC: 'sa-302m', Machine_Ref: 'In-use-GMK1', Location: 'GK1' },
+        { NewMC: 'SA-302M', Machine_Ref: 'In-use-GMK1', Location: 'GK1' },
+      ]
+
+      const result = extractInUseMachinesFromCylinders(mockCyls)
+      expect(result).toHaveLength(1)
+      expect(result[0].code).toBe('SA-302M')
+    })
+
+    it('sorts machines alphabetically with natural numeric comparison', () => {
+      const mockCyls = [
+        { NewMC: 'MC-10', Machine_Ref: 'In-use' },
+        { NewMC: 'MC-2', Machine_Ref: 'In-use' },
+        { NewMC: 'MC-1', Machine_Ref: 'In-use' },
+      ]
+
+      const result = extractInUseMachinesFromCylinders(mockCyls)
+      expect(result.map((m) => m.code)).toEqual(['MC-1', 'MC-2', 'MC-10'])
     })
   })
 })

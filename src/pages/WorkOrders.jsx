@@ -41,6 +41,7 @@ import useEntity from '../hooks/useEntity'
 import {
   WorkOrderAPI,
   TechnicianAPI,
+  CylinderAPI,
   UserAPI,
   KpiSettingsAPI,
   AuditLogAPI,
@@ -794,6 +795,36 @@ export const WO_FILTER_STORAGE_KEYS = {
   CAUSE_OPEN: 'textileops_wo_filter_cause_open',
 }
 
+/**
+ * Extracts and deduplicates in-use machines (NewMC) from cylinders data.
+ * Filters strictly for active running cylinders whose Machine_Ref starts with 'in-use'.
+ */
+export function extractInUseMachinesFromCylinders(cylinders = []) {
+  if (!Array.isArray(cylinders)) return []
+  const map = new Map()
+  cylinders.forEach((cyl) => {
+    const machineRef = String(cyl?.Machine_Ref || '').trim()
+    const isRunning = machineRef.toLowerCase().startsWith('in-use')
+    const mcCode = String(cyl?.NewMC || '').trim()
+    if (isRunning && mcCode && !map.has(mcCode.toUpperCase())) {
+      map.set(mcCode.toUpperCase(), {
+        code: mcCode,
+        machineRef,
+        serial: cyl?.Serial_OLD || cyl?.Serial_NOW || '',
+        location: cyl?.Location || '',
+        standard: cyl?.Standard || '',
+        diameter: cyl?.Diameter || '',
+        gauge: cyl?.Gauge || '',
+        type: cyl?.Type || '',
+        raw: cyl,
+      })
+    }
+  })
+  return Array.from(map.values()).sort((a, b) =>
+    a.code.localeCompare(b.code, 'th', { numeric: true })
+  )
+}
+
 export default function WorkOrders({ defaultTab = 'records' }) {
   const { t } = useT()
   const { isMobile, isTablet, isDesktop } = useDeviceView()
@@ -828,6 +859,20 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // KPI Settings State
   const [kpiTargets, setKpiTargets] = useState(DEFAULT_KPI_TARGETS)
+
+  // Cylinders State (for in-use machines auto-suggest)
+  const [cylinders, setCylinders] = useState(() => {
+    if (typeof localStorage === 'undefined') return []
+    try {
+      const raw =
+        localStorage.getItem('textileops_tbl_cylinders') ||
+        localStorage.getItem('txops_tbl_cylinders')
+      const parsed = raw ? JSON.parse(raw) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
 
   // Search & Filter State
   const [search, setSearch] = useState('')
@@ -962,6 +1007,17 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [status, setStatus] = useState('IN_PROGRESS')
   const [submittingStart, setSubmittingStart] = useState(false)
 
+  // In-use machines auto-suggest from Cylinders
+  const inUseMachines = useMemo(() => {
+    return extractInUseMachinesFromCylinders(cylinders)
+  }, [cylinders])
+
+  const matchedActiveMachine = useMemo(() => {
+    if (!mc.trim()) return null
+    const target = mc.trim().toUpperCase()
+    return inUseMachines.find((m) => m.code.toUpperCase() === target) || null
+  }, [mc, inUseMachines])
+
   // Modals State
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [completeModalOpen, setCompleteModalOpen] = useState(false)
@@ -974,6 +1030,12 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [editJob, setEditJob] = useState(null)
   const [editTechs, setEditTechs] = useState([])
   const [editSubmitting, setEditSubmitting] = useState(false)
+
+  const matchedEditActiveMachine = useMemo(() => {
+    const editMc = String(editJob?.MC || '').trim().toUpperCase()
+    if (!editMc) return null
+    return inUseMachines.find((m) => m.code.toUpperCase() === editMc) || null
+  }, [editJob?.MC, inUseMachines])
 
   const [techModalOpen, setTechModalOpen] = useState(false)
   const [techForm, setTechForm] = useState({ Name: '', Phone: '', SkillLevel: 'Senior', Specialization: '', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' })
@@ -1161,14 +1223,32 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const loadTechsAndSettings = async () => {
     setTechLoading(true)
     try {
-      const [techRes, kpiRes, usersRes] = await Promise.allSettled([
+      const [techRes, kpiRes, usersRes, cylRes] = await Promise.allSettled([
         TechnicianAPI.list(),
         KpiSettingsAPI.list(),
         UserAPI.list(),
+        CylinderAPI.list(),
       ])
 
       if (usersRes.status === 'fulfilled' && Array.isArray(usersRes.value)) {
         setSystemUsers(usersRes.value)
+      }
+
+      if (cylRes.status === 'fulfilled' && Array.isArray(cylRes.value) && cylRes.value.length > 0) {
+        setCylinders(cylRes.value)
+      } else {
+        const stored =
+          typeof localStorage !== 'undefined'
+            ? localStorage.getItem('textileops_tbl_cylinders') || localStorage.getItem('txops_tbl_cylinders')
+            : null
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored)
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setCylinders(parsed)
+            }
+          } catch {}
+        }
       }
 
       if (techRes.status === 'fulfilled' && Array.isArray(techRes.value)) {
@@ -4257,13 +4337,37 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           <div className="space-y-4 text-xs">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">รหัสเครื่อง (M/C)</label>
+                <label className="label flex items-center justify-between">
+                  <span>รหัสเครื่อง (M/C)</span>
+                  {inUseMachines.length > 0 && (
+                    <span className="text-[10px] font-normal text-blue-500 dark:text-blue-400">
+                      (ในระบบ: {inUseMachines.length} เครื่อง)
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
+                  list="wo-inuse-machines"
+                  placeholder="เช่น DA-306M หรือพิมพ์ค้นหา"
                   value={editJob.MC || ''}
                   onChange={(e) => setEditJob({ ...editJob, MC: e.target.value })}
-                  className="input font-mono font-bold"
+                  className="input font-mono font-bold uppercase"
                 />
+                {matchedEditActiveMachine && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 bg-emerald-50/70 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md border border-emerald-200/80 dark:border-emerald-800/60 animate-fadeIn">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 inline-block animate-pulse" />
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">In-use</span>
+                    {matchedEditActiveMachine.location && (
+                      <span>· โซน: <b className="text-slate-800 dark:text-slate-200">{matchedEditActiveMachine.location}</b></span>
+                    )}
+                    {matchedEditActiveMachine.serial && (
+                      <span>· ซีเรียล: <span className="font-mono">{matchedEditActiveMachine.serial}</span></span>
+                    )}
+                    {(matchedEditActiveMachine.diameter || matchedEditActiveMachine.gauge) && (
+                      <span>· ขนาด: <span className="font-mono">{matchedEditActiveMachine.diameter ? `${matchedEditActiveMachine.diameter}"` : ''} {matchedEditActiveMachine.gauge ? `${matchedEditActiveMachine.gauge}G` : ''}</span></span>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="label">รหัสงาน (KI)</label>
@@ -5382,16 +5486,39 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 {/* 1. M/C, KI, Design, Roll No */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="label">รหัสเครื่อง (M/C) *</label>
+                    <label className="label flex items-center justify-between">
+                      <span>รหัสเครื่อง (M/C) *</span>
+                      {inUseMachines.length > 0 && (
+                        <span className="text-[10px] font-normal text-blue-500 dark:text-blue-400">
+                          (ในระบบ: {inUseMachines.length} เครื่อง)
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="text"
-                      placeholder="เช่น MC-01"
+                      list="wo-inuse-machines"
+                      placeholder="เช่น DA-306M หรือพิมพ์ค้นหา"
                       value={mc}
                       onChange={(e) => setMc(e.target.value)}
                       className="input font-mono font-bold uppercase"
                       required
                       autoFocus
                     />
+                    {matchedActiveMachine && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 bg-emerald-50/70 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md border border-emerald-200/80 dark:border-emerald-800/60 animate-fadeIn">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 inline-block animate-pulse" />
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">In-use</span>
+                        {matchedActiveMachine.location && (
+                          <span>· โซน: <b className="text-slate-800 dark:text-slate-200">{matchedActiveMachine.location}</b></span>
+                        )}
+                        {matchedActiveMachine.serial && (
+                          <span>· ซีเรียล: <span className="font-mono">{matchedActiveMachine.serial}</span></span>
+                        )}
+                        {(matchedActiveMachine.diameter || matchedActiveMachine.gauge) && (
+                          <span>· ขนาด: <span className="font-mono">{matchedActiveMachine.diameter ? `${matchedActiveMachine.diameter}"` : ''} {matchedActiveMachine.gauge ? `${matchedActiveMachine.gauge}G` : ''}</span></span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="label">รหัสงาน (KI) *</label>
@@ -5549,6 +5676,18 @@ export default function WorkOrders({ defaultTab = 'records' }) {
           </div>
         </Modal>
       )}
+
+      {/* Shared In-use Machines Datalist for Autocomplete in Create/Edit Work Order */}
+      <datalist id="wo-inuse-machines">
+        {inUseMachines.map((m) => (
+          <option
+            key={m.code}
+            value={m.code}
+          >
+            {m.code} ({m.location ? `โซน ${m.location}` : ''}{m.standard ? ` · ${m.standard}` : ''}{m.diameter ? ` · ${m.diameter}"` : ''}{m.gauge ? ` ${m.gauge}G` : ''})
+          </option>
+        ))}
+      </datalist>
 
       {/* Mobile Floating Action Button (FAB) for Opening Work Order (Portaled to document.body to lock viewport position) */}
       {currentTab === 'records' && canAdd && typeof document !== 'undefined' && createPortal(
