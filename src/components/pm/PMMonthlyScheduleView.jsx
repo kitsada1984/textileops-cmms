@@ -1408,7 +1408,7 @@ export default function PMMonthlyScheduleView({
 
                 {/* Gantt Scroll Container */}
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-                  <div className="min-w-[1050px]">
+                  <div className="min-w-[1180px]">
                     {/* Timeline Header Row */}
                     <div className="flex items-stretch border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 text-xs font-bold sticky top-0 z-10">
                       {/* Left Machine Columns */}
@@ -1425,7 +1425,7 @@ export default function PMMonthlyScheduleView({
                       {/* 31 Calendar Day Columns Header */}
                       <div
                         className="flex-1 grid text-center"
-                        style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(28px, 1fr))` }}
+                        style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(32px, 1fr))` }}
                       >
                         {calendarDays.map((day) => (
                           <div
@@ -1517,7 +1517,7 @@ export default function PMMonthlyScheduleView({
                               {/* Day Grid with Dual Timeline Bars */}
                               <div
                                 className={`flex-1 grid relative ${timelineBarFilter === 'both' ? 'py-1.5 min-h-[58px]' : 'py-2 min-h-[46px]'}`}
-                                style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(28px, 1fr))` }}
+                                style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(32px, 1fr))` }}
                               >
                                 {/* Background Day Columns */}
                                 {calendarDays.map((day) => (
@@ -1539,23 +1539,28 @@ export default function PMMonthlyScheduleView({
                                     style={{
                                       gridColumnStart: range.startDay,
                                       gridColumnEnd: range.endDay + 1,
+                                      left: '2px',
+                                      right: '2px',
+                                      width: 'calc(100% - 4px)',
+                                      maxWidth: 'calc(100% - 4px)',
+                                      boxSizing: 'border-box',
                                     }}
                                     onClick={() => handleOpenUpdateModal(item)}
                                     title={`แผนงาน: ${item.mc} (${item.plannedStartDate} ถึง ${item.plannedEndDate})`}
-                                    className={`absolute z-4 rounded-lg px-2 flex items-center justify-between font-bold cursor-pointer transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs ${
+                                    className={`absolute z-4 rounded-lg px-2 flex items-center justify-between font-bold cursor-pointer transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs overflow-hidden ${
                                       timelineBarFilter === 'both'
                                         ? 'top-1 h-[22px] text-[10px] opacity-95 hover:opacity-100'
                                         : 'inset-y-1.5 my-auto text-[11px] py-1'
                                     }`}
                                   >
-                                    <div className="flex items-center gap-1.5 truncate">
-                                      <span className="truncate">แผน: {item.mc}</span>
-                                      <span className="text-[9px] opacity-85 font-mono hidden sm:inline">
-                                        ({item.plannedStartDate.slice(8)} - {item.plannedEndDate.slice(8)})
+                                    <div className="flex items-center gap-1 min-w-0 truncate">
+                                      <span className="truncate font-semibold">แผน: {item.mc}</span>
+                                      <span className="text-[9px] opacity-80 font-mono hidden sm:inline shrink-0">
+                                        ({item.plannedStartDate.slice(8)}-{item.plannedEndDate.slice(8)})
                                       </span>
                                     </div>
-                                    <span className="text-[9px] font-mono hidden md:inline ml-1 shrink-0">
-                                      {item.workingDays || 3}วัน
+                                    <span className="text-[9px] font-mono hidden md:inline ml-1 shrink-0 opacity-90">
+                                      {item.workingDays || 3}ว.
                                     </span>
                                   </div>
                                 )}
@@ -1575,10 +1580,15 @@ export default function PMMonthlyScheduleView({
                                       style={{
                                         gridColumnStart: actRange.startDay,
                                         gridColumnEnd: actRange.endDay + 1,
+                                        left: '2px',
+                                        right: '2px',
+                                        width: 'calc(100% - 4px)',
+                                        maxWidth: 'calc(100% - 4px)',
+                                        boxSizing: 'border-box',
                                       }}
                                       onClick={() => handleOpenUpdateModal(item)}
                                       title={`ผลงานจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate}) | ${statusMeta.label}${item.workOrderId ? ` | WO: ${item.workOrderId}` : ''}`}
-                                      className={`absolute z-5 rounded-lg px-2 flex items-center justify-between font-bold cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md ${
+                                      className={`absolute z-5 rounded-lg px-2 flex items-center justify-between font-bold cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md overflow-hidden ${
                                         timelineBarFilter === 'both'
                                           ? 'top-[31px] h-[22px] text-[10px]'
                                           : 'inset-y-1.5 my-auto text-[11px] py-1'
