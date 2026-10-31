@@ -10,17 +10,22 @@ import PMMonthlyScheduleView, {
   getStatusMeta,
   resolveItemMachine,
   getStoredInUseMachinesFallback,
+  syncWorkOrdersToMonthlyPlan,
   THAI_MONTHS,
   SHORT_THAI_MONTHS,
 } from './PMMonthlyScheduleView'
 
-// Mock AppConfigAPI
+// Mock AppConfigAPI & WorkOrderAPI
 vi.mock('../../api/entities', () => ({
   AppConfigAPI: {
     list: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({ ok: true }),
     update: vi.fn().mockResolvedValue({ ok: true }),
   },
+  WorkOrderAPI: {
+    list: vi.fn().mockResolvedValue([]),
+  },
+  isSystemWorkOrder: vi.fn().mockReturnValue(false),
 }))
 
 // Mock useToast
@@ -328,6 +333,150 @@ describe('PMMonthlyScheduleView UI Component', () => {
     // 12 months rows are listed in the table
     THAI_MONTHS.forEach(name => {
       expect(screen.getAllByText(new RegExp(name)).length).toBeGreaterThan(0)
+    })
+  })
+})
+
+describe('syncWorkOrdersToMonthlyPlan - PM Work Order Auto-Sync', () => {
+  const inUseMachines = [
+    { NewMC: 'DA-306M', Serial_OLD: '66936', Location: 'GK3', Type: 'D' },
+    { NewMC: 'SC-368M', Serial_OLD: '62407', Location: 'GK1', Type: 'S' },
+  ]
+
+  const initialPlan = [
+    {
+      id: 'PMSCH-202610-01',
+      mc: 'DA-306M',
+      ki: '66936',
+      plannedStartDate: '2026-10-01',
+      plannedEndDate: '2026-10-03',
+      status: 'SCHEDULED',
+    },
+    {
+      id: 'PMSCH-202610-02',
+      mc: 'SC-368M',
+      ki: '62407',
+      plannedStartDate: '2026-10-05',
+      plannedEndDate: '2026-10-07',
+      status: 'SCHEDULED',
+    },
+  ]
+
+  it('updates in-plan machine with actual dates, tech, status and workOrderId from PM work order', () => {
+    const mockWOs = [
+      {
+        Job_ID: 'WO-202610-001',
+        JobType: 'PM',
+        MC: 'DA-306M',
+        KI: '66936',
+        StartDate: '2026-10-01',
+        EndDate: '2026-10-03',
+        Technicians: 'ช่างหนึ่ง',
+        Status: 'COMPLETED',
+        Comment: 'ล้างเครื่องเรียบร้อย',
+      },
+    ]
+
+    const synced = syncWorkOrdersToMonthlyPlan(initialPlan, mockWOs, inUseMachines, 2026, 10)
+    expect(synced).toHaveLength(2)
+
+    const da = synced[0]
+    expect(da.mc).toBe('DA-306M')
+    expect(da.status).toBe('COMPLETED')
+    expect(da.actualStartDate).toBe('2026-10-01')
+    expect(da.actualEndDate).toBe('2026-10-03')
+    expect(da.actualTech).toBe('ช่างหนึ่ง')
+    expect(da.workOrderId).toBe('WO-202610-001')
+    expect(da.isOnTime).toBe(true)
+  })
+
+  it('appends unplanned PM work order for machine not in initial plan with isUnplanned: true', () => {
+    const mockWOs = [
+      {
+        Job_ID: 'WO-202610-999',
+        JobType: 'PM',
+        MC: 'SB-363P',
+        KI: 'A1100551',
+        StartDate: '2026-10-15',
+        EndDate: '2026-10-16',
+        Technicians: 'ช่างดล',
+        Status: 'IN_PROGRESS',
+        Comment: 'ล้างด่วนนอกแผน',
+      },
+    ]
+
+    const synced = syncWorkOrdersToMonthlyPlan(initialPlan, mockWOs, inUseMachines, 2026, 10)
+    expect(synced).toHaveLength(3) // 2 planned + 1 unplanned
+
+    const unplanned = synced[2]
+    expect(unplanned.mc).toBe('SB-363P')
+    expect(unplanned.isUnplanned).toBe(true)
+    expect(unplanned.workOrderId).toBe('WO-202610-999')
+    expect(unplanned.status).toBe('IN_PROGRESS')
+    expect(unplanned.actualStartDate).toBe('2026-10-15')
+  })
+})
+
+describe('Dual Timeline View & 3-Mode Filter Controls', () => {
+  const mockMachines = [
+    { mc: 'DA-306M', ki: '66936', location: 'GK3', type: 'D' },
+  ]
+
+  const mockScheduleWithActual = [
+    {
+      id: 'PMSCH-202610-01',
+      mc: 'DA-306M',
+      ki: '66936',
+      plannedStartDate: '2026-10-01',
+      plannedEndDate: '2026-10-03',
+      actualStartDate: '2026-10-01',
+      actualEndDate: '2026-10-03',
+      actualTech: 'ช่างหนึ่ง',
+      status: 'COMPLETED',
+      workOrderId: 'WO-202610-001',
+    },
+  ]
+
+  beforeEach(() => {
+    localStorage.clear()
+    const now = new Date()
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    localStorage.setItem(`pm_monthly_schedule_${monthKey}`, JSON.stringify(mockScheduleWithActual))
+  })
+
+  it('renders Dual Timeline view with both Planned and Actual bars by default', async () => {
+    render(<PMMonthlyScheduleView machinesList={mockMachines} />)
+
+    // Check Dual View filter buttons
+    expect(screen.getByRole('button', { name: /ดูคู่กัน/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /เฉพาะแผน/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /เฉพาะทำจริง/ })).toBeInTheDocument()
+
+    // Both planned and actual bars are rendered
+    await waitFor(() => {
+      expect(screen.getByText(/แผน: DA-306M/)).toBeInTheDocument()
+      expect(screen.getByText(/จริง: ช่างหนึ่ง/)).toBeInTheDocument()
+    })
+  })
+
+  it('switches to planned-only and actual-only views when filter buttons clicked', async () => {
+    render(<PMMonthlyScheduleView machinesList={mockMachines} />)
+
+    const plannedOnlyBtn = screen.getByRole('button', { name: /เฉพาะแผน/ })
+    const actualOnlyBtn = screen.getByRole('button', { name: /เฉพาะทำจริง/ })
+
+    // Click Planned Only
+    fireEvent.click(plannedOnlyBtn)
+    await waitFor(() => {
+      expect(screen.getByText(/แผน: DA-306M/)).toBeInTheDocument()
+      expect(screen.queryByText(/จริง: ช่างหนึ่ง/)).not.toBeInTheDocument()
+    })
+
+    // Click Actual Only
+    fireEvent.click(actualOnlyBtn)
+    await waitFor(() => {
+      expect(screen.queryByText(/แผน: DA-306M/)).not.toBeInTheDocument()
+      expect(screen.getByText(/จริง: ช่างหนึ่ง/)).toBeInTheDocument()
     })
   })
 })

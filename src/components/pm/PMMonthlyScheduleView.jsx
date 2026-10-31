@@ -22,9 +22,11 @@ import {
   Sparkles,
   Users,
   Search,
+  ExternalLink,
+  Tag,
 } from 'lucide-react'
 import { format, parseISO, isAfter, isBefore, startOfDay } from 'date-fns'
-import { AppConfigAPI } from '../../api/entities'
+import { AppConfigAPI, WorkOrderAPI, CylinderAPI, isSystemWorkOrder } from '../../api/entities'
 import { useToast } from '../ui/Toast'
 import Modal from '../ui/Modal'
 
@@ -222,6 +224,114 @@ export function resolveItemMachine(item, cylindersOrMachines = []) {
 }
 
 /**
+ * Automatically syncs PM Work Orders into the monthly schedule items.
+ * Updates in-plan machines with actual execution dates, techs, and status.
+ * Automatically appends unplanned PM work orders with an [isUnplanned: true] tag.
+ */
+export function syncWorkOrdersToMonthlyPlan(
+  monthlyItems = [],
+  workOrders = [],
+  effectiveMachines = [],
+  year = new Date().getFullYear(),
+  month = new Date().getMonth() + 1
+) {
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`
+  const targetPrefix = monthKey
+
+  // Filter PM Work Orders for this month
+  const pmWorkOrders = (Array.isArray(workOrders) ? workOrders : []).filter(wo => {
+    if (!wo || (typeof isSystemWorkOrder === 'function' && isSystemWorkOrder(wo))) return false
+    const type = String(wo.JobType || wo.Job_Type || wo.job_type || wo.jobType || '').toUpperCase()
+    if (type !== 'PM') return false
+    const sDate = String(wo.StartDate || wo.DateStart || wo.StartTime || wo.StartTimestamp || wo.created_at || '').slice(0, 10)
+    const eDate = String(wo.EndDate || wo.DateEnd || wo.EndTime || wo.EndTimestamp || '').slice(0, 10)
+    return (sDate && sDate.startsWith(targetPrefix)) || (eDate && eDate.startsWith(targetPrefix))
+  })
+
+  let updatedItems = [...monthlyItems]
+
+  pmWorkOrders.forEach(wo => {
+    const woMC = String(wo.MC || wo.Mc || wo.machine_mc || wo.Machine_MC || '').trim()
+    const woKI = String(wo.KI || wo.Ki || wo.Machine_KI || wo.Serial_OLD || '').trim()
+
+    // Match cylinder
+    const matchedMachine = effectiveMachines.find(m => {
+      const mSerial = String(m?.Serial_OLD || m?.ki || m?.Machine_KI || '').trim()
+      const mCode = String(m?.NewMC || m?.mc || m?.Machine_MC || '').trim()
+      if (woKI && mSerial && woKI.toUpperCase() === mSerial.toUpperCase()) return true
+      if (woMC && mCode && woMC.toUpperCase() === mCode.toUpperCase()) return true
+      return false
+    })
+
+    const effectiveMC = matchedMachine?.NewMC || matchedMachine?.mc || woMC
+    const effectiveKI = matchedMachine?.Serial_OLD || matchedMachine?.ki || woKI
+
+    // Find existing item in plan
+    const existingIndex = updatedItems.findIndex(item => {
+      const itemMC = String(item.mc || '').toUpperCase()
+      const itemKI = String(item.ki || '').toUpperCase()
+      if (effectiveKI && itemKI && effectiveKI.toUpperCase() === itemKI) return true
+      if (effectiveMC && itemMC && effectiveMC.toUpperCase() === itemMC) return true
+      return false
+    })
+
+    const sDate = String(wo.StartDate || wo.DateStart || wo.StartTime || `${targetPrefix}-01`).slice(0, 10)
+    const eDate = String(wo.EndDate || wo.DateEnd || wo.EndTime || sDate).slice(0, 10)
+    const woStatus = String(wo.Status || wo.status || '').toUpperCase()
+    const mappedStatus = woStatus === 'COMPLETED' ? 'COMPLETED' : (woStatus === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'SCHEDULED')
+    const techName = wo.Technicians || wo.Tech || wo.Technician || ''
+    const woNotes = wo.Comment || wo.Details || wo.Problem || ''
+    const woId = wo.Job_ID || wo.WO_ID || wo.id
+
+    if (existingIndex >= 0) {
+      const item = updatedItems[existingIndex]
+      let isOnTime = item.isOnTime
+      if (mappedStatus === 'COMPLETED' && eDate && item.plannedEndDate) {
+        isOnTime = eDate <= item.plannedEndDate
+      }
+
+      updatedItems[existingIndex] = {
+        ...item,
+        actualStartDate: sDate || item.actualStartDate,
+        actualEndDate: eDate || item.actualEndDate,
+        actualTech: techName || item.actualTech,
+        status: mappedStatus,
+        notes: woNotes || item.notes,
+        workOrderId: woId || item.workOrderId,
+        isOnTime: isOnTime !== undefined ? isOnTime : item.isOnTime,
+        updatedAt: new Date().toISOString(),
+      }
+    } else {
+      // Append unplanned PM work order
+      const newItem = {
+        id: `PMSCH-${monthKey.replace('-', '')}-UNPLANNED-${woId || Date.now().toString(36)}`,
+        mc: effectiveMC,
+        ki: effectiveKI,
+        location: matchedMachine?.Location || matchedMachine?.location || 'GMK1',
+        type: matchedMachine?.Type || matchedMachine?.type || 'Double',
+        plannedStartDate: '',
+        plannedEndDate: '',
+        actualStartDate: sDate,
+        actualEndDate: eDate,
+        assignedTech: '',
+        actualTech: techName,
+        status: mappedStatus,
+        notes: woNotes || 'ใบสั่งงาน PM นอกแผน',
+        workingDays: 0,
+        workOrderId: woId,
+        isUnplanned: true,
+        isOnTime: null,
+        createdAt: wo.created_at || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      updatedItems.push(newItem)
+    }
+  })
+
+  return updatedItems
+}
+
+/**
  * Auto-generates a 1-month PM plan (3 working days per machine, skipping Sundays).
  * Accurately extracts machine codes from active in-use machines list.
  */
@@ -332,11 +442,39 @@ export default function PMMonthlyScheduleView({
 }) {
   const toast = useToast()
 
+  const [remoteCylinders, setRemoteCylinders] = useState([])
+
+  // Ensure cylinders are fetched from CylinderAPI if machinesList prop was empty or incomplete
+  useEffect(() => {
+    if (Array.isArray(machinesList) && machinesList.length > 0) return
+    CylinderAPI.list()
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const inUse = data
+            .filter(c => String(c?.Machine_Ref || '').trim().toLowerCase().startsWith('in-use'))
+            .map(c => ({
+              mc: String(c?.NewMC || c?.Machine_MC || c?.mc || '').trim(),
+              ki: String(c?.Serial_OLD || c?.Machine_KI || c?.ki || '').trim(),
+              location: String(c?.Location || c?.location || '').trim(),
+              type: String(c?.Type || c?.type || '').trim(),
+              raw: c,
+            }))
+            .filter(m => m.mc)
+          setRemoteCylinders(inUse)
+          try {
+            localStorage.setItem('textileops_tbl_cylinders', JSON.stringify(data))
+          } catch {}
+        }
+      })
+      .catch(() => {})
+  }, [machinesList])
+
   // Combined active machines list with local storage fallback
   const effectiveMachines = useMemo(() => {
     if (Array.isArray(machinesList) && machinesList.length > 0) return machinesList
+    if (remoteCylinders.length > 0) return remoteCylinders
     return getStoredInUseMachinesFallback()
-  }, [machinesList])
+  }, [machinesList, remoteCylinders])
 
   // Current Date anchor
   const now = useMemo(() => new Date(), [])
@@ -352,6 +490,10 @@ export default function PMMonthlyScheduleView({
 
   // Schedule Display Mode: 'timeline' (Gantt bar table) vs 'list' (Detailed Table)
   const [scheduleDisplayMode, setScheduleDisplayMode] = useState('timeline')
+
+  // Timeline Display Filter: 'both' (ดูคู่กัน แผน + ทำจริง), 'planned' (เฉพาะแผน), 'actual' (เฉพาะทำจริง)
+  const [timelineBarFilter, setTimelineBarFilter] = useState('both')
+  const [syncingWO, setSyncingWO] = useState(false)
 
   // Storage state
   const [allSchedules, setAllSchedules] = useState({})
@@ -449,6 +591,9 @@ export default function PMMonthlyScheduleView({
         if (Array.isArray(parsed) && parsed.length > 0) {
           const healed = parsed.map(item => resolveItemMachine(item, effectiveMachines))
           setAllSchedules(prev => ({ ...prev, [key]: healed }))
+          try {
+            localStorage.setItem(key, JSON.stringify(healed))
+          } catch {}
           setLoadingSchedule(false)
           return healed
         }
@@ -505,6 +650,47 @@ export default function PMMonthlyScheduleView({
       }).catch(() => {})
     }
   }, [rawCurrentItems, currentItems, effectiveMachines, configKey])
+
+  // Auto-sync Work Orders (PM job type) into Monthly Schedule
+  const syncWithWorkOrders = useCallback(async (baseItems = currentItems, showToast = false) => {
+    try {
+      setSyncingWO(true)
+      // 1. Fetch Work Orders (API with LocalStorage fallback)
+      let wos = []
+      try {
+        wos = await WorkOrderAPI.list()
+      } catch {}
+      if (!Array.isArray(wos) || wos.length === 0) {
+        try {
+          const raw = localStorage.getItem('textileops_tbl_workorders') || localStorage.getItem('txops_tbl_workorders')
+          wos = raw ? JSON.parse(raw) : []
+        } catch {}
+      }
+
+      // 2. Run sync
+      const synced = syncWorkOrdersToMonthlyPlan(baseItems, wos, effectiveMachines, selectedYear, selectedMonth)
+      const hasChanges = JSON.stringify(synced) !== JSON.stringify(baseItems)
+      if (hasChanges) {
+        saveSchedule(synced)
+        if (showToast) {
+          toast.success('ซิงค์ใบสั่งงาน PM สำเร็จ', `อัปเดตข้อมูลผลงานจริง ${synced.length} รายการ`)
+        }
+      } else if (showToast) {
+        toast.info('ข้อมูลเป็นปัจจุบันแล้ว', 'ไม่มีใบสั่งงาน PM ใหม่ในเดือนนี้')
+      }
+    } catch (err) {
+      if (showToast) toast.error('ซิงค์ไม่สำเร็จ', err.message)
+    } finally {
+      setSyncingWO(false)
+    }
+  }, [currentItems, effectiveMachines, selectedYear, selectedMonth])
+
+  // Trigger sync on month load or when currentItems are ready
+  useEffect(() => {
+    if (currentItems.length > 0) {
+      syncWithWorkOrders(currentItems, false)
+    }
+  }, [configKey])
 
   // Save schedule to remote and local storage
   const saveSchedule = async (itemsToSave, targetConfigKey = configKey) => {
@@ -1117,6 +1303,60 @@ export default function PMMonthlyScheduleView({
                   </button>
                 </div>
 
+                {/* Timeline Mode Filter: Both vs Planned vs Actual */}
+                {scheduleDisplayMode === 'timeline' && (
+                  <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => setTimelineBarFilter('both')}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        timelineBarFilter === 'both'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                      title="แสดงแถบคู่: แผนงาน (แถวบน) และ ทำจริง (แถวล่าง) พร้อมกัน"
+                    >
+                      <span>📊 ดูคู่กัน (แผน+จริง)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTimelineBarFilter('planned')}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        timelineBarFilter === 'planned'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                      title="แสดงเฉพาะแถบสีน้ำเงินตามแผน 3 วัน"
+                    >
+                      <span>📅 เฉพาะแผน</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTimelineBarFilter('actual')}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        timelineBarFilter === 'actual'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                      title="แสดงเฉพาะผลงานทำจริงจากใบสั่งงาน PM"
+                    >
+                      <span>🛠️ เฉพาะทำจริง</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Sync Work Orders Button */}
+                <button
+                  type="button"
+                  onClick={() => syncWithWorkOrders(currentItems, true)}
+                  disabled={syncingWO}
+                  className="btn-outline text-xs px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer shrink-0"
+                  title="คลิกเพื่อดึงใบสั่งงาน PM ล่าสุดเข้าสู่แผน"
+                >
+                  <RefreshCw size={13} className={syncingWO ? "animate-spin text-blue-500" : ""} />
+                  <span className="hidden sm:inline">ซิงค์ใบสั่งงาน PM</span>
+                </button>
+
                 {canAdd && (
                   <button
                     type="button"
@@ -1138,24 +1378,24 @@ export default function PMMonthlyScheduleView({
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="font-bold text-slate-500 dark:text-slate-400">สัญลักษณ์แถบสี:</span>
                     <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
-                      <span className="w-3 h-3 rounded-md bg-blue-500 shadow-xs inline-block"></span>
-                      <span>ตามแผน (Scheduled)</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
-                      <span className="w-3 h-3 rounded-md bg-amber-500 shadow-xs inline-block"></span>
-                      <span>กำลังทำ (In Progress)</span>
+                      <span className="w-3 h-3 rounded-md bg-blue-600 shadow-xs inline-block"></span>
+                      <span>แถบแผนงาน (3 วัน)</span>
                     </span>
                     <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
                       <span className="w-3 h-3 rounded-md bg-emerald-500 shadow-xs inline-block"></span>
-                      <span>เสร็จสิ้น (Completed)</span>
+                      <span>ทำจริง: เสร็จสิ้น (Completed)</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+                      <span className="w-3 h-3 rounded-md bg-amber-500 shadow-xs inline-block"></span>
+                      <span>ทำจริง: กำลังทำ (In Progress)</span>
                     </span>
                     <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
                       <span className="w-3 h-3 rounded-md bg-rose-500 shadow-xs inline-block"></span>
-                      <span>ล่าช้า (Delayed)</span>
+                      <span>ทำจริง: ล่าช้า (Delayed)</span>
                     </span>
                     <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
-                      <span className="w-3 h-3 rounded-md bg-purple-500 shadow-xs inline-block"></span>
-                      <span>เลื่อนแผน (Postponed)</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                      <span className="text-amber-600 dark:text-amber-400 font-bold">[นอกแผน] Unplanned</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1244,29 +1484,39 @@ export default function PMMonthlyScheduleView({
                                 {idx + 1}
                               </div>
                               <div className="w-44 shrink-0 py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-center">
-                                <div className="font-bold text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
+                                <div className="font-bold text-slate-900 dark:text-slate-100 text-xs flex flex-wrap items-center gap-1.5">
                                   <span>{item.mc}</span>
                                   {item.ki && <span className="text-[10px] font-mono text-slate-400">({item.ki})</span>}
+                                  {item.isUnplanned && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                      นอกแผน
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
                                   <span>{item.location || '—'}</span>
                                   {item.type && <span>· {item.type}</span>}
                                 </div>
                               </div>
-                              <div className="w-28 shrink-0 py-2.5 px-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-center">
+                              <div className="w-28 shrink-0 py-2.5 px-2 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => handleOpenUpdateModal(item)}
                                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold border cursor-pointer hover:opacity-85 transition-opacity ${statusMeta.badgeClass}`}
-                                  title="คลิกเพื่ออัปเดตงานจริง"
+                                  title="คลิกเพื่อดูหรืออัปเดตงานจริง"
                                 >
                                   {statusMeta.label}
                                 </button>
+                                {item.workOrderId && (
+                                  <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-semibold truncate max-w-[90px]" title={`ใบสั่งงาน: ${item.workOrderId}`}>
+                                    {item.workOrderId}
+                                  </span>
+                                )}
                               </div>
 
-                              {/* Day Grid with Timeline Bar */}
+                              {/* Day Grid with Dual Timeline Bars */}
                               <div
-                                className="flex-1 grid relative py-2 min-h-[46px]"
+                                className={`flex-1 grid relative ${timelineBarFilter === 'both' ? 'py-1.5 min-h-[58px]' : 'py-2 min-h-[46px]'}`}
                                 style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(28px, 1fr))` }}
                               >
                                 {/* Background Day Columns */}
@@ -1283,45 +1533,88 @@ export default function PMMonthlyScheduleView({
                                   />
                                 ))}
 
-                                {/* Interactive Schedule Bar */}
-                                {range && (
+                                {/* 1. Planned Bar (แถบแผนงาน) */}
+                                {(timelineBarFilter === 'both' || timelineBarFilter === 'planned') && range && (
                                   <div
                                     style={{
                                       gridColumnStart: range.startDay,
                                       gridColumnEnd: range.endDay + 1,
                                     }}
                                     onClick={() => handleOpenUpdateModal(item)}
-                                    title={`คลิกเพื่ออัปเดตงานจริง: ${item.mc} (${item.plannedStartDate} ถึง ${item.plannedEndDate}) | ${statusMeta.label}`}
-                                    className={`absolute inset-y-1.5 my-auto z-5 rounded-xl px-2 py-1 flex items-center justify-between text-[11px] font-bold cursor-pointer transition-all duration-150 transform hover:scale-[1.01] hover:shadow-md ${
-                                      item.status === 'COMPLETED'
-                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xs'
-                                        : item.status === 'IN_PROGRESS'
-                                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs animate-pulse ring-2 ring-amber-300 dark:ring-amber-800'
-                                        : item.status === 'DELAYED'
-                                        ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-xs'
-                                        : item.status === 'POSTPONED'
-                                        ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-xs'
-                                        : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xs'
+                                    title={`แผนงาน: ${item.mc} (${item.plannedStartDate} ถึง ${item.plannedEndDate})`}
+                                    className={`absolute z-4 rounded-lg px-2 flex items-center justify-between font-bold cursor-pointer transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs ${
+                                      timelineBarFilter === 'both'
+                                        ? 'top-1 h-[22px] text-[10px] opacity-95 hover:opacity-100'
+                                        : 'inset-y-1.5 my-auto text-[11px] py-1'
                                     }`}
                                   >
                                     <div className="flex items-center gap-1.5 truncate">
-                                      <span className="truncate">{item.mc}</span>
-                                      <span className="text-[10px] opacity-85 font-mono hidden sm:inline">
+                                      <span className="truncate">แผน: {item.mc}</span>
+                                      <span className="text-[9px] opacity-85 font-mono hidden sm:inline">
                                         ({item.plannedStartDate.slice(8)} - {item.plannedEndDate.slice(8)})
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0 ml-1">
-                                      {item.status === 'COMPLETED' ? (
-                                        <CheckCircle2 size={12} className="text-white" />
-                                      ) : item.status === 'IN_PROGRESS' ? (
-                                        <Clock size={12} className="text-white" />
-                                      ) : null}
-                                      <span className="text-[10px] hidden md:inline">
-                                        {item.actualTech || item.assignedTech || `${item.workingDays || 3}วัน`}
-                                      </span>
-                                    </div>
+                                    <span className="text-[9px] font-mono hidden md:inline ml-1 shrink-0">
+                                      {item.workingDays || 3}วัน
+                                    </span>
                                   </div>
                                 )}
+
+                                {/* 2. Actual Bar (แถบทำจริงจากใบสั่งงาน PM) */}
+                                {(timelineBarFilter === 'both' || timelineBarFilter === 'actual') && (() => {
+                                  if (!item.actualStartDate) return null
+                                  const actItem = {
+                                    plannedStartDate: item.actualStartDate,
+                                    plannedEndDate: item.actualEndDate || item.actualStartDate,
+                                  }
+                                  const actRange = getItemDayRange(actItem, selectedYear, selectedMonth, daysInMonth)
+                                  if (!actRange) return null
+
+                                  return (
+                                    <div
+                                      style={{
+                                        gridColumnStart: actRange.startDay,
+                                        gridColumnEnd: actRange.endDay + 1,
+                                      }}
+                                      onClick={() => handleOpenUpdateModal(item)}
+                                      title={`ผลงานจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate}) | ${statusMeta.label}${item.workOrderId ? ` | WO: ${item.workOrderId}` : ''}`}
+                                      className={`absolute z-5 rounded-lg px-2 flex items-center justify-between font-bold cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md ${
+                                        timelineBarFilter === 'both'
+                                          ? 'top-[31px] h-[22px] text-[10px]'
+                                          : 'inset-y-1.5 my-auto text-[11px] py-1'
+                                      } ${
+                                        item.status === 'COMPLETED'
+                                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xs'
+                                          : item.status === 'IN_PROGRESS'
+                                          ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs animate-pulse ring-1 ring-amber-300'
+                                          : item.status === 'DELAYED'
+                                          ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-xs'
+                                          : item.status === 'POSTPONED'
+                                          ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-xs'
+                                          : 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-xs'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-1 truncate">
+                                        <span className="truncate">จริง: {item.actualTech || item.mc}</span>
+                                        {item.workOrderId && (
+                                          <span className="text-[9px] opacity-90 font-mono hidden sm:inline">
+                                            ({item.workOrderId})
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                                        {item.status === 'COMPLETED' ? (
+                                          <CheckCircle2 size={11} className="text-white" />
+                                        ) : item.status === 'IN_PROGRESS' ? (
+                                          <Clock size={11} className="text-white" />
+                                        ) : null}
+                                        <span className="text-[9px] hidden md:inline">
+                                          {statusMeta.label}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )
+                                })()}
                               </div>
                             </div>
                           )
@@ -1382,9 +1675,14 @@ export default function PMMonthlyScheduleView({
                           <tr key={item.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors">
                             <td className="py-2.5 px-3 text-center font-mono text-slate-400">{idx + 1}</td>
                             <td className="py-2.5 px-3">
-                              <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                              <div className="font-bold text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-1.5">
                                 <span>{item.mc}</span>
                                 {item.ki && <span className="text-[10px] font-mono text-slate-400">({item.ki})</span>}
+                                {item.isUnplanned && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                    นอกแผน
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td className="py-2.5 px-3">
@@ -1392,17 +1690,32 @@ export default function PMMonthlyScheduleView({
                               {item.type && <span className="ml-1 text-[10px] text-slate-400">· {item.type}</span>}
                             </td>
                             <td className="py-2.5 px-3">
-                              <div className="font-mono text-slate-700 dark:text-slate-300">
-                                {item.plannedStartDate} → {item.plannedEndDate}
-                              </div>
-                              <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                                3 วันทำการ (ไม่รวมอาทิตย์)
-                              </div>
+                              {item.plannedStartDate ? (
+                                <>
+                                  <div className="font-mono text-slate-700 dark:text-slate-300">
+                                    {item.plannedStartDate} → {item.plannedEndDate}
+                                  </div>
+                                  <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                                    {item.workingDays || 3} วันทำการ (ไม่รวมอาทิตย์)
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-amber-600 dark:text-amber-400 text-xs font-semibold">
+                                  — (งานนอกแผน)
+                                </span>
+                              )}
                             </td>
                             <td className="py-2.5 px-3">
                               {item.actualStartDate ? (
-                                <div className="font-mono text-slate-800 dark:text-slate-200">
-                                  {item.actualStartDate} → {item.actualEndDate || 'กำลังทำ'}
+                                <div>
+                                  <div className="font-mono text-slate-800 dark:text-slate-200">
+                                    {item.actualStartDate} → {item.actualEndDate || 'กำลังทำ'}
+                                  </div>
+                                  {item.workOrderId && (
+                                    <div className="text-[10px] text-blue-600 dark:text-blue-400 font-mono font-semibold flex items-center gap-1 mt-0.5">
+                                      <span>WO: {item.workOrderId}</span>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-slate-400 text-xs">—</span>
@@ -1682,11 +1995,16 @@ export default function PMMonthlyScheduleView({
       >
         <form onSubmit={handleSaveActual} className="space-y-4 text-xs">
           {/* Target Info */}
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-700 dark:text-slate-300">เครื่องจักร:</span>
-              <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-sm">
+              <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-sm flex items-center gap-1.5">
                 {selectedItem?.mc} {selectedItem?.ki ? `(${selectedItem?.ki})` : ''}
+                {selectedItem?.isUnplanned && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 border border-amber-500/30">
+                    นอกแผน
+                  </span>
+                )}
               </span>
             </div>
             <div className="flex items-center justify-between text-slate-500">
@@ -1695,8 +2013,23 @@ export default function PMMonthlyScheduleView({
             </div>
             <div className="flex items-center justify-between text-slate-500">
               <span>กำหนดตามแผน (3 วัน):</span>
-              <span className="font-mono">{selectedItem?.plannedStartDate} → {selectedItem?.plannedEndDate}</span>
+              <span className="font-mono">{selectedItem?.plannedStartDate ? `${selectedItem.plannedStartDate} → ${selectedItem.plannedEndDate}` : '— (ไม่มีแผนล่วงหน้า)'}</span>
             </div>
+            {selectedItem?.workOrderId && (
+              <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-800">
+                <span className="font-bold text-slate-700 dark:text-slate-300">ใบสั่งงาน PM:</span>
+                <a
+                  href={`/workorders?search=${encodeURIComponent(selectedItem.workOrderId)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  title="คลิกเพื่อเปิดดูใบสั่งงานฉบับเต็ม"
+                >
+                  <span>{selectedItem.workOrderId}</span>
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Actual Dates */}
