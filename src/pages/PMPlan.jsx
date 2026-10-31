@@ -324,14 +324,29 @@ export default function PMPlan({ defaultTab = 'plan' }) {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [previewImageModal, setPreviewImageModal] = useState(null)
   const [syncingPM, setSyncingPM] = useState(false)
-  const [cylinders, setCylinders] = useState([])
+  const [cylinders, setCylinders] = useState(() => {
+    if (typeof localStorage === 'undefined') return []
+    try {
+      const raw =
+        localStorage.getItem('textileops_tbl_cylinders') ||
+        localStorage.getItem('txops_tbl_cylinders')
+      const parsed = raw ? JSON.parse(raw) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
   const autoSyncDoneRef = useRef(false)
   const syncingRef = useRef(false)
 
   useEffect(() => {
     CylinderAPI.list()
-      .then(setCylinders)
-      .catch(() => setCylinders([]))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCylinders(data)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const cylWbCols = useWebBuilderMenu('/cylinders')

@@ -131,6 +131,97 @@ export function getItemDayRange(item, year, month, daysInMonth) {
 }
 
 /**
+ * Retrieves fallback in-use cylinders/machines directly from local storage if not provided.
+ */
+export function getStoredInUseMachinesFallback() {
+  if (typeof localStorage === 'undefined') return []
+  try {
+    const raw = localStorage.getItem('textileops_tbl_cylinders') || localStorage.getItem('txops_tbl_cylinders')
+    const parsed = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(parsed) || parsed.length === 0) return []
+    return parsed
+      .filter(c => String(c?.Machine_Ref || '').trim().toLowerCase().startsWith('in-use'))
+      .map(c => ({
+        mc: String(c?.NewMC || c?.Machine_MC || c?.mc || '').trim(),
+        ki: String(c?.Serial_OLD || c?.Machine_KI || c?.ki || '').trim(),
+        location: String(c?.Location || c?.location || '').trim(),
+        type: String(c?.Type || c?.type || '').trim(),
+        raw: c,
+      }))
+      .filter(m => m.mc)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Resolves an item's machine code, ki, location, and type to the actual current in-use machine (NewMC).
+ * Auto-resolves generic placeholder codes like MC-01, MC-02 to actual machine names (e.g. DA-306M).
+ */
+export function resolveItemMachine(item, cylindersOrMachines = []) {
+  if (!item) return { mc: '', ki: '', location: '', type: '' }
+
+  const effectiveList = Array.isArray(cylindersOrMachines) && cylindersOrMachines.length > 0
+    ? cylindersOrMachines
+    : getStoredInUseMachinesFallback()
+
+  const rawMC = String(item.mc || '').trim()
+  const rawKI = String(item.ki || '').trim()
+  const isGenericMC = !rawMC || /^MC-\d+$/i.test(rawMC)
+
+  // 1. Try matching by Serial_OLD / KI
+  let matched = effectiveList.find(m => {
+    const serial = String(m?.Serial_OLD || m?.ki || m?.Machine_KI || '').trim()
+    if (rawKI && serial && rawKI.toUpperCase() === serial.toUpperCase()) return true
+    return false
+  })
+
+  // 2. If no match by KI, try matching by current machine code (if not generic)
+  if (!matched && !isGenericMC && rawMC) {
+    matched = effectiveList.find(m => {
+      const code = String(m?.NewMC || m?.mc || m?.Machine_MC || '').trim()
+      if (code && rawMC.toUpperCase() === code.toUpperCase()) return true
+      return false
+    })
+  }
+
+  // 3. Fallback for generic MC-XX without KI: match by slot index if applicable
+  if (!matched && isGenericMC && effectiveList.length > 0) {
+    const idxMatch = rawMC.match(/^MC-(\d+)$/i)
+    if (idxMatch) {
+      const slot = parseInt(idxMatch[1], 10) - 1
+      if (slot >= 0 && slot < effectiveList.length) {
+        matched = effectiveList[slot]
+      }
+    }
+  }
+
+  const resolvedMC = matched
+    ? String(matched?.NewMC || matched?.mc || matched?.Machine_MC || '').trim() || item.mc
+    : item.mc
+
+  const resolvedKI = matched
+    ? String(matched?.Serial_OLD || matched?.ki || matched?.Machine_KI || '').trim() || item.ki
+    : item.ki
+
+  const resolvedLocation = (matched && String(matched?.Location || matched?.location || '').trim())
+    ? String(matched?.Location || matched?.location || '').trim()
+    : item.location
+
+  const resolvedType = (matched && String(matched?.Type || matched?.type || '').trim())
+    ? String(matched?.Type || matched?.type || '').trim()
+    : item.type
+
+  return {
+    ...item,
+    mc: resolvedMC,
+    ki: resolvedKI,
+    location: resolvedLocation,
+    type: resolvedType,
+  }
+}
+
+/**
  * Auto-generates a 1-month PM plan (3 working days per machine, skipping Sundays).
  * Accurately extracts machine codes from active in-use machines list.
  */
@@ -139,17 +230,20 @@ export function autoGenerateMonthlySchedule(year, month1Indexed, machines = []) 
   const blocks = buildThreeDayBlocks(workingDays)
   const monthKey = `${year}-${String(month1Indexed).padStart(2, '0')}`
 
-  // Pick unique machines from available machines list or generate slots
-  const availableMachines = Array.isArray(machines) && machines.length > 0
+  // Pick unique machines from available machines list or fallback to stored in-use machines
+  const fallback = getStoredInUseMachinesFallback()
+  const availableMachines = (Array.isArray(machines) && machines.length > 0)
     ? machines
-    : []
+    : fallback
 
   return blocks.map((block, idx) => {
-    const machine = availableMachines[idx % availableMachines.length] || null
-    const mc = machine?.mc || machine?.Machine_MC || machine?.NewMC || machine?.Mc || `MC-${String(idx + 1).padStart(2, '0')}`
-    const ki = machine?.ki || machine?.Machine_KI || machine?.Serial_OLD || ''
-    const location = machine?.location || machine?.Location || 'GMK1'
-    const type = machine?.type || machine?.Type || 'Double'
+    const machine = availableMachines.length > 0
+      ? availableMachines[idx % availableMachines.length]
+      : null
+    const mc = machine?.NewMC || machine?.mc || machine?.Machine_MC || machine?.Mc || `MC-${String(idx + 1).padStart(2, '0')}`
+    const ki = machine?.Serial_OLD || machine?.ki || machine?.Machine_KI || ''
+    const location = machine?.Location || machine?.location || 'GMK1'
+    const type = machine?.Type || machine?.type || 'Double'
 
     return {
       id: `PMSCH-${monthKey.replace('-', '')}-${String(idx + 1).padStart(2, '0')}`,
@@ -238,6 +332,12 @@ export default function PMMonthlyScheduleView({
 }) {
   const toast = useToast()
 
+  // Combined active machines list with local storage fallback
+  const effectiveMachines = useMemo(() => {
+    if (Array.isArray(machinesList) && machinesList.length > 0) return machinesList
+    return getStoredInUseMachinesFallback()
+  }, [machinesList])
+
   // Current Date anchor
   const now = useMemo(() => new Date(), [])
   const currentYear = now.getFullYear()
@@ -320,55 +420,91 @@ export default function PMMonthlyScheduleView({
     return days
   }, [selectedYear, selectedMonth, daysInMonth])
 
-  // Load schedule for selected year and month
+  // Load schedule for selected year and month with Stale-While-Revalidate
   const loadMonthSchedule = useCallback(async (key) => {
-    setLoadingSchedule(true)
+    // 1. Instant cache load from localStorage (0ms first paint)
+    let localParsed = null
     try {
-      // 1. Try loading from AppConfigAPI
+      const local = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null
+      if (local) {
+        const parsed = JSON.parse(local)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localParsed = parsed.map(item => resolveItemMachine(item, effectiveMachines))
+          setAllSchedules(prev => ({ ...prev, [key]: localParsed }))
+        }
+      }
+    } catch {}
+
+    if (!localParsed) {
+      setLoadingSchedule(true)
+    }
+
+    try {
+      // 2. Background revalidation from AppConfigAPI
       const list = await AppConfigAPI.list().catch(() => [])
       const found = list.find(c => c.key === key)
       if (found && found.value) {
         let parsed = []
         try { parsed = JSON.parse(found.value) } catch { parsed = [] }
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setAllSchedules(prev => ({ ...prev, [key]: parsed }))
+          const healed = parsed.map(item => resolveItemMachine(item, effectiveMachines))
+          setAllSchedules(prev => ({ ...prev, [key]: healed }))
           setLoadingSchedule(false)
-          return parsed
+          return healed
         }
       }
 
-      // 2. Try loading from localStorage fallback
-      const local = localStorage.getItem(key)
-      if (local) {
-        try {
-          const parsedLocal = JSON.parse(local)
-          if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
-            setAllSchedules(prev => ({ ...prev, [key]: parsedLocal }))
-            setLoadingSchedule(false)
-            return parsedLocal
-          }
-        } catch {}
+      if (localParsed) {
+        setLoadingSchedule(false)
+        return localParsed
       }
 
       // If no schedule exists yet, return empty
       setAllSchedules(prev => ({ ...prev, [key]: [] }))
     } catch (err) {
       console.warn('Failed to load monthly schedule:', err)
-      setAllSchedules(prev => ({ ...prev, [key]: [] }))
+      if (!localParsed) {
+        setAllSchedules(prev => ({ ...prev, [key]: [] }))
+      }
     } finally {
       setLoadingSchedule(false)
     }
-  }, [])
+  }, [effectiveMachines])
 
   // Initial load
   useEffect(() => {
     loadMonthSchedule(configKey)
   }, [configKey, loadMonthSchedule])
 
-  // Current items for the selected month
-  const currentItems = useMemo(() => {
+  // Raw and resolved current items for the selected month
+  const rawCurrentItems = useMemo(() => {
     return allSchedules[configKey] || []
   }, [allSchedules, configKey])
+
+  const currentItems = useMemo(() => {
+    return rawCurrentItems.map(item => resolveItemMachine(item, effectiveMachines))
+  }, [rawCurrentItems, effectiveMachines])
+
+  // Auto-heal saved schedule in background if placeholder codes (MC-01) were resolved
+  useEffect(() => {
+    if (!rawCurrentItems || rawCurrentItems.length === 0 || effectiveMachines.length === 0) return
+    const needsHeal = rawCurrentItems.some((raw, idx) => {
+      const resolved = currentItems[idx]
+      return resolved && (raw.mc !== resolved.mc || raw.ki !== resolved.ki || raw.location !== resolved.location)
+    })
+    if (needsHeal) {
+      const jsonStr = JSON.stringify(currentItems)
+      localStorage.setItem(configKey, jsonStr)
+      AppConfigAPI.list().then(list => {
+        const existing = list.find(c => c.key === configKey)
+        if (existing) {
+          AppConfigAPI.update(existing.id || existing._id, { value: jsonStr }).catch(() => {})
+        } else {
+          AppConfigAPI.create({ key: configKey, value: jsonStr }).catch(() => {})
+        }
+      }).catch(() => {})
+    }
+  }, [rawCurrentItems, currentItems, effectiveMachines, configKey])
 
   // Save schedule to remote and local storage
   const saveSchedule = async (itemsToSave, targetConfigKey = configKey) => {
@@ -409,7 +545,7 @@ export default function PMMonthlyScheduleView({
         return
       }
     }
-    const newSchedule = autoGenerateMonthlySchedule(selectedYear, selectedMonth, machinesList)
+    const newSchedule = autoGenerateMonthlySchedule(selectedYear, selectedMonth, effectiveMachines)
     saveSchedule(newSchedule)
   }
 
@@ -499,14 +635,14 @@ export default function PMMonthlyScheduleView({
 
   // When user selects a machine in the Add modal, auto-fill Ki, Location, Type
   const handleSelectMachinePreset = (mcCode) => {
-    const found = machinesList.find(m => String(m.mc || m.Machine_MC || m.NewMC || '').toUpperCase() === String(mcCode).toUpperCase())
+    const found = effectiveMachines.find(m => String(m.mc || m.Machine_MC || m.NewMC || '').toUpperCase() === String(mcCode).toUpperCase())
     if (found) {
       setEditItemForm(prev => ({
         ...prev,
-        mc: found.mc || found.Machine_MC || found.NewMC || mcCode,
-        ki: found.ki || found.Machine_KI || found.Serial_OLD || prev.ki,
-        location: found.location || found.Location || prev.location,
-        type: found.type || found.Type || prev.type,
+        mc: found.NewMC || found.mc || found.Machine_MC || mcCode,
+        ki: found.Serial_OLD || found.ki || found.Machine_KI || prev.ki,
+        location: found.Location || found.location || prev.location,
+        type: found.Type || found.type || prev.type,
       }))
     } else {
       setEditItemForm(prev => ({ ...prev, mc: mcCode }))
@@ -1665,9 +1801,9 @@ export default function PMMonthlyScheduleView({
                 required
               />
               <datalist id="active-machines-datalist">
-                {machinesList.map((m, i) => (
-                  <option key={i} value={m.mc || m.Machine_MC || m.NewMC}>
-                    {m.mc || m.Machine_MC} {m.location ? `(${m.location})` : ''}
+                {effectiveMachines.map((m, i) => (
+                  <option key={i} value={m.NewMC || m.mc || m.Machine_MC}>
+                    {m.NewMC || m.mc || m.Machine_MC} {m.location ? `(${m.location})` : ''}
                   </option>
                 ))}
               </datalist>

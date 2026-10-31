@@ -8,6 +8,8 @@ import PMMonthlyScheduleView, {
   calculateMonthlyStats,
   getItemDayRange,
   getStatusMeta,
+  resolveItemMachine,
+  getStoredInUseMachinesFallback,
   THAI_MONTHS,
   SHORT_THAI_MONTHS,
 } from './PMMonthlyScheduleView'
@@ -139,6 +141,85 @@ describe('PMMonthlyScheduleView - 3 Days/Machine Schedule Algorithm & Math', () 
   })
 })
 
+describe('resolveItemMachine & In-use Cylinder Machine Resolution', () => {
+  const mockCylinders = [
+    { NewMC: 'DA-306M', Serial_OLD: '66936', Location: 'GK3', Type: 'D', Machine_Ref: 'In-use-GMK3' },
+    { NewMC: 'SC-368M', Serial_OLD: '62407', Location: 'GK1', Type: 'S', Machine_Ref: 'In-use-GMK1' },
+    { NewMC: 'SB-363P', Serial_OLD: 'A1100551', Location: 'GK1', Type: 'S', Machine_Ref: 'In-use-GMK1' },
+  ]
+
+  it('resolves generic MC-01 with Serial_OLD 66936 to real current machine DA-306M', () => {
+    const rawItem = {
+      id: 'PMSCH-202610-01',
+      mc: 'MC-01',
+      ki: '66936',
+      location: 'GK3',
+      type: 'D',
+    }
+
+    const resolved = resolveItemMachine(rawItem, mockCylinders)
+    expect(resolved.mc).toBe('DA-306M')
+    expect(resolved.ki).toBe('66936')
+    expect(resolved.location).toBe('GK3')
+    expect(resolved.type).toBe('D')
+  })
+
+  it('resolves generic MC-02 with Serial_OLD 62407 to real current machine SC-368M', () => {
+    const rawItem = {
+      id: 'PMSCH-202610-02',
+      mc: 'MC-02',
+      ki: '62407',
+      location: 'GK1',
+      type: 'S',
+    }
+
+    const resolved = resolveItemMachine(rawItem, mockCylinders)
+    expect(resolved.mc).toBe('SC-368M')
+    expect(resolved.ki).toBe('62407')
+  })
+
+  it('resolves generic MC-03 with Serial_OLD A1100551 to real current machine SB-363P', () => {
+    const rawItem = {
+      id: 'PMSCH-202610-03',
+      mc: 'MC-03',
+      ki: 'A1100551',
+      location: 'GK1',
+      type: 'S',
+    }
+
+    const resolved = resolveItemMachine(rawItem, mockCylinders)
+    expect(resolved.mc).toBe('SB-363P')
+  })
+
+  it('preserves existing real machine code if already resolved', () => {
+    const rawItem = {
+      id: 'PMSCH-202610-01',
+      mc: 'DA-306M',
+      ki: '66936',
+      location: 'GK3',
+      type: 'D',
+    }
+
+    const resolved = resolveItemMachine(rawItem, mockCylinders)
+    expect(resolved.mc).toBe('DA-306M')
+  })
+
+  it('resolves from localStorage fallback when cylindersOrMachines is empty', () => {
+    localStorage.setItem('textileops_tbl_cylinders', JSON.stringify(mockCylinders))
+
+    const rawItem = {
+      id: 'PMSCH-202610-01',
+      mc: 'MC-01',
+      ki: '66936',
+      location: 'GK3',
+      type: 'D',
+    }
+
+    const resolved = resolveItemMachine(rawItem, [])
+    expect(resolved.mc).toBe('DA-306M')
+  })
+})
+
 describe('PMMonthlyScheduleView UI Component', () => {
   const mockMachines = [
     { mc: 'DB-3014M', ki: '81798', location: 'GMK1', type: 'Double' },
@@ -198,6 +279,39 @@ describe('PMMonthlyScheduleView UI Component', () => {
     // Switch back to Timeline view
     fireEvent.click(timelineBtn)
     expect(screen.getByText(/สัญลักษณ์แถบสี:/)).toBeInTheDocument()
+  })
+
+  it('auto-heals existing saved schedule containing MC-01 (66936) to DA-306M on display', async () => {
+    const mockInUse = [
+      { mc: 'DA-306M', ki: '66936', location: 'GK3', type: 'D' },
+      { mc: 'SC-368M', ki: '62407', location: 'GK1', type: 'S' },
+    ]
+
+    // Pre-populate localStorage with legacy schedule saved as MC-01
+    const legacySchedule = [
+      {
+        id: 'PMSCH-202610-01',
+        mc: 'MC-01',
+        ki: '66936',
+        location: 'GK3',
+        type: 'D',
+        plannedStartDate: '2026-10-01',
+        plannedEndDate: '2026-10-03',
+        status: 'SCHEDULED',
+      },
+    ]
+
+    const now = new Date()
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    localStorage.setItem(`pm_monthly_schedule_${monthKey}`, JSON.stringify(legacySchedule))
+
+    render(<PMMonthlyScheduleView machinesList={mockInUse} />)
+
+    // Should display DA-306M instead of MC-01
+    await waitFor(() => {
+      expect(screen.getAllByText('DA-306M').length).toBeGreaterThan(0)
+      expect(screen.queryByText('MC-01')).not.toBeInTheDocument()
+    })
   })
 
   it('allows switching to Annual 12-Month Summary view', async () => {
