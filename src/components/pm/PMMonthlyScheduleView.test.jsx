@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import PMMonthlyScheduleView, {
   getMonthlyWorkingDays,
   buildThreeDayBlocks,
+  buildDayBlocks,
   autoGenerateMonthlySchedule,
   calculateMonthlyStats,
   getItemDayRange,
@@ -453,25 +454,26 @@ describe('Dual Timeline View & 3-Mode Filter Controls', () => {
     { mc: 'DA-306M', ki: '66936', location: 'GK3', type: 'D' },
   ]
 
-  const mockScheduleWithActual = [
-    {
-      id: 'PMSCH-202610-01',
-      mc: 'DA-306M',
-      ki: '66936',
-      plannedStartDate: '2026-10-01',
-      plannedEndDate: '2026-10-03',
-      actualStartDate: '2026-10-01',
-      actualEndDate: '2026-10-03',
-      actualTech: 'ช่างหนึ่ง',
-      status: 'COMPLETED',
-      workOrderId: 'WO-202610-001',
-    },
-  ]
-
   beforeEach(() => {
     localStorage.clear()
     const now = new Date()
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const monthKey = `${y}-${m}`
+    const mockScheduleWithActual = [
+      {
+        id: `PMSCH-${y}${m}-01`,
+        mc: 'DA-306M',
+        ki: '66936',
+        plannedStartDate: `${y}-${m}-01`,
+        plannedEndDate: `${y}-${m}-03`,
+        actualStartDate: `${y}-${m}-01`,
+        actualEndDate: `${y}-${m}-03`,
+        actualTech: 'ช่างหนึ่ง',
+        status: 'COMPLETED',
+        workOrderId: `WO-${y}${m}-001`,
+      },
+    ]
     localStorage.setItem(`pm_monthly_schedule_${monthKey}`, JSON.stringify(mockScheduleWithActual))
   })
 
@@ -567,22 +569,24 @@ describe('Location Toolbar Filter & Modal UI Interaction', () => {
   beforeEach(() => {
     localStorage.clear()
     const now = new Date()
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const monthKey = `${y}-${m}`
     const schedule = [
       {
         id: 'PMSCH-01',
         mc: 'DA-306M',
         location: 'GK3',
-        plannedStartDate: '2026-10-01',
-        plannedEndDate: '2026-10-03',
+        plannedStartDate: `${y}-${m}-01`,
+        plannedEndDate: `${y}-${m}-03`,
         status: 'SCHEDULED',
       },
       {
         id: 'PMSCH-02',
         mc: 'SC-368M',
         location: 'GK1',
-        plannedStartDate: '2026-10-05',
-        plannedEndDate: '2026-10-07',
+        plannedStartDate: `${y}-${m}-05`,
+        plannedEndDate: `${y}-${m}-07`,
         status: 'SCHEDULED',
       },
     ]
@@ -729,5 +733,96 @@ describe('Countdown Priority & Most Overdue First Scheduling Logic', () => {
 
     // Block 3 MUST have MC-NORMAL
     expect(sched[2].mc).toBe('MC-NORMAL')
+  })
+})
+
+describe('Configurable Days Per Machine (1, 2, 3, 4, 5 days/machine)', () => {
+  it('buildDayBlocks chunks working days into specified days per machine and skips Sundays', () => {
+    const octWorkingDays = getMonthlyWorkingDays(2026, 10) // 27 working days in Oct 2026
+
+    // 1 Day per machine -> 27 blocks of 1 day each
+    const blocks1 = buildDayBlocks(octWorkingDays, 1)
+    expect(blocks1).toHaveLength(27)
+    expect(blocks1[0].startDate).toBe('2026-10-01')
+    expect(blocks1[0].endDate).toBe('2026-10-01')
+    expect(blocks1[0].workingDaysCount).toBe(1)
+
+    // 2 Days per machine -> 14 blocks (13 blocks of 2 days + 1 block of 1 day = 27 days)
+    const blocks2 = buildDayBlocks(octWorkingDays, 2)
+    expect(blocks2).toHaveLength(14)
+    // Block 1: Oct 1-2
+    expect(blocks2[0].startDate).toBe('2026-10-01')
+    expect(blocks2[0].endDate).toBe('2026-10-02')
+    expect(blocks2[0].workingDaysCount).toBe(2)
+    // Block 2: Oct 3 and Oct 5 (skipping Sunday Oct 4)
+    expect(blocks2[1].startDate).toBe('2026-10-03')
+    expect(blocks2[1].endDate).toBe('2026-10-05')
+    expect(blocks2[1].workingDaysCount).toBe(2)
+
+    // 3 Days per machine -> matches buildThreeDayBlocks exactly
+    const blocks3 = buildDayBlocks(octWorkingDays, 3)
+    const blocks3Legacy = buildThreeDayBlocks(octWorkingDays)
+    expect(blocks3).toEqual(blocks3Legacy)
+    expect(blocks3).toHaveLength(9)
+
+    // 4 Days per machine -> 7 blocks (6 blocks of 4 days + 1 block of 3 days = 27 days)
+    const blocks4 = buildDayBlocks(octWorkingDays, 4)
+    expect(blocks4).toHaveLength(7)
+  })
+
+  it('autoGenerateMonthlySchedule respects custom daysPerMachine parameter', () => {
+    const machines = [
+      { mc: 'MC-OVERDUE-100', countdownDays: -100, countdownLabel: 'เกิน 100 วัน' },
+      { mc: 'MC-OVERDUE-50', countdownDays: -50, countdownLabel: 'เกิน 50 วัน' },
+    ]
+
+    // Generate with 2 days per machine
+    const sched2Days = autoGenerateMonthlySchedule(2026, 10, machines, ['ALL'], [], 2)
+    expect(sched2Days).toHaveLength(14)
+    expect(sched2Days[0].workingDays).toBe(2)
+    expect(sched2Days[0].plannedStartDate).toBe('2026-10-01')
+    expect(sched2Days[0].plannedEndDate).toBe('2026-10-02')
+
+    // Generate with default (3 days per machine)
+    const schedDefault = autoGenerateMonthlySchedule(2026, 10, machines, ['ALL'])
+    expect(schedDefault).toHaveLength(9)
+    expect(schedDefault[0].workingDays).toBe(3)
+    expect(schedDefault[0].plannedStartDate).toBe('2026-10-01')
+    expect(schedDefault[0].plannedEndDate).toBe('2026-10-03')
+  })
+
+  it('Modal renders Days Per Machine selector chips and calculates blocks dynamically', async () => {
+    const mockMachines = [
+      { mc: 'DA-306M', ki: '66936', location: 'GK3', type: 'D' },
+    ]
+
+    render(<PMMonthlyScheduleView machinesList={mockMachines} />)
+
+    // Click Auto-Generate to open modal
+    const autoGenBtn = screen.getByRole('button', { name: /สร้างแผนอัตโนมัติ/ })
+    fireEvent.click(autoGenBtn)
+
+    // Check Days Per Machine options
+    expect(screen.getByText('กำหนดจำนวนวันทำการต่อเครื่อง:')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^1 วัน/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^2 วัน/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^3 วัน/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^4 วัน/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^5 วัน/ })).toBeInTheDocument()
+
+    // Click 2 วัน button
+    const twoDaysBtn = screen.getByRole('button', { name: /^2 วัน$/ })
+    fireEvent.click(twoDaysBtn)
+
+    // Verify dynamic block calculation in summary box (for a working-day month: workingDays / 2 blocks)
+    const now = new Date()
+    const workingDays = getMonthlyWorkingDays(now.getFullYear(), now.getMonth() + 1)
+    const expectedBlocks = Math.floor(workingDays.length / 2)
+    expect(screen.getByText(new RegExp(`${expectedBlocks} บล็อก`))).toBeInTheDocument()
+
+    // Confirm button
+    const confirmBtn = screen.getByRole('button', { name: /ยืนยันสร้างแผนงาน/ })
+    expect(confirmBtn).toBeInTheDocument()
+    fireEvent.click(confirmBtn)
   })
 })

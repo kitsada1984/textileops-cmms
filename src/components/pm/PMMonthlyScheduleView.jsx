@@ -184,12 +184,13 @@ export function getMonthlyWorkingDays(year, month1Indexed) {
 }
 
 /**
- * Groups working days into continuous 3-working-day blocks.
+ * Groups working days into continuous N-working-day blocks (skipping Sundays).
  */
-export function buildThreeDayBlocks(workingDays = []) {
+export function buildDayBlocks(workingDays = [], daysPerMachine = 3) {
+  const n = Math.max(1, Number(daysPerMachine) || 3)
   const blocks = []
-  for (let i = 0; i < workingDays.length; i += 3) {
-    const slice = workingDays.slice(i, i + 3)
+  for (let i = 0; i < workingDays.length; i += n) {
+    const slice = workingDays.slice(i, i + n)
     if (slice.length > 0) {
       blocks.push({
         blockIndex: blocks.length + 1,
@@ -201,6 +202,13 @@ export function buildThreeDayBlocks(workingDays = []) {
     }
   }
   return blocks
+}
+
+/**
+ * Backward-compatible alias for 3-day blocks.
+ */
+export function buildThreeDayBlocks(workingDays = []) {
+  return buildDayBlocks(workingDays, 3)
 }
 
 /**
@@ -449,9 +457,9 @@ export function syncWorkOrdersToMonthlyPlan(
  * Auto-generates a 1-month PM plan (3 working days per machine, skipping Sundays).
  * Accurately extracts machine codes from active in-use machines list.
  */
-export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], selectedLocations = ['ALL'], pmPlans = []) {
+export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], selectedLocations = ['ALL'], pmPlans = [], daysPerMachine = 3) {
   const workingDays = getMonthlyWorkingDays(year, month1Indexed)
-  const blocks = buildThreeDayBlocks(workingDays)
+  const blocks = buildDayBlocks(workingDays, daysPerMachine)
   const monthKey = `${year}-${String(month1Indexed).padStart(2, '0')}`
 
   // Pick unique machines from available machines list or fallback to stored in-use machines
@@ -506,7 +514,7 @@ export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], 
       actualTech: '',
       status: 'SCHEDULED',
       notes: '',
-      workingDays: block.workingDaysCount || 3,
+      workingDays: block.workingDaysCount || daysPerMachine,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -675,6 +683,18 @@ export default function PMMonthlyScheduleView({
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [viewLocationFilter, setViewLocationFilter] = useState(['ALL'])
 
+  // Days Per Machine Configuration State (จำนวนวันทำการต่อเครื่อง)
+  const [daysPerMachine, setDaysPerMachine] = useState(() => {
+    try {
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('pm_monthly_days_per_machine') : null
+      const num = parseInt(saved, 10)
+      return num > 0 ? num : 3
+    } catch {
+      return 3
+    }
+  })
+  const [genDaysPerMachine, setGenDaysPerMachine] = useState(daysPerMachine)
+
   // Location Select Pre-Generation Modal State
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [selectedGenLocations, setSelectedGenLocations] = useState(['ALL'])
@@ -700,7 +720,7 @@ export default function PMMonthlyScheduleView({
     plannedStartDate: '',
     plannedEndDate: '',
     assignedTech: '',
-    workingDays: 3,
+    workingDays: daysPerMachine,
     status: 'SCHEDULED',
   })
 
@@ -905,17 +925,29 @@ export default function PMMonthlyScheduleView({
   // Handle Auto-generate schedule (opens location select modal)
   const handleAutoGenerate = () => {
     setSelectedGenLocations(['ALL'])
+    setGenDaysPerMachine(daysPerMachine)
     setGenerateModalOpen(true)
   }
 
-  // Confirm generate with selected locations and countdown priority
+  // Confirm generate with selected locations, days per machine and countdown priority
   const handleConfirmGenerate = () => {
     const candidateMachines = effectiveMachines.filter(m => matchesLocation(m.location, selectedGenLocations))
     const machinesToUse = candidateMachines.length > 0 ? candidateMachines : effectiveMachines
-    const newSchedule = autoGenerateMonthlySchedule(selectedYear, selectedMonth, machinesToUse, selectedGenLocations, effectivePmPlans)
+    const newSchedule = autoGenerateMonthlySchedule(
+      selectedYear,
+      selectedMonth,
+      machinesToUse,
+      selectedGenLocations,
+      effectivePmPlans,
+      genDaysPerMachine
+    )
+    setDaysPerMachine(genDaysPerMachine)
+    try {
+      localStorage.setItem('pm_monthly_days_per_machine', String(genDaysPerMachine))
+    } catch {}
     saveSchedule(newSchedule)
     setGenerateModalOpen(false)
-    toast.success('สร้างแผน PM สำเร็จ', `จัดตาราง ${newSchedule.length} เครื่องตามวันนับถอยหลังมากที่สุดเรียบร้อย`)
+    toast.success('สร้างแผน PM สำเร็จ', `จัดตาราง ${newSchedule.length} เครื่อง (${genDaysPerMachine} วัน/เครื่อง) เรียบร้อย`)
   }
 
   // Handle open actual execution update modal
@@ -968,7 +1000,7 @@ export default function PMMonthlyScheduleView({
   // Handle Add/Edit scheduled machine manually
   const handleOpenAddModal = () => {
     const workingDays = getMonthlyWorkingDays(selectedYear, selectedMonth)
-    const blocks = buildThreeDayBlocks(workingDays)
+    const blocks = buildDayBlocks(workingDays, daysPerMachine)
     const defaultBlock = blocks[0] || { startDate: format(new Date(), 'yyyy-MM-dd'), endDate: format(new Date(), 'yyyy-MM-dd') }
 
     setEditItemForm({
@@ -1174,7 +1206,7 @@ export default function PMMonthlyScheduleView({
                 <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <span>จัดทำแผน PM รายเดือน</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-mono font-bold">
-                    3 วัน/เครื่อง (ไม่รวมอาทิตย์)
+                    {daysPerMachine} วัน/เครื่อง (ไม่รวมอาทิตย์)
                   </span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1259,10 +1291,10 @@ export default function PMMonthlyScheduleView({
                   onClick={handleAutoGenerate}
                   disabled={savingSchedule}
                   className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 shadow-xs cursor-pointer"
-                  title="สร้างตารางแผน PM 3 วันต่อเครื่องให้อัตโนมัติ โดยข้ามวันอาทิตย์"
+                  title={`สร้างตารางแผน PM ${daysPerMachine} วันต่อเครื่องให้อัตโนมัติ โดยข้ามวันอาทิตย์`}
                 >
                   <Sparkles size={14} />
-                  <span>สร้างแผนอัตโนมัติ (3 วัน/เครื่อง)</span>
+                  <span>สร้างแผนอัตโนมัติ ({daysPerMachine} วัน/เครื่อง)</span>
                 </button>
               )}
               <button
@@ -1613,7 +1645,7 @@ export default function PMMonthlyScheduleView({
                     <span className="font-bold text-slate-500 dark:text-slate-400">สัญลักษณ์แถบสี:</span>
                     <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
                       <span className="w-3 h-3 rounded-md bg-blue-600 shadow-xs inline-block"></span>
-                      <span>แถบแผนงาน (3 วัน)</span>
+                      <span>แถบแผนงาน ({daysPerMachine} วัน)</span>
                     </span>
                     <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
                       <span className="w-3 h-3 rounded-md bg-emerald-500 shadow-xs inline-block"></span>
@@ -1698,7 +1730,7 @@ export default function PMMonthlyScheduleView({
                                   className="btn-primary text-xs px-3.5 py-1.5 inline-flex items-center gap-1.5 cursor-pointer"
                                 >
                                   <Sparkles size={14} />
-                                  <span>คลิกสร้างแผนอัตโนมัติ (3 วัน/เครื่อง)</span>
+                                  <span>คลิกสร้างแผนอัตโนมัติ ({daysPerMachine} วัน/เครื่อง)</span>
                                 </button>
                               )}
                             </div>
@@ -1889,7 +1921,7 @@ export default function PMMonthlyScheduleView({
                       <th className="py-2.5 px-3 text-center w-12">ลำดับ</th>
                       <th className="py-2.5 px-3">เครื่องจักร (MC)</th>
                       <th className="py-2.5 px-3">ตำแหน่ง / ประเภท</th>
-                      <th className="py-2.5 px-3">กำหนดตามแผน (3 วันทำการ)</th>
+                      <th className="py-2.5 px-3">{`กำหนดตามแผน (${daysPerMachine} วันทำการ)`}</th>
                       <th className="py-2.5 px-3">ช่วงเวลาทำจริง</th>
                       <th className="py-2.5 px-3">ช่างผู้รับผิดชอบ</th>
                       <th className="py-2.5 px-3">สถานะ</th>
@@ -1916,7 +1948,7 @@ export default function PMMonthlyScheduleView({
                                   className="btn-primary text-xs px-3.5 py-1.5 inline-flex items-center gap-1.5 cursor-pointer"
                                 >
                                   <Sparkles size={14} />
-                                  <span>คลิกสร้างแผนอัตโนมัติ (3 วัน/เครื่อง)</span>
+                                  <span>คลิกสร้างแผนอัตโนมัติ ({daysPerMachine} วัน/เครื่อง)</span>
                                 </button>
                               )}
                             </div>
@@ -1964,7 +1996,7 @@ export default function PMMonthlyScheduleView({
                                     {item.plannedStartDate} → {item.plannedEndDate}
                                   </div>
                                   <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                                    {item.workingDays || 3} วันทำการ (ไม่รวมอาทิตย์)
+                                    {item.workingDays || daysPerMachine || 3} วันทำการ (ไม่รวมอาทิตย์)
                                   </div>
                                 </>
                               ) : (
@@ -2280,7 +2312,7 @@ export default function PMMonthlyScheduleView({
               <span>{selectedItem?.location || '—'} · {selectedItem?.type || '—'}</span>
             </div>
             <div className="flex items-center justify-between text-slate-500">
-              <span>กำหนดตามแผน (3 วัน):</span>
+              <span>กำหนดตามแผน ({selectedItem?.workingDays || daysPerMachine} วัน):</span>
               <span className="font-mono">{selectedItem?.plannedStartDate ? `${selectedItem.plannedStartDate} → ${selectedItem.plannedEndDate}` : '— (ไม่มีแผนล่วงหน้า)'}</span>
             </div>
             {selectedItem?.workOrderId && (
@@ -2484,7 +2516,7 @@ export default function PMMonthlyScheduleView({
       <Modal
         open={generateModalOpen}
         onClose={() => setGenerateModalOpen(false)}
-        title="จัดทำแผน PM รายเดือนอัตโนมัติ (3 วัน/เครื่อง)"
+        title={`จัดทำแผน PM รายเดือนอัตโนมัติ (${genDaysPerMachine} วัน/เครื่อง)`}
         maxWidth="max-w-md"
       >
         <div className="space-y-4 text-xs">
@@ -2494,8 +2526,60 @@ export default function PMMonthlyScheduleView({
               <span>แผนเดือน {THAI_MONTHS[selectedMonth - 1]} {selectedYear}</span>
             </div>
             <p className="text-[11px] opacity-90">
-              ระบบจะจัดสรรเครื่องจักรลงในตาราง 3 วันทำการต่อ 1 เครื่อง (ไม่รวมวันอาทิตย์) โดยดึงหมายเลขเครื่องปัจจุบันจากฐานข้อมูลกระบอกสูบ
+              ระบบจะจัดสรรเครื่องจักรลงในตาราง {genDaysPerMachine} วันทำการต่อ 1 เครื่อง (ไม่รวมวันอาทิตย์) โดยดึงหมายเลขเครื่องปัจจุบันจากฐานข้อมูลกระบอกสูบ
             </p>
+          </div>
+
+          {/* Days Per Machine Configuration (กำหนดจำนวนวันต่อเครื่อง) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Clock size={14} className="text-blue-600 dark:text-blue-400" />
+                <span>กำหนดจำนวนวันทำการต่อเครื่อง:</span>
+              </label>
+              <span className="font-bold font-mono text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
+                {genDaysPerMachine} วัน/เครื่อง
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-5 gap-1.5">
+              {[1, 2, 3, 4, 5].map(num => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setGenDaysPerMachine(num)}
+                  className={`py-2 px-1.5 rounded-xl border font-bold text-center transition-all cursor-pointer text-xs ${
+                    genDaysPerMachine === num
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-400/40'
+                      : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                  }`}
+                >
+                  <span>{num} วัน</span>
+                  {num === 3 && <span className="block text-[9px] font-normal opacity-80">(ปกติ)</span>}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Input for N days */}
+            <div className="flex items-center justify-between gap-2 pt-0.5 text-[11px] text-slate-500">
+              <span>หรือกำหนดจำนวนวันเอง:</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={genDaysPerMachine}
+                  onChange={e => {
+                    const val = parseInt(e.target.value, 10)
+                    if (!isNaN(val) && val >= 1 && val <= 31) {
+                      setGenDaysPerMachine(val)
+                    }
+                  }}
+                  className="w-16 px-2 py-1 text-center font-bold font-mono text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="font-medium text-slate-600 dark:text-slate-300">วัน/เครื่อง</span>
+              </div>
+            </div>
           </div>
 
           {/* Location Multi-Select Options */}
@@ -2571,7 +2655,7 @@ export default function PMMonthlyScheduleView({
                 <div className="flex items-center justify-between">
                   <span>จำนวนบล็อกแผนงานในเดือนนี้:</span>
                   <span className="font-bold font-mono text-blue-600 dark:text-blue-400">
-                    {Math.floor(getMonthlyWorkingDays(selectedYear, selectedMonth).length / 3)} บล็อก (3 วัน/บล็อก)
+                    {`${Math.floor(getMonthlyWorkingDays(selectedYear, selectedMonth).length / genDaysPerMachine)} บล็อก (${genDaysPerMachine} วัน/บล็อก)`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 dark:border-slate-700/80">
