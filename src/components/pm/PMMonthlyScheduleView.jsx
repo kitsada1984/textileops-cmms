@@ -27,7 +27,7 @@ import {
   Tag,
 } from 'lucide-react'
 import { format, parseISO, isAfter, isBefore, startOfDay } from 'date-fns'
-import { AppConfigAPI, WorkOrderAPI, CylinderAPI, isSystemWorkOrder } from '../../api/entities'
+import { AppConfigAPI, WorkOrderAPI, CylinderAPI, PMPlanAPI, countWorkingDaysExcludingSundays, isSystemWorkOrder } from '../../api/entities'
 import { useToast } from '../ui/Toast'
 import Modal from '../ui/Modal'
 
@@ -77,6 +77,87 @@ export function matchesLocation(itemLocation = '', selectedLocations = []) {
     return normItem === normSel
   })
 }
+/**
+ * Calculates working days countdown to Next PM Date (skipping Sundays).
+ * Returns { days, label, color }. Negative days mean overdue ("เกิน X วัน").
+ */
+export function getPMCountdown(date) {
+  if (!date) return { days: null, label: '—', color: 'gray' }
+  const target = startOfDay(new Date(date))
+  const today = startOfDay(new Date())
+  if (isNaN(target.getTime())) return { days: null, label: '—', color: 'gray' }
+
+  const workingDays = countWorkingDaysExcludingSundays(today, target)
+
+  if (workingDays > 0) return { days: workingDays, label: `เหลือ ${workingDays} วัน`, color: 'green' }
+  if (workingDays === 0) return { days: 0, label: 'ครบกำหนดวันนี้', color: 'yellow' }
+  return { days: workingDays, label: `เกิน ${Math.abs(workingDays)} วัน`, color: 'red' }
+}
+
+/**
+ * Augments a machine with its Next_PM_Date and countdown priority from PM Plan master list.
+ */
+export function augmentMachineWithPMPlan(machine, pmPlans = []) {
+  if (!machine) return machine
+  const mc = String(machine.NewMC || machine.mc || machine.Machine_MC || '').trim().toUpperCase()
+  const ki = String(machine.Serial_OLD || machine.ki || machine.Machine_KI || '').trim().toUpperCase()
+
+  let matchedPlan = null
+  if (Array.isArray(pmPlans) && pmPlans.length > 0) {
+    if (ki) {
+      matchedPlan = pmPlans.find(p => {
+        const pKI = String(p.Machine_KI || p.ki || p.Serial_OLD || '').trim().toUpperCase()
+        return pKI && pKI === ki
+      })
+    }
+    if (!matchedPlan && mc) {
+      matchedPlan = pmPlans.find(p => {
+        const pMC = String(p.Machine_MC || p.mc || p.NewMC || '').trim().toUpperCase()
+        return pMC && pMC === mc
+      })
+    }
+  }
+
+  const nextPmDate = matchedPlan?.Next_PM_Date || machine?.nextPmDate || machine?.Next_PM_Date || ''
+  const lastPmDate = matchedPlan?.Last_PM_Date || machine?.lastPmDate || machine?.Last_PM_Date || ''
+  const countdown = getPMCountdown(nextPmDate)
+
+  return {
+    ...machine,
+    nextPmDate,
+    lastPmDate,
+    countdownDays: countdown.days,
+    countdownLabel: countdown.label,
+    countdownColor: countdown.color,
+  }
+}
+
+/**
+ * Sorts machines by Countdown Priority:
+ * Most Overdue First (e.g. -100 days > -98 days > 0 days > +5 days > null / no plan).
+ * Tie-breaker: natural sorting by machine code.
+ */
+export function sortMachinesByCountdownPriority(machines = []) {
+  return [...machines].sort((a, b) => {
+    const daysA = typeof a.countdownDays === 'number' ? a.countdownDays : null
+    const daysB = typeof b.countdownDays === 'number' ? b.countdownDays : null
+
+    if (daysA !== null && daysB !== null) {
+      if (daysA !== daysB) {
+        return daysA - daysB // Ascending: -100 comes before -98, which comes before 0, which comes before 5
+      }
+    } else if (daysA !== null) {
+      return -1
+    } else if (daysB !== null) {
+      return 1
+    }
+
+    const mcA = String(a.mc || a.NewMC || a.Machine_MC || '')
+    const mcB = String(b.mc || b.NewMC || b.Machine_MC || '')
+    return mcA.localeCompare(mcB, undefined, { numeric: true, sensitivity: 'base' })
+  })
+}
+
 
 
 /**
@@ -238,12 +319,21 @@ export function resolveItemMachine(item, cylindersOrMachines = []) {
     ? String(matched?.Type || matched?.type || '').trim()
     : item.type
 
+  const resolvedNextPmDate = (matched && (matched.nextPmDate || matched.Next_PM_Date)) || item.nextPmDate || ''
+  const resolvedLastPmDate = (matched && (matched.lastPmDate || matched.Last_PM_Date)) || item.lastPmDate || ''
+  const countdown = getPMCountdown(resolvedNextPmDate)
+
   return {
     ...item,
     mc: resolvedMC,
     ki: resolvedKI,
     location: resolvedLocation,
     type: resolvedType,
+    nextPmDate: resolvedNextPmDate,
+    lastPmDate: resolvedLastPmDate,
+    countdownDays: countdown.days,
+    countdownLabel: countdown.label,
+    countdownColor: countdown.color,
   }
 }
 
@@ -359,20 +449,29 @@ export function syncWorkOrdersToMonthlyPlan(
  * Auto-generates a 1-month PM plan (3 working days per machine, skipping Sundays).
  * Accurately extracts machine codes from active in-use machines list.
  */
-export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], selectedLocations = ['ALL']) {
+export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], selectedLocations = ['ALL'], pmPlans = []) {
   const workingDays = getMonthlyWorkingDays(year, month1Indexed)
   const blocks = buildThreeDayBlocks(workingDays)
   const monthKey = `${year}-${String(month1Indexed).padStart(2, '0')}`
 
   // Pick unique machines from available machines list or fallback to stored in-use machines
   const fallback = getStoredInUseMachinesFallback()
-  const allMachines = (Array.isArray(machines) && machines.length > 0)
+  const rawMachines = (Array.isArray(machines) && machines.length > 0)
     ? machines
     : fallback
 
+  // Augment with PM Plans if needed
+  const allMachines = rawMachines.map(m => {
+    if (typeof m.countdownDays === 'number' && m.countdownLabel) return m
+    return augmentMachineWithPMPlan(m, pmPlans)
+  })
+
   // Filter by selected locations if specified
   const filteredByLoc = allMachines.filter(m => matchesLocation(m.location, selectedLocations))
-  const availableMachines = filteredByLoc.length > 0 ? filteredByLoc : allMachines
+  const candidateMachines = filteredByLoc.length > 0 ? filteredByLoc : allMachines
+
+  // Sort by Countdown Priority (Most Overdue First: -100 days > -98 days > 0 > +5 > null)
+  const availableMachines = sortMachinesByCountdownPriority(candidateMachines)
 
   return blocks.map((block, idx) => {
     const machine = availableMachines.length > 0
@@ -382,6 +481,11 @@ export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], 
     const ki = machine?.Serial_OLD || machine?.ki || machine?.Machine_KI || ''
     const location = machine?.Location || machine?.location || 'GMK1'
     const type = machine?.Type || machine?.type || 'Double'
+    const nextPmDate = machine?.nextPmDate || ''
+    const lastPmDate = machine?.lastPmDate || ''
+    const countdownDays = machine?.countdownDays ?? null
+    const countdownLabel = machine?.countdownLabel || ''
+    const countdownColor = machine?.countdownColor || 'gray'
 
     return {
       id: `PMSCH-${monthKey.replace('-', '')}-${String(idx + 1).padStart(2, '0')}`,
@@ -389,6 +493,11 @@ export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], 
       ki,
       location,
       type,
+      nextPmDate,
+      lastPmDate,
+      countdownDays,
+      countdownLabel,
+      countdownColor,
       plannedStartDate: block.startDate,
       plannedEndDate: block.endDate,
       actualStartDate: '',
@@ -461,8 +570,11 @@ export function calculateMonthlyStats(items = []) {
   }
 }
 
+const EMPTY_DEFAULT_ARRAY = Object.freeze([])
+
 export default function PMMonthlyScheduleView({
-  machinesList = [],
+  machinesList = EMPTY_DEFAULT_ARRAY,
+  pmPlansList = EMPTY_DEFAULT_ARRAY,
   onBackToPlan,
   canEdit = true,
   canAdd = true,
@@ -497,12 +609,42 @@ export default function PMMonthlyScheduleView({
       .catch(() => {})
   }, [machinesList])
 
-  // Combined active machines list with local storage fallback
+  // Remote PM Plans state for standalone routing
+  const [remotePmPlans, setRemotePmPlans] = useState([])
+  useEffect(() => {
+    if (Array.isArray(pmPlansList) && pmPlansList.length > 0) return
+    PMPlanAPI.list()
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRemotePmPlans(data)
+          try {
+            localStorage.setItem('textileops_tbl_pm_plans', JSON.stringify(data))
+          } catch {}
+        }
+      })
+      .catch(() => {})
+  }, [pmPlansList])
+
+  const effectivePmPlans = useMemo(() => {
+    if (Array.isArray(pmPlansList) && pmPlansList.length > 0) return pmPlansList
+    if (remotePmPlans.length > 0) return remotePmPlans
+    try {
+      const raw = localStorage.getItem('textileops_tbl_pm_plans') || localStorage.getItem('txops_tbl_pm_plans')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch {}
+    return EMPTY_DEFAULT_ARRAY
+  }, [pmPlansList, remotePmPlans])
+
+  // Combined active machines list with local storage fallback and PM Plan augmentation
   const effectiveMachines = useMemo(() => {
-    if (Array.isArray(machinesList) && machinesList.length > 0) return machinesList
-    if (remoteCylinders.length > 0) return remoteCylinders
-    return getStoredInUseMachinesFallback()
-  }, [machinesList, remoteCylinders])
+    const rawList = (Array.isArray(machinesList) && machinesList.length > 0)
+      ? machinesList
+      : (remoteCylinders.length > 0 ? remoteCylinders : getStoredInUseMachinesFallback())
+    return rawList.map(m => augmentMachineWithPMPlan(m, effectivePmPlans))
+  }, [machinesList, remoteCylinders, effectivePmPlans])
 
   // Current Date anchor
   const now = useMemo(() => new Date(), [])
@@ -595,6 +737,9 @@ export default function PMMonthlyScheduleView({
     return days
   }, [selectedYear, selectedMonth, daysInMonth])
 
+  const effectiveMachinesRef = React.useRef(effectiveMachines)
+  effectiveMachinesRef.current = effectiveMachines
+
   // Load schedule for selected year and month with Stale-While-Revalidate
   const loadMonthSchedule = useCallback(async (key) => {
     // 1. Instant cache load from localStorage (0ms first paint)
@@ -604,7 +749,7 @@ export default function PMMonthlyScheduleView({
       if (local) {
         const parsed = JSON.parse(local)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          localParsed = parsed.map(item => resolveItemMachine(item, effectiveMachines))
+          localParsed = parsed.map(item => resolveItemMachine(item, effectiveMachinesRef.current))
           setAllSchedules(prev => ({ ...prev, [key]: localParsed }))
         }
       }
@@ -622,7 +767,7 @@ export default function PMMonthlyScheduleView({
         let parsed = []
         try { parsed = JSON.parse(found.value) } catch { parsed = [] }
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const healed = parsed.map(item => resolveItemMachine(item, effectiveMachines))
+          const healed = parsed.map(item => resolveItemMachine(item, effectiveMachinesRef.current))
           setAllSchedules(prev => ({ ...prev, [key]: healed }))
           try {
             localStorage.setItem(key, JSON.stringify(healed))
@@ -647,7 +792,7 @@ export default function PMMonthlyScheduleView({
     } finally {
       setLoadingSchedule(false)
     }
-  }, [effectiveMachines])
+  }, [])
 
   // Initial load
   useEffect(() => {
@@ -763,14 +908,14 @@ export default function PMMonthlyScheduleView({
     setGenerateModalOpen(true)
   }
 
-  // Confirm generate with selected locations
+  // Confirm generate with selected locations and countdown priority
   const handleConfirmGenerate = () => {
     const candidateMachines = effectiveMachines.filter(m => matchesLocation(m.location, selectedGenLocations))
     const machinesToUse = candidateMachines.length > 0 ? candidateMachines : effectiveMachines
-    const newSchedule = autoGenerateMonthlySchedule(selectedYear, selectedMonth, machinesToUse, selectedGenLocations)
+    const newSchedule = autoGenerateMonthlySchedule(selectedYear, selectedMonth, machinesToUse, selectedGenLocations, effectivePmPlans)
     saveSchedule(newSchedule)
     setGenerateModalOpen(false)
-    toast.success('สร้างแผน PM สำเร็จ', `จัดตาราง ${newSchedule.length} เครื่องตามสถานที่ที่เลือกเรียบร้อย`)
+    toast.success('สร้างแผน PM สำเร็จ', `จัดตาราง ${newSchedule.length} เครื่องตามวันนับถอยหลังมากที่สุดเรียบร้อย`)
   }
 
   // Handle open actual execution update modal
@@ -1582,9 +1727,21 @@ export default function PMMonthlyScheduleView({
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                                  <span>{item.location || '—'}</span>
-                                  {item.type && <span>· {item.type}</span>}
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between gap-1 mt-0.5">
+                                  <div className="flex items-center gap-1">
+                                    <span>{item.location || '—'}</span>
+                                    {item.type && <span>· {item.type}</span>}
+                                  </div>
+                                  {item.countdownLabel && item.countdownLabel !== '—' && (
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full inline-flex items-center shrink-0 ${
+                                      item.countdownColor === 'red' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
+                                      item.countdownColor === 'yellow' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                                      item.countdownColor === 'green' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                      'bg-slate-500/10 text-slate-400'
+                                    }`} title={item.nextPmDate ? `Next PM: ${item.nextPmDate}` : 'ไม่มีข้อมูล Next PM'}>
+                                      {item.countdownLabel}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="w-28 shrink-0 py-2.5 px-2 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1">
@@ -1785,8 +1942,20 @@ export default function PMMonthlyScheduleView({
                               </div>
                             </td>
                             <td className="py-2.5 px-3">
-                              <span className="text-slate-600 dark:text-slate-300 font-medium">{item.location || '—'}</span>
-                              {item.type && <span className="ml-1 text-[10px] text-slate-400">· {item.type}</span>}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-slate-600 dark:text-slate-300 font-medium">{item.location || '—'}</span>
+                                {item.type && <span className="text-[10px] text-slate-400">· {item.type}</span>}
+                                {item.countdownLabel && item.countdownLabel !== '—' && (
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full inline-flex items-center ${
+                                    item.countdownColor === 'red' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
+                                    item.countdownColor === 'yellow' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                                    item.countdownColor === 'green' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                    'bg-slate-500/10 text-slate-400'
+                                  }`} title={item.nextPmDate ? `Next PM: ${item.nextPmDate}` : 'ไม่มีข้อมูล Next PM'}>
+                                    {item.countdownLabel}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-2.5 px-3">
                               {item.plannedStartDate ? (
@@ -2388,8 +2557,11 @@ export default function PMMonthlyScheduleView({
           {(() => {
             const candidateMachines = effectiveMachines.filter(m => matchesLocation(m.location, selectedGenLocations))
             const count = candidateMachines.length
+            const sorted = sortMachinesByCountdownPriority(candidateMachines)
+            const overdueList = sorted.filter(m => typeof m.countdownDays === 'number' && m.countdownDays < 0)
+            const top3 = sorted.slice(0, 3)
             return (
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5 text-slate-600 dark:text-slate-300 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2 text-slate-600 dark:text-slate-300 text-xs">
                 <div className="flex items-center justify-between">
                   <span>เครื่องจักรที่ถูกเลือก:</span>
                   <span className="font-bold font-mono text-slate-900 dark:text-slate-100 text-sm">
@@ -2402,6 +2574,41 @@ export default function PMMonthlyScheduleView({
                     {Math.floor(getMonthlyWorkingDays(selectedYear, selectedMonth).length / 3)} บล็อก (3 วัน/บล็อก)
                   </span>
                 </div>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 dark:border-slate-700/80">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                    <span>เครื่องเกินกำหนด (Overdue):</span>
+                  </span>
+                  <span className={`font-bold font-mono ${overdueList.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}>
+                    {overdueList.length} เครื่อง
+                  </span>
+                </div>
+                {top3.length > 0 && (
+                  <div className="pt-1.5 space-y-1">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      ลำดับความเร่งด่วนสูงสุด (จัดลงแผนก่อน):
+                    </div>
+                    <div className="space-y-1">
+                      {top3.map((m, idx) => (
+                        <div key={m.mc || idx} className="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-slate-400 text-[10px]">#{idx + 1}</span>
+                            <span className="font-bold text-slate-900 dark:text-slate-100">{m.mc}</span>
+                            <span className="text-[10px] text-slate-400">({m.location || '—'})</span>
+                          </div>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                            m.countdownColor === 'red' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
+                            m.countdownColor === 'yellow' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                            m.countdownColor === 'green' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                            'bg-slate-500/10 text-slate-400'
+                          }`}>
+                            {m.countdownLabel || '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })()}

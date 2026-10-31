@@ -13,6 +13,9 @@ import PMMonthlyScheduleView, {
   syncWorkOrdersToMonthlyPlan,
   AVAILABLE_LOCATIONS,
   matchesLocation,
+  getPMCountdown,
+  augmentMachineWithPMPlan,
+  sortMachinesByCountdownPriority,
   THAI_MONTHS,
   SHORT_THAI_MONTHS,
 } from './PMMonthlyScheduleView'
@@ -26,6 +29,29 @@ vi.mock('../../api/entities', () => ({
   },
   WorkOrderAPI: {
     list: vi.fn().mockResolvedValue([]),
+  },
+  PMPlanAPI: {
+    list: vi.fn().mockResolvedValue([]),
+  },
+  CylinderAPI: {
+    list: vi.fn().mockResolvedValue([]),
+  },
+  countWorkingDaysExcludingSundays: (startDate, targetDate) => {
+    if (!startDate || !targetDate) return 0
+    const start = new Date(startDate)
+    const end = new Date(targetDate)
+    start.setHours(0, 0, 0, 0)
+    end.setHours(0, 0, 0, 0)
+    if (start.getTime() === end.getTime()) return 0
+    const isFuture = end > start
+    let current = isFuture ? new Date(start) : new Date(end)
+    const stop = isFuture ? new Date(end) : new Date(start)
+    let workingDays = 0
+    while (current < stop) {
+      current.setDate(current.getDate() + 1)
+      if (current.getDay() !== 0) workingDays++
+    }
+    return isFuture ? workingDays : -workingDays
   },
   isSystemWorkOrder: vi.fn().mockReturnValue(false),
 }))
@@ -610,5 +636,98 @@ describe('Location Toolbar Filter & Modal UI Interaction', () => {
     // Confirm button shows total machines
     const confirmBtn = screen.getByRole('button', { name: /ยืนยันสร้างแผนงาน/ })
     expect(confirmBtn).toBeInTheDocument()
+  })
+})
+
+describe('Countdown Priority & Most Overdue First Scheduling Logic', () => {
+  it('getPMCountdown calculates overdue, today, and future working days accurately', () => {
+    // Empty or invalid date
+    expect(getPMCountdown(null)).toEqual({ days: null, label: '—', color: 'gray' })
+    expect(getPMCountdown('')).toEqual({ days: null, label: '—', color: 'gray' })
+
+    // Date in the past (overdue): e.g. 100 days ago
+    const pastDate = new Date()
+    pastDate.setDate(pastDate.getDate() - 150)
+    const overdueRes = getPMCountdown(pastDate.toISOString().slice(0, 10))
+    expect(overdueRes.color).toBe('red')
+    expect(overdueRes.days).toBeLessThan(0)
+    expect(overdueRes.label).toMatch(/^เกิน \d+ วัน$/)
+
+    // Date today
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const todayRes = getPMCountdown(todayStr)
+    expect(todayRes.color).toBe('yellow')
+    expect(todayRes.days).toBe(0)
+    expect(todayRes.label).toBe('ครบกำหนดวันนี้')
+
+    // Date in the future (remaining)
+    const futureDate = new Date()
+    futureDate.setDate(futureDate.getDate() + 30)
+    const futureRes = getPMCountdown(futureDate.toISOString().slice(0, 10))
+    expect(futureRes.color).toBe('green')
+    expect(futureRes.days).toBeGreaterThan(0)
+    expect(futureRes.label).toMatch(/^เหลือ \d+ วัน$/)
+  })
+
+  it('sortMachinesByCountdownPriority places most overdue machines first (-100 > -98 > 0 > +5 > null)', () => {
+    const rawList = [
+      { mc: 'MC-FUTURE', countdownDays: 10, countdownLabel: 'เหลือ 10 วัน' },
+      { mc: 'MC-NO-DATE', countdownDays: null, countdownLabel: '—' },
+      { mc: 'MC-OVERDUE-98', countdownDays: -98, countdownLabel: 'เกิน 98 วัน' },
+      { mc: 'MC-TODAY', countdownDays: 0, countdownLabel: 'ครบกำหนดวันนี้' },
+      { mc: 'MC-OVERDUE-100', countdownDays: -100, countdownLabel: 'เกิน 100 วัน' },
+    ]
+
+    const sorted = sortMachinesByCountdownPriority(rawList)
+    const names = sorted.map(m => m.mc)
+
+    expect(names).toEqual([
+      'MC-OVERDUE-100',
+      'MC-OVERDUE-98',
+      'MC-TODAY',
+      'MC-FUTURE',
+      'MC-NO-DATE',
+    ])
+  })
+
+  it('augmentMachineWithPMPlan matches machine by KI or MC and attaches countdown info', () => {
+    const pmPlans = [
+      { Machine_KI: 'KI-66936', Machine_MC: 'DA-306M', Next_PM_Date: '2026-06-15', Last_PM_Date: '2026-05-15' },
+    ]
+
+    const machine = { mc: 'DA-306M', ki: 'KI-66936', location: 'GK3', type: 'D' }
+    const augmented = augmentMachineWithPMPlan(machine, pmPlans)
+
+    expect(augmented.nextPmDate).toBe('2026-06-15')
+    expect(augmented.lastPmDate).toBe('2026-05-15')
+    expect(augmented.countdownDays).toBeLessThan(0)
+    expect(augmented.countdownLabel).toMatch(/^เกิน \d+ วัน$/)
+    expect(augmented.countdownColor).toBe('red')
+  })
+
+  it('autoGenerateMonthlySchedule places the most overdue machine in the very first block', () => {
+    const machines = [
+      { mc: 'MC-NORMAL', ki: '001', location: 'GK1', countdownDays: 5, countdownLabel: 'เหลือ 5 วัน' },
+      { mc: 'MC-OVERDUE-100', ki: '002', location: 'GK3', countdownDays: -100, countdownLabel: 'เกิน 100 วัน' },
+      { mc: 'MC-OVERDUE-98', ki: '003', location: 'GK1', countdownDays: -98, countdownLabel: 'เกิน 98 วัน' },
+    ]
+
+    const sched = autoGenerateMonthlySchedule(2026, 10, machines, ['ALL'])
+    expect(sched.length).toBeGreaterThanOrEqual(3)
+
+    // Block 1 (Day 1-3) MUST have the most overdue machine (MC-OVERDUE-100)
+    expect(sched[0].mc).toBe('MC-OVERDUE-100')
+    expect(sched[0].plannedStartDate).toBe('2026-10-01')
+    expect(sched[0].plannedEndDate).toBe('2026-10-03')
+    expect(sched[0].countdownLabel).toBe('เกิน 100 วัน')
+
+    // Block 2 (Day 5-7, skipping Sunday Oct 4) MUST have the second most overdue machine (MC-OVERDUE-98)
+    expect(sched[1].mc).toBe('MC-OVERDUE-98')
+    expect(sched[1].plannedStartDate).toBe('2026-10-05')
+    expect(sched[1].plannedEndDate).toBe('2026-10-07')
+    expect(sched[1].countdownLabel).toBe('เกิน 98 วัน')
+
+    // Block 3 MUST have MC-NORMAL
+    expect(sched[2].mc).toBe('MC-NORMAL')
   })
 })

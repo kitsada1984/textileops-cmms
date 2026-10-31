@@ -1561,6 +1561,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       ) : activeTab === 'monthly_schedule' ? (
         <PMMonthlyScheduleView
           machinesList={activeInUseMachines}
+          pmPlansList={cylinderDrivenPMRows}
           onBackToPlan={() => setActiveTab('plan')}
           canEdit={canEdit}
           canAdd={canAdd}
