@@ -4,6 +4,7 @@ import {
   Trash2,
   RefreshCw,
   Calendar,
+  CalendarRange,
   ScrollText,
   Layers,
   Target,
@@ -41,7 +42,8 @@ import { uploadMedia } from '../modules/media'
 import { useAuth } from '../contexts/AuthContext'
 import PMLog from './PMLog'
 import CenterCheck from './CenterCheck'
-import NeedleCondition from './NeedleCondition'
+import NeedleCondition from './NeedleCondition'
+import PMMonthlyScheduleView from '../components/pm/PMMonthlyScheduleView'
 import PdfPreviewModal from '../components/ui/PdfPreviewModal'
 import { generatePMPlanPdfProps } from '../utils/pdfDocGenerators'
 import ImagePreviewModal from '../components/ui/ImagePreviewModal'
@@ -1494,6 +1496,20 @@ export default function PMPlan({ defaultTab = 'plan' }) {
           <span className="sm:hidden">Log PM</span>
           <span className="hidden sm:inline">ประวัติ Log PM (PM Log)</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('monthly_schedule')}
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
+            activeTab === 'monthly_schedule'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <CalendarRange size={15} />
+          <span className="sm:hidden">แผนรายเดือน</span>
+          <span className="hidden sm:inline">จัดทำแผน PM รายเดือน (Monthly Schedule)</span>
+        </button>
       </div>
 
       {activeTab === 'center_check' ? (
@@ -1510,6 +1526,14 @@ export default function PMPlan({ defaultTab = 'plan' }) {
         <NeedleCondition />
       ) : activeTab === 'log' ? (
         <PMLog />
+      ) : activeTab === 'monthly_schedule' ? (
+        <PMMonthlyScheduleView
+          machinesList={cylinderPMSource}
+          onBackToPlan={() => setActiveTab('plan')}
+          canEdit={canEdit}
+          canAdd={canAdd}
+          canDelete={canDelete}
+        />
       ) : (
         <>
           {/* ── TYPE FILTER CARDS (การ์ดประเภทใน Filter) ─────────────── */}

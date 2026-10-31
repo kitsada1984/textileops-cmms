@@ -142,6 +142,7 @@ function PageRoutes() {
           <Route path="/repair-requests" element={<ProtectedRoute permKey="workorders"><WorkOrders defaultTab="repair_requests" /></ProtectedRoute>} />
           <Route path="/pm"           element={<ProtectedRoute permKey="pm"><PMPlan /></ProtectedRoute>} />
           <Route path="/pm-log"       element={<ProtectedRoute permKey="pm"><PMPlan defaultTab="log" /></ProtectedRoute>} />
+          <Route path="/pm-monthly"   element={<ProtectedRoute permKey="pm"><PMPlan defaultTab="monthly_schedule" /></ProtectedRoute>} />
           <Route path="/center-check" element={<ProtectedRoute permKey="pm"><PMPlan defaultTab="center_check" /></ProtectedRoute>} />
           <Route path="/needle-condition" element={<ProtectedRoute permKey="pm"><PMPlan defaultTab="needle" /></ProtectedRoute>} />
           <Route path="/design-bom"   element={<ProtectedRoute permKey="designbom"><DesignBom /></ProtectedRoute>} />
