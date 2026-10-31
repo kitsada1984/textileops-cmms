@@ -6,6 +6,7 @@ import PMMonthlyScheduleView, {
   buildThreeDayBlocks,
   autoGenerateMonthlySchedule,
   calculateMonthlyStats,
+  getItemDayRange,
   getStatusMeta,
   THAI_MONTHS,
   SHORT_THAI_MONTHS,
@@ -15,7 +16,8 @@ import PMMonthlyScheduleView, {
 vi.mock('../../api/entities', () => ({
   AppConfigAPI: {
     list: vi.fn().mockResolvedValue([]),
-    upsertBy: vi.fn().mockResolvedValue({ ok: true }),
+    create: vi.fn().mockResolvedValue({ ok: true }),
+    update: vi.fn().mockResolvedValue({ ok: true }),
   },
 }))
 
@@ -61,28 +63,52 @@ describe('PMMonthlyScheduleView - 3 Days/Machine Schedule Algorithm & Math', () 
     expect(blocks[1].workingDaysCount).toBe(3)
   })
 
-  it('autoGenerateMonthlySchedule generates a complete 1-month plan assigning machines', () => {
-    const mockMachines = [
-      { Machine_MC: 'MC-01', Machine_KI: 'KI-101', Location: 'GMK1', Type: 'Double', Assigned_Tech: 'ช.หนึ่ง' },
-      { Machine_MC: 'MC-02', Machine_KI: 'KI-102', Location: 'GMK1', Type: 'Single', Assigned_Tech: 'ช.ตั้ม' },
-      { Machine_MC: 'MC-03', Machine_KI: 'KI-103', Location: 'GMK3', Type: 'Double', Assigned_Tech: 'ช.หนุ่ม' },
+  it('getItemDayRange calculates startDay, endDay and span for timeline grid', () => {
+    const item = {
+      plannedStartDate: '2026-10-01',
+      plannedEndDate: '2026-10-03',
+    }
+    const range = getItemDayRange(item, 2026, 10, 31)
+    expect(range).not.toBeNull()
+    expect(range.startDay).toBe(1)
+    expect(range.endDay).toBe(3)
+    expect(range.span).toBe(3)
+
+    const middleItem = {
+      plannedStartDate: '2026-10-15',
+      plannedEndDate: '2026-10-17',
+    }
+    const middleRange = getItemDayRange(middleItem, 2026, 10, 31)
+    expect(middleRange.startDay).toBe(15)
+    expect(middleRange.endDay).toBe(17)
+    expect(middleRange.span).toBe(3)
+  })
+
+  it('autoGenerateMonthlySchedule extracts real active machine codes correctly', () => {
+    // Current machines from in-use cylinders
+    const mockInUseMachines = [
+      { mc: 'DB-3014M', ki: '81798', location: 'GMK1', type: 'Double' },
+      { mc: 'MC-02', ki: '81144', location: 'GMK1', type: 'Single' },
+      { mc: 'MC-10', ki: '55201', location: 'GMK3', type: 'Double' },
     ]
 
-    const schedule = autoGenerateMonthlySchedule(2026, 10, mockMachines)
+    const schedule = autoGenerateMonthlySchedule(2026, 10, mockInUseMachines)
     expect(schedule).toHaveLength(9)
 
-    expect(schedule[0].mc).toBe('MC-01')
+    expect(schedule[0].mc).toBe('DB-3014M')
+    expect(schedule[0].ki).toBe('81798')
     expect(schedule[0].plannedStartDate).toBe('2026-10-01')
     expect(schedule[0].plannedEndDate).toBe('2026-10-03')
     expect(schedule[0].status).toBe('SCHEDULED')
     expect(schedule[0].workingDays).toBe(3)
 
     expect(schedule[1].mc).toBe('MC-02')
+    expect(schedule[1].ki).toBe('81144')
     expect(schedule[1].plannedStartDate).toBe('2026-10-05')
     expect(schedule[1].plannedEndDate).toBe('2026-10-07')
 
-    expect(schedule[2].mc).toBe('MC-03')
-    expect(schedule[3].mc).toBe('MC-01') // wraps around
+    expect(schedule[2].mc).toBe('MC-10')
+    expect(schedule[3].mc).toBe('DB-3014M') // wraps around
   })
 
   it('calculateMonthlyStats calculates completion rate and SLA on-time metrics', () => {
@@ -115,8 +141,8 @@ describe('PMMonthlyScheduleView - 3 Days/Machine Schedule Algorithm & Math', () 
 
 describe('PMMonthlyScheduleView UI Component', () => {
   const mockMachines = [
-    { Machine_MC: 'MC-01', Machine_KI: 'KI-101', Location: 'GMK1' },
-    { Machine_MC: 'MC-02', Machine_KI: 'KI-102', Location: 'GMK3' },
+    { mc: 'DB-3014M', ki: '81798', location: 'GMK1', type: 'Double' },
+    { mc: 'MC-02', ki: '81144', location: 'GMK3', type: 'Single' },
   ]
 
   beforeEach(() => {
@@ -129,7 +155,7 @@ describe('PMMonthlyScheduleView UI Component', () => {
     render(<PMMonthlyScheduleView machinesList={mockMachines} />)
 
     expect(screen.getByText(/จัดทำแผน PM รายเดือน/)).toBeInTheDocument()
-    expect(screen.getByText('แผนประจำเดือน')).toBeInTheDocument()
+    expect(screen.getByText('แผนรายเดือน')).toBeInTheDocument()
     expect(screen.getByText('สรุปภาพรวมทั้งปี (12 เดือน)')).toBeInTheDocument()
 
     // 12 month buttons are rendered
@@ -138,11 +164,40 @@ describe('PMMonthlyScheduleView UI Component', () => {
     })
 
     // KPI cards are present
-    expect(screen.getByText('แผนทั้งหมด')).toBeInTheDocument()
-    expect(screen.getByText('เสร็จสิ้น')).toBeInTheDocument()
+    expect(screen.getByText('ทั้งหมดในแผน')).toBeInTheDocument()
+    expect(screen.getByText('เสร็จสมบูรณ์')).toBeInTheDocument()
     expect(screen.getByText('กำลังทำ')).toBeInTheDocument()
-    expect(screen.getByText('ล่าช้า/เกินกำหนด')).toBeInTheDocument()
-    expect(screen.getByText('ความสำเร็จเดือนนี้')).toBeInTheDocument()
+    expect(screen.getByText('ล่าช้ากว่าแผน')).toBeInTheDocument()
+    expect(screen.getByText('อัตราความสำเร็จ')).toBeInTheDocument()
+  })
+
+  it('renders Timeline Gantt view by default with legend and supports switching to List view', async () => {
+    render(<PMMonthlyScheduleView machinesList={mockMachines} />)
+
+    // Check View Mode Switcher buttons
+    const timelineBtn = screen.getByRole('button', { name: /แถบเวลา \(Timeline\)/ })
+    const listBtn = screen.getByRole('button', { name: /ตารางรายการ/ })
+    expect(timelineBtn).toBeInTheDocument()
+    expect(listBtn).toBeInTheDocument()
+
+    // Check Timeline Legend
+    expect(screen.getByText(/วันอาทิตย์ \(วันหยุด ไม่นับวันทำงาน\)/)).toBeInTheDocument()
+
+    // Generate schedule
+    const autoGenBtn = screen.getByRole('button', { name: /สร้างแผนอัตโนมัติ/ })
+    fireEvent.click(autoGenBtn)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('DB-3014M').length).toBeGreaterThan(0)
+    })
+
+    // Switch to List view
+    fireEvent.click(listBtn)
+    expect(screen.getByText('กำหนดตามแผน (3 วันทำการ)')).toBeInTheDocument()
+
+    // Switch back to Timeline view
+    fireEvent.click(timelineBtn)
+    expect(screen.getByText(/สัญลักษณ์แถบสี:/)).toBeInTheDocument()
   })
 
   it('allows switching to Annual 12-Month Summary view', async () => {
@@ -153,26 +208,12 @@ describe('PMMonthlyScheduleView UI Component', () => {
 
     // Annual view headers are displayed
     expect(screen.getByText(/แผน PM รวมทั้งปี/)).toBeInTheDocument()
-    expect(screen.getByText(/ทำสำเร็จแล้วทั้งปี/)).toBeInTheDocument()
-    expect(screen.getByText(/อัตราความสำเร็จสะสมทั้งปี/)).toBeInTheDocument()
-    expect(screen.getByText(/ตารางเปรียบเทียบผลงาน PM รายเดือน/)).toBeInTheDocument()
+    expect(screen.getByText(/เสร็จสมบูรณ์ทั้งปี/)).toBeInTheDocument()
+    expect(screen.getByText(/ตารางสรุปแผน PM 12 เดือน/)).toBeInTheDocument()
 
     // 12 months rows are listed in the table
     THAI_MONTHS.forEach(name => {
       expect(screen.getAllByText(new RegExp(name)).length).toBeGreaterThan(0)
-    })
-  })
-
-  it('generates auto schedule when clicking create button', async () => {
-    render(<PMMonthlyScheduleView machinesList={mockMachines} />)
-
-    const autoGenBtn = screen.getByRole('button', { name: /สร้างแผนอัตโนมัติ/ })
-    fireEvent.click(autoGenBtn)
-
-    // Items table appears with generated rows
-    await waitFor(() => {
-      expect(screen.getAllByText('MC-01').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('MC-02').length).toBeGreaterThan(0)
     })
   })
 })
