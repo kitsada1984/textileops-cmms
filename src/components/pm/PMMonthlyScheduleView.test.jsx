@@ -11,6 +11,8 @@ import PMMonthlyScheduleView, {
   resolveItemMachine,
   getStoredInUseMachinesFallback,
   syncWorkOrdersToMonthlyPlan,
+  AVAILABLE_LOCATIONS,
+  matchesLocation,
   THAI_MONTHS,
   SHORT_THAI_MONTHS,
 } from './PMMonthlyScheduleView'
@@ -273,6 +275,9 @@ describe('PMMonthlyScheduleView UI Component', () => {
     const autoGenBtn = screen.getByRole('button', { name: /สร้างแผนอัตโนมัติ/ })
     fireEvent.click(autoGenBtn)
 
+    const confirmBtn = screen.getByRole('button', { name: /ยืนยันสร้างแผนงาน/ })
+    fireEvent.click(confirmBtn)
+
     await waitFor(() => {
       expect(screen.getAllByText('DB-3014M').length).toBeGreaterThan(0)
     })
@@ -478,5 +483,132 @@ describe('Dual Timeline View & 3-Mode Filter Controls', () => {
       expect(screen.queryByText(/แผน: DA-306M/)).not.toBeInTheDocument()
       expect(screen.getByText(/จริง: ช่างหนึ่ง/)).toBeInTheDocument()
     })
+  })
+})
+
+describe('matchesLocation & Location Multi-Selection Logic', () => {
+  it('returns true when selectedLocations is empty or includes ALL', () => {
+    expect(matchesLocation('GK1', [])).toBe(true)
+    expect(matchesLocation('GK1', ['ALL'])).toBe(true)
+    expect(matchesLocation('GK3', ['ALL'])).toBe(true)
+    expect(matchesLocation('', ['ALL'])).toBe(true)
+  })
+
+  it('correctly maps GMK1 <-> GK1, GMK3 <-> GK3, GMK4 <-> GK4', () => {
+    expect(matchesLocation('GK1', ['GMK1'])).toBe(true)
+    expect(matchesLocation('GK3', ['GMK3'])).toBe(true)
+    expect(matchesLocation('GK4', ['GMK4'])).toBe(true)
+    expect(matchesLocation('GMK1', ['GMK1'])).toBe(true)
+    expect(matchesLocation('GK1', ['GMK3'])).toBe(false)
+    expect(matchesLocation('GK3', ['GMK1'])).toBe(false)
+  })
+
+  it('supports multi-selection of locations (e.g. GMK1 and GMK3)', () => {
+    const selected = ['GMK1', 'GMK3']
+    expect(matchesLocation('GK1', selected)).toBe(true)
+    expect(matchesLocation('GK3', selected)).toBe(true)
+    expect(matchesLocation('GK4', selected)).toBe(false)
+  })
+
+  it('autoGenerateMonthlySchedule filters machines by selectedLocations', () => {
+    const testMachines = [
+      { mc: 'MC-GK1-A', location: 'GK1', ki: '111', type: 'S' },
+      { mc: 'MC-GK1-B', location: 'GK1', ki: '222', type: 'S' },
+      { mc: 'MC-GK3-A', location: 'GK3', ki: '333', type: 'D' },
+      { mc: 'MC-GK4-A', location: 'GK4', ki: '444', type: 'D' },
+    ]
+
+    // Only GMK1
+    const gmk1Sched = autoGenerateMonthlySchedule(2026, 10, testMachines, ['GMK1'])
+    expect(gmk1Sched.every(item => item.location === 'GK1')).toBe(true)
+    expect(gmk1Sched.some(item => item.mc === 'MC-GK1-A')).toBe(true)
+    expect(gmk1Sched.some(item => item.mc === 'MC-GK3-A')).toBe(false)
+
+    // GMK1 + GMK3
+    const multiSched = autoGenerateMonthlySchedule(2026, 10, testMachines, ['GMK1', 'GMK3'])
+    expect(multiSched.every(item => item.location === 'GK1' || item.location === 'GK3')).toBe(true)
+    expect(multiSched.some(item => item.mc === 'MC-GK4-A')).toBe(false)
+  })
+})
+
+describe('Location Toolbar Filter & Modal UI Interaction', () => {
+  const multiLocMachines = [
+    { mc: 'DA-306M', ki: '66936', location: 'GK3', type: 'D' },
+    { mc: 'SC-368M', ki: '62407', location: 'GK1', type: 'S' },
+    { mc: 'KB-400M', ki: '99999', location: 'GK4', type: 'S' },
+  ]
+
+  beforeEach(() => {
+    localStorage.clear()
+    const now = new Date()
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const schedule = [
+      {
+        id: 'PMSCH-01',
+        mc: 'DA-306M',
+        location: 'GK3',
+        plannedStartDate: '2026-10-01',
+        plannedEndDate: '2026-10-03',
+        status: 'SCHEDULED',
+      },
+      {
+        id: 'PMSCH-02',
+        mc: 'SC-368M',
+        location: 'GK1',
+        plannedStartDate: '2026-10-05',
+        plannedEndDate: '2026-10-07',
+        status: 'SCHEDULED',
+      },
+    ]
+    localStorage.setItem(`pm_monthly_schedule_${monthKey}`, JSON.stringify(schedule))
+  })
+
+  it('renders location filter chips on toolbar and filters items when clicked', async () => {
+    render(<PMMonthlyScheduleView machinesList={multiLocMachines} />)
+
+    // Check location chips
+    expect(screen.getByRole('button', { name: /^ทั้งหมด$/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /GMK1/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /GMK3/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /GMK4/ })).toBeInTheDocument()
+
+    // Initially both GMK3 (DA-306M) and GMK1 (SC-368M) are shown
+    await waitFor(() => {
+      expect(screen.getAllByText(/DA-306M/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/SC-368M/).length).toBeGreaterThan(0)
+    })
+
+    // Filter by GMK1
+    const gmk1Chip = screen.getByRole('button', { name: /GMK1/ })
+    fireEvent.click(gmk1Chip)
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/SC-368M/).length).toBeGreaterThan(0)
+      expect(screen.queryAllByText(/DA-306M/).length).toBe(0)
+    })
+
+    // Click 'ทั้งหมด' to reset
+    const allChip = screen.getByRole('button', { name: /^ทั้งหมด$/ })
+    fireEvent.click(allChip)
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/DA-306M/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/SC-368M/).length).toBeGreaterThan(0)
+    })
+  })
+
+  it('opens Location Selection Modal with machine counts when auto-generate button is clicked', async () => {
+    render(<PMMonthlyScheduleView machinesList={multiLocMachines} />)
+
+    const autoGenBtn = screen.getByRole('button', { name: /สร้างแผนอัตโนมัติ/ })
+    fireEvent.click(autoGenBtn)
+
+    // Modal title
+    expect(screen.getByText('จัดทำแผน PM รายเดือนอัตโนมัติ (3 วัน/เครื่อง)')).toBeInTheDocument()
+    expect(screen.getByText(/เลือกสถานที่ \/ โรงงาน/)).toBeInTheDocument()
+
+    // Confirm button shows total machines
+    const confirmBtn = screen.getByRole('button', { name: /ยืนยันสร้างแผนงาน/ })
+    expect(confirmBtn).toBeInTheDocument()
   })
 })

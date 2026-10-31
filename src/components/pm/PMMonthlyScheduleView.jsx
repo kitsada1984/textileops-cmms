@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import {
+  MapPin,
   Calendar,
   CalendarRange,
   Clock,
@@ -54,6 +55,29 @@ export const SCHEDULE_STATUS_OPTIONS = [
 export function getStatusMeta(status = 'SCHEDULED') {
   return SCHEDULE_STATUS_OPTIONS.find(s => s.value === status) || SCHEDULE_STATUS_OPTIONS[0]
 }
+
+export const AVAILABLE_LOCATIONS = [
+  { id: 'GMK1', label: 'GMK1 (โรง 1)', alias: ['GK1', 'GMK1', '1'] },
+  { id: 'GMK3', label: 'GMK3 (โรง 3)', alias: ['GK3', 'GMK3', '3'] },
+  { id: 'GMK4', label: 'GMK4 (โรง 4)', alias: ['GK4', 'GMK4', '4'] },
+]
+
+export function matchesLocation(itemLocation = '', selectedLocations = []) {
+  if (!selectedLocations || selectedLocations.length === 0 || selectedLocations.includes('ALL')) {
+    return true
+  }
+  const normItem = String(itemLocation || '').trim().toUpperCase()
+  return selectedLocations.some((sel) => {
+    const normSel = String(sel || '').trim().toUpperCase()
+    if (normSel === 'ALL') return true
+    const locConfig = AVAILABLE_LOCATIONS.find(l => l.id === normSel)
+    if (locConfig) {
+      return locConfig.alias.some(a => normItem === a || normItem.includes(a))
+    }
+    return normItem === normSel
+  })
+}
+
 
 /**
  * Calculates working days in a month (Monday to Saturday, Day 0 Sunday excluded).
@@ -335,16 +359,20 @@ export function syncWorkOrdersToMonthlyPlan(
  * Auto-generates a 1-month PM plan (3 working days per machine, skipping Sundays).
  * Accurately extracts machine codes from active in-use machines list.
  */
-export function autoGenerateMonthlySchedule(year, month1Indexed, machines = []) {
+export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], selectedLocations = ['ALL']) {
   const workingDays = getMonthlyWorkingDays(year, month1Indexed)
   const blocks = buildThreeDayBlocks(workingDays)
   const monthKey = `${year}-${String(month1Indexed).padStart(2, '0')}`
 
   // Pick unique machines from available machines list or fallback to stored in-use machines
   const fallback = getStoredInUseMachinesFallback()
-  const availableMachines = (Array.isArray(machines) && machines.length > 0)
+  const allMachines = (Array.isArray(machines) && machines.length > 0)
     ? machines
     : fallback
+
+  // Filter by selected locations if specified
+  const filteredByLoc = allMachines.filter(m => matchesLocation(m.location, selectedLocations))
+  const availableMachines = filteredByLoc.length > 0 ? filteredByLoc : allMachines
 
   return blocks.map((block, idx) => {
     const machine = availableMachines.length > 0
@@ -503,6 +531,11 @@ export default function PMMonthlyScheduleView({
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [viewLocationFilter, setViewLocationFilter] = useState(['ALL'])
+
+  // Location Select Pre-Generation Modal State
+  const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [selectedGenLocations, setSelectedGenLocations] = useState(['ALL'])
 
   // Modals state
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
@@ -724,15 +757,20 @@ export default function PMMonthlyScheduleView({
     }
   }
 
-  // Handle Auto-generate schedule
+  // Handle Auto-generate schedule (opens location select modal)
   const handleAutoGenerate = () => {
-    if (currentItems.length > 0) {
-      if (!window.confirm(`มีแผนงานของเดือน ${THAI_MONTHS[selectedMonth - 1]} ${selectedYear} อยู่แล้ว ${currentItems.length} เครื่อง\nคุณต้องการสร้างแผนงานใหม่ทับข้อมูลเดิมหรือไม่?`)) {
-        return
-      }
-    }
-    const newSchedule = autoGenerateMonthlySchedule(selectedYear, selectedMonth, effectiveMachines)
+    setSelectedGenLocations(['ALL'])
+    setGenerateModalOpen(true)
+  }
+
+  // Confirm generate with selected locations
+  const handleConfirmGenerate = () => {
+    const candidateMachines = effectiveMachines.filter(m => matchesLocation(m.location, selectedGenLocations))
+    const machinesToUse = candidateMachines.length > 0 ? candidateMachines : effectiveMachines
+    const newSchedule = autoGenerateMonthlySchedule(selectedYear, selectedMonth, machinesToUse, selectedGenLocations)
     saveSchedule(newSchedule)
+    setGenerateModalOpen(false)
+    toast.success('สร้างแผน PM สำเร็จ', `จัดตาราง ${newSchedule.length} เครื่องตามสถานที่ที่เลือกเรียบร้อย`)
   }
 
   // Handle open actual execution update modal
@@ -899,6 +937,8 @@ export default function PMMonthlyScheduleView({
     return currentItems.filter(item => {
       // Status filter
       if (statusFilter !== 'ALL' && item.status !== statusFilter) return false
+      // Location View Filter
+      if (!matchesLocation(item.location, viewLocationFilter)) return false
       // Search filter
       if (searchQuery) {
         const q = searchQuery.toLowerCase().trim()
@@ -910,7 +950,7 @@ export default function PMMonthlyScheduleView({
       }
       return true
     })
-  }, [currentItems, statusFilter, searchQuery])
+  }, [currentItems, statusFilter, viewLocationFilter, searchQuery])
 
   // Current Month KPI Stats
   const monthlyStats = useMemo(() => {
@@ -1265,6 +1305,55 @@ export default function PMMonthlyScheduleView({
                         }`}
                       >
                         {opt.label} ({count})
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Location Filter Chips */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                  <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 pl-1 pr-0.5 shrink-0 flex items-center gap-1">
+                    <MapPin size={11} />
+                    <span>โรงงาน:</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setViewLocationFilter(['ALL'])}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      viewLocationFilter.includes('ALL')
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                    }`}
+                    title="แสดงเครื่องจักรทุกโรงงาน"
+                  >
+                    ทั้งหมด
+                  </button>
+                  {AVAILABLE_LOCATIONS.map(loc => {
+                    const isSelected = !viewLocationFilter.includes('ALL') && viewLocationFilter.includes(loc.id)
+                    const count = currentItems.filter(i => matchesLocation(i.location, [loc.id])).length
+                    return (
+                      <button
+                        key={loc.id}
+                        type="button"
+                        onClick={() => {
+                          setViewLocationFilter(prev => {
+                            if (prev.includes('ALL')) return [loc.id]
+                            if (prev.includes(loc.id)) {
+                              const next = prev.filter(x => x !== loc.id)
+                              return next.length === 0 ? ['ALL'] : next
+                            }
+                            return [...prev, loc.id]
+                          })
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-xs ring-1 ring-blue-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                        }`}
+                        title={`คลิกเพื่อเลือก/ยกเลิก ${loc.label}`}
+                      >
+                        <span>{loc.id}</span>
+                        <span className="text-[10px] opacity-75 font-mono">({count})</span>
                       </button>
                     )
                   })}
@@ -2220,6 +2309,131 @@ export default function PMMonthlyScheduleView({
             />
           </div>
         </form>
+      </Modal>
+
+      {/* ── LOCATION SELECT PRE-GENERATION MODAL (เลือกสถานที่ก่อนสร้างแผน) ── */}
+      <Modal
+        open={generateModalOpen}
+        onClose={() => setGenerateModalOpen(false)}
+        title="จัดทำแผน PM รายเดือนอัตโนมัติ (3 วัน/เครื่อง)"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200/60 dark:border-blue-800 text-blue-900 dark:text-blue-200 space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-sm">
+              <Sparkles size={16} className="text-blue-600 dark:text-blue-400" />
+              <span>แผนเดือน {THAI_MONTHS[selectedMonth - 1]} {selectedYear}</span>
+            </div>
+            <p className="text-[11px] opacity-90">
+              ระบบจะจัดสรรเครื่องจักรลงในตาราง 3 วันทำการต่อ 1 เครื่อง (ไม่รวมวันอาทิตย์) โดยดึงหมายเลขเครื่องปัจจุบันจากฐานข้อมูลกระบอกสูบ
+            </p>
+          </div>
+
+          {/* Location Multi-Select Options */}
+          <div className="space-y-2">
+            <label className="font-bold text-slate-700 dark:text-slate-300 block">
+              เลือกสถานที่ / โรงงาน (เลือกได้มากกว่า 1 รายการ):
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {/* All Locations button */}
+              <button
+                type="button"
+                onClick={() => setSelectedGenLocations(['ALL'])}
+                className={`p-2.5 rounded-xl border text-left font-bold transition-all cursor-pointer flex flex-col justify-between ${
+                  selectedGenLocations.includes('ALL')
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-400/40'
+                    : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                }`}
+              >
+                <span className="text-xs">ทุกโรงงาน (ทั้งหมด)</span>
+                <span className={`text-[10px] mt-1 ${selectedGenLocations.includes('ALL') ? 'text-blue-100' : 'text-slate-400'}`}>
+                  {effectiveMachines.length} เครื่อง
+                </span>
+              </button>
+
+              {AVAILABLE_LOCATIONS.map(loc => {
+                const isChecked = !selectedGenLocations.includes('ALL') && selectedGenLocations.includes(loc.id)
+                const locCount = effectiveMachines.filter(m => matchesLocation(m.location, [loc.id])).length
+                return (
+                  <button
+                    key={loc.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedGenLocations(prev => {
+                        if (prev.includes('ALL')) return [loc.id]
+                        if (prev.includes(loc.id)) {
+                          const next = prev.filter(x => x !== loc.id)
+                          return next.length === 0 ? ['ALL'] : next
+                        }
+                        return [...prev, loc.id]
+                      })
+                    }}
+                    className={`p-2.5 rounded-xl border text-left font-bold transition-all cursor-pointer flex flex-col justify-between ${
+                      isChecked
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-400/40'
+                        : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="text-xs">{loc.label}</span>
+                    <span className={`text-[10px] mt-1 ${isChecked ? 'text-blue-100' : 'text-slate-400'}`}>
+                      {locCount} เครื่อง
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Summary Box */}
+          {(() => {
+            const candidateMachines = effectiveMachines.filter(m => matchesLocation(m.location, selectedGenLocations))
+            const count = candidateMachines.length
+            return (
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5 text-slate-600 dark:text-slate-300 text-xs">
+                <div className="flex items-center justify-between">
+                  <span>เครื่องจักรที่ถูกเลือก:</span>
+                  <span className="font-bold font-mono text-slate-900 dark:text-slate-100 text-sm">
+                    {count} เครื่อง
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>จำนวนบล็อกแผนงานในเดือนนี้:</span>
+                  <span className="font-bold font-mono text-blue-600 dark:text-blue-400">
+                    {Math.floor(getMonthlyWorkingDays(selectedYear, selectedMonth).length / 3)} บล็อก (3 วัน/บล็อก)
+                  </span>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Warning if existing schedule exists */}
+          {currentItems.length > 0 && (
+            <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[11px] flex items-start gap-2">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600" />
+              <span>มีแผนงานของเดือนนี้อยู่แล้ว {currentItems.length} เครื่อง การสร้างใหม่จะแทนที่ข้อมูลเดิม</span>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setGenerateModalOpen(false)}
+              className="btn-outline px-3 py-1.5 text-xs cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmGenerate}
+              disabled={effectiveMachines.filter(m => matchesLocation(m.location, selectedGenLocations)).length === 0}
+              className="btn-primary px-4 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles size={14} />
+              <span>ยืนยันสร้างแผนงาน ({effectiveMachines.filter(m => matchesLocation(m.location, selectedGenLocations)).length} เครื่อง)</span>
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )
