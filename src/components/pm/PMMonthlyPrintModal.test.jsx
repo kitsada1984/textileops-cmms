@@ -101,11 +101,11 @@ describe('PMMonthlyPrintModal', () => {
     expect(screen.getByText(/3 วันทำการ\/เครื่อง \(ไม่นับวันอาทิตย์\)/)).toBeInTheDocument()
     expect(screen.getByText(/ทุกโซน \/ โรงทอทั้งหมด/)).toBeInTheDocument()
 
-    // KPI Summary Cards
-    expect(screen.getByText('เครื่องทั้งหมดในแผน')).toBeInTheDocument()
-    expect(screen.getByText('เสร็จสมบูรณ์')).toBeInTheDocument()
-    expect(screen.getByText('กำลังดำเนินการ')).toBeInTheDocument()
-    expect(screen.getByText('ตามแผน / รอดำเนินการ')).toBeInTheDocument()
+    // KPI Summary Cards are removed from printable document as requested
+    expect(screen.queryByText('เครื่องทั้งหมดในแผน')).not.toBeInTheDocument()
+    expect(screen.queryByText('เสร็จสมบูรณ์')).not.toBeInTheDocument()
+    expect(screen.queryByText('กำลังดำเนินการ')).not.toBeInTheDocument()
+    expect(screen.queryByText('ตามแผน / รอดำเนินการ')).not.toBeInTheDocument()
 
     // Color Legend
     expect(screen.getByText('สัญลักษณ์แถบสี:')).toBeInTheDocument()

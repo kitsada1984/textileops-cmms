@@ -319,66 +319,7 @@ export default function PMMonthlyPrintModal({
             </div>
           </div>
 
-          {/* ── 2. KPI SUMMARY CARDS ──────────────────────────────── */}
-          <div className="grid grid-cols-4 gap-2 mb-2.5">
-            <div className="p-2 rounded-lg border border-slate-200 bg-slate-50/80 flex items-center justify-between">
-              <div>
-                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
-                  เครื่องทั้งหมดในแผน
-                </div>
-                <div className="text-base font-black text-slate-900 mt-0.5 font-mono">
-                  {items.length} <span className="text-[10px] font-normal text-slate-500">เครื่อง</span>
-                </div>
-              </div>
-              <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                <Cpu size={14} />
-              </div>
-            </div>
-
-            <div className="p-2 rounded-lg border border-emerald-200 bg-emerald-50/50 flex items-center justify-between">
-              <div>
-                <div className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">
-                  เสร็จสมบูรณ์
-                </div>
-                <div className="text-base font-black text-emerald-700 mt-0.5 font-mono">
-                  {stats.completed || 0} <span className="text-[10px] font-normal text-slate-500">({items.length > 0 ? Math.round(((stats.completed || 0) / items.length) * 100) : 0}%)</span>
-                </div>
-              </div>
-              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-                <CheckCircle2 size={14} />
-              </div>
-            </div>
-
-            <div className="p-2 rounded-lg border border-amber-200 bg-amber-50/50 flex items-center justify-between">
-              <div>
-                <div className="text-[9px] font-bold text-amber-700 uppercase tracking-wider">
-                  กำลังดำเนินการ
-                </div>
-                <div className="text-base font-black text-amber-700 mt-0.5 font-mono">
-                  {stats.inProgress || 0} <span className="text-[10px] font-normal text-slate-500">เครื่อง</span>
-                </div>
-              </div>
-              <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-                <Clock size={14} />
-              </div>
-            </div>
-
-            <div className="p-2 rounded-lg border border-slate-200 bg-slate-50/80 flex items-center justify-between">
-              <div>
-                <div className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">
-                  ตามแผน / รอดำเนินการ
-                </div>
-                <div className="text-base font-black text-blue-700 mt-0.5 font-mono">
-                  {stats.scheduled || 0} <span className="text-[10px] font-normal text-slate-500">เครื่อง</span>
-                </div>
-              </div>
-              <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center font-bold">
-                <Calendar size={14} />
-              </div>
-            </div>
-          </div>
-
-          {/* ── 3. COLOR LEGEND (สัญลักษณ์แถบสี) ──────────────────── */}
+          {/* ── 2. COLOR LEGEND (สัญลักษณ์แถบสี) ──────────────────── */}
           <div className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 mb-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] font-medium text-slate-700">
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-bold text-slate-900">สัญลักษณ์แถบสี:</span>
