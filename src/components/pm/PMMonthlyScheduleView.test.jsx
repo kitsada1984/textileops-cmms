@@ -993,4 +993,48 @@ describe('Save Plan, Delete Month Plan, and Item Actions (Edit/Delete)', () => {
     fireEvent.click(editBtn)
     expect(screen.getByText(/แก้ไขแผน: DA-306M/)).toBeInTheDocument()
   })
+
+  it('renders machine code (MC) and countdown badge, but hides serial (KI) and location text from inline view while keeping them in tooltip', () => {
+    const customMachines = [
+      { mc: 'DA-306M', ki: '66936', location: 'GK3', type: 'D', countdownDays: -83, countdownLabel: 'เกิน 83 วัน', countdownColor: 'red' }
+    ]
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const currentMonthKey = `pm_monthly_schedule_${y}-${m}`
+    localStorage.setItem(currentMonthKey, JSON.stringify([
+      {
+        id: 'pm-da306m',
+        mc: 'DA-306M',
+        ki: '66936',
+        location: 'GK3',
+        type: 'D',
+        plannedStartDate: `${y}-${m}-01`,
+        plannedEndDate: `${y}-${m}-03`,
+        startDay: 1,
+        endDay: 3,
+        workingDays: 3,
+        status: 'PENDING',
+        countdownDays: -83,
+        countdownLabel: 'เกิน 83 วัน',
+        countdownColor: 'red',
+        isUnplanned: true
+      }
+    ]))
+
+    render(<PMMonthlyScheduleView machinesList={customMachines} />)
+
+    // Machine code and countdown are visible
+    expect(screen.getByText('DA-306M')).toBeInTheDocument()
+    expect(screen.getByText('เกิน 83 วัน')).toBeInTheDocument()
+    expect(screen.getByText('นอกแผน')).toBeInTheDocument()
+
+    // Serial (66936) and Location (· GK3) are NOT rendered as inline text
+    expect(screen.queryByText('(66936)')).not.toBeInTheDocument()
+    expect(screen.queryByText('· GK3')).not.toBeInTheDocument()
+
+    // But they are preserved in the title attribute for hover discovery
+    const cellWithTitle = screen.getByTitle(/DA-306M \(66936\) \| โรงงาน: GK3/)
+    expect(cellWithTitle).toBeInTheDocument()
+  })
 })

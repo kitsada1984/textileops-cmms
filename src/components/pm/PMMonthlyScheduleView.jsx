@@ -330,7 +330,7 @@ export function resolveItemMachine(item, cylindersOrMachines = []) {
 
   const resolvedNextPmDate = (matched && (matched.nextPmDate || matched.Next_PM_Date)) || item.nextPmDate || ''
   const resolvedLastPmDate = (matched && (matched.lastPmDate || matched.Last_PM_Date)) || item.lastPmDate || ''
-  const countdown = getPMCountdown(resolvedNextPmDate)
+  const countdown = resolvedNextPmDate ? getPMCountdown(resolvedNextPmDate) : null
 
   return {
     ...item,
@@ -340,9 +340,9 @@ export function resolveItemMachine(item, cylindersOrMachines = []) {
     type: resolvedType,
     nextPmDate: resolvedNextPmDate,
     lastPmDate: resolvedLastPmDate,
-    countdownDays: countdown.days,
-    countdownLabel: countdown.label,
-    countdownColor: countdown.color,
+    countdownDays: countdown ? countdown.days : (item.countdownDays ?? null),
+    countdownLabel: (countdown && countdown.label) ? countdown.label : (item.countdownLabel || '—'),
+    countdownColor: (countdown && countdown.color) ? countdown.color : (item.countdownColor || 'gray'),
   }
 }
 
@@ -1970,16 +1970,6 @@ export default function PMMonthlyScheduleView({
                                   <span className="font-bold text-slate-900 dark:text-slate-100 truncate shrink-0">
                                     {item.mc}
                                   </span>
-                                  {item.ki && (
-                                    <span className="text-[10px] font-mono text-slate-400 truncate shrink-0 hidden sm:inline">
-                                      ({item.ki})
-                                    </span>
-                                  )}
-                                  {item.location && (
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 shrink-0 font-medium">
-                                      · {item.location}
-                                    </span>
-                                  )}
                                   {item.isUnplanned && (
                                     <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
                                       นอกแผน
