@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Printer,
@@ -13,12 +13,13 @@ import {
   Layers,
   MapPin,
   FileText,
+  BarChart3,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import gemmaLogo from '../../assets/logo-gemma.png'
-import { THAI_MONTHS } from './PMMonthlyScheduleView'
+import { THAI_MONTHS, getItemDayRange, getStatusMeta } from './PMMonthlyScheduleView'
 
 export default function PMMonthlyPrintModal({
   open = false,
@@ -33,6 +34,27 @@ export default function PMMonthlyPrintModal({
 }) {
   const printRef = useRef(null)
   const [downloading, setDownloading] = useState(false)
+  const [viewMode, setViewMode] = useState('timeline') // 'timeline' (default) vs 'list'
+
+  // Days in selected month
+  const daysInMonth = new Date(year, month, 0).getDate()
+
+  // Calendar days array for Timeline grid
+  const calendarDays = useMemo(() => {
+    const days = []
+    const THAI_DAY_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, month - 1, d)
+      const dayOfWeek = dateObj.getDay()
+      days.push({
+        dayNumber: d,
+        dayOfWeek,
+        shortDayName: THAI_DAY_SHORT[dayOfWeek],
+        isSunday: dayOfWeek === 0,
+      })
+    }
+    return days
+  }, [year, month, daysInMonth])
 
   if (!open) return null
 
@@ -125,6 +147,36 @@ export default function PMMonthlyPrintModal({
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* View Mode Switcher */}
+          <div className="flex items-center p-1 bg-slate-800 rounded-xl border border-slate-700">
+            <button
+              type="button"
+              onClick={() => setViewMode('timeline')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'timeline'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="แสดงแบบปฏิทินแถบเวลา (Gantt Timeline)"
+            >
+              <BarChart3 size={13} />
+              <span>แถบเวลา (Timeline)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'list'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="แสดงแบบตารางรายการข้อมูลละเอียด"
+            >
+              <Layers size={13} />
+              <span>ตารางรายการ</span>
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={handleDownloadPdf}
@@ -162,7 +214,11 @@ export default function PMMonthlyPrintModal({
         @media print {
           @page {
             size: A4 landscape;
-            margin: 8mm 7mm;
+            margin: 6mm 6mm;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           html, body {
             background: #ffffff !important;
@@ -200,17 +256,17 @@ export default function PMMonthlyPrintModal({
         <div
           ref={printRef}
           id="printable-pm-monthly-report"
-          className="w-full max-w-[297mm] min-h-[200mm] bg-white text-slate-900 p-8 rounded-xl shadow-2xl border border-slate-300 font-sans print:border-0 print:p-2 print:shadow-none"
+          className="w-full max-w-[297mm] min-h-[200mm] bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-300 font-sans print:border-0 print:p-2 print:shadow-none"
         >
           {/* ── 1. HEADER SECTION ─────────────────────────────────── */}
-          <div className="border-b-2 border-slate-900 pb-3 mb-3">
+          <div className="border-b-2 border-slate-900 pb-2.5 mb-2.5">
             <div className="flex items-start justify-between gap-4">
               {/* Logo & Company Name */}
               <div className="flex items-center gap-3">
                 <img
                   src={gemmaLogo}
                   alt="Gemma Knits Logo"
-                  className="w-12 h-12 object-contain"
+                  className="w-11 h-11 object-contain"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none'
                   }}
@@ -248,7 +304,7 @@ export default function PMMonthlyPrintModal({
             </div>
 
             {/* Scope Sub-bar */}
-            <div className="mt-2.5 pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between text-[10px] text-slate-600">
+            <div className="mt-2 pt-1.5 border-t border-slate-200 flex flex-wrap items-center justify-between text-[10px] text-slate-600">
               <div className="flex items-center gap-3">
                 <span>
                   📍 <strong>ขอบเขตโรงทอ:</strong> {locationLabel}
@@ -264,7 +320,7 @@ export default function PMMonthlyPrintModal({
           </div>
 
           {/* ── 2. KPI SUMMARY CARDS ──────────────────────────────── */}
-          <div className="grid grid-cols-4 gap-2 mb-3">
+          <div className="grid grid-cols-4 gap-2 mb-2.5">
             <div className="p-2 rounded-lg border border-slate-200 bg-slate-50/80 flex items-center justify-between">
               <div>
                 <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
@@ -322,119 +378,332 @@ export default function PMMonthlyPrintModal({
             </div>
           </div>
 
-          {/* ── 3. MAIN SCHEDULE TABLE ───────────────────────────── */}
-          <div className="mb-4">
-            <table className="w-full text-left border-collapse text-[10px]">
-              <thead>
-                <tr className="bg-slate-900 text-white font-bold uppercase text-[9px] tracking-wider">
-                  <th className="py-1 px-1.5 text-center w-8 border border-slate-900">#</th>
-                  <th className="py-1 px-2 w-28 border border-slate-900">รหัสเครื่อง (M/C)</th>
-                  <th className="py-1 px-2 w-20 border border-slate-900">ซีเรียล (KI)</th>
-                  <th className="py-1 px-1.5 text-center w-16 border border-slate-900">โรงทอ</th>
-                  <th className="py-1 px-1.5 text-center w-16 border border-slate-900">ชนิด</th>
-                  <th className="py-1 px-2 w-32 border border-slate-900">ช่วงวันที่วางแผน</th>
-                  <th className="py-1 px-2 w-32 border border-slate-900">ผลการทำจริง</th>
-                  <th className="py-1 px-2 w-24 border border-slate-900">ช่างผู้รับผิดชอบ</th>
-                  <th className="py-1 px-2 text-center w-24 border border-slate-900">สถานะ</th>
-                  <th className="py-1 px-2 border border-slate-900">ใบสั่งงาน / หมายเหตุ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-6 text-center text-slate-400 border border-slate-200 italic">
-                      ไม่มีรายการแผน PM สำหรับเดือนนี้
-                    </td>
-                  </tr>
-                ) : (
-                  items.map((item, idx) => {
-                    const isCompleted = item.status === 'COMPLETED'
-                    const isInProgress = item.status === 'IN_PROGRESS'
-                    const isDelayed = item.status === 'DELAYED'
+          {/* ── 3. COLOR LEGEND (สัญลักษณ์แถบสี) ──────────────────── */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 mb-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] font-medium text-slate-700">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-bold text-slate-900">สัญลักษณ์แถบสี:</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3 rounded bg-blue-600 inline-block shrink-0 shadow-xs"></span>
+                <span>แถบแผนงาน ({daysPerMachine} วัน)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3 rounded bg-emerald-600 inline-block shrink-0 shadow-xs"></span>
+                <span>ทำจริง: เสร็จสิ้น (Completed)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3 rounded bg-amber-500 inline-block shrink-0 shadow-xs"></span>
+                <span>ทำจริง: กำลังทำ (In Progress)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3.5 h-3 rounded bg-rose-600 inline-block shrink-0 shadow-xs"></span>
+                <span>ทำจริง: ล่าช้า (Delayed)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[8px]">
+                  นอกแผน
+                </span>
+                <span>นอกแผน (Unplanned)</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-rose-700 font-medium">
+              <span className="w-3 h-3 rounded bg-rose-200 border border-rose-300 inline-block shrink-0"></span>
+              <span>วันอาทิตย์ (วันหยุด ไม่นับวันทำงาน)</span>
+            </div>
+          </div>
 
-                    const statusBadgeClass = isCompleted
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                      : isInProgress
-                      ? 'bg-amber-100 text-amber-800 border-amber-300'
-                      : isDelayed
-                      ? 'bg-red-100 text-red-800 border-red-300'
-                      : 'bg-blue-50 text-blue-800 border-blue-200'
+          {/* ── 4. MAIN SCHEDULE VIEW: TIMELINE GANTT (DEFAULT) VS LIST TABLE ── */}
+          {viewMode === 'timeline' ? (
+            /* ── 4A. GANTT TIMELINE SCHEDULE (เหมือนบนหน้าเว็บ) ── */
+            <div className="border border-slate-300 rounded-lg overflow-hidden bg-white mb-3 text-[9px]">
+              {/* Timeline Header Row */}
+              <div className="flex items-stretch border-b-2 border-slate-900 bg-slate-900 text-white font-bold text-[9px]">
+                <div className="w-7 shrink-0 text-center py-1.5 border-r border-slate-700 font-mono text-[9px] flex items-center justify-center text-slate-300">
+                  #
+                </div>
+                <div className="w-24 shrink-0 px-1.5 py-1.5 border-r border-slate-700 font-bold text-[9px] flex items-center text-white">
+                  เครื่องจักร (M/C)
+                </div>
+                <div className="w-16 shrink-0 text-center py-1.5 border-r border-slate-700 font-bold text-[9px] flex items-center justify-center text-white">
+                  สถานะ
+                </div>
+                {/* 31 Calendar Days Header Columns */}
+                <div
+                  className="flex-1 grid text-center font-bold"
+                  style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(0, 1fr))` }}
+                >
+                  {calendarDays.map((d) => (
+                    <div
+                      key={d.dayNumber}
+                      className={`py-1 border-r border-slate-700 last:border-r-0 flex flex-col justify-center items-center ${
+                        d.isSunday ? 'bg-rose-900/80 text-rose-300 font-black' : 'text-slate-100'
+                      }`}
+                    >
+                      <span className="text-[7px] uppercase leading-none font-bold opacity-80">{d.shortDayName}</span>
+                      <span className="text-[9px] font-mono font-bold leading-tight mt-0.5">
+                        {String(d.dayNumber).padStart(2, '0')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-                    const statusLabel = isCompleted
-                      ? 'เสร็จสิ้น'
-                      : isInProgress
-                      ? 'กำลังทำ'
-                      : isDelayed
-                      ? 'ล่าช้า'
-                      : 'ตามแผน'
+              {/* Timeline Machine Rows */}
+              {items.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 italic">ไม่มีรายการแผน PM สำหรับเดือนนี้</div>
+              ) : (
+                items.map((item, idx) => {
+                  const range = getItemDayRange(item, year, month, daysInMonth)
+                  const actItem = item.actualStartDate
+                    ? {
+                        plannedStartDate: item.actualStartDate,
+                        plannedEndDate: item.actualEndDate || item.actualStartDate,
+                      }
+                    : null
+                  const actRange = actItem ? getItemDayRange(actItem, year, month, daysInMonth) : null
+                  const hasOverlap = Boolean(
+                    range && actRange && !(range.endDay < actRange.startDay || range.startDay > actRange.endDay)
+                  )
 
-                    const plannedText = item.plannedStartDate
-                      ? `${item.plannedStartDate} ถึง ${item.plannedEndDate || item.plannedStartDate} (${item.workingDays || daysPerMachine} ว.)`
-                      : '—'
+                  return (
+                    <div
+                      key={item.id || idx}
+                      className={`flex items-stretch border-b border-slate-200 last:border-b-0 min-h-[30px] ${
+                        idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                      }`}
+                    >
+                      {/* Left Column 1: Index */}
+                      <div className="w-7 shrink-0 text-center py-1 border-r border-slate-200 font-mono text-slate-500 flex items-center justify-center">
+                        {idx + 1}
+                      </div>
 
-                    const actualText = item.actualStartDate
-                      ? `${item.actualStartDate}${item.actualEndDate && item.actualEndDate !== item.actualStartDate ? ` ถึง ${item.actualEndDate}` : ''}`
-                      : '—'
+                      {/* Left Column 2: Machine */}
+                      <div className="w-24 shrink-0 px-1.5 py-1 border-r border-slate-200 flex items-center gap-1 font-bold text-slate-900 truncate">
+                        <span className="truncate">{item.mc}</span>
+                        {item.isUnplanned && (
+                          <span className="text-[7.5px] font-bold px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+                            นอกแผน
+                          </span>
+                        )}
+                      </div>
 
-                    return (
-                      <tr
-                        key={item.id || idx}
-                        className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}
+                      {/* Left Column 3: Status Badge */}
+                      <div className="w-16 shrink-0 text-center py-1 border-r border-slate-200 flex items-center justify-center">
+                        <span
+                          className={`inline-block px-1.5 py-0.2 rounded text-[8px] font-bold border truncate max-w-[58px] ${
+                            item.status === 'COMPLETED'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : item.status === 'IN_PROGRESS'
+                              ? 'bg-amber-100 text-amber-800 border-amber-300'
+                              : item.status === 'DELAYED'
+                              ? 'bg-red-100 text-red-800 border-red-300'
+                              : 'bg-blue-50 text-blue-800 border-blue-200'
+                          }`}
+                        >
+                          {item.status === 'COMPLETED'
+                            ? 'เสร็จสิ้น'
+                            : item.status === 'IN_PROGRESS'
+                            ? 'กำลังทำ'
+                            : item.status === 'DELAYED'
+                            ? 'ล่าช้า'
+                            : 'ตามแผน'}
+                        </span>
+                      </div>
+
+                      {/* Day Grid with Bars */}
+                      <div
+                        className="flex-1 grid relative py-0.5 h-[30px] min-h-[30px]"
+                        style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(0, 1fr))` }}
                       >
-                        <td className="py-1 px-1.5 text-center font-mono font-bold text-slate-500 border border-slate-200">
-                          {idx + 1}
-                        </td>
-                        <td className="py-1 px-2 font-bold text-slate-900 border border-slate-200">
-                          <div className="flex items-center gap-1">
-                            <span>{item.mc}</span>
-                            {item.isUnplanned && (
-                              <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                                นอกแผน
+                        {/* Background Day Columns (Sunday Highlighting) */}
+                        {calendarDays.map((d) => (
+                          <div
+                            key={d.dayNumber}
+                            className={`border-r border-slate-100 last:border-r-0 h-full ${
+                              d.isSunday ? 'bg-rose-50/70 border-r-rose-100' : ''
+                            }`}
+                          />
+                        ))}
+
+                        {/* 1. Planned Bar (แถบแผนงาน) */}
+                        {range && (
+                          <div
+                            style={{
+                              gridColumnStart: range.startDay,
+                              gridColumnEnd: range.endDay + 1,
+                              left: '1px',
+                              right: '1px',
+                              width: 'calc(100% - 2px)',
+                              boxSizing: 'border-box',
+                            }}
+                            className={`absolute z-2 rounded px-1 flex items-center justify-between font-bold bg-blue-600 text-white shadow-xs overflow-hidden ${
+                              hasOverlap
+                                ? 'top-[2px] h-[12px] text-[7.5px]'
+                                : 'inset-y-0 my-auto h-[18px] text-[8.5px]'
+                            }`}
+                            title={`แผนงาน: ${item.mc} (${item.plannedStartDate} ถึง ${item.plannedEndDate})`}
+                          >
+                            <span className="truncate">แผน: {item.mc}</span>
+                            <span className="font-mono text-[7px] opacity-90 shrink-0 ml-0.5">
+                              {range.span}ว.
+                            </span>
+                          </div>
+                        )}
+
+                        {/* 2. Actual Bar (แถบทำจริง) */}
+                        {actRange && (
+                          <div
+                            style={{
+                              gridColumnStart: actRange.startDay,
+                              gridColumnEnd: actRange.endDay + 1,
+                              left: '1px',
+                              right: '1px',
+                              width: 'calc(100% - 2px)',
+                              boxSizing: 'border-box',
+                            }}
+                            className={`absolute z-3 rounded px-1 flex items-center justify-between font-bold text-white shadow-xs overflow-hidden ${
+                              hasOverlap
+                                ? 'bottom-[2px] h-[12px] text-[7.5px]'
+                                : 'inset-y-0 my-auto h-[18px] text-[8.5px]'
+                            } ${
+                              item.status === 'COMPLETED'
+                                ? 'bg-emerald-600'
+                                : item.status === 'IN_PROGRESS'
+                                ? 'bg-amber-500'
+                                : item.status === 'DELAYED'
+                                ? 'bg-rose-600'
+                                : 'bg-slate-600'
+                            }`}
+                            title={`ทำจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate})`}
+                          >
+                            <span className="truncate">จริง: {item.actualTech || item.mc}</span>
+                            {item.workOrderId && !hasOverlap && (
+                              <span className="font-mono text-[7px] opacity-90 shrink-0 ml-0.5">
+                                ({item.workOrderId.slice(-4)})
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="py-1 px-2 font-mono text-slate-600 border border-slate-200">
-                          {item.ki || '—'}
-                        </td>
-                        <td className="py-1 px-1.5 text-center font-medium text-slate-700 border border-slate-200">
-                          {item.location || '—'}
-                        </td>
-                        <td className="py-1 px-1.5 text-center text-slate-600 border border-slate-200">
-                          {item.type || '—'}
-                        </td>
-                        <td className="py-1 px-2 font-mono text-[9px] text-slate-700 border border-slate-200">
-                          {plannedText}
-                        </td>
-                        <td className="py-1 px-2 font-mono text-[9px] text-slate-800 border border-slate-200">
-                          {actualText}
-                        </td>
-                        <td className="py-1 px-2 text-slate-700 border border-slate-200 truncate max-w-[100px]">
-                          {item.actualTech || item.assignedTech || '—'}
-                        </td>
-                        <td className="py-1 px-2 text-center border border-slate-200">
-                          <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold border ${statusBadgeClass}`}>
-                            {statusLabel}
-                          </span>
-                        </td>
-                        <td className="py-1 px-2 text-[9px] text-slate-600 border border-slate-200 truncate max-w-[140px]">
-                          {item.workOrderId ? (
-                            <span className="font-mono text-blue-700 font-bold mr-1">
-                              {item.workOrderId}
-                            </span>
-                          ) : null}
-                          {item.notes || '—'}
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          ) : (
+            /* ── 4B. LIST TABLE VIEW (ตารางรายการละเอียด) ── */
+            <div className="mb-3">
+              <table className="w-full text-left border-collapse text-[10px]">
+                <thead>
+                  <tr className="bg-slate-900 text-white font-bold uppercase text-[9px] tracking-wider">
+                    <th className="py-1 px-1.5 text-center w-8 border border-slate-900">#</th>
+                    <th className="py-1 px-2 w-28 border border-slate-900">รหัสเครื่อง (M/C)</th>
+                    <th className="py-1 px-2 w-20 border border-slate-900">ซีเรียล (KI)</th>
+                    <th className="py-1 px-1.5 text-center w-16 border border-slate-900">โรงทอ</th>
+                    <th className="py-1 px-1.5 text-center w-16 border border-slate-900">ชนิด</th>
+                    <th className="py-1 px-2 w-32 border border-slate-900">ช่วงวันที่วางแผน</th>
+                    <th className="py-1 px-2 w-32 border border-slate-900">ผลการทำจริง</th>
+                    <th className="py-1 px-2 w-24 border border-slate-900">ช่างผู้รับผิดชอบ</th>
+                    <th className="py-1 px-2 text-center w-24 border border-slate-900">สถานะ</th>
+                    <th className="py-1 px-2 border border-slate-900">ใบสั่งงาน / หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-6 text-center text-slate-400 border border-slate-200 italic">
+                        ไม่มีรายการแผน PM สำหรับเดือนนี้
+                      </td>
+                    </tr>
+                  ) : (
+                    items.map((item, idx) => {
+                      const isCompleted = item.status === 'COMPLETED'
+                      const isInProgress = item.status === 'IN_PROGRESS'
+                      const isDelayed = item.status === 'DELAYED'
 
-          {/* ── 4. SIGN-OFF / APPROVAL SECTION ─────────────────────── */}
-          <div className="mt-4 pt-3 border-t-2 border-slate-900 grid grid-cols-3 gap-6 text-[10px] text-slate-800">
+                      const statusBadgeClass = isCompleted
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : isInProgress
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : isDelayed
+                        ? 'bg-red-100 text-red-800 border-red-300'
+                        : 'bg-blue-50 text-blue-800 border-blue-200'
+
+                      const statusLabel = isCompleted
+                        ? 'เสร็จสิ้น'
+                        : isInProgress
+                        ? 'กำลังทำ'
+                        : isDelayed
+                        ? 'ล่าช้า'
+                        : 'ตามแผน'
+
+                      const plannedText = item.plannedStartDate
+                        ? `${item.plannedStartDate} ถึง ${item.plannedEndDate || item.plannedStartDate} (${item.workingDays || daysPerMachine} ว.)`
+                        : '—'
+
+                      const actualText = item.actualStartDate
+                        ? `${item.actualStartDate}${item.actualEndDate && item.actualEndDate !== item.actualStartDate ? ` ถึง ${item.actualEndDate}` : ''}`
+                        : '—'
+
+                      return (
+                        <tr
+                          key={item.id || idx}
+                          className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}
+                        >
+                          <td className="py-1 px-1.5 text-center font-mono font-bold text-slate-500 border border-slate-200">
+                            {idx + 1}
+                          </td>
+                          <td className="py-1 px-2 font-bold text-slate-900 border border-slate-200">
+                            <div className="flex items-center gap-1">
+                              <span>{item.mc}</span>
+                              {item.isUnplanned && (
+                                <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                  นอกแผน
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-1 px-2 font-mono text-slate-600 border border-slate-200">
+                            {item.ki || '—'}
+                          </td>
+                          <td className="py-1 px-1.5 text-center font-medium text-slate-700 border border-slate-200">
+                            {item.location || '—'}
+                          </td>
+                          <td className="py-1 px-1.5 text-center text-slate-600 border border-slate-200">
+                            {item.type || '—'}
+                          </td>
+                          <td className="py-1 px-2 font-mono text-[9px] text-slate-700 border border-slate-200">
+                            {plannedText}
+                          </td>
+                          <td className="py-1 px-2 font-mono text-[9px] text-slate-800 border border-slate-200">
+                            {actualText}
+                          </td>
+                          <td className="py-1 px-2 text-slate-700 border border-slate-200 truncate max-w-[100px]">
+                            {item.actualTech || item.assignedTech || '—'}
+                          </td>
+                          <td className="py-1 px-2 text-center border border-slate-200">
+                            <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold border ${statusBadgeClass}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td className="py-1 px-2 text-[9px] text-slate-600 border border-slate-200 truncate max-w-[140px]">
+                            {item.workOrderId ? (
+                              <span className="font-mono text-blue-700 font-bold mr-1">
+                                {item.workOrderId}
+                              </span>
+                            ) : null}
+                            {item.notes || '—'}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ── 5. SIGN-OFF / APPROVAL SECTION ─────────────────────── */}
+          <div className="mt-3 pt-2.5 border-t-2 border-slate-900 grid grid-cols-3 gap-6 text-[10px] text-slate-800">
             <div className="text-center p-2 rounded-lg border border-slate-200 bg-slate-50/50">
               <div className="font-bold text-slate-900 mb-6">ผู้จัดทำแผน (Prepared By)</div>
               <div className="border-b border-dotted border-slate-400 w-3/4 mx-auto mb-1"></div>

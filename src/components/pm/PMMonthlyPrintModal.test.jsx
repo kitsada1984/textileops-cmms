@@ -67,7 +67,7 @@ describe('PMMonthlyPrintModal', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders complete A4 document structure when open is true', () => {
+  it('renders complete A4 document structure with Gantt Timeline by default and supports switching to List Table', () => {
     render(
       <PMMonthlyPrintModal
         open={true}
@@ -86,6 +86,8 @@ describe('PMMonthlyPrintModal', () => {
     expect(screen.getByText(/พรีวิวแผนงานบำรุงรักษาเชิงป้องกันประจำเดือน/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /พิมพ์เอกสาร/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /ดาวน์โหลด PDF/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /แถบเวลา \(Timeline\)/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ตารางรายการ/ })).toBeInTheDocument()
 
     // Company Header & Title
     expect(screen.getByText(/บริษัท แกมม่า นิตติ้ง จำกัด/)).toBeInTheDocument()
@@ -105,19 +107,44 @@ describe('PMMonthlyPrintModal', () => {
     expect(screen.getByText('กำลังดำเนินการ')).toBeInTheDocument()
     expect(screen.getByText('ตามแผน / รอดำเนินการ')).toBeInTheDocument()
 
-    // Table Data Rows
+    // Color Legend
+    expect(screen.getByText('สัญลักษณ์แถบสี:')).toBeInTheDocument()
+    expect(screen.getByText(/แถบแผนงาน \(3 วัน\)/)).toBeInTheDocument()
+    expect(screen.getByText('ทำจริง: เสร็จสิ้น (Completed)')).toBeInTheDocument()
+    expect(screen.getByText('ทำจริง: กำลังทำ (In Progress)')).toBeInTheDocument()
+    expect(screen.getByText('วันอาทิตย์ (วันหยุด ไม่นับวันทำงาน)')).toBeInTheDocument()
+
+    // Timeline Gantt Grid: Calendar day numbers (01 to 30 for November)
+    expect(screen.getByText('01')).toBeInTheDocument()
+    expect(screen.getByText('15')).toBeInTheDocument()
+    expect(screen.getByText('30')).toBeInTheDocument()
+
+    // Machine Names & Status in Timeline
     expect(screen.getByText('DP-341M')).toBeInTheDocument()
+    expect(screen.getByText('DA-301M')).toBeInTheDocument()
+    expect(screen.getAllByText('นอกแผน').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('เสร็จสิ้น')).toBeInTheDocument()
+    expect(screen.getByText('กำลังทำ')).toBeInTheDocument()
+
+    // Timeline Bars
+    expect(screen.getByText(/แผน: DP-341M/)).toBeInTheDocument()
+    expect(screen.getByText(/จริง: ช่างสมชาย/)).toBeInTheDocument()
+    expect(screen.getByText(/จริง: ช่างวิชัย/)).toBeInTheDocument()
+
+    // Switch to List Table View
+    const listBtn = screen.getByRole('button', { name: /ตารางรายการ/ })
+    fireEvent.click(listBtn)
+
+    // Table view specific columns and values
     expect(screen.getByText('74753')).toBeInTheDocument()
     expect(screen.getByText('GK4')).toBeInTheDocument()
-    expect(screen.getByText('ช่างสมชาย')).toBeInTheDocument()
-    expect(screen.getByText('เสร็จสิ้น')).toBeInTheDocument()
     expect(screen.getByText('JOB-20261102-001')).toBeInTheDocument()
+    expect(screen.getByText('เสร็จเรียบร้อย')).toBeInTheDocument()
 
-    // Unplanned item check
-    expect(screen.getByText('DA-301M')).toBeInTheDocument()
-    expect(screen.getByText('นอกแผน')).toBeInTheDocument()
-    expect(screen.getByText('กำลังทำ')).toBeInTheDocument()
-    expect(screen.getByText('ช่างวิชัย')).toBeInTheDocument()
+    // Switch back to Timeline View
+    const timelineBtn = screen.getByRole('button', { name: /แถบเวลา \(Timeline\)/ })
+    fireEvent.click(timelineBtn)
+    expect(screen.getByText(/แผน: DP-341M/)).toBeInTheDocument()
 
     // Sign-off section
     expect(screen.getByText('ผู้จัดทำแผน (Prepared By)')).toBeInTheDocument()
