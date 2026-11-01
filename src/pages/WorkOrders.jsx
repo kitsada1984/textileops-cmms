@@ -71,7 +71,7 @@ import { db } from '../api/dbClient'
 import { generateWorkOrderPdfProps } from '../utils/pdfDocGenerators'
 import { notifyLineWorkOrderAssigned } from '../utils/line'
 import { PROBLEM_CAUSE_OPTIONS, getProblemCauseMeta } from '../constants/problemCause'
-import { syncPMWorkOrderToMonthlySchedule } from '../components/pm/PMMonthlyScheduleView'
+import { syncPMWorkOrderToMonthlySchedule, removePMWorkOrderFromMonthlySchedule } from '../components/pm/PMMonthlyScheduleView'
 
 const DEFAULT_KPI_TARGETS = {
   REPAIR: 1.0,
@@ -2029,6 +2029,15 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     if (!confirm(`ยืนยันการลบใบสั่งงาน ${job.Job_ID || job['Job ID'] || id} หรือไม่?`)) return
     try {
       await removeJob(id)
+
+      // Sync deletion with PM Monthly Schedule if it is a PM work order
+      const jobType = String(job.JobType || job.Job_Type || job.job_type || job.jobType || '').toUpperCase()
+      if (jobType === 'PM') {
+        removePMWorkOrderFromMonthlySchedule(job, cylinders).catch((e) => {
+          console.warn('[handleDeleteJob] PM monthly schedule remove sync failed:', e)
+        })
+      }
+
       toast.success('ลบใบสั่งงานสำเร็จ', job.Job_ID || job['Job ID'] || id)
     } catch (err) {
       toast.error('ลบใบสั่งงานไม่สำเร็จ', err.message)

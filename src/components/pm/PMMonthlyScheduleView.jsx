@@ -589,6 +589,257 @@ export async function syncPMWorkOrderToMonthlySchedule(workOrder, machines = [])
 }
 
 /**
+ * Removes or resets the execution progress of a deleted PM work order from the monthly schedule items.
+ * - If the machine was an unplanned entry (isUnplanned: true), it is completely removed from the schedule.
+ * - If the machine was an in-plan entry, its actual execution progress is reset back to 'SCHEDULED' (ตามแผน).
+ */
+export function removePMWorkOrderFromMonthlyPlan(
+  monthlyItems = [],
+  deletedWorkOrder,
+  remainingWorkOrders = [],
+  effectiveMachines = [],
+  year = new Date().getFullYear(),
+  month = new Date().getMonth() + 1
+) {
+  if (!deletedWorkOrder || !Array.isArray(monthlyItems)) return monthlyItems
+
+  const delWoId = String(deletedWorkOrder.Job_ID || deletedWorkOrder.WO_ID || deletedWorkOrder.id || '').trim()
+  const delMC = String(deletedWorkOrder.MC || deletedWorkOrder.Mc || deletedWorkOrder.machine_mc || deletedWorkOrder.Machine_MC || '').trim().toUpperCase()
+  const delKI = String(deletedWorkOrder.KI || deletedWorkOrder.Ki || deletedWorkOrder.Machine_KI || deletedWorkOrder.Serial_OLD || '').trim().toUpperCase()
+
+  // Match deleted work order to effective machines if available
+  const matchedMachine = (Array.isArray(effectiveMachines) ? effectiveMachines : []).find(m => {
+    const mSerial = String(m?.Serial_OLD || m?.ki || m?.Machine_KI || '').trim().toUpperCase()
+    const mCode = String(m?.NewMC || m?.mc || m?.Machine_MC || '').trim().toUpperCase()
+    if (delKI && mSerial && delKI === mSerial) return true
+    if (delMC && mCode && delMC === mCode) return true
+    return false
+  })
+
+  const effectiveMC = (matchedMachine?.NewMC || matchedMachine?.mc || delMC).toUpperCase()
+  const effectiveKI = (matchedMachine?.Serial_OLD || matchedMachine?.ki || delKI).toUpperCase()
+
+  // Helper: check if another active PM work order in remainingWorkOrders matches a machine
+  const findAlternativeWO = (itemMC, itemKI) => {
+    return (Array.isArray(remainingWorkOrders) ? remainingWorkOrders : []).find(wo => {
+      if (!wo) return false
+      const type = String(wo.JobType || wo.Job_Type || wo.job_type || wo.jobType || '').toUpperCase()
+      if (type !== 'PM') return false
+      const wId = String(wo.Job_ID || wo.WO_ID || wo.id || '').trim()
+      if (delWoId && wId === delWoId) return false
+
+      const wMC = String(wo.MC || wo.Mc || wo.machine_mc || wo.Machine_MC || '').trim().toUpperCase()
+      const wKI = String(wo.KI || wo.Ki || wo.Machine_KI || wo.Serial_OLD || '').trim().toUpperCase()
+      if (itemKI && wKI && itemKI === wKI) return true
+      if (itemMC && wMC && itemMC === wMC) return true
+      return false
+    })
+  }
+
+  const updatedItems = []
+
+  for (const item of monthlyItems) {
+    const itemMC = String(item.mc || '').toUpperCase()
+    const itemKI = String(item.ki || '').toUpperCase()
+    const itemWoId = String(item.workOrderId || '').trim()
+    const itemId = String(item.id || '')
+
+    const isMatch = Boolean(
+      (delWoId && itemWoId && itemWoId === delWoId) ||
+      (delWoId && itemId.includes(delWoId)) ||
+      (effectiveMC && itemMC && effectiveMC === itemMC) ||
+      (effectiveKI && itemKI && effectiveKI === itemKI)
+    )
+
+    if (!isMatch) {
+      updatedItems.push(item)
+      continue
+    }
+
+    // It is a match! Check if it's unplanned or in-plan
+    if (item.isUnplanned) {
+      const altWO = findAlternativeWO(itemMC, itemKI)
+      if (altWO) {
+        // Re-link to the other PM work order
+        const sDate = String(altWO.StartDate || altWO.DateStart || altWO.StartTime || altWO.created_at || '').slice(0, 10)
+        const rawEndDate = String(altWO.EndDate || altWO.DateEnd || altWO.EndTime || '').slice(0, 10)
+        const woStatus = String(altWO.Status || altWO.status || '').toUpperCase()
+        const isCompleted = ['COMPLETED', 'เสร็จสิ้น', 'DONE', 'CLOSED'].includes(woStatus)
+        const isScheduled = ['SCHEDULED', 'ตามแผน', 'PLANNED'].includes(woStatus)
+        const mappedStatus = isCompleted ? 'COMPLETED' : (isScheduled ? 'SCHEDULED' : 'IN_PROGRESS')
+        updatedItems.push({
+          ...item,
+          workOrderId: altWO.Job_ID || altWO.WO_ID || altWO.id,
+          actualStartDate: sDate,
+          actualEndDate: mappedStatus === 'COMPLETED' ? (rawEndDate || sDate) : rawEndDate,
+          actualTech: altWO.Technicians || altWO.Tech || '',
+          status: mappedStatus,
+          notes: altWO.Comment || altWO.Details || 'ใบสั่งงาน PM นอกแผน',
+          updatedAt: new Date().toISOString(),
+        })
+      } else {
+        // No alternative WO: REMOVE UNPLANNED ITEM COMPLETELY!
+      }
+    } else {
+      // In-plan machine: DO NOT delete the row, but reset its actual execution progress
+      const altWO = findAlternativeWO(itemMC, itemKI)
+      if (altWO) {
+        // Re-link to the other PM work order
+        const sDate = String(altWO.StartDate || altWO.DateStart || altWO.StartTime || altWO.created_at || '').slice(0, 10)
+        const rawEndDate = String(altWO.EndDate || altWO.DateEnd || altWO.EndTime || '').slice(0, 10)
+        const woStatus = String(altWO.Status || altWO.status || '').toUpperCase()
+        const isCompleted = ['COMPLETED', 'เสร็จสิ้น', 'DONE', 'CLOSED'].includes(woStatus)
+        const isScheduled = ['SCHEDULED', 'ตามแผน', 'PLANNED'].includes(woStatus)
+        const mappedStatus = isCompleted ? 'COMPLETED' : (isScheduled ? 'SCHEDULED' : 'IN_PROGRESS')
+        let isOnTime = item.isOnTime
+        if (mappedStatus === 'COMPLETED' && rawEndDate && item.plannedEndDate) {
+          isOnTime = rawEndDate <= item.plannedEndDate
+        }
+        updatedItems.push({
+          ...item,
+          workOrderId: altWO.Job_ID || altWO.WO_ID || altWO.id,
+          actualStartDate: sDate,
+          actualEndDate: mappedStatus === 'COMPLETED' ? (rawEndDate || sDate) : rawEndDate,
+          actualTech: altWO.Technicians || altWO.Tech || '',
+          status: mappedStatus,
+          notes: altWO.Comment || altWO.Details || item.notes,
+          isOnTime,
+          updatedAt: new Date().toISOString(),
+        })
+      } else {
+        // Reset back to planned state (ตามแผน)
+        updatedItems.push({
+          ...item,
+          workOrderId: null,
+          actualStartDate: null,
+          actualEndDate: null,
+          actualTech: '',
+          status: 'SCHEDULED',
+          isOnTime: null,
+          notes: (item.notes && item.notes.startsWith('ใบสั่งงาน PM')) ? '' : item.notes,
+          updatedAt: new Date().toISOString(),
+        })
+      }
+    }
+  }
+
+  return updatedItems
+}
+
+/**
+ * Automatically syncs the deletion of a PM Work Order with the Monthly PM Schedule.
+ * Can be called immediately upon deleting a PM Work Order from WorkOrders.jsx or any other page.
+ */
+export async function removePMWorkOrderFromMonthlySchedule(deletedWorkOrder, machines = []) {
+  if (!deletedWorkOrder) return null
+  const jobType = String(deletedWorkOrder.JobType || deletedWorkOrder.Job_Type || deletedWorkOrder.job_type || deletedWorkOrder.jobType || '').toUpperCase()
+  if (jobType !== 'PM') return null
+
+  // Determine target month from StartDate or EndDate or created_at or today
+  const sDate = String(deletedWorkOrder.StartDate || deletedWorkOrder.DateStart || deletedWorkOrder.StartTime || deletedWorkOrder.StartTimestamp || deletedWorkOrder.created_at || '').slice(0, 10)
+  const eDate = String(deletedWorkOrder.EndDate || deletedWorkOrder.DateEnd || deletedWorkOrder.EndTime || deletedWorkOrder.EndTimestamp || '').slice(0, 10)
+  const targetDateStr = sDate || eDate || format(new Date(), 'yyyy-MM-dd')
+
+  const [yearStr, monthStr] = targetDateStr.split('-')
+  const targetYear = parseInt(yearStr, 10)
+  const targetMonth = parseInt(monthStr, 10)
+  if (isNaN(targetYear) || isNaN(targetMonth)) return null
+
+  const configKey = `pm_monthly_schedule_${targetYear}-${String(targetMonth).padStart(2, '0')}`
+
+  // 1. Load current items from AppConfigAPI / localStorage
+  let currentItems = []
+  try {
+    const local = typeof localStorage !== 'undefined' ? localStorage.getItem(configKey) : null
+    if (local) {
+      const parsed = JSON.parse(local)
+      if (Array.isArray(parsed)) currentItems = parsed
+    }
+  } catch {}
+
+  try {
+    const list = await AppConfigAPI.list().catch(() => [])
+    const found = list.find(c => c.key === configKey)
+    if (found && found.value) {
+      const parsed = JSON.parse(found.value)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        currentItems = parsed
+      }
+    }
+  } catch {}
+
+  // 2. Load machines if not passed
+  let effectiveMachines = Array.isArray(machines) && machines.length > 0 ? machines : []
+  if (effectiveMachines.length === 0) {
+    try {
+      const rawCylinders = await CylinderAPI.list().catch(() => [])
+      if (Array.isArray(rawCylinders) && rawCylinders.length > 0) {
+        effectiveMachines = rawCylinders
+      }
+    } catch {}
+    if (effectiveMachines.length === 0) {
+      effectiveMachines = getStoredInUseMachinesFallback()
+    }
+  }
+
+  // 3. Fetch all WorkOrders excluding the deleted one
+  let allWos = []
+  try {
+    allWos = await WorkOrderAPI.list().catch(() => [])
+  } catch {}
+  if (!Array.isArray(allWos) || allWos.length === 0) {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? (localStorage.getItem('textileops_tbl_workorders') || localStorage.getItem('txops_tbl_workorders')) : null
+      allWos = raw ? JSON.parse(raw) : []
+    } catch {}
+  }
+  const delWoId = deletedWorkOrder.Job_ID || deletedWorkOrder.WO_ID || deletedWorkOrder.id
+  const remainingWos = allWos.filter(w => {
+    const id = w.Job_ID || w.WO_ID || w.id
+    return id && id !== delWoId
+  })
+
+  // 4. Run removePMWorkOrderFromMonthlyPlan
+  const updatedItems = removePMWorkOrderFromMonthlyPlan(
+    currentItems,
+    deletedWorkOrder,
+    remainingWos,
+    effectiveMachines,
+    targetYear,
+    targetMonth
+  )
+
+  // 5. Persist to localStorage and AppConfigAPI
+  const jsonStr = JSON.stringify(updatedItems)
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(configKey, jsonStr)
+    }
+  } catch {}
+
+  try {
+    const list = await AppConfigAPI.list().catch(() => [])
+    const existing = list.find(c => c.key === configKey)
+    if (existing) {
+      await AppConfigAPI.update(existing.id || existing._id, { value: jsonStr })
+    } else {
+      await AppConfigAPI.create({ key: configKey, value: jsonStr })
+    }
+  } catch (e) {
+    console.warn('Could not persist updated PM monthly schedule to AppConfigAPI:', e)
+  }
+
+  // 6. Dispatch custom event so any open PMMonthlyScheduleView updates immediately!
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('textileops_pm_schedule_updated', {
+      detail: { key: configKey, year: targetYear, month: targetMonth, items: updatedItems }
+    }))
+  }
+
+  return updatedItems
+}
+
+/**
  * Auto-generates a 1-month PM plan (3 working days per machine, skipping Sundays).
  * Accurately extracts machine codes from active in-use machines list.
  */

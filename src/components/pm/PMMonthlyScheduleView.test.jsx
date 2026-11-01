@@ -13,6 +13,8 @@ import PMMonthlyScheduleView, {
   getStoredInUseMachinesFallback,
   syncWorkOrdersToMonthlyPlan,
   syncPMWorkOrderToMonthlySchedule,
+  removePMWorkOrderFromMonthlyPlan,
+  removePMWorkOrderFromMonthlySchedule,
   AVAILABLE_LOCATIONS,
   matchesLocation,
   getPMCountdown,
@@ -1036,5 +1038,213 @@ describe('Save Plan, Delete Month Plan, and Item Actions (Edit/Delete)', () => {
     // But they are preserved in the title attribute for hover discovery
     const cellWithTitle = screen.getByTitle(/DA-306M \(66936\) \| โรงงาน: GK3/)
     expect(cellWithTitle).toBeInTheDocument()
+  })
+})
+
+describe('PM Work Order Deletion Sync (removePMWorkOrderFromMonthlyPlan & removePMWorkOrderFromMonthlySchedule)', () => {
+  const mockMachines = [
+    { NewMC: 'DA-306M', Serial_OLD: '66936', Location: 'GK3', Type: 'D' },
+    { NewMC: 'DP-341M', Serial_OLD: '74753', Location: 'GK4', Type: 'D' }
+  ]
+
+  it('completely removes unplanned item (isUnplanned: true) from monthly schedule when its PM work order is deleted', () => {
+    const monthlyItems = [
+      {
+        id: 'PMSCH-202611-01',
+        mc: 'DP-341M',
+        ki: '74753',
+        status: 'SCHEDULED',
+        plannedStartDate: '2026-11-01',
+        plannedEndDate: '2026-11-03',
+        isUnplanned: false,
+      },
+      {
+        id: 'PMSCH-202611-UNPLANNED-JOB-DEL-001',
+        mc: 'DA-306M',
+        ki: '66936',
+        workOrderId: 'JOB-DEL-001',
+        status: 'IN_PROGRESS',
+        actualStartDate: '2026-11-02',
+        actualEndDate: '2026-11-02',
+        isUnplanned: true,
+      }
+    ]
+
+    const deletedWO = {
+      Job_ID: 'JOB-DEL-001',
+      JobType: 'PM',
+      MC: 'DA-306M',
+      KI: '66936',
+      StartDate: '2026-11-02',
+    }
+
+    const result = removePMWorkOrderFromMonthlyPlan(monthlyItems, deletedWO, [], mockMachines, 2026, 11)
+
+    // The unplanned item is completely removed!
+    expect(result).toHaveLength(1)
+    expect(result[0].mc).toBe('DP-341M')
+    expect(result.some(item => item.mc === 'DA-306M')).toBe(false)
+  })
+
+  it('resets in-plan machine actual execution progress back to SCHEDULED when its PM work order is deleted', () => {
+    const monthlyItems = [
+      {
+        id: 'PMSCH-202611-01',
+        mc: 'DP-341M',
+        ki: '74753',
+        status: 'COMPLETED',
+        plannedStartDate: '2026-11-01',
+        plannedEndDate: '2026-11-03',
+        actualStartDate: '2026-11-02',
+        actualEndDate: '2026-11-03',
+        actualTech: 'Somchai',
+        workOrderId: 'JOB-DEL-002',
+        isUnplanned: false,
+      }
+    ]
+
+    const deletedWO = {
+      Job_ID: 'JOB-DEL-002',
+      JobType: 'PM',
+      MC: 'DP-341M',
+      KI: '74753',
+      StartDate: '2026-11-02',
+      EndDate: '2026-11-03',
+      Status: 'COMPLETED',
+    }
+
+    const result = removePMWorkOrderFromMonthlyPlan(monthlyItems, deletedWO, [], mockMachines, 2026, 11)
+
+    // The in-plan item is retained, but its actual execution progress is reset!
+    expect(result).toHaveLength(1)
+    expect(result[0].mc).toBe('DP-341M')
+    expect(result[0].status).toBe('SCHEDULED')
+    expect(result[0].actualStartDate).toBeNull()
+    expect(result[0].actualEndDate).toBeNull()
+    expect(result[0].actualTech).toBe('')
+    expect(result[0].workOrderId).toBeNull()
+    expect(result[0].isOnTime).toBeNull()
+  })
+
+  it('re-links to an alternative active PM work order if one exists for the same machine', () => {
+    const monthlyItems = [
+      {
+        id: 'PMSCH-202611-01',
+        mc: 'DP-341M',
+        ki: '74753',
+        status: 'COMPLETED',
+        plannedStartDate: '2026-11-01',
+        plannedEndDate: '2026-11-03',
+        workOrderId: 'JOB-DEL-OLD',
+        isUnplanned: false,
+      }
+    ]
+
+    const deletedWO = {
+      Job_ID: 'JOB-DEL-OLD',
+      JobType: 'PM',
+      MC: 'DP-341M',
+      KI: '74753',
+      StartDate: '2026-11-02',
+    }
+
+    const remainingWos = [
+      {
+        Job_ID: 'JOB-REMAIN-001',
+        JobType: 'PM',
+        MC: 'DP-341M',
+        KI: '74753',
+        StartDate: '2026-11-05',
+        EndDate: '2026-11-06',
+        Status: 'COMPLETED',
+        Technicians: 'Wichai',
+      }
+    ]
+
+    const result = removePMWorkOrderFromMonthlyPlan(monthlyItems, deletedWO, remainingWos, mockMachines, 2026, 11)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].workOrderId).toBe('JOB-REMAIN-001')
+    expect(result[0].status).toBe('COMPLETED')
+    expect(result[0].actualStartDate).toBe('2026-11-05')
+    expect(result[0].actualEndDate).toBe('2026-11-06')
+    expect(result[0].actualTech).toBe('Wichai')
+  })
+
+  it('removePMWorkOrderFromMonthlySchedule removes item from localStorage and dispatches CustomEvent', async () => {
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const key = `pm_monthly_schedule_${y}-${m}`
+
+    const testSchedule = [
+      {
+        id: `PMSCH-${y}${m}-UNPLANNED-JOB-ASYNC-01`,
+        mc: 'DA-306M',
+        ki: '66936',
+        workOrderId: 'JOB-ASYNC-01',
+        status: 'IN_PROGRESS',
+        isUnplanned: true,
+      }
+    ]
+    localStorage.setItem(key, JSON.stringify(testSchedule))
+
+    const eventSpy = vi.fn()
+    window.addEventListener('textileops_pm_schedule_updated', eventSpy)
+
+    const woToDelete = {
+      Job_ID: 'JOB-ASYNC-01',
+      JobType: 'PM',
+      MC: 'DA-306M',
+      KI: '66936',
+      StartDate: `${y}-${m}-05`,
+    }
+
+    const updated = await removePMWorkOrderFromMonthlySchedule(woToDelete, mockMachines)
+
+    expect(updated).toHaveLength(0)
+    const stored = JSON.parse(localStorage.getItem(key))
+    expect(stored).toHaveLength(0)
+
+    expect(eventSpy).toHaveBeenCalledTimes(1)
+    expect(eventSpy.mock.calls[0][0].detail.key).toBe(key)
+
+    window.removeEventListener('textileops_pm_schedule_updated', eventSpy)
+  })
+
+  it('removes unplanned item when deleted work order has matching ID or machine', () => {
+    const monthlyItems = [
+      {
+        id: 'PMSCH-202611-01',
+        mc: 'DP-341M',
+        ki: '74753',
+        status: 'SCHEDULED',
+        plannedStartDate: '2026-11-01',
+        plannedEndDate: '2026-11-03',
+        isUnplanned: false,
+      },
+      {
+        id: 'PMSCH-202611-UNPLANNED-JOB-ORPHAN',
+        mc: 'DA-306M',
+        ki: '66936',
+        workOrderId: 'JOB-ORPHAN',
+        status: 'IN_PROGRESS',
+        isUnplanned: true,
+      }
+    ]
+
+    const deletedWO = {
+      Job_ID: 'JOB-ORPHAN',
+      JobType: 'PM',
+      MC: 'DA-306M',
+      KI: '66936',
+      StartDate: '2026-11-02',
+    }
+
+    const result = removePMWorkOrderFromMonthlyPlan(monthlyItems, deletedWO, [], mockMachines, 2026, 11)
+
+    // Orphaned unplanned item is cleanly removed!
+    expect(result).toHaveLength(1)
+    expect(result[0].mc).toBe('DP-341M')
   })
 })
