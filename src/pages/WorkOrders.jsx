@@ -71,6 +71,7 @@ import { db } from '../api/dbClient'
 import { generateWorkOrderPdfProps } from '../utils/pdfDocGenerators'
 import { notifyLineWorkOrderAssigned } from '../utils/line'
 import { PROBLEM_CAUSE_OPTIONS, getProblemCauseMeta } from '../constants/problemCause'
+import { syncPMWorkOrderToMonthlySchedule } from '../components/pm/PMMonthlyScheduleView'
 
 const DEFAULT_KPI_TARGETS = {
   REPAIR: 1.0,
@@ -1601,6 +1602,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       await saveJob(payload)
       toast.success('เปิดใบสั่งงานสำเร็จ', `${jobId} (${mc} - ${ki})`)
 
+      // Auto-sync PM work orders to Monthly PM Schedule (non-blocking async)
+      if (String(payload.JobType || '').toUpperCase() === 'PM') {
+        syncPMWorkOrderToMonthlySchedule(payload, cylinders).catch((e) => {
+          console.warn('[WorkOrders] Failed to sync new PM work order to monthly schedule:', e)
+        })
+      }
+
       // Notify assigned technicians via LINE (Non-blocking async background)
       try {
         notifyLineWorkOrderAssigned(payload, selectedTechs, { technicians, systemUsers })
@@ -1702,6 +1710,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
       await saveJob(payload)
       toast.success('บันทึกจบงานสำเร็จ', `${compJob.Job_ID || compJob['Job ID']} (${durationResult.netDurationText})`)
+
+      // Auto-sync PM work order completion to Monthly PM Schedule (non-blocking async)
+      if (String(payload.JobType || compJob?.JobType || '').toUpperCase() === 'PM') {
+        syncPMWorkOrderToMonthlySchedule(payload, cylinders).catch((e) => {
+          console.warn('[WorkOrders] Failed to sync completed PM work order to monthly schedule:', e)
+        })
+      }
       setCompleteModalOpen(false)
       setCompJob(null)
     } catch (err) {
@@ -1750,6 +1765,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       }
       await saveJob(payload)
       toast.success(`อัปเดตสถานะเป็น "${nextMeta.label}" สำเร็จ`, job.Job_ID || job['Job ID'])
+
+      // Auto-sync status change to Monthly PM Schedule
+      if (String(payload.JobType || job?.JobType || '').toUpperCase() === 'PM') {
+        syncPMWorkOrderToMonthlySchedule(payload, cylinders).catch((e) => {
+          console.warn('[WorkOrders] Failed to sync status change to monthly schedule:', e)
+        })
+      }
     } catch (err) {
       toast.error('ไม่สามารถอัปเดตสถานะใบสั่งงานได้', err.message)
     }
@@ -1830,6 +1852,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         'บันทึกความคืบหน้ารายวันสำเร็จ',
         `${currentJob.Job_ID || currentJob['Job ID'] || currentJob.WO_ID} • สถานะ: ${nextMeta.label}`
       )
+
+      // Auto-sync daily log PM work order to Monthly PM Schedule
+      if (String(payload.JobType || currentJob?.JobType || '').toUpperCase() === 'PM') {
+        syncPMWorkOrderToMonthlySchedule(payload, cylinders).catch((e) => {
+          console.warn('[WorkOrders] Failed to sync daily log to monthly schedule:', e)
+        })
+      }
       setDailyLogModalOpen(false)
       setDailyLogJob(null)
     } catch (err) {
@@ -1952,6 +1981,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
       await saveJob(payload)
       toast.success('แก้ไขข้อมูลใบสั่งงานสำเร็จ', editJob.Job_ID || editJob['Job ID'])
+
+      // Auto-sync edited PM work order to Monthly PM Schedule
+      if (String(payload.JobType || editJob?.JobType || '').toUpperCase() === 'PM') {
+        syncPMWorkOrderToMonthlySchedule(payload, cylinders).catch((e) => {
+          console.warn('[WorkOrders] Failed to sync edited PM work order to monthly schedule:', e)
+        })
+      }
 
       // Notify newly assigned technicians via LINE (Non-blocking async background)
       if (newlyAddedTechs.length > 0) {

@@ -12,6 +12,7 @@ import PMMonthlyScheduleView, {
   resolveItemMachine,
   getStoredInUseMachinesFallback,
   syncWorkOrdersToMonthlyPlan,
+  syncPMWorkOrderToMonthlySchedule,
   AVAILABLE_LOCATIONS,
   matchesLocation,
   getPMCountdown,
@@ -446,6 +447,96 @@ describe('syncWorkOrdersToMonthlyPlan - PM Work Order Auto-Sync', () => {
     expect(unplanned.workOrderId).toBe('WO-202610-999')
     expect(unplanned.status).toBe('IN_PROGRESS')
     expect(unplanned.actualStartDate).toBe('2026-10-15')
+  })
+
+  it('maps OPEN work order to IN_PROGRESS status with actualStartDate starting on open date', () => {
+    const mockWOs = [
+      {
+        Job_ID: 'WO-202610-OPEN-01',
+        JobType: 'PM',
+        MC: 'DA-306M',
+        KI: '66936',
+        StartDate: '2026-10-02',
+        Technicians: 'ช่างทดสอบ',
+        Status: 'OPEN',
+        Comment: 'เปิดงานบำรุงรักษา',
+      },
+    ]
+
+    const synced = syncWorkOrdersToMonthlyPlan(initialPlan, mockWOs, inUseMachines, 2026, 10)
+    const item = synced.find(i => i.mc === 'DA-306M')
+    expect(item).toBeDefined()
+    expect(item.status).toBe('IN_PROGRESS')
+    expect(item.actualStartDate).toBe('2026-10-02')
+    expect(item.actualTech).toBe('ช่างทดสอบ')
+    expect(item.workOrderId).toBe('WO-202610-OPEN-01')
+  })
+
+  it('updates completed PM work order to span full duration from StartDate to EndDate with COMPLETED status', () => {
+    const mockWOs = [
+      {
+        Job_ID: 'WO-202610-COMP-02',
+        JobType: 'PM',
+        MC: 'SC-368M',
+        KI: '62407',
+        StartDate: '2026-10-05',
+        EndDate: '2026-10-08',
+        Technicians: 'ช่างสอง',
+        Status: 'COMPLETED',
+        Comment: 'บำรุงรักษาเสร็จสิ้นตามระยะ',
+      },
+    ]
+
+    const synced = syncWorkOrdersToMonthlyPlan(initialPlan, mockWOs, inUseMachines, 2026, 10)
+    const item = synced.find(i => i.mc === 'SC-368M')
+    expect(item).toBeDefined()
+    expect(item.status).toBe('COMPLETED')
+    expect(item.actualStartDate).toBe('2026-10-05')
+    expect(item.actualEndDate).toBe('2026-10-08')
+    expect(item.actualTech).toBe('ช่างสอง')
+    expect(item.workOrderId).toBe('WO-202610-COMP-02')
+    // Planned end was 2026-10-07, actual was 2026-10-08 -> delayed
+    expect(item.isOnTime).toBe(false)
+  })
+
+  it('syncPMWorkOrderToMonthlySchedule persists schedule and dispatches textileops_pm_schedule_updated event', async () => {
+    localStorage.clear()
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent')
+
+    const newPMWO = {
+      Job_ID: 'WO-202610-REALTIME-01',
+      JobType: 'PM',
+      MC: 'DA-306M',
+      KI: '66936',
+      StartDate: '2026-10-04',
+      Technicians: 'ช่างเรียลไทม์',
+      Status: 'IN_PROGRESS',
+    }
+
+    // Seed initial schedule in localStorage
+    localStorage.setItem('pm_monthly_schedule_2026-10', JSON.stringify(initialPlan))
+
+    const updated = await syncPMWorkOrderToMonthlySchedule(newPMWO, inUseMachines)
+    expect(updated).toBeDefined()
+    expect(Array.isArray(updated)).toBe(true)
+
+    const da = updated.find(i => i.mc === 'DA-306M')
+    expect(da.status).toBe('IN_PROGRESS')
+    expect(da.actualStartDate).toBe('2026-10-04')
+    expect(da.actualTech).toBe('ช่างเรียลไทม์')
+
+    // Verify localStorage updated
+    const savedLocal = JSON.parse(localStorage.getItem('pm_monthly_schedule_2026-10') || '[]')
+    expect(savedLocal.find(i => i.mc === 'DA-306M').status).toBe('IN_PROGRESS')
+
+    // Verify CustomEvent was dispatched
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'textileops_pm_schedule_updated',
+      })
+    )
+
+    dispatchSpy.mockRestore()
   })
 })
 

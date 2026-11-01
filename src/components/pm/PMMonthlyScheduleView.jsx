@@ -371,9 +371,16 @@ export function syncWorkOrdersToMonthlyPlan(
     return (sDate && sDate.startsWith(targetPrefix)) || (eDate && eDate.startsWith(targetPrefix))
   })
 
+  // Sort work orders by timestamp/id so later ones (e.g. COMPLETED) take precedence
+  const sortedWorkOrders = [...pmWorkOrders].sort((a, b) => {
+    const aDate = a.created_at || a.StartDate || ''
+    const bDate = b.created_at || b.StartDate || ''
+    return aDate.localeCompare(bDate)
+  })
+
   let updatedItems = [...monthlyItems]
 
-  pmWorkOrders.forEach(wo => {
+  sortedWorkOrders.forEach(wo => {
     const woMC = String(wo.MC || wo.Mc || wo.machine_mc || wo.Machine_MC || '').trim()
     const woKI = String(wo.KI || wo.Ki || wo.Machine_KI || wo.Serial_OLD || '').trim()
 
@@ -398,10 +405,22 @@ export function syncWorkOrdersToMonthlyPlan(
       return false
     })
 
-    const sDate = String(wo.StartDate || wo.DateStart || wo.StartTime || `${targetPrefix}-01`).slice(0, 10)
-    const eDate = String(wo.EndDate || wo.DateEnd || wo.EndTime || sDate).slice(0, 10)
+    const sDate = String(wo.StartDate || wo.DateStart || wo.StartTime || wo.StartTimestamp || wo.created_at || `${targetPrefix}-01`).slice(0, 10)
+    const hasEnded = Boolean(wo.EndDate || wo.DateEnd || wo.EndTime || wo.EndTimestamp)
+    const rawEndDate = hasEnded ? String(wo.EndDate || wo.DateEnd || wo.EndTime || wo.EndTimestamp).slice(0, 10) : ''
+    const eDate = rawEndDate || sDate
     const woStatus = String(wo.Status || wo.status || '').toUpperCase()
-    const mappedStatus = woStatus === 'COMPLETED' ? 'COMPLETED' : (woStatus === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'SCHEDULED')
+
+    // Status mapping:
+    // If completed: 'COMPLETED'
+    // If cancelled: 'CANCELLED'
+    // If explicitly scheduled: 'SCHEDULED'
+    // Any active/open state (OPEN, IN_PROGRESS, WAITING_TECH, WAITING_PARTS, WAITING_SUMMARY, ASSIGNED, etc.): 'IN_PROGRESS'
+    const isCompleted = ['COMPLETED', 'เสร็จสิ้น', 'DONE', 'CLOSED'].includes(woStatus)
+    const isCancelled = ['CANCELLED', 'CANCELED', 'ยกเลิก'].includes(woStatus)
+    const isScheduled = ['SCHEDULED', 'ตามแผน', 'PLANNED'].includes(woStatus)
+    const mappedStatus = isCompleted ? 'COMPLETED' : (isCancelled ? 'CANCELLED' : (isScheduled ? 'SCHEDULED' : 'IN_PROGRESS'))
+
     const techName = wo.Technicians || wo.Tech || wo.Technician || ''
     const woNotes = wo.Comment || wo.Details || wo.Problem || ''
     const woId = wo.Job_ID || wo.WO_ID || wo.id
@@ -416,7 +435,7 @@ export function syncWorkOrdersToMonthlyPlan(
       updatedItems[existingIndex] = {
         ...item,
         actualStartDate: sDate || item.actualStartDate,
-        actualEndDate: eDate || item.actualEndDate,
+        actualEndDate: mappedStatus === 'COMPLETED' ? eDate : (rawEndDate || item.actualEndDate || sDate),
         actualTech: techName || item.actualTech,
         status: mappedStatus,
         notes: woNotes || item.notes,
@@ -435,7 +454,7 @@ export function syncWorkOrdersToMonthlyPlan(
         plannedStartDate: '',
         plannedEndDate: '',
         actualStartDate: sDate,
-        actualEndDate: eDate,
+        actualEndDate: mappedStatus === 'COMPLETED' ? eDate : (rawEndDate || ''),
         assignedTech: '',
         actualTech: techName,
         status: mappedStatus,
@@ -450,6 +469,121 @@ export function syncWorkOrdersToMonthlyPlan(
       updatedItems.push(newItem)
     }
   })
+
+  return updatedItems
+}
+
+/**
+ * Automatically syncs a single or updated PM Work Order directly into the Monthly PM Schedule.
+ * Can be called immediately upon creating, completing, or modifying PM Work Orders from any page (e.g. WorkOrders.jsx).
+ */
+export async function syncPMWorkOrderToMonthlySchedule(workOrder, machines = []) {
+  if (!workOrder) return null
+  const jobType = String(workOrder.JobType || workOrder.Job_Type || workOrder.job_type || workOrder.jobType || '').toUpperCase()
+  if (jobType !== 'PM') return null
+
+  // Determine target month from StartDate or EndDate or today
+  const sDate = String(workOrder.StartDate || workOrder.DateStart || workOrder.StartTime || workOrder.StartTimestamp || workOrder.created_at || '').slice(0, 10)
+  const eDate = String(workOrder.EndDate || workOrder.DateEnd || workOrder.EndTime || workOrder.EndTimestamp || '').slice(0, 10)
+  const targetDateStr = sDate || eDate || format(new Date(), 'yyyy-MM-dd')
+
+  const [yearStr, monthStr] = targetDateStr.split('-')
+  const targetYear = parseInt(yearStr, 10)
+  const targetMonth = parseInt(monthStr, 10)
+  if (isNaN(targetYear) || isNaN(targetMonth)) return null
+
+  const configKey = `pm_monthly_schedule_${targetYear}-${String(targetMonth).padStart(2, '0')}`
+
+  // 1. Load current items from AppConfigAPI / localStorage
+  let currentItems = []
+  try {
+    const local = typeof localStorage !== 'undefined' ? localStorage.getItem(configKey) : null
+    if (local) {
+      const parsed = JSON.parse(local)
+      if (Array.isArray(parsed)) currentItems = parsed
+    }
+  } catch {}
+
+  try {
+    const list = await AppConfigAPI.list().catch(() => [])
+    const found = list.find(c => c.key === configKey)
+    if (found && found.value) {
+      const parsed = JSON.parse(found.value)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        currentItems = parsed
+      }
+    }
+  } catch {}
+
+  // 2. Load machines if not passed
+  let effectiveMachines = Array.isArray(machines) && machines.length > 0 ? machines : []
+  if (effectiveMachines.length === 0) {
+    try {
+      const rawCylinders = await CylinderAPI.list().catch(() => [])
+      if (Array.isArray(rawCylinders) && rawCylinders.length > 0) {
+        effectiveMachines = rawCylinders
+      }
+    } catch {}
+    if (effectiveMachines.length === 0) {
+      effectiveMachines = getStoredInUseMachinesFallback()
+    }
+  }
+
+  // 3. Fetch all WorkOrders for this month (or combine with this workOrder)
+  let allWos = []
+  try {
+    allWos = await WorkOrderAPI.list().catch(() => [])
+  } catch {}
+  if (!Array.isArray(allWos) || allWos.length === 0) {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? (localStorage.getItem('textileops_tbl_workorders') || localStorage.getItem('txops_tbl_workorders')) : null
+      allWos = raw ? JSON.parse(raw) : []
+    } catch {}
+  }
+  // Ensure the current workOrder is in allWos (or replaces old version)
+  const woId = workOrder.Job_ID || workOrder.WO_ID || workOrder.id
+  const woIndex = allWos.findIndex(w => (w.Job_ID || w.WO_ID || w.id) === woId)
+  if (woIndex >= 0) {
+    allWos[woIndex] = { ...allWos[woIndex], ...workOrder }
+  } else {
+    allWos.push(workOrder)
+  }
+
+  // 4. Run syncWorkOrdersToMonthlyPlan
+  const updatedItems = syncWorkOrdersToMonthlyPlan(
+    currentItems,
+    allWos,
+    effectiveMachines,
+    targetYear,
+    targetMonth
+  )
+
+  // 5. Persist to localStorage and AppConfigAPI
+  const jsonStr = JSON.stringify(updatedItems)
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(configKey, jsonStr)
+    }
+  } catch {}
+
+  try {
+    const list = await AppConfigAPI.list().catch(() => [])
+    const existing = list.find(c => c.key === configKey)
+    if (existing) {
+      await AppConfigAPI.update(existing.id || existing._id, { value: jsonStr })
+    } else {
+      await AppConfigAPI.create({ key: configKey, value: jsonStr })
+    }
+  } catch (e) {
+    console.warn('Could not persist updated PM monthly schedule to AppConfigAPI:', e)
+  }
+
+  // 6. Dispatch custom event so any open PMMonthlyScheduleView updates immediately!
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('textileops_pm_schedule_updated', {
+      detail: { key: configKey, year: targetYear, month: targetMonth, items: updatedItems }
+    }))
+  }
 
   return updatedItems
 }
@@ -806,20 +940,17 @@ export default function PMMonthlyScheduleView({
 
       // If no schedule exists yet, return empty
       setAllSchedules(prev => ({ ...prev, [key]: [] }))
+      return []
     } catch (err) {
       console.warn('Failed to load monthly schedule:', err)
       if (!localParsed) {
         setAllSchedules(prev => ({ ...prev, [key]: [] }))
       }
+      return localParsed || []
     } finally {
       setLoadingSchedule(false)
     }
   }, [])
-
-  // Initial load
-  useEffect(() => {
-    loadMonthSchedule(configKey)
-  }, [configKey, loadMonthSchedule])
 
   // Raw and resolved current items for the selected month
   const rawCurrentItems = useMemo(() => {
@@ -830,70 +961,11 @@ export default function PMMonthlyScheduleView({
     return rawCurrentItems.map(item => resolveItemMachine(item, effectiveMachines))
   }, [rawCurrentItems, effectiveMachines])
 
-  // Auto-heal saved schedule in background if placeholder codes (MC-01) were resolved
-  useEffect(() => {
-    if (!rawCurrentItems || rawCurrentItems.length === 0 || effectiveMachines.length === 0) return
-    const needsHeal = rawCurrentItems.some((raw, idx) => {
-      const resolved = currentItems[idx]
-      return resolved && (raw.mc !== resolved.mc || raw.ki !== resolved.ki || raw.location !== resolved.location)
-    })
-    if (needsHeal) {
-      const jsonStr = JSON.stringify(currentItems)
-      localStorage.setItem(configKey, jsonStr)
-      AppConfigAPI.list().then(list => {
-        const existing = list.find(c => c.key === configKey)
-        if (existing) {
-          AppConfigAPI.update(existing.id || existing._id, { value: jsonStr }).catch(() => {})
-        } else {
-          AppConfigAPI.create({ key: configKey, value: jsonStr }).catch(() => {})
-        }
-      }).catch(() => {})
-    }
-  }, [rawCurrentItems, currentItems, effectiveMachines, configKey])
-
-  // Auto-sync Work Orders (PM job type) into Monthly Schedule
-  const syncWithWorkOrders = useCallback(async (baseItems = currentItems, showToast = false) => {
-    try {
-      setSyncingWO(true)
-      // 1. Fetch Work Orders (API with LocalStorage fallback)
-      let wos = []
-      try {
-        wos = await WorkOrderAPI.list()
-      } catch {}
-      if (!Array.isArray(wos) || wos.length === 0) {
-        try {
-          const raw = localStorage.getItem('textileops_tbl_workorders') || localStorage.getItem('txops_tbl_workorders')
-          wos = raw ? JSON.parse(raw) : []
-        } catch {}
-      }
-
-      // 2. Run sync
-      const synced = syncWorkOrdersToMonthlyPlan(baseItems, wos, effectiveMachines, selectedYear, selectedMonth)
-      const hasChanges = JSON.stringify(synced) !== JSON.stringify(baseItems)
-      if (hasChanges) {
-        saveSchedule(synced)
-        if (showToast) {
-          toast.success('ซิงค์ใบสั่งงาน PM สำเร็จ', `อัปเดตข้อมูลผลงานจริง ${synced.length} รายการ`)
-        }
-      } else if (showToast) {
-        toast.info('ข้อมูลเป็นปัจจุบันแล้ว', 'ไม่มีใบสั่งงาน PM ใหม่ในเดือนนี้')
-      }
-    } catch (err) {
-      if (showToast) toast.error('ซิงค์ไม่สำเร็จ', err.message)
-    } finally {
-      setSyncingWO(false)
-    }
-  }, [currentItems, effectiveMachines, selectedYear, selectedMonth])
-
-  // Trigger sync on month load or when currentItems are ready
-  useEffect(() => {
-    if (currentItems.length > 0) {
-      syncWithWorkOrders(currentItems, false)
-    }
-  }, [configKey])
+  const currentItemsRef = React.useRef(currentItems)
+  currentItemsRef.current = currentItems
 
   // Save schedule to remote and local storage
-  const saveSchedule = async (itemsToSave, targetConfigKey = configKey, customSuccessMsg = null) => {
+  const saveSchedule = useCallback(async (itemsToSave, targetConfigKey = configKey, customSuccessMsg = null, silent = false) => {
     setSavingSchedule(true)
     try {
       const jsonStr = JSON.stringify(itemsToSave)
@@ -918,15 +990,94 @@ export default function PMMonthlyScheduleView({
       setAllSchedules(prev => ({ ...prev, [targetConfigKey]: itemsToSave }))
       if (customSuccessMsg) {
         toast.success(customSuccessMsg.title, customSuccessMsg.desc)
-      } else {
+      } else if (!silent) {
         toast.success('บันทึกสำเร็จ', 'อัปเดตข้อมูลแผน PM เรียบร้อย')
       }
     } catch (err) {
-      toast.error('บันทึกไม่สำเร็จ', err.message)
+      if (!silent) toast.error('บันทึกไม่สำเร็จ', err.message)
     } finally {
       setSavingSchedule(false)
     }
-  }
+  }, [configKey])
+
+  // Auto-sync Work Orders (PM job type) into Monthly Schedule
+  const syncWithWorkOrders = useCallback(async (baseItems = currentItemsRef.current, showToast = false) => {
+    try {
+      setSyncingWO(true)
+      // 1. Fetch Work Orders (API with LocalStorage fallback)
+      let wos = []
+      try {
+        wos = await WorkOrderAPI.list()
+      } catch {}
+      if (!Array.isArray(wos) || wos.length === 0) {
+        try {
+          const raw = localStorage.getItem('textileops_tbl_workorders') || localStorage.getItem('txops_tbl_workorders')
+          wos = raw ? JSON.parse(raw) : []
+        } catch {}
+      }
+
+      // 2. Run sync
+      const synced = syncWorkOrdersToMonthlyPlan(baseItems, wos, effectiveMachines, selectedYear, selectedMonth)
+      const hasChanges = JSON.stringify(synced) !== JSON.stringify(baseItems)
+      if (hasChanges) {
+        await saveSchedule(synced, configKey, null, !showToast)
+        if (showToast) {
+          toast.success('ซิงค์ใบสั่งงาน PM สำเร็จ', `อัปเดตข้อมูลผลงานจริง ${synced.length} รายการ`)
+        }
+      } else if (showToast) {
+        toast.info('ข้อมูลเป็นปัจจุบันแล้ว', 'ไม่มีใบสั่งงาน PM ใหม่ในเดือนนี้')
+      }
+    } catch (err) {
+      if (showToast) toast.error('ซิงค์ไม่สำเร็จ', err.message)
+    } finally {
+      setSyncingWO(false)
+    }
+  }, [effectiveMachines, selectedYear, selectedMonth, configKey, saveSchedule])
+
+  // Initial load & automatic sync with Work Orders
+  useEffect(() => {
+    let isMounted = true
+    loadMonthSchedule(configKey).then(items => {
+      if (isMounted) {
+        syncWithWorkOrders(items || [], false)
+      }
+    })
+    return () => { isMounted = false }
+  }, [configKey, loadMonthSchedule, syncWithWorkOrders])
+
+  // Listen for real-time schedule updates from WorkOrders or other components
+  useEffect(() => {
+    const handleScheduleUpdate = (e) => {
+      if (e?.detail?.key === configKey && Array.isArray(e?.detail?.items)) {
+        setAllSchedules(prev => ({ ...prev, [configKey]: e.detail.items }))
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('textileops_pm_schedule_updated', handleScheduleUpdate)
+      return () => window.removeEventListener('textileops_pm_schedule_updated', handleScheduleUpdate)
+    }
+  }, [configKey])
+
+  // Auto-heal saved schedule in background if placeholder codes (MC-01) were resolved
+  useEffect(() => {
+    if (!rawCurrentItems || rawCurrentItems.length === 0 || effectiveMachines.length === 0) return
+    const needsHeal = rawCurrentItems.some((raw, idx) => {
+      const resolved = currentItems[idx]
+      return resolved && (raw.mc !== resolved.mc || raw.ki !== resolved.ki || raw.location !== resolved.location)
+    })
+    if (needsHeal) {
+      const jsonStr = JSON.stringify(currentItems)
+      localStorage.setItem(configKey, jsonStr)
+      AppConfigAPI.list().then(list => {
+        const existing = list.find(c => c.key === configKey)
+        if (existing) {
+          AppConfigAPI.update(existing.id || existing._id, { value: jsonStr }).catch(() => {})
+        } else {
+          AppConfigAPI.create({ key: configKey, value: jsonStr }).catch(() => {})
+        }
+      }).catch(() => {})
+    }
+  }, [rawCurrentItems, currentItems, effectiveMachines, configKey])
 
   // Explicit Save Plan button handler
   const handleExplicitSaveSchedule = async () => {
