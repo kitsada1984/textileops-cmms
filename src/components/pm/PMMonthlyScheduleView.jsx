@@ -1628,57 +1628,60 @@ export default function PMMonthlyScheduleView({
   return (
     <div className="space-y-6">
       {/* ── HEADER & NAVIGATION CONTROLS ───────────────────────── */}
-      <div className="card p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Title & View Switcher */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <CalendarRange size={22} />
-              </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <span>จัดทำแผน PM รายเดือน</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-mono font-bold">
-                    {daysPerMachine} วัน/เครื่อง (ไม่รวมอาทิตย์)
-                  </span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  วางแผนและติดตามงาน PM รายเครื่อง ย้อนหลัง/ล่วงหน้า และสรุปผลประจำเดือน-ทั้งปี
-                </p>
-              </div>
+      <div className="card p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        {/* Tier 1: Title, Days/MC badge, Description, and View Mode Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+              <CalendarRange size={22} />
             </div>
-
-            {/* View Mode Toggle: Monthly vs Annual */}
-            <div className="flex items-center rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 sm:ml-4">
-              <button
-                type="button"
-                onClick={() => setViewMode('monthly')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  viewMode === 'monthly'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                แผนรายเดือน
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('annual')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  viewMode === 'annual'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                <BarChart3 size={13} />
-                <span>สรุปภาพรวมทั้งปี (12 เดือน)</span>
-              </button>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                  จัดทำแผน PM รายเดือน
+                </h2>
+                <span className="text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-mono font-bold whitespace-nowrap border border-blue-500/20">
+                  {daysPerMachine} วัน/เครื่อง (ไม่รวมอาทิตย์)
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                วางแผนและติดตามงาน PM รายเครื่อง ย้อนหลัง/ล่วงหน้า และสรุปผลประจำเดือน-ทั้งปี
+              </p>
             </div>
           </div>
 
-          {/* Month / Year Navigator Ribbon */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* View Mode Toggle: Monthly vs Annual */}
+          <div className="flex items-center rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setViewMode('monthly')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                viewMode === 'monthly'
+                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              แผนรายเดือน
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('annual')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'annual'
+                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <BarChart3 size={13} />
+              <span>สรุปภาพรวมทั้งปี (12 เดือน)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tier 2: Date Selector & Quick Actions Toolbar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Left: Year & Month Pickers */}
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Year Selector */}
             <div className="flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700">
               <button
@@ -1702,7 +1705,7 @@ export default function PMMonthlyScheduleView({
               </button>
             </div>
 
-            {/* Month Dropdown / Pills */}
+            {/* Month Dropdown */}
             {viewMode === 'monthly' && (
               <select
                 value={selectedMonth}
@@ -1716,50 +1719,54 @@ export default function PMMonthlyScheduleView({
                 ))}
               </select>
             )}
+          </div>
 
-            {/* Quick Actions */}
-            <div className="flex items-center gap-2 shrink-0">
-              {viewMode === 'monthly' && canAdd && (
-                <button
-                  type="button"
-                  onClick={handleAutoGenerate}
-                  disabled={savingSchedule}
-                  className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 shadow-xs cursor-pointer"
-                  title={`สร้างตารางแผน PM ${daysPerMachine} วันต่อเครื่องให้อัตโนมัติ โดยข้ามวันอาทิตย์`}
-                >
-                  <Sparkles size={14} />
-                  <span>สร้างแผนอัตโนมัติ ({daysPerMachine} วัน/เครื่อง)</span>
-                </button>
-              )}
-              {viewMode === 'monthly' && canEdit && (
-                <button
-                  type="button"
-                  onClick={handleExplicitSaveSchedule}
-                  disabled={savingSchedule}
-                  className="px-3 py-1.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50"
-                  title="บันทึกแผนของเดือนนี้ลงฐานข้อมูล"
-                >
-                  {savingSchedule ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                  <span>บันทึกแผน</span>
-                </button>
-              )}
-              {viewMode === 'monthly' && canDelete && currentItems.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setDeleteMonthModalOpen(true)}
-                  disabled={savingSchedule}
-                  className="px-2.5 py-1.5 rounded-xl font-bold text-xs border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50"
-                  title="ลบแผนงานทั้งหมดของเดือนนี้"
-                >
-                  <Trash2 size={14} />
-                  <span className="hidden sm:inline">ลบแผนเดือนนี้</span>
-                </button>
-              )}
-              {/* PDF Actions: View, Print, Download */}
+          {/* Right: Quick Action Buttons (Wrapped & Responsive) */}
+          <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+            {viewMode === 'monthly' && canAdd && (
+              <button
+                type="button"
+                onClick={handleAutoGenerate}
+                disabled={savingSchedule}
+                className="btn-primary text-xs px-3 py-1.5 min-h-[36px] flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+                title={`สร้างตารางแผน PM ${daysPerMachine} วันต่อเครื่องให้อัตโนมัติ โดยข้ามวันอาทิตย์`}
+              >
+                <Sparkles size={14} />
+                <span className="hidden sm:inline">สร้างแผนอัตโนมัติ ({daysPerMachine} วัน/เครื่อง)</span>
+                <span className="sm:hidden">สร้างแผน ({daysPerMachine}ว.)</span>
+              </button>
+            )}
+            {viewMode === 'monthly' && canEdit && (
+              <button
+                type="button"
+                onClick={handleExplicitSaveSchedule}
+                disabled={savingSchedule}
+                className="px-3 py-1.5 min-h-[36px] rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50 shrink-0"
+                title="บันทึกแผนของเดือนนี้ลงฐานข้อมูล"
+              >
+                {savingSchedule ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                <span>บันทึกแผน</span>
+              </button>
+            )}
+            {viewMode === 'monthly' && canDelete && currentItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDeleteMonthModalOpen(true)}
+                disabled={savingSchedule}
+                className="px-2.5 py-1.5 min-h-[36px] rounded-xl font-bold text-xs border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50 shrink-0"
+                title="ลบแผนงานทั้งหมดของเดือนนี้"
+              >
+                <Trash2 size={14} />
+                <span className="hidden sm:inline">ลบแผนเดือนนี้</span>
+                <span className="sm:hidden">ลบแผน</span>
+              </button>
+            )}
+            {/* PDF Actions: View, Print, Download */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setPrintModalOpen(true)}
-                className="btn-outline text-xs px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                className="btn-outline text-xs px-2.5 py-1.5 min-h-[36px] flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
                 title="ดูตัวอย่างเอกสารแผน PM ประจำเดือน (A4)"
               >
                 <Eye size={14} />
@@ -1769,7 +1776,7 @@ export default function PMMonthlyScheduleView({
               <button
                 type="button"
                 onClick={() => setPrintModalOpen(true)}
-                className="btn-outline text-xs px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                className="btn-outline text-xs px-2.5 py-1.5 min-h-[36px] flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
                 title="พิมพ์ตารางแผน PM ขนาด A4"
               >
                 <Printer size={14} />
@@ -1779,11 +1786,12 @@ export default function PMMonthlyScheduleView({
               <button
                 type="button"
                 onClick={() => setPrintModalOpen(true)}
-                className="px-2.5 py-1.5 rounded-xl font-bold text-xs border border-blue-200 dark:border-blue-900/50 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                className="px-2.5 py-1.5 min-h-[36px] rounded-xl font-bold text-xs border border-blue-200 dark:border-blue-900/50 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
                 title="ดาวน์โหลดแผน PM เป็นไฟล์ PDF"
               >
                 <Download size={14} />
                 <span className="hidden sm:inline">ดาวน์โหลด PDF</span>
+                <span className="sm:hidden">PDF</span>
               </button>
             </div>
           </div>
@@ -1911,119 +1919,119 @@ export default function PMMonthlyScheduleView({
 
           {/* Schedule Container */}
           <div className="card p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            {/* Filter & Search Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2 flex-1">
-                <div className="relative min-w-[200px] max-w-xs flex-1">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="ค้นหา M/C, KI, ช่าง, สถานที่..."
-                    className="input pl-8 py-1.5 text-xs w-full"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Status Filter Buttons */}
-                <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+            {/* Filter & Search Bar: Tier 1 - Search & Filters */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="relative min-w-[200px] sm:w-72">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="ค้นหา M/C, KI, ช่าง, สถานที่..."
+                  className="input pl-8 py-1.5 text-xs w-full min-h-[36px]"
+                />
+                {searchQuery && (
                   <button
                     type="button"
-                    onClick={() => setStatusFilter('ALL')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      statusFilter === 'ALL'
-                        ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                    }`}
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    ทั้งหมด ({currentItems.length})
+                    <X size={12} />
                   </button>
-                  {SCHEDULE_STATUS_OPTIONS.map(opt => {
-                    const count = currentItems.filter(i => i.status === opt.value).length
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setStatusFilter(opt.value)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          statusFilter === opt.value
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                        }`}
-                      >
-                        {opt.label} ({count})
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {/* Location Filter Chips */}
-                <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
-                  <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 pl-1 pr-0.5 shrink-0 flex items-center gap-1">
-                    <MapPin size={11} />
-                    <span>โรงงาน:</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setViewLocationFilter(['ALL'])}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      viewLocationFilter.includes('ALL')
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                    }`}
-                    title="แสดงเครื่องจักรทุกโรงงาน"
-                  >
-                    ทั้งหมด
-                  </button>
-                  {AVAILABLE_LOCATIONS.map(loc => {
-                    const isSelected = !viewLocationFilter.includes('ALL') && viewLocationFilter.includes(loc.id)
-                    const count = currentItems.filter(i => matchesLocation(i.location, [loc.id])).length
-                    return (
-                      <button
-                        key={loc.id}
-                        type="button"
-                        onClick={() => {
-                          setViewLocationFilter(prev => {
-                            if (prev.includes('ALL')) return [loc.id]
-                            if (prev.includes(loc.id)) {
-                              const next = prev.filter(x => x !== loc.id)
-                              return next.length === 0 ? ['ALL'] : next
-                            }
-                            return [...prev, loc.id]
-                          })
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          isSelected
-                            ? 'bg-blue-600 text-white shadow-xs ring-1 ring-blue-400'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                        }`}
-                        title={`คลิกเพื่อเลือก/ยกเลิก ${loc.label}`}
-                      >
-                        <span>{loc.id}</span>
-                        <span className="text-[10px] opacity-75 font-mono">({count})</span>
-                      </button>
-                    )
-                  })}
-                </div>
+                )}
               </div>
 
-              {/* View Switcher & Add Machine */}
-              <div className="flex items-center gap-2 shrink-0">
+              {/* Status Filter Buttons */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 max-w-full">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('ALL')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[32px] ${
+                    statusFilter === 'ALL'
+                      ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  }`}
+                >
+                  ทั้งหมด ({currentItems.length})
+                </button>
+                {SCHEDULE_STATUS_OPTIONS.map(opt => {
+                  const count = currentItems.filter(i => i.status === opt.value).length
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setStatusFilter(opt.value)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[32px] ${
+                        statusFilter === opt.value
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      {opt.label} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Location Filter Chips */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 max-w-full">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 pl-1 pr-0.5 shrink-0 flex items-center gap-1">
+                  <MapPin size={11} />
+                  <span>โรงงาน:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setViewLocationFilter(['ALL'])}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[32px] ${
+                    viewLocationFilter.includes('ALL')
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  }`}
+                  title="แสดงเครื่องจักรทุกโรงงาน"
+                >
+                  ทั้งหมด
+                </button>
+                {AVAILABLE_LOCATIONS.map(loc => {
+                  const isSelected = !viewLocationFilter.includes('ALL') && viewLocationFilter.includes(loc.id)
+                  const count = currentItems.filter(i => matchesLocation(i.location, [loc.id])).length
+                  return (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      onClick={() => {
+                        setViewLocationFilter(prev => {
+                          if (prev.includes('ALL')) return [loc.id]
+                          if (prev.includes(loc.id)) {
+                            const next = prev.filter(x => x !== loc.id)
+                            return next.length === 0 ? ['ALL'] : next
+                          }
+                          return [...prev, loc.id]
+                        })
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 min-h-[32px] ${
+                        isSelected
+                          ? 'bg-blue-600 text-white shadow-xs ring-1 ring-blue-400'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                      title={`คลิกเพื่อเลือก/ยกเลิก ${loc.label}`}
+                    >
+                      <span>{loc.id}</span>
+                      <span className="text-[10px] opacity-75 font-mono">({count})</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Filter & Search Bar: Tier 2 - View Modes & Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2 flex-wrap">
                 {/* Switcher: Timeline vs List View */}
-                <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
                   <button
                     type="button"
                     onClick={() => setScheduleDisplayMode('timeline')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
                       scheduleDisplayMode === 'timeline'
                         ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2036,7 +2044,7 @@ export default function PMMonthlyScheduleView({
                   <button
                     type="button"
                     onClick={() => setScheduleDisplayMode('list')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
                       scheduleDisplayMode === 'list'
                         ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2050,11 +2058,11 @@ export default function PMMonthlyScheduleView({
 
                 {/* Timeline Mode Filter: Both vs Planned vs Actual */}
                 {scheduleDisplayMode === 'timeline' && (
-                  <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
                     <button
                       type="button"
                       onClick={() => setTimelineBarFilter('both')}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
                         timelineBarFilter === 'both'
                           ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2066,7 +2074,7 @@ export default function PMMonthlyScheduleView({
                     <button
                       type="button"
                       onClick={() => setTimelineBarFilter('planned')}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
                         timelineBarFilter === 'planned'
                           ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2078,7 +2086,7 @@ export default function PMMonthlyScheduleView({
                     <button
                       type="button"
                       onClick={() => setTimelineBarFilter('actual')}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
                         timelineBarFilter === 'actual'
                           ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2089,24 +2097,27 @@ export default function PMMonthlyScheduleView({
                     </button>
                   </div>
                 )}
+              </div>
 
-                {/* Sync Work Orders Button */}
+              {/* Action Buttons: Sync Work Orders & Add Machine */}
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => syncWithWorkOrders(currentItems, true)}
                   disabled={syncingWO}
-                  className="btn-outline text-xs px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="btn-outline text-xs px-2.5 py-1.5 min-h-[36px] flex items-center gap-1.5 cursor-pointer shrink-0"
                   title="คลิกเพื่อดึงใบสั่งงาน PM ล่าสุดเข้าสู่แผน"
                 >
                   <RefreshCw size={13} className={syncingWO ? "animate-spin text-blue-500" : ""} />
                   <span className="hidden sm:inline">ซิงค์ใบสั่งงาน PM</span>
+                  <span className="sm:hidden">ซิงค์ WO</span>
                 </button>
 
                 {canAdd && (
                   <button
                     type="button"
                     onClick={handleOpenAddModal}
-                    className="btn-outline text-xs px-3 py-1.5 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                    className="btn-outline text-xs px-3 py-1.5 min-h-[36px] flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                   >
                     <Plus size={14} />
                     <span>เพิ่มเครื่องในแผน</span>
@@ -2153,17 +2164,17 @@ export default function PMMonthlyScheduleView({
 
                 {/* Gantt Scroll Container */}
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-                  <div className="min-w-[1180px]">
+                  <div className="min-w-[1240px]">
                     {/* Timeline Header Row */}
                     <div className="flex items-stretch border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 text-xs font-bold sticky top-0 z-10">
                       {/* Left Machine Columns */}
                       <div className="w-10 shrink-0 py-1.5 px-1 text-center text-slate-400 border-r border-slate-200 dark:border-slate-800">
                         #
                       </div>
-                      <div className="w-56 shrink-0 py-1.5 px-2.5 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                      <div className="w-64 shrink-0 py-1.5 px-2.5 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
                         เครื่องจักร (M/C)
                       </div>
-                      <div className="w-36 shrink-0 py-1.5 px-2 text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                      <div className="w-40 shrink-0 py-1.5 px-2 text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
                         สถานะ / จัดการ
                       </div>
 
@@ -2239,7 +2250,7 @@ export default function PMMonthlyScheduleView({
                               </div>
 
                               <div
-                                className="w-56 shrink-0 py-1 px-2.5 border-r border-slate-200 dark:border-slate-800 flex items-center min-w-0 overflow-hidden"
+                                className="w-64 shrink-0 py-1 px-2.5 border-r border-slate-200 dark:border-slate-800 flex items-center min-w-0 overflow-hidden"
                                 title={`${item.mc} (${item.ki || '—'}) | โรงงาน: ${item.location || '—'} | ชนิด: ${item.type || '—'}${item.countdownLabel ? ` | ${item.countdownLabel}` : ''}`}
                               >
                                 <div className="flex items-center gap-1.5 w-full min-w-0 text-xs overflow-hidden">
@@ -2247,13 +2258,13 @@ export default function PMMonthlyScheduleView({
                                     {item.mc}
                                   </span>
                                   {item.isUnplanned && (
-                                    <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
                                       นอกแผน
                                     </span>
                                   )}
                                   {item.countdownLabel && item.countdownLabel !== '—' && (
                                     <span
-                                      className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full inline-flex items-center shrink-0 ml-auto ${
+                                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center shrink-0 ml-auto ${
                                         item.countdownColor === 'red' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
                                         item.countdownColor === 'yellow' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
                                         item.countdownColor === 'green' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
@@ -2267,11 +2278,11 @@ export default function PMMonthlyScheduleView({
                                 </div>
                               </div>
 
-                              <div className="w-36 shrink-0 py-1 px-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1 overflow-hidden">
+                              <div className="w-40 shrink-0 py-1 px-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1 overflow-hidden">
                                 <button
                                   type="button"
                                   onClick={() => handleOpenUpdateModal(item)}
-                                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold border cursor-pointer hover:opacity-85 transition-opacity truncate max-w-[70px] ${statusMeta.badgeClass}`}
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border cursor-pointer hover:opacity-85 transition-opacity truncate max-w-[80px] ${statusMeta.badgeClass}`}
                                   title={`คลิกเพื่อดูหรืออัปเดตงานจริง${item.workOrderId ? ` | WO: ${item.workOrderId}` : ''}`}
                                 >
                                   {statusMeta.label}

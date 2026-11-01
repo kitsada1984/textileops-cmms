@@ -128,31 +128,34 @@ export default function PMMonthlyPrintModal({
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex flex-col items-center">
       {/* ── TOP ACTION BAR (Screen only / print:hidden) ─────────────────────────── */}
-      <div className="sticky top-0 z-20 w-full bg-slate-900/95 border-b border-slate-800 px-4 py-3 flex items-center justify-between shadow-xl backdrop-blur-md print:hidden">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold">
-            <FileText size={20} />
+      <div className="sticky top-0 z-20 w-full bg-slate-900/95 border-b border-slate-800 px-4 py-2.5 sm:py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xl backdrop-blur-md print:hidden">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold shrink-0">
+            <FileText size={18} />
           </div>
-          <div>
-            <h2 className="text-sm font-black text-white flex items-center gap-2">
-              พรีวิวแผนงานบำรุงรักษาเชิงป้องกันประจำเดือน (A4 Landscape)
-              <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xs sm:text-sm font-black text-white tracking-wide whitespace-nowrap">
+                <span className="hidden sm:inline">พรีวิวแผนงานบำรุงรักษาเชิงป้องกันประจำเดือน (A4 Landscape)</span>
+                <span className="sm:hidden">พรีวิวแผน PM (A4 Landscape)</span>
+              </h2>
+              <span className="text-[10px] sm:text-[11px] font-normal px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 whitespace-nowrap">
                 {monthName} {buddhistYear} | รวม {items.length} เครื่อง
               </span>
-            </h2>
-            <p className="text-[11px] text-slate-400">
+            </div>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate hidden xs:block">
               ตรวจสอบรูปแบบเอกสารก่อนสั่งพิมพ์ หรือดาวน์โหลดเป็นไฟล์ PDF ขนาด A4 แนวนอน
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap sm:justify-end">
           {/* View Mode Switcher */}
-          <div className="flex items-center p-1 bg-slate-800 rounded-xl border border-slate-700">
+          <div className="flex items-center p-0.5 sm:p-1 bg-slate-800 rounded-xl border border-slate-700 shrink-0">
             <button
               type="button"
               onClick={() => setViewMode('timeline')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
                 viewMode === 'timeline'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -160,12 +163,13 @@ export default function PMMonthlyPrintModal({
               title="แสดงแบบปฏิทินแถบเวลา (Gantt Timeline)"
             >
               <BarChart3 size={13} />
-              <span>แถบเวลา (Timeline)</span>
+              <span className="hidden sm:inline">แถบเวลา (Timeline)</span>
+              <span className="sm:hidden">แถบเวลา</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
                 viewMode === 'list'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -181,27 +185,29 @@ export default function PMMonthlyPrintModal({
             type="button"
             onClick={handleDownloadPdf}
             disabled={downloading}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0 min-h-[36px]"
             title="ดาวน์โหลดเป็นไฟล์ PDF"
           >
-            {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-            <span>{downloading ? 'กำลังสร้าง PDF...' : 'ดาวน์โหลด PDF'}</span>
+            {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            <span className="hidden sm:inline">{downloading ? 'กำลังสร้าง PDF...' : 'ดาวน์โหลด PDF'}</span>
+            <span className="sm:hidden">{downloading ? 'สร้าง PDF...' : 'PDF'}</span>
           </button>
 
           <button
             type="button"
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shrink-0 min-h-[36px]"
             title="พิมพ์เอกสารออกเครื่องพิมพ์หรือ PDF"
           >
-            <Printer size={16} />
-            <span>พิมพ์เอกสาร (A4)</span>
+            <Printer size={15} />
+            <span className="hidden sm:inline">พิมพ์เอกสาร (A4)</span>
+            <span className="sm:hidden">พิมพ์</span>
           </button>
 
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer shrink-0 ml-auto sm:ml-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
             title="ปิดหน้าต่าง (Esc)"
           >
             <X size={18} />
@@ -252,11 +258,11 @@ export default function PMMonthlyPrintModal({
       `}</style>
 
       {/* ── PREVIEW CONTAINER / PRINTABLE DOCUMENT ─────────────────── */}
-      <div className="p-4 sm:p-6 w-full flex justify-center">
+      <div className="p-2 sm:p-6 w-full flex justify-start lg:justify-center overflow-x-auto">
         <div
           ref={printRef}
           id="printable-pm-monthly-report"
-          className="w-full max-w-[297mm] min-h-[200mm] bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-300 font-sans print:border-0 print:p-2 print:shadow-none"
+          className="w-full max-w-[297mm] min-h-[200mm] min-w-[1020px] print:min-w-0 bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-300 font-sans print:border-0 print:p-2 print:shadow-none"
         >
           {/* ── 1. HEADER SECTION ─────────────────────────────────── */}
           <div className="border-b-2 border-slate-900 pb-2.5 mb-2.5">
