@@ -26,11 +26,14 @@ import {
   ExternalLink,
   Tag,
   Save,
+  Eye,
+  Download,
 } from 'lucide-react'
 import { format, parseISO, isAfter, isBefore, startOfDay } from 'date-fns'
 import { AppConfigAPI, WorkOrderAPI, CylinderAPI, PMPlanAPI, countWorkingDaysExcludingSundays, isSystemWorkOrder } from '../../api/entities'
 import { useToast } from '../ui/Toast'
 import Modal from '../ui/Modal'
+import PMMonthlyPrintModal from './PMMonthlyPrintModal'
 
 // Thai Month Names
 export const THAI_MONTHS = [
@@ -1084,6 +1087,7 @@ export default function PMMonthlyScheduleView({
   // Location Select Pre-Generation Modal State
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [deleteMonthModalOpen, setDeleteMonthModalOpen] = useState(false)
+  const [printModalOpen, setPrintModalOpen] = useState(false)
   const [selectedGenLocations, setSelectedGenLocations] = useState(['ALL'])
 
   // Modals state
@@ -1751,14 +1755,35 @@ export default function PMMonthlyScheduleView({
                   <span className="hidden sm:inline">ลบแผนเดือนนี้</span>
                 </button>
               )}
+              {/* PDF Actions: View, Print, Download */}
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5 cursor-pointer"
-                title="พิมพ์ตารางแผน PM"
+                onClick={() => setPrintModalOpen(true)}
+                className="btn-outline text-xs px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                title="ดูตัวอย่างเอกสารแผน PM ประจำเดือน (A4)"
+              >
+                <Eye size={14} />
+                <span className="hidden sm:inline">ดูแผน</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPrintModalOpen(true)}
+                className="btn-outline text-xs px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                title="พิมพ์ตารางแผน PM ขนาด A4"
               >
                 <Printer size={14} />
-                <span className="hidden sm:inline">พิมพ์แผน</span>
+                <span className="hidden sm:inline">พิมพ์</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPrintModalOpen(true)}
+                className="px-2.5 py-1.5 rounded-xl font-bold text-xs border border-blue-200 dark:border-blue-900/50 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                title="ดาวน์โหลดแผน PM เป็นไฟล์ PDF"
+              >
+                <Download size={14} />
+                <span className="hidden sm:inline">ดาวน์โหลด PDF</span>
               </button>
             </div>
           </div>
@@ -2214,11 +2239,11 @@ export default function PMMonthlyScheduleView({
                               </div>
 
                               <div
-                                className="w-56 shrink-0 py-1 px-2.5 border-r border-slate-200 dark:border-slate-800 flex items-center min-w-0"
+                                className="w-56 shrink-0 py-1 px-2.5 border-r border-slate-200 dark:border-slate-800 flex items-center min-w-0 overflow-hidden"
                                 title={`${item.mc} (${item.ki || '—'}) | โรงงาน: ${item.location || '—'} | ชนิด: ${item.type || '—'}${item.countdownLabel ? ` | ${item.countdownLabel}` : ''}`}
                               >
-                                <div className="flex items-center gap-1.5 w-full min-w-0 text-xs">
-                                  <span className="font-bold text-slate-900 dark:text-slate-100 truncate shrink-0">
+                                <div className="flex items-center gap-1.5 w-full min-w-0 text-xs overflow-hidden">
+                                  <span className="font-bold text-slate-900 dark:text-slate-100 truncate min-w-0 shrink-0">
                                     {item.mc}
                                   </span>
                                   {item.isUnplanned && (
@@ -2242,7 +2267,7 @@ export default function PMMonthlyScheduleView({
                                 </div>
                               </div>
 
-                              <div className="w-36 shrink-0 py-1 px-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1">
+                              <div className="w-36 shrink-0 py-1 px-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1 overflow-hidden">
                                 <button
                                   type="button"
                                   onClick={() => handleOpenUpdateModal(item)}
@@ -3251,6 +3276,18 @@ export default function PMMonthlyScheduleView({
           </div>
         </div>
       </Modal>
+
+      {/* ── PM MONTHLY PRINT & PDF PREVIEW MODAL ── */}
+      <PMMonthlyPrintModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        year={selectedYear}
+        month={selectedMonth}
+        items={currentItems}
+        stats={monthlyStats}
+        daysPerMachine={daysPerMachine}
+        locationFilter={viewLocationFilter.includes('ALL') ? 'ALL' : viewLocationFilter.join(', ')}
+      />
     </div>
   )
 }

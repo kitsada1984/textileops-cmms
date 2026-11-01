@@ -1247,4 +1247,23 @@ describe('PM Work Order Deletion Sync (removePMWorkOrderFromMonthlyPlan & remove
     expect(result).toHaveLength(1)
     expect(result[0].mc).toBe('DP-341M')
   })
+
+  it('renders View, Print, and Download PDF buttons on toolbar and opens print modal when clicked', async () => {
+    render(<PMMonthlyScheduleView machinesList={mockMachines} />)
+
+    // Check buttons are present on toolbar
+    const viewBtn = screen.getByRole('button', { name: /ดูแผน/ })
+    const printBtn = screen.getByRole('button', { name: /^พิมพ์$/ })
+    const downloadBtn = screen.getByRole('button', { name: /ดาวน์โหลด PDF/ })
+
+    expect(viewBtn).toBeInTheDocument()
+    expect(printBtn).toBeInTheDocument()
+    expect(downloadBtn).toBeInTheDocument()
+
+    // Clicking "ดูแผน" opens PMMonthlyPrintModal
+    fireEvent.click(viewBtn)
+
+    expect(screen.getByText(/พรีวิวแผนงานบำรุงรักษาเชิงป้องกันประจำเดือน/)).toBeInTheDocument()
+    expect(screen.getByText(/บริษัท แกมม่า นิตติ้ง จำกัด/)).toBeInTheDocument()
+  })
 })
