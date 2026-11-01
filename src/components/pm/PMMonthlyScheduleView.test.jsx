@@ -826,3 +826,80 @@ describe('Configurable Days Per Machine (1, 2, 3, 4, 5 days/machine)', () => {
     fireEvent.click(confirmBtn)
   })
 })
+
+describe('Save Plan, Delete Month Plan, and Item Actions (Edit/Delete)', () => {
+  const testMachines = [
+    { mc: 'DA-306M', ki: '66936', location: 'GK3', type: 'D' },
+    { mc: 'SC-368M', ki: '62407', location: 'GK1', type: 'S' },
+  ]
+
+  beforeEach(() => {
+    localStorage.clear()
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const monthKey = `${y}-${m}`
+    const schedule = [
+      {
+        id: 'PMSCH-01',
+        mc: 'DA-306M',
+        location: 'GK3',
+        plannedStartDate: `${y}-${m}-01`,
+        plannedEndDate: `${y}-${m}-03`,
+        status: 'SCHEDULED',
+      },
+    ]
+    localStorage.setItem(`pm_monthly_schedule_${monthKey}`, JSON.stringify(schedule))
+  })
+
+  it('renders Explicit Save Plan button and Delete Month Plan button when items exist', async () => {
+    render(<PMMonthlyScheduleView machinesList={testMachines} />)
+
+    // Save Plan button
+    const saveBtn = screen.getByRole('button', { name: /บันทึกแผน/ })
+    expect(saveBtn).toBeInTheDocument()
+
+    // Delete Month Plan button
+    const deleteMonthBtn = screen.getByRole('button', { name: /ลบแผนเดือนนี้/ })
+    expect(deleteMonthBtn).toBeInTheDocument()
+
+    // Clicking Save Plan triggers save
+    fireEvent.click(saveBtn)
+  })
+
+  it('opens Delete Month Plan confirmation modal and clears schedule on confirm', async () => {
+    render(<PMMonthlyScheduleView machinesList={testMachines} />)
+
+    const deleteMonthBtn = screen.getByRole('button', { name: /ลบแผนเดือนนี้/ })
+    fireEvent.click(deleteMonthBtn)
+
+    // Modal title & content
+    expect(screen.getByText(/ยืนยันลบแผนงานประจำเดือน/)).toBeInTheDocument()
+    expect(screen.getByText(/คุณแน่ใจหรือไม่ที่จะลบแผนงานทั้งหมด/)).toBeInTheDocument()
+
+    // Confirm delete button inside modal
+    const confirmDelBtn = screen.getByRole('button', { name: /ยืนยันลบแผนงาน/ })
+    expect(confirmDelBtn).toBeInTheDocument()
+    fireEvent.click(confirmDelBtn)
+
+    // Schedule is now cleared (0 items)
+    await waitFor(() => {
+      expect(screen.getByText(/ยังไม่มีรายการแผน PM สำหรับเดือน/)).toBeInTheDocument()
+    })
+  })
+
+  it('renders Edit and Delete action buttons on Timeline Gantt rows', async () => {
+    render(<PMMonthlyScheduleView machinesList={testMachines} />)
+
+    // In timeline view, check for edit and delete buttons
+    const editBtn = screen.getByTitle(/แก้ไขแผน: DA-306M/)
+    expect(editBtn).toBeInTheDocument()
+
+    const deleteBtn = screen.getByTitle(/ลบ DA-306M ออกจากแผน/)
+    expect(deleteBtn).toBeInTheDocument()
+
+    // Clicking edit button opens AddEdit modal
+    fireEvent.click(editBtn)
+    expect(screen.getByText(/แก้ไขแผน: DA-306M/)).toBeInTheDocument()
+  })
+})

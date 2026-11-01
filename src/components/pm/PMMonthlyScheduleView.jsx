@@ -25,6 +25,7 @@ import {
   Search,
   ExternalLink,
   Tag,
+  Save,
 } from 'lucide-react'
 import { format, parseISO, isAfter, isBefore, startOfDay } from 'date-fns'
 import { AppConfigAPI, WorkOrderAPI, CylinderAPI, PMPlanAPI, countWorkingDaysExcludingSundays, isSystemWorkOrder } from '../../api/entities'
@@ -697,6 +698,7 @@ export default function PMMonthlyScheduleView({
 
   // Location Select Pre-Generation Modal State
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [deleteMonthModalOpen, setDeleteMonthModalOpen] = useState(false)
   const [selectedGenLocations, setSelectedGenLocations] = useState(['ALL'])
 
   // Modals state
@@ -891,7 +893,7 @@ export default function PMMonthlyScheduleView({
   }, [configKey])
 
   // Save schedule to remote and local storage
-  const saveSchedule = async (itemsToSave, targetConfigKey = configKey) => {
+  const saveSchedule = async (itemsToSave, targetConfigKey = configKey, customSuccessMsg = null) => {
     setSavingSchedule(true)
     try {
       const jsonStr = JSON.stringify(itemsToSave)
@@ -914,12 +916,33 @@ export default function PMMonthlyScheduleView({
 
       // 3. Update memory state
       setAllSchedules(prev => ({ ...prev, [targetConfigKey]: itemsToSave }))
-      toast.success('บันทึกสำเร็จ', 'อัปเดตข้อมูลแผน PM เรียบร้อย')
+      if (customSuccessMsg) {
+        toast.success(customSuccessMsg.title, customSuccessMsg.desc)
+      } else {
+        toast.success('บันทึกสำเร็จ', 'อัปเดตข้อมูลแผน PM เรียบร้อย')
+      }
     } catch (err) {
       toast.error('บันทึกไม่สำเร็จ', err.message)
     } finally {
       setSavingSchedule(false)
     }
+  }
+
+  // Explicit Save Plan button handler
+  const handleExplicitSaveSchedule = async () => {
+    await saveSchedule(currentItems, configKey, {
+      title: 'บันทึกแผนสำเร็จ 💾',
+      desc: `บันทึกแผนงานเดือน ${THAI_MONTHS[selectedMonth - 1]} ${selectedYear} (${currentItems.length} เครื่อง) เรียบร้อยแล้ว`,
+    })
+  }
+
+  // Confirm delete entire month schedule handler
+  const handleConfirmDeleteMonthSchedule = async () => {
+    await saveSchedule([], configKey, {
+      title: 'ลบแผนงานสำเร็จ 🗑️',
+      desc: `ลบแผนงานประจำเดือน ${THAI_MONTHS[selectedMonth - 1]} ${selectedYear} เรียบร้อยแล้ว`,
+    })
+    setDeleteMonthModalOpen(false)
   }
 
   // Handle Auto-generate schedule (opens location select modal)
@@ -1104,9 +1127,14 @@ export default function PMMonthlyScheduleView({
   }
 
   const handleDeleteItem = (id) => {
-    if (!window.confirm('คุณต้องการลบเครื่องนี้ออกจากแผนงานใช่หรือไม่?')) return
+    const itemToDelete = currentItems.find(i => i.id === id)
+    const mcName = itemToDelete?.mc || 'เครื่องนี้'
+    if (!window.confirm(`คุณต้องการลบเครื่อง ${mcName} ออกจากแผนงานใช่หรือไม่?`)) return
     const updatedItems = currentItems.filter(item => item.id !== id)
-    saveSchedule(updatedItems)
+    saveSchedule(updatedItems, configKey, {
+      title: 'ลบออกจากแผนสำเร็จ',
+      desc: `ลบเครื่อง ${mcName} ออกจากแผนเรียบร้อย`,
+    })
   }
 
   // Filter items
@@ -1295,6 +1323,30 @@ export default function PMMonthlyScheduleView({
                 >
                   <Sparkles size={14} />
                   <span>สร้างแผนอัตโนมัติ ({daysPerMachine} วัน/เครื่อง)</span>
+                </button>
+              )}
+              {viewMode === 'monthly' && canEdit && (
+                <button
+                  type="button"
+                  onClick={handleExplicitSaveSchedule}
+                  disabled={savingSchedule}
+                  className="px-3 py-1.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50"
+                  title="บันทึกแผนของเดือนนี้ลงฐานข้อมูล"
+                >
+                  {savingSchedule ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                  <span>บันทึกแผน</span>
+                </button>
+              )}
+              {viewMode === 'monthly' && canDelete && currentItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDeleteMonthModalOpen(true)}
+                  disabled={savingSchedule}
+                  className="px-2.5 py-1.5 rounded-xl font-bold text-xs border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50"
+                  title="ลบแผนงานทั้งหมดของเดือนนี้"
+                >
+                  <Trash2 size={14} />
+                  <span className="hidden sm:inline">ลบแผนเดือนนี้</span>
                 </button>
               )}
               <button
@@ -1684,8 +1736,8 @@ export default function PMMonthlyScheduleView({
                       <div className="w-44 shrink-0 py-2.5 px-3 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
                         เครื่องจักร (M/C)
                       </div>
-                      <div className="w-28 shrink-0 py-2.5 px-2 text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
-                        สถานะ
+                      <div className="w-32 shrink-0 py-2.5 px-2 text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                        สถานะ / จัดการ
                       </div>
 
                       {/* 31 Calendar Day Columns Header */}
@@ -1776,17 +1828,43 @@ export default function PMMonthlyScheduleView({
                                   )}
                                 </div>
                               </div>
-                              <div className="w-28 shrink-0 py-2.5 px-2 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenUpdateModal(item)}
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border cursor-pointer hover:opacity-85 transition-opacity ${statusMeta.badgeClass}`}
-                                  title="คลิกเพื่อดูหรืออัปเดตงานจริง"
-                                >
-                                  {statusMeta.label}
-                                </button>
+                              <div className="w-32 shrink-0 py-2 px-1.5 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1">
+                                <div className="flex items-center gap-1 w-full justify-between px-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenUpdateModal(item)}
+                                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold border cursor-pointer hover:opacity-85 transition-opacity truncate max-w-[62px] ${statusMeta.badgeClass}`}
+                                    title="คลิกเพื่อดูหรืออัปเดตงานจริง"
+                                  >
+                                    {statusMeta.label}
+                                  </button>
+                                  <div className="flex items-center gap-0.5 shrink-0">
+                                    {canEdit && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenEditItemModal(item)}
+                                        className="p-1 rounded-md text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                        title={`แก้ไขแผน: ${item.mc}`}
+                                        aria-label={`แก้ไขแผน ${item.mc}`}
+                                      >
+                                        <Calendar size={12} />
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteItem(item.id)}
+                                        className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                                        title={`ลบ ${item.mc} ออกจากแผน`}
+                                        aria-label={`ลบแผน ${item.mc}`}
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
                                 {item.workOrderId && (
-                                  <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-semibold truncate max-w-[90px]" title={`ใบสั่งงาน: ${item.workOrderId}`}>
+                                  <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-semibold truncate max-w-[100px]" title={`ใบสั่งงาน: ${item.workOrderId}`}>
                                     {item.workOrderId}
                                   </span>
                                 )}
@@ -2722,6 +2800,52 @@ export default function PMMonthlyScheduleView({
             >
               <Sparkles size={14} />
               <span>ยืนยันสร้างแผนงาน ({effectiveMachines.filter(m => matchesLocation(m.location, selectedGenLocations)).length} เครื่อง)</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── MODAL 4: CONFIRM DELETE ENTIRE MONTH SCHEDULE ── */}
+      <Modal
+        open={deleteMonthModalOpen}
+        onClose={() => setDeleteMonthModalOpen(false)}
+        title={`ยืนยันลบแผนงานประจำเดือน ${THAI_MONTHS[selectedMonth - 1]} ${selectedYear}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 shrink-0">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="space-y-1 text-xs">
+              <p className="font-bold text-sm text-rose-900 dark:text-rose-100">
+                คุณแน่ใจหรือไม่ที่จะลบแผนงานทั้งหมด?
+              </p>
+              <p className="text-slate-600 dark:text-slate-300">
+                ระบบจะลบเครื่องจักรทั้งหมดจำนวน <strong className="text-rose-600 dark:text-rose-400 font-mono font-bold">{currentItems.length} เครื่อง</strong> ออกจากแผนงานประจำเดือน <strong>{THAI_MONTHS[selectedMonth - 1]} {selectedYear}</strong>
+              </p>
+              <p className="text-slate-500 dark:text-slate-400 text-[11px] pt-1">
+                ⚠️ ข้อมูลแผนของเดือนนี้จะถูกล้างออกจากระบบ แต่จะไม่กระทบประวัติ PM หรือใบสั่งงานเดิม
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setDeleteMonthModalOpen(false)}
+              className="btn-outline px-3.5 py-1.5 text-xs cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmDeleteMonthSchedule}
+              disabled={savingSchedule}
+              className="px-4 py-1.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+              <span>ยืนยันลบแผนงาน ({currentItems.length} เครื่อง)</span>
             </button>
           </div>
         </div>
