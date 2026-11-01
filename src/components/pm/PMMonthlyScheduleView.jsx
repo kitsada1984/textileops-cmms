@@ -1881,13 +1881,13 @@ export default function PMMonthlyScheduleView({
                     {/* Timeline Header Row */}
                     <div className="flex items-stretch border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 text-xs font-bold sticky top-0 z-10">
                       {/* Left Machine Columns */}
-                      <div className="w-12 shrink-0 py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-800">
+                      <div className="w-10 shrink-0 py-1.5 px-1 text-center text-slate-400 border-r border-slate-200 dark:border-slate-800">
                         #
                       </div>
-                      <div className="w-44 shrink-0 py-2.5 px-3 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                      <div className="w-56 shrink-0 py-1.5 px-2.5 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
                         เครื่องจักร (M/C)
                       </div>
-                      <div className="w-32 shrink-0 py-2.5 px-2 text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                      <div className="w-36 shrink-0 py-1.5 px-2 text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
                         สถานะ / จัดการ
                       </div>
 
@@ -1943,87 +1943,102 @@ export default function PMMonthlyScheduleView({
                         filteredItems.map((item, idx) => {
                           const statusMeta = getStatusMeta(item.status)
                           const range = getItemDayRange(item, selectedYear, selectedMonth, daysInMonth)
+                          const showPlanned = (timelineBarFilter === 'both' || timelineBarFilter === 'planned') && Boolean(range)
+                          const actItem = item.actualStartDate ? {
+                            plannedStartDate: item.actualStartDate,
+                            plannedEndDate: item.actualEndDate || item.actualStartDate,
+                          } : null
+                          const actRange = actItem ? getItemDayRange(actItem, selectedYear, selectedMonth, daysInMonth) : null
+                          const showActual = (timelineBarFilter === 'both' || timelineBarFilter === 'actual') && Boolean(actRange)
+                          const hasOverlap = showPlanned && showActual && !(range.endDay < actRange.startDay || range.startDay > actRange.endDay)
+
                           return (
                             <div
                               key={item.id || idx}
                               className="flex items-stretch hover:bg-slate-50/60 dark:hover:bg-slate-900/50 transition-colors group"
                             >
-                              {/* Left Machine Columns */}
-                              <div className="w-12 shrink-0 py-2.5 px-2 text-center text-slate-400 font-mono text-xs flex items-center justify-center border-r border-slate-200 dark:border-slate-800">
+                              {/* Left Machine Columns (Compact 1 Row) */}
+                              <div className="w-10 shrink-0 py-1 px-1 text-center text-slate-400 font-mono text-xs flex items-center justify-center border-r border-slate-200 dark:border-slate-800">
                                 {idx + 1}
                               </div>
-                              <div className="w-44 shrink-0 py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-center">
-                                <div className="font-bold text-slate-900 dark:text-slate-100 text-xs flex flex-wrap items-center gap-1.5">
-                                  <span>{item.mc}</span>
-                                  {item.ki && <span className="text-[10px] font-mono text-slate-400">({item.ki})</span>}
+
+                              <div
+                                className="w-56 shrink-0 py-1 px-2.5 border-r border-slate-200 dark:border-slate-800 flex items-center min-w-0"
+                                title={`${item.mc} (${item.ki || '—'}) | โรงงาน: ${item.location || '—'} | ชนิด: ${item.type || '—'}${item.countdownLabel ? ` | ${item.countdownLabel}` : ''}`}
+                              >
+                                <div className="flex items-center gap-1.5 w-full min-w-0 text-xs">
+                                  <span className="font-bold text-slate-900 dark:text-slate-100 truncate shrink-0">
+                                    {item.mc}
+                                  </span>
+                                  {item.ki && (
+                                    <span className="text-[10px] font-mono text-slate-400 truncate shrink-0 hidden sm:inline">
+                                      ({item.ki})
+                                    </span>
+                                  )}
+                                  {item.location && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 shrink-0 font-medium">
+                                      · {item.location}
+                                    </span>
+                                  )}
                                   {item.isUnplanned && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                    <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
                                       นอกแผน
                                     </span>
                                   )}
-                                </div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between gap-1 mt-0.5">
-                                  <div className="flex items-center gap-1">
-                                    <span>{item.location || '—'}</span>
-                                    {item.type && <span>· {item.type}</span>}
-                                  </div>
                                   {item.countdownLabel && item.countdownLabel !== '—' && (
-                                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full inline-flex items-center shrink-0 ${
-                                      item.countdownColor === 'red' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
-                                      item.countdownColor === 'yellow' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
-                                      item.countdownColor === 'green' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
-                                      'bg-slate-500/10 text-slate-400'
-                                    }`} title={item.nextPmDate ? `Next PM: ${item.nextPmDate}` : 'ไม่มีข้อมูล Next PM'}>
+                                    <span
+                                      className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full inline-flex items-center shrink-0 ml-auto ${
+                                        item.countdownColor === 'red' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
+                                        item.countdownColor === 'yellow' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                                        item.countdownColor === 'green' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                        'bg-slate-500/10 text-slate-400'
+                                      }`}
+                                      title={item.nextPmDate ? `Next PM: ${item.nextPmDate}` : 'ไม่มีข้อมูล Next PM'}
+                                    >
                                       {item.countdownLabel}
                                     </span>
                                   )}
                                 </div>
                               </div>
-                              <div className="w-32 shrink-0 py-2 px-1.5 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1">
-                                <div className="flex items-center gap-1 w-full justify-between px-0.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenUpdateModal(item)}
-                                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold border cursor-pointer hover:opacity-85 transition-opacity truncate max-w-[62px] ${statusMeta.badgeClass}`}
-                                    title="คลิกเพื่อดูหรืออัปเดตงานจริง"
-                                  >
-                                    {statusMeta.label}
-                                  </button>
-                                  <div className="flex items-center gap-0.5 shrink-0">
-                                    {canEdit && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenEditItemModal(item)}
-                                        className="p-1 rounded-md text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                                        title={`แก้ไขแผน: ${item.mc}`}
-                                        aria-label={`แก้ไขแผน ${item.mc}`}
-                                      >
-                                        <Calendar size={12} />
-                                      </button>
-                                    )}
-                                    {canDelete && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteItem(item.id)}
-                                        className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                                        title={`ลบ ${item.mc} ออกจากแผน`}
-                                        aria-label={`ลบแผน ${item.mc}`}
-                                      >
-                                        <Trash2 size={12} />
-                                      </button>
-                                    )}
-                                  </div>
+
+                              <div className="w-36 shrink-0 py-1 px-2 border-r border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenUpdateModal(item)}
+                                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold border cursor-pointer hover:opacity-85 transition-opacity truncate max-w-[70px] ${statusMeta.badgeClass}`}
+                                  title={`คลิกเพื่อดูหรืออัปเดตงานจริง${item.workOrderId ? ` | WO: ${item.workOrderId}` : ''}`}
+                                >
+                                  {statusMeta.label}
+                                </button>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditItemModal(item)}
+                                      className="p-1 rounded-md text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                      title={`แก้ไขแผน: ${item.mc}`}
+                                      aria-label={`แก้ไขแผน ${item.mc}`}
+                                    >
+                                      <Calendar size={12} />
+                                    </button>
+                                  )}
+                                  {canDelete && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteItem(item.id)}
+                                      className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                                      title={`ลบ ${item.mc} ออกจากแผน`}
+                                      aria-label={`ลบแผน ${item.mc}`}
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  )}
                                 </div>
-                                {item.workOrderId && (
-                                  <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-semibold truncate max-w-[100px]" title={`ใบสั่งงาน: ${item.workOrderId}`}>
-                                    {item.workOrderId}
-                                  </span>
-                                )}
                               </div>
 
-                              {/* Day Grid with Dual Timeline Bars */}
+                              {/* Day Grid with Single-Row Compact Bars (~36px) */}
                               <div
-                                className={`flex-1 grid relative ${timelineBarFilter === 'both' ? 'py-1.5 min-h-[58px]' : 'py-2 min-h-[46px]'}`}
+                                className="flex-1 grid relative py-0.5 h-[36px] min-h-[36px]"
                                 style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(32px, 1fr))` }}
                               >
                                 {/* Background Day Columns */}
@@ -2041,7 +2056,7 @@ export default function PMMonthlyScheduleView({
                                 ))}
 
                                 {/* 1. Planned Bar (แถบแผนงาน) */}
-                                {(timelineBarFilter === 'both' || timelineBarFilter === 'planned') && range && (
+                                {showPlanned && (
                                   <div
                                     style={{
                                       gridColumnStart: range.startDay,
@@ -2054,17 +2069,19 @@ export default function PMMonthlyScheduleView({
                                     }}
                                     onClick={() => handleOpenUpdateModal(item)}
                                     title={`แผนงาน: ${item.mc} (${item.plannedStartDate} ถึง ${item.plannedEndDate})`}
-                                    className={`absolute z-4 rounded-lg px-2 flex items-center justify-between font-bold cursor-pointer transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs overflow-hidden ${
-                                      timelineBarFilter === 'both'
-                                        ? 'top-1 h-[22px] text-[10px] opacity-95 hover:opacity-100'
-                                        : 'inset-y-1.5 my-auto text-[11px] py-1'
+                                    className={`absolute z-4 rounded-md px-1.5 flex items-center justify-between font-bold cursor-pointer transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs overflow-hidden ${
+                                      hasOverlap
+                                        ? 'top-[2px] h-[14px] text-[9px] opacity-90 hover:opacity-100'
+                                        : 'inset-y-0 my-auto h-[22px] text-[10px]'
                                     }`}
                                   >
                                     <div className="flex items-center gap-1 min-w-0 truncate">
                                       <span className="truncate font-semibold">แผน: {item.mc}</span>
-                                      <span className="text-[9px] opacity-80 font-mono hidden sm:inline shrink-0">
-                                        ({item.plannedStartDate.slice(8)}-{item.plannedEndDate.slice(8)})
-                                      </span>
+                                      {!hasOverlap && (
+                                        <span className="text-[9px] opacity-80 font-mono hidden sm:inline shrink-0">
+                                          ({item.plannedStartDate.slice(8)}-{item.plannedEndDate.slice(8)})
+                                        </span>
+                                      )}
                                     </div>
                                     <span className="text-[9px] font-mono hidden md:inline ml-1 shrink-0 opacity-90">
                                       {item.workingDays || 3}ว.
@@ -2073,65 +2090,57 @@ export default function PMMonthlyScheduleView({
                                 )}
 
                                 {/* 2. Actual Bar (แถบทำจริงจากใบสั่งงาน PM) */}
-                                {(timelineBarFilter === 'both' || timelineBarFilter === 'actual') && (() => {
-                                  if (!item.actualStartDate) return null
-                                  const actItem = {
-                                    plannedStartDate: item.actualStartDate,
-                                    plannedEndDate: item.actualEndDate || item.actualStartDate,
-                                  }
-                                  const actRange = getItemDayRange(actItem, selectedYear, selectedMonth, daysInMonth)
-                                  if (!actRange) return null
-
-                                  return (
-                                    <div
-                                      style={{
-                                        gridColumnStart: actRange.startDay,
-                                        gridColumnEnd: actRange.endDay + 1,
-                                        left: '2px',
-                                        right: '2px',
-                                        width: 'calc(100% - 4px)',
-                                        maxWidth: 'calc(100% - 4px)',
-                                        boxSizing: 'border-box',
-                                      }}
-                                      onClick={() => handleOpenUpdateModal(item)}
-                                      title={`ผลงานจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate}) | ${statusMeta.label}${item.workOrderId ? ` | WO: ${item.workOrderId}` : ''}`}
-                                      className={`absolute z-5 rounded-lg px-2 flex items-center justify-between font-bold cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md overflow-hidden ${
-                                        timelineBarFilter === 'both'
-                                          ? 'top-[31px] h-[22px] text-[10px]'
-                                          : 'inset-y-1.5 my-auto text-[11px] py-1'
-                                      } ${
-                                        item.status === 'COMPLETED'
-                                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xs'
-                                          : item.status === 'IN_PROGRESS'
-                                          ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs animate-pulse ring-1 ring-amber-300'
-                                          : item.status === 'DELAYED'
-                                          ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-xs'
-                                          : item.status === 'POSTPONED'
-                                          ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-xs'
-                                          : 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-xs'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-1 truncate">
-                                        <span className="truncate">จริง: {item.actualTech || item.mc}</span>
-                                        {item.workOrderId && (
-                                          <span className="text-[9px] opacity-90 font-mono hidden sm:inline">
-                                            ({item.workOrderId})
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0 ml-1">
-                                        {item.status === 'COMPLETED' ? (
-                                          <CheckCircle2 size={11} className="text-white" />
-                                        ) : item.status === 'IN_PROGRESS' ? (
-                                          <Clock size={11} className="text-white" />
-                                        ) : null}
+                                {showActual && (
+                                  <div
+                                    style={{
+                                      gridColumnStart: actRange.startDay,
+                                      gridColumnEnd: actRange.endDay + 1,
+                                      left: '2px',
+                                      right: '2px',
+                                      width: 'calc(100% - 4px)',
+                                      maxWidth: 'calc(100% - 4px)',
+                                      boxSizing: 'border-box',
+                                    }}
+                                    onClick={() => handleOpenUpdateModal(item)}
+                                    title={`ผลงานจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate}) | ${statusMeta.label}${item.workOrderId ? ` | WO: ${item.workOrderId}` : ''}`}
+                                    className={`absolute z-5 rounded-md px-1.5 flex items-center justify-between font-bold cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md overflow-hidden ${
+                                      hasOverlap
+                                        ? 'bottom-[2px] h-[16px] text-[9px]'
+                                        : 'inset-y-0 my-auto h-[22px] text-[10px]'
+                                    } ${
+                                      item.status === 'COMPLETED'
+                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xs'
+                                        : item.status === 'IN_PROGRESS'
+                                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs animate-pulse ring-1 ring-amber-300'
+                                        : item.status === 'DELAYED'
+                                        ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-xs'
+                                        : item.status === 'POSTPONED'
+                                        ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-xs'
+                                        : 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-xs'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-1 truncate">
+                                      <span className="truncate">จริง: {item.actualTech || item.mc}</span>
+                                      {!hasOverlap && item.workOrderId && (
+                                        <span className="text-[9px] opacity-90 font-mono hidden sm:inline">
+                                          ({item.workOrderId})
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0 ml-1">
+                                      {item.status === 'COMPLETED' ? (
+                                        <CheckCircle2 size={hasOverlap ? 9 : 11} className="text-white" />
+                                      ) : item.status === 'IN_PROGRESS' ? (
+                                        <Clock size={hasOverlap ? 9 : 11} className="text-white" />
+                                      ) : null}
+                                      {!hasOverlap && (
                                         <span className="text-[9px] hidden md:inline">
                                           {statusMeta.label}
                                         </span>
-                                      </div>
+                                      )}
                                     </div>
-                                  )
-                                })()}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )
