@@ -1264,6 +1264,6 @@ describe('PM Work Order Deletion Sync (removePMWorkOrderFromMonthlyPlan & remove
     fireEvent.click(viewBtn)
 
     expect(screen.getByText(/พรีวิวแผนงานบำรุงรักษาเชิงป้องกันประจำเดือน/)).toBeInTheDocument()
-    expect(screen.getByText(/บริษัท แกมม่า นิตติ้ง จำกัด/)).toBeInTheDocument()
+    expect(screen.getByText(/บริษัท เจมม่า นิตติ้ง จำกัด/)).toBeInTheDocument()
   })
 })

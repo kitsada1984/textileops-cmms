@@ -525,10 +525,10 @@ export default function PdfPreviewModal({
                   className="w-13 h-13 object-contain drop-shadow-xs"
                 />
                 <div>
-                  <h1 className="text-[17px] font-black tracking-tight text-slate-950 uppercase leading-none">
-                    GEMMA KNITS CO., LTD.
+                  <h1 className="text-base font-black tracking-tight text-slate-950 uppercase leading-tight">
+                    บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)
                   </h1>
-                  <p className="text-[11px] font-bold text-slate-700 tracking-wide uppercase mt-1">
+                  <p className="text-[11px] font-bold text-slate-700 tracking-wide uppercase mt-0.5">
                     TEXTILE OPERATIONS CMMS · MAINTENANCE & ENGINEERING
                   </p>
                   <p className="text-[10px] text-slate-500 font-medium mt-0.5">
@@ -781,7 +781,7 @@ export default function PdfPreviewModal({
                 </div>
               </div>
               <div className="text-right">
-                <div className="font-bold text-slate-600">หน้า 1 จาก 1 · เอกสารควบคุมภายใน บจก. เจมม่า นิตส์</div>
+                <div className="font-bold text-slate-600">หน้า 1 จาก 1 · เอกสารควบคุมภายใน บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)</div>
                 <div className="font-mono text-[8.5px] text-slate-400">
                   DOC-REF: {docNo || 'N/A'} · GEN: {currentDateStr}
                 </div>

@@ -52,7 +52,7 @@ describe('YarnBeltsPrintModal', () => {
     )
 
     expect(screen.getByText('รายงานสรุปสายพานส่งด้าย (เทป 1 - 5)')).toBeInTheDocument()
-    expect(screen.getByText(/บริษัท เจ็มม่า นิตส์ จำกัด/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/บริษัท เจมม่า นิตติ้ง จำกัด/i).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/โซน GMK1/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Admin Tester/i).length).toBeGreaterThanOrEqual(1)
 

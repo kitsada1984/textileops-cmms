@@ -1,5 +1,5 @@
 # คู่มือเตรียมตอบข้อซักถามเชิงลึกของผู้บริหาร (Executive Q&A Guide)
-### โครงการ TextileOps CMMS บริษัท เจมม่า นิตส์ จำกัด (Gemma Knits Co., Ltd.)
+### โครงการ TextileOps CMMS บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)
 
 ---
 

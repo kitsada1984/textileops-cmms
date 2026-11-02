@@ -132,7 +132,8 @@ describe('WorkOrdersReportModal Component', () => {
 
     // Check title and company header
     expect(screen.getByText(/รายงานสรุปใบสั่งงานซ่อมบำรุง/i)).toBeInTheDocument()
-    expect(screen.getByText(/Gomma Knits Co\., Ltd\./i)).toBeInTheDocument()
+    expect(screen.getByText(/บริษัท เจมม่า นิตติ้ง จำกัด/i)).toBeInTheDocument()
+    expect(screen.getByText(/Gemma Knits \(Thailand\)Co\., Ltd\./i)).toBeInTheDocument()
     expect(screen.getByText(/3 รายการ/i)).toBeInTheDocument()
 
     // Check Filter Badges

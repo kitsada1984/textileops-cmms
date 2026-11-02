@@ -1,6 +1,6 @@
 # TextileOps CMMS — Project Context & Glossary
 
-เอกสารคู่มือมาตรฐานศัพท์เฉพาะ (Domain Terminology), โครงสร้างระบบ และแนวทางการพัฒนาสำหรับระบบบริหารจัดการงานบำรุงรักษาโรงงานถักผ้า (**TextileOps CMMS - Gemma Knits Co., Ltd.**)
+เอกสารคู่มือมาตรฐานศัพท์เฉพาะ (Domain Terminology), โครงสร้างระบบ และแนวทางการพัฒนาสำหรับระบบบริหารจัดการงานบำรุงรักษาโรงงานถักผ้า (**TextileOps CMMS - บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)**)
 
 ---
 

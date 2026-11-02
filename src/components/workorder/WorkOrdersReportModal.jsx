@@ -530,12 +530,12 @@ ${origin}`
             <div className="flex items-center gap-3.5">
               <img
                 src={gemmaLogo}
-                alt="Gomma Knits"
+                alt="Gemma Knits Logo"
                 className="h-12 w-auto object-contain flex-shrink-0"
               />
               <div>
                 <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-950 uppercase leading-none">
-                  บริษัท กอมม่า นิตส์ จำกัด (Gomma Knits Co., Ltd.)
+                  บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)
                 </h1>
                 <p className="text-xs text-slate-600 font-semibold mt-1">
                   ระบบบริหารงานซ่อมบำรุงและผลงานช่าง (TextileOps CMMS)

@@ -90,7 +90,7 @@ describe('PMMonthlyPrintModal', () => {
     expect(screen.getByRole('button', { name: /ตารางรายการ/ })).toBeInTheDocument()
 
     // Company Header & Title
-    expect(screen.getByText(/บริษัท แกมม่า นิตติ้ง จำกัด/)).toBeInTheDocument()
+    expect(screen.getByText(/บริษัท เจมม่า นิตติ้ง จำกัด/)).toBeInTheDocument()
     expect(screen.getByText(/แผนงานบำรุงรักษาเชิงป้องกันประจำเดือน \(Monthly Preventive Maintenance Schedule\)/)).toBeInTheDocument()
     expect(screen.getByText(/รหัสเอกสาร:/)).toBeInTheDocument()
     expect(screen.getByText('PM-SCH-202611')).toBeInTheDocument()

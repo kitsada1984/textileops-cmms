@@ -50,7 +50,7 @@ describe('SparePartsReportModal', () => {
 
     // Check title and company
     expect(screen.getByText('รายงานทะเบียนและสต็อกอะไหล่')).toBeInTheDocument()
-    expect(screen.getByText(/บริษัท เจ็มม่า นิตส์ จำกัด/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/บริษัท เจมม่า นิตติ้ง จำกัด/i).length).toBeGreaterThanOrEqual(1)
 
     // Check summary cards
     // Total items: 2

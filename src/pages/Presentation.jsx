@@ -74,7 +74,7 @@ export const LANDING_SECTIONS = [
     id: 'innovations',
     navLabel: '3 นวัตกรรมเด่น',
     eyebrow: 'Signature Innovations · ไฮไลต์เทคโนโลยี',
-    title: 'สามนวัตกรรมหลักที่ออกแบบเฉพาะเพื่อหน้างานโรงทอ เจมม่า นิตส์',
+    title: 'สามนวัตกรรมหลักที่ออกแบบเฉพาะเพื่อหน้างานโรงทอ เจมม่า นิตติ้ง',
     speakerNotes:
       'เรามี 3 นวัตกรรมเด่นที่แก้ปัญหาคลาสสิกของโรงงานได้ตรงจุด: 1. Google Gemini AI Vision ถ่ายรูปชิ้นส่วนที่เสียแล้วชี้พิกัดตู้และชั้นวางใน 5 วินาที 2. LINE Flex Notification เด้งแจ้งเตือนงานซ่อมด่วนเข้ามือถือช่างภายใน 1 วินาทีโดยไม่ต้องลงแอปใหม่ และ 3. Smart Tag Precision Printing พิมพ์ป้ายเขียวอ่อน 20×7 ซม. ติดโครงเครื่องจักรเห็นชัดจากระยะ 10 เมตร และป้าย A4 แนวนอนติดกระบอกสำรองครบทั้ง 7 ฟิลด์มาตรฐานครับ',
   },
@@ -1541,7 +1541,7 @@ export default function Presentation() {
               <SectionHeader
                 eyebrow="Signature Innovations · 3 นวัตกรรมเรือธง"
                 title="เทคโนโลยีที่เปลี่ยนงานซับซ้อนหน้าโรงงานให้เสร็จในไม่กี่วินาที"
-                subtitle="ออกแบบจากความต้องการจริงของทีมช่างและหัวหน้างาน เจมม่า นิตส์ เพื่อให้ใช้งานง่าย รวดเร็ว และแม่นยำ 100%"
+                subtitle="ออกแบบจากความต้องการจริงของทีมช่างและหัวหน้างาน เจมม่า นิตติ้ง เพื่อให้ใช้งานง่าย รวดเร็ว และแม่นยำ 100%"
                 accentColor="purple"
               />
 
@@ -2372,7 +2372,7 @@ export default function Presentation() {
                   Q &amp; A
                 </div>
                 <p className="text-xs sm:text-sm text-slate-400 mb-8">
-                  ขอขอบพระคุณคณะผู้บริหาร บริษัท เจมม่า นิตส์ จำกัด ทุกท่านครับ
+                  ขอขอบพระคุณคณะผู้บริหาร บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.) ทุกท่านครับ
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center gap-4">

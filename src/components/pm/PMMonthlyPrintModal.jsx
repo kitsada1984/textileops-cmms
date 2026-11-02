@@ -309,7 +309,7 @@ export default function PMMonthlyPrintModal({
                 />
                 <div>
                   <h1 className="text-base font-black text-slate-900 tracking-tight leading-tight">
-                    บริษัท แกมม่า นิตติ้ง จำกัด (Gemma Knits Co., Ltd.)
+                    บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)
                   </h1>
                   <h2 className="text-sm font-extrabold text-blue-700 leading-tight">
                     แผนงานบำรุงรักษาเชิงป้องกันประจำเดือน (Monthly Preventive Maintenance Schedule)

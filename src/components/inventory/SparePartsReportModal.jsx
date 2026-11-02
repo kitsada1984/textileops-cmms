@@ -264,10 +264,10 @@ export default function SparePartsReportModal({
                   />
                   <div>
                     <h1 className="text-base font-black tracking-tight text-slate-950 uppercase leading-tight">
-                      บริษัท เจ็มม่า นิตส์ จำกัด
+                      บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)
                     </h1>
                     <p className="text-[11px] font-semibold text-slate-600">
-                      GEMMA KNITS CO., LTD. · TEXTILEOPS CMMS
+                      GEMMA KNITS (THAILAND) CO., LTD. · TEXTILEOPS CMMS
                     </p>
                     <p className="text-[10px] text-slate-400">
                       ระบบบริหารจัดการคลังอะไหล่และงานซ่อมบำรุงโรงทอ
@@ -651,7 +651,7 @@ export default function SparePartsReportModal({
 
               {/* Bottom Doc Footer Line */}
               <div className="mt-6 pt-2 border-t border-slate-100 flex items-center justify-between text-[8.5px] text-slate-400">
-                <span>TextileOps CMMS · Gemma Knits Co., Ltd. (เอกสารควบคุมภายใน)</span>
+                <span>TextileOps CMMS · บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.) (เอกสารควบคุมภายใน)</span>
                 <span>พิมพ์เมื่อ {printDateStr} น. · หน้า 1 / 1 (ต่อเนื่องตามจำนวนหน้าจริง)</span>
               </div>
             </div>
