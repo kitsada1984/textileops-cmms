@@ -495,7 +495,7 @@ export default function PMMonthlyPrintModal({
                               : 'bg-blue-50 text-blue-800 border-blue-200'
                           }`}
                         >
-                          <span style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}>
+                          <span style={{ display: 'inline-block', marginBottom: '3px' }}>
                             {item.status === 'COMPLETED'
                               ? 'เสร็จสิ้น'
                               : item.status === 'IN_PROGRESS'
@@ -541,14 +541,14 @@ export default function PMMonthlyPrintModal({
                             title={`แผนงาน: ${item.mc} (${item.plannedStartDate} ถึง ${item.plannedEndDate})`}
                           >
                             <span
-                              style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}
+                              style={{ display: 'inline-block', marginBottom: hasOverlap ? '1.5px' : '3px' }}
                               className="whitespace-nowrap font-bold text-center leading-none"
                             >
                               {range.span >= 2 ? `แผน: ${item.mc}` : 'แผน'}
                             </span>
                             {range.span >= 4 && (
                               <span
-                                style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}
+                                style={{ display: 'inline-block', marginBottom: hasOverlap ? '1.5px' : '3px' }}
                                 className="font-mono text-[7px] opacity-90 shrink-0 ml-1 leading-none"
                               >
                                 ({range.span}ว.)
@@ -584,14 +584,14 @@ export default function PMMonthlyPrintModal({
                             title={`ทำจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate})`}
                           >
                             <span
-                              style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}
+                              style={{ display: 'inline-block', marginBottom: hasOverlap ? '1.5px' : '3px' }}
                               className="whitespace-nowrap font-bold text-center leading-none"
                             >
                               จริง: {item.actualTech || item.mc}
                             </span>
                             {item.workOrderId && actRange.span >= 4 && !hasOverlap && (
                               <span
-                                style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}
+                                style={{ display: 'inline-block', marginBottom: '3px' }}
                                 className="font-mono text-[7px] opacity-90 shrink-0 ml-1 leading-none"
                               >
                                 ({item.workOrderId.slice(-4)})
