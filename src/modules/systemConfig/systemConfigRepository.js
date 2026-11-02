@@ -32,6 +32,23 @@ export async function getSystemConfig(configKey, options = {}) {
   const { legacyWorkOrderId, localCacheKey, defaultValue = null } = options
   let cloudError = false
 
+  // If in browser and unauthenticated, skip network queries to avoid 401 console errors
+  if (typeof window !== 'undefined' && !localStorage.getItem('textileops_auth_token')) {
+    if (localCacheKey) {
+      try {
+        const cached = localStorage.getItem(localCacheKey)
+        if (cached !== null) {
+          try {
+            return JSON.parse(cached)
+          } catch {
+            return cached
+          }
+        }
+      } catch {}
+    }
+    return defaultValue
+  }
+
   // 1. Primary: Load from dedicated `appconfigs` table
   try {
     const { data, error } = await db

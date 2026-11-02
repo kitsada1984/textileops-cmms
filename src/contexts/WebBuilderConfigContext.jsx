@@ -159,6 +159,8 @@ export function WebBuilderConfigProvider({ children }) {
   const [configRecordId, setConfigRecordId] = useState(null)
 
   const reload = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('textileops_auth_token') : null;
+    if (!token) return;
     try {
       const rows = await AppConfigAPI.list()
       const row  = rows.find(r => r.key === CONFIG_KEY)
@@ -172,7 +174,8 @@ export function WebBuilderConfigProvider({ children }) {
 
   useEffect(() => { reload() }, [reload])
 
-  useRealtimeTables(['appconfigs'], () => {
+  const hasToken = typeof window !== 'undefined' ? Boolean(localStorage.getItem('textileops_auth_token')) : false;
+  useRealtimeTables(hasToken ? ['appconfigs'] : [], () => {
     reload()
   })
 

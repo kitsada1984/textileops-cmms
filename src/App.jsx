@@ -174,8 +174,10 @@ function AppInner() {
   const location = useLocation()
 
   useEffect(() => {
-    getGeminiConfig().catch(() => {})
-  }, [])
+    if (user) {
+      getGeminiConfig().catch(() => {})
+    }
+  }, [user])
 
   useEffect(() => {
     const html = document.documentElement

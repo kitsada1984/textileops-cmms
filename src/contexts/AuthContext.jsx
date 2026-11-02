@@ -163,7 +163,7 @@ export function AuthProvider({ children }) {
   }, [refreshUser])
 
   // Sync latest permissions in real-time or when re-focusing
-  useRealtimeTables(['users'], () => {
+  useRealtimeTables(user ? ['users'] : [], () => {
     refreshUser()
   })
 
