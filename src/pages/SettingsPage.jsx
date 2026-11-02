@@ -1619,7 +1619,7 @@ export default function SettingsPage() {
       <SectionCard icon={BookOpen} title="คู่มือการใช้งานระบบ (User Manual & Documentation)">
         <div className="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
           <p>
-            คู่มือการใช้งานระบบ TextileOps CMMS ฉบับสมบูรณ์ (v1.3.215) ครอบคลุม 14 เมนูหลัก พร้อมภาพประกอบจริงจากระบบ ขั้นตอนการบันทึกงานซ่อม การนับเวลา SLA 12 ชม./วัน และแนวปฏิบัติหน้างาน
+            คู่มือการใช้งานระบบ TextileOps CMMS ฉบับสมบูรณ์ ({APP_VERSION}) ครอบคลุม 14 เมนูหลัก พร้อมภาพประกอบจริงจากระบบ ขั้นตอนการบันทึกงานซ่อม การนับเวลา SLA 12 ชม./วัน และแนวปฏิบัติหน้างาน
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <a
