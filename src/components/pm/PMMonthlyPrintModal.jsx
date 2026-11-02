@@ -463,10 +463,11 @@ export default function PMMonthlyPrintModal({
                         )}
                       </div>
 
-                      {/* Left Column 3: Status Badge - Full visibility with zero truncation */}
+                      {/* Left Column 3: Status Badge - Perfectly centered horizontally and vertically */}
                       <div className="w-22 shrink-0 text-center py-1 border-r border-slate-200 flex items-center justify-center px-1">
                         <span
-                          className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[8.5px] font-bold border whitespace-nowrap shadow-xs ${
+                          style={{ lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          className={`inline-flex items-center justify-center px-2.5 h-[20px] rounded-md text-[8.5px] font-bold border whitespace-nowrap shadow-xs leading-none ${
                             item.status === 'COMPLETED'
                               ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                               : item.status === 'IN_PROGRESS'
@@ -476,13 +477,15 @@ export default function PMMonthlyPrintModal({
                               : 'bg-blue-50 text-blue-800 border-blue-200'
                           }`}
                         >
-                          {item.status === 'COMPLETED'
-                            ? 'เสร็จสิ้น'
-                            : item.status === 'IN_PROGRESS'
-                            ? 'กำลังทำ'
-                            : item.status === 'DELAYED'
-                            ? 'ล่าช้า'
-                            : 'ตามแผน'}
+                          <span style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}>
+                            {item.status === 'COMPLETED'
+                              ? 'เสร็จสิ้น'
+                              : item.status === 'IN_PROGRESS'
+                              ? 'กำลังทำ'
+                              : item.status === 'DELAYED'
+                              ? 'ล่าช้า'
+                              : 'ตามแผน'}
+                          </span>
                         </span>
                       </div>
 
@@ -501,7 +504,7 @@ export default function PMMonthlyPrintModal({
                           />
                         ))}
 
-                        {/* 1. Planned Bar (แถบแผนงาน) - Clean full text without cutoff */}
+                        {/* 1. Planned Bar (แถบแผนงาน/ล้างเครื่อง) - Perfectly centered in the bar */}
                         {range && (
                           <div
                             style={{
@@ -512,25 +515,31 @@ export default function PMMonthlyPrintModal({
                               width: 'calc(100% - 2px)',
                               boxSizing: 'border-box',
                             }}
-                            className={`absolute z-2 rounded px-1.5 flex items-center justify-start font-bold bg-blue-600 text-white shadow-xs overflow-hidden ${
+                            className={`absolute z-2 rounded px-1 flex items-center justify-center text-center font-bold bg-blue-600 text-white shadow-xs overflow-hidden ${
                               hasOverlap
-                                ? 'top-[2px] h-[15px] text-[8px] leading-tight'
-                                : 'inset-y-0 my-auto h-[20px] text-[8.5px] leading-tight'
+                                ? 'top-[2px] h-[15px] text-[8px] leading-none'
+                                : 'inset-y-0 my-auto h-[20px] text-[8.5px] leading-none'
                             }`}
                             title={`แผนงาน: ${item.mc} (${item.plannedStartDate} ถึง ${item.plannedEndDate})`}
                           >
-                            <span className="whitespace-nowrap font-bold">
+                            <span
+                              style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}
+                              className="whitespace-nowrap font-bold text-center leading-none"
+                            >
                               {range.span >= 2 ? `แผน: ${item.mc}` : 'แผน'}
                             </span>
                             {range.span >= 4 && (
-                              <span className="font-mono text-[7px] opacity-90 shrink-0 ml-1">
+                              <span
+                                style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}
+                                className="font-mono text-[7px] opacity-90 shrink-0 ml-1 leading-none"
+                              >
                                 ({range.span}ว.)
                               </span>
                             )}
                           </div>
                         )}
 
-                        {/* 2. Actual Bar (แถบทำจริง) - Clean full text without cutoff */}
+                        {/* 2. Actual Bar (แถบทำจริง) - Perfectly centered in the bar */}
                         {actRange && (
                           <div
                             style={{
@@ -541,10 +550,10 @@ export default function PMMonthlyPrintModal({
                               width: 'calc(100% - 2px)',
                               boxSizing: 'border-box',
                             }}
-                            className={`absolute z-3 rounded px-1.5 flex items-center justify-start font-bold text-white shadow-xs overflow-hidden ${
+                            className={`absolute z-3 rounded px-1 flex items-center justify-center text-center font-bold text-white shadow-xs overflow-hidden ${
                               hasOverlap
-                                ? 'bottom-[2px] h-[15px] text-[8px] leading-tight'
-                                : 'inset-y-0 my-auto h-[20px] text-[8.5px] leading-tight'
+                                ? 'bottom-[2px] h-[15px] text-[8px] leading-none'
+                                : 'inset-y-0 my-auto h-[20px] text-[8.5px] leading-none'
                             } ${
                               item.status === 'COMPLETED'
                                 ? 'bg-emerald-600'
@@ -556,11 +565,17 @@ export default function PMMonthlyPrintModal({
                             }`}
                             title={`ทำจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate})`}
                           >
-                            <span className="whitespace-nowrap font-bold">
+                            <span
+                              style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}
+                              className="whitespace-nowrap font-bold text-center leading-none"
+                            >
                               จริง: {item.actualTech || item.mc}
                             </span>
                             {item.workOrderId && actRange.span >= 4 && !hasOverlap && (
-                              <span className="font-mono text-[7px] opacity-90 shrink-0 ml-1">
+                              <span
+                                style={{ transform: 'translateY(-1.5px)', display: 'inline-block' }}
+                                className="font-mono text-[7px] opacity-90 shrink-0 ml-1 leading-none"
+                              >
                                 ({item.workOrderId.slice(-4)})
                               </span>
                             )}
