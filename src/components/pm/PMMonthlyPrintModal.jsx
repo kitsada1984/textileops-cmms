@@ -394,13 +394,22 @@ export default function PMMonthlyPrintModal({
             <div className="border border-slate-300 rounded-lg overflow-hidden bg-white mb-3 text-[9px]">
               {/* Timeline Header Row */}
               <div className="flex items-stretch border-b-2 border-slate-900 bg-slate-900 text-white font-bold text-[9px]">
-                <div className="w-8 shrink-0 text-center py-1.5 border-r border-slate-700 font-mono text-[9.5px] flex items-center justify-center text-slate-300">
+                <div
+                  style={{ width: '32px', minWidth: '32px', maxWidth: '32px' }}
+                  className="w-8 shrink-0 text-center py-1.5 border-r border-slate-700 font-mono text-[9.5px] flex items-center justify-center text-slate-300"
+                >
                   #
                 </div>
-                <div className="w-28 shrink-0 px-2 py-1.5 border-r border-slate-700 font-bold text-[9.5px] flex items-center text-white">
+                <div
+                  style={{ width: '112px', minWidth: '112px', maxWidth: '112px' }}
+                  className="w-28 shrink-0 px-2 py-1.5 border-r border-slate-700 font-bold text-[9.5px] flex items-center text-white"
+                >
                   เครื่องจักร (M/C)
                 </div>
-                <div className="w-22 shrink-0 text-center py-1.5 border-r border-slate-700 font-bold text-[9.5px] flex items-center justify-center text-white">
+                <div
+                  style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}
+                  className="w-20 shrink-0 text-center py-1.5 border-r border-slate-700 font-bold text-[9.5px] flex items-center justify-center text-white"
+                >
                   สถานะ
                 </div>
                 {/* 31 Calendar Days Header Columns */}
@@ -449,12 +458,18 @@ export default function PMMonthlyPrintModal({
                       }`}
                     >
                       {/* Left Column 1: Index */}
-                      <div className="w-8 shrink-0 text-center py-1 border-r border-slate-200 font-mono font-bold text-slate-500 text-[10px] flex items-center justify-center">
+                      <div
+                        style={{ width: '32px', minWidth: '32px', maxWidth: '32px' }}
+                        className="w-8 shrink-0 text-center py-1 border-r border-slate-200 font-mono font-bold text-slate-500 text-[10px] flex items-center justify-center"
+                      >
                         {idx + 1}
                       </div>
 
                       {/* Left Column 2: Machine */}
-                      <div className="w-28 shrink-0 px-2 py-1 border-r border-slate-200 flex items-center justify-between gap-1 font-bold text-slate-900 text-[10px]">
+                      <div
+                        style={{ width: '112px', minWidth: '112px', maxWidth: '112px' }}
+                        className="w-28 shrink-0 px-2 py-1 border-r border-slate-200 flex items-center justify-between gap-1 font-bold text-slate-900 text-[10px]"
+                      >
                         <span className="whitespace-nowrap font-bold text-slate-900">{item.mc}</span>
                         {item.isUnplanned && (
                           <span className="text-[7.5px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
@@ -464,7 +479,10 @@ export default function PMMonthlyPrintModal({
                       </div>
 
                       {/* Left Column 3: Status Badge - Perfectly centered horizontally and vertically */}
-                      <div className="w-22 shrink-0 text-center py-1 border-r border-slate-200 flex items-center justify-center px-1">
+                      <div
+                        style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}
+                        className="w-20 shrink-0 text-center py-1 border-r border-slate-200 flex items-center justify-center px-1"
+                      >
                         <span
                           style={{ lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           className={`inline-flex items-center justify-center px-2.5 h-[20px] rounded-md text-[8.5px] font-bold border whitespace-nowrap shadow-xs leading-none ${
