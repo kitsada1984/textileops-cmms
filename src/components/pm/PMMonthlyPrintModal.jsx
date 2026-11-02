@@ -78,11 +78,38 @@ export default function PMMonthlyPrintModal({
 
     try {
       setDownloading(true)
+      const targetWidth = 1122 // Standard 297mm A4 landscape at 96 DPI
+      const targetHeight = element.scrollHeight || 794
+
       const canvas = await html2canvas(element, {
-        scale: 2, // High resolution for sharp text
+        scale: 2.5, // High resolution (240+ DPI) for sharp text
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        windowWidth: 1200, // Force desktop landscape canvas rendering (never shrink on mobile)
+        windowHeight: Math.max(targetHeight + 100, 900),
+        width: targetWidth,
+        height: targetHeight,
+        x: 0,
+        y: 0,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          // Force light mode on cloned document so PDF paper is always pure white
+          clonedDoc.documentElement.classList.remove('dark')
+          if (clonedDoc.body) clonedDoc.body.classList.remove('dark')
+          const el = clonedDoc.getElementById('printable-pm-monthly-report')
+          if (el) {
+            el.style.width = '1122px'
+            el.style.minWidth = '1122px'
+            el.style.maxWidth = '1122px'
+            el.style.margin = '0'
+            el.style.backgroundColor = '#ffffff'
+            el.style.color = '#0f172a'
+            el.style.boxShadow = 'none'
+            el.style.border = 'none'
+          }
+        },
       })
 
       const imgData = canvas.toDataURL('image/png')
@@ -90,15 +117,17 @@ export default function PMMonthlyPrintModal({
         orientation: 'landscape',
         unit: 'mm',
         format: 'a4',
+        compress: true,
       })
 
       const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
       const pageHeight = pdf.internal.pageSize.getHeight()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
 
-      // If document fits on one page
+      // If document fits on one page (center vertically)
       if (pdfHeight <= pageHeight) {
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+        const yOffset = Math.max(0, (pageHeight - pdfHeight) / 2)
+        pdf.addImage(imgData, 'PNG', 0, yOffset, pdfWidth, pdfHeight)
       } else {
         // Multi-page slicing if needed
         let heightLeft = pdfHeight
@@ -262,7 +291,8 @@ export default function PMMonthlyPrintModal({
         <div
           ref={printRef}
           id="printable-pm-monthly-report"
-          className="w-full max-w-[297mm] min-h-[200mm] min-w-[1020px] print:min-w-0 bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-300 font-sans print:border-0 print:p-2 print:shadow-none"
+          className="w-[1122px] min-w-[1122px] max-w-[1122px] print:w-full print:min-w-0 print:max-w-none bg-white text-slate-900 p-6 sm:p-7 rounded-xl shadow-2xl border border-slate-300 font-sans print:border-0 print:p-2 print:shadow-none"
+          style={{ boxSizing: 'border-box' }}
         >
           {/* ── 1. HEADER SECTION ─────────────────────────────────── */}
           <div className="border-b-2 border-slate-900 pb-2.5 mb-2.5">
@@ -364,13 +394,13 @@ export default function PMMonthlyPrintModal({
             <div className="border border-slate-300 rounded-lg overflow-hidden bg-white mb-3 text-[9px]">
               {/* Timeline Header Row */}
               <div className="flex items-stretch border-b-2 border-slate-900 bg-slate-900 text-white font-bold text-[9px]">
-                <div className="w-7 shrink-0 text-center py-1.5 border-r border-slate-700 font-mono text-[9px] flex items-center justify-center text-slate-300">
+                <div className="w-8 shrink-0 text-center py-1.5 border-r border-slate-700 font-mono text-[9.5px] flex items-center justify-center text-slate-300">
                   #
                 </div>
-                <div className="w-24 shrink-0 px-1.5 py-1.5 border-r border-slate-700 font-bold text-[9px] flex items-center text-white">
+                <div className="w-28 shrink-0 px-2 py-1.5 border-r border-slate-700 font-bold text-[9.5px] flex items-center text-white">
                   เครื่องจักร (M/C)
                 </div>
-                <div className="w-16 shrink-0 text-center py-1.5 border-r border-slate-700 font-bold text-[9px] flex items-center justify-center text-white">
+                <div className="w-22 shrink-0 text-center py-1.5 border-r border-slate-700 font-bold text-[9.5px] flex items-center justify-center text-white">
                   สถานะ
                 </div>
                 {/* 31 Calendar Days Header Columns */}
@@ -382,11 +412,11 @@ export default function PMMonthlyPrintModal({
                     <div
                       key={d.dayNumber}
                       className={`py-1 border-r border-slate-700 last:border-r-0 flex flex-col justify-center items-center ${
-                        d.isSunday ? 'bg-rose-900/80 text-rose-300 font-black' : 'text-slate-100'
+                        d.isSunday ? 'bg-rose-900/90 text-rose-200 font-black' : 'text-slate-100'
                       }`}
                     >
-                      <span className="text-[7px] uppercase leading-none font-bold opacity-80">{d.shortDayName}</span>
-                      <span className="text-[9px] font-mono font-bold leading-tight mt-0.5">
+                      <span className="text-[7.5px] uppercase leading-none font-bold opacity-85">{d.shortDayName}</span>
+                      <span className="text-[9.5px] font-mono font-bold leading-tight mt-0.5">
                         {String(d.dayNumber).padStart(2, '0')}
                       </span>
                     </div>
@@ -414,29 +444,29 @@ export default function PMMonthlyPrintModal({
                   return (
                     <div
                       key={item.id || idx}
-                      className={`flex items-stretch border-b border-slate-200 last:border-b-0 min-h-[30px] ${
+                      className={`flex items-stretch border-b border-slate-200 last:border-b-0 min-h-[35px] h-[35px] ${
                         idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
                       }`}
                     >
                       {/* Left Column 1: Index */}
-                      <div className="w-7 shrink-0 text-center py-1 border-r border-slate-200 font-mono text-slate-500 flex items-center justify-center">
+                      <div className="w-8 shrink-0 text-center py-1 border-r border-slate-200 font-mono font-bold text-slate-500 text-[10px] flex items-center justify-center">
                         {idx + 1}
                       </div>
 
                       {/* Left Column 2: Machine */}
-                      <div className="w-24 shrink-0 px-1.5 py-1 border-r border-slate-200 flex items-center gap-1 font-bold text-slate-900 truncate">
-                        <span className="truncate">{item.mc}</span>
+                      <div className="w-28 shrink-0 px-2 py-1 border-r border-slate-200 flex items-center justify-between gap-1 font-bold text-slate-900 text-[10px]">
+                        <span className="whitespace-nowrap font-bold text-slate-900">{item.mc}</span>
                         {item.isUnplanned && (
-                          <span className="text-[7.5px] font-bold px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+                          <span className="text-[7.5px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
                             นอกแผน
                           </span>
                         )}
                       </div>
 
-                      {/* Left Column 3: Status Badge */}
-                      <div className="w-16 shrink-0 text-center py-1 border-r border-slate-200 flex items-center justify-center">
+                      {/* Left Column 3: Status Badge - Full visibility with zero truncation */}
+                      <div className="w-22 shrink-0 text-center py-1 border-r border-slate-200 flex items-center justify-center px-1">
                         <span
-                          className={`inline-block px-1.5 py-0.2 rounded text-[8px] font-bold border truncate max-w-[58px] ${
+                          className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[8.5px] font-bold border whitespace-nowrap shadow-xs ${
                             item.status === 'COMPLETED'
                               ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                               : item.status === 'IN_PROGRESS'
@@ -458,7 +488,7 @@ export default function PMMonthlyPrintModal({
 
                       {/* Day Grid with Bars */}
                       <div
-                        className="flex-1 grid relative py-0.5 h-[30px] min-h-[30px]"
+                        className="flex-1 grid relative py-0.5 h-[35px] min-h-[35px]"
                         style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(0, 1fr))` }}
                       >
                         {/* Background Day Columns (Sunday Highlighting) */}
@@ -471,7 +501,7 @@ export default function PMMonthlyPrintModal({
                           />
                         ))}
 
-                        {/* 1. Planned Bar (แถบแผนงาน) */}
+                        {/* 1. Planned Bar (แถบแผนงาน) - Clean full text without cutoff */}
                         {range && (
                           <div
                             style={{
@@ -482,21 +512,25 @@ export default function PMMonthlyPrintModal({
                               width: 'calc(100% - 2px)',
                               boxSizing: 'border-box',
                             }}
-                            className={`absolute z-2 rounded px-1 flex items-center justify-between font-bold bg-blue-600 text-white shadow-xs overflow-hidden ${
+                            className={`absolute z-2 rounded px-1.5 flex items-center justify-start font-bold bg-blue-600 text-white shadow-xs overflow-hidden ${
                               hasOverlap
-                                ? 'top-[2px] h-[12px] text-[7.5px]'
-                                : 'inset-y-0 my-auto h-[18px] text-[8.5px]'
+                                ? 'top-[2px] h-[15px] text-[8px] leading-tight'
+                                : 'inset-y-0 my-auto h-[20px] text-[8.5px] leading-tight'
                             }`}
                             title={`แผนงาน: ${item.mc} (${item.plannedStartDate} ถึง ${item.plannedEndDate})`}
                           >
-                            <span className="truncate">แผน: {item.mc}</span>
-                            <span className="font-mono text-[7px] opacity-90 shrink-0 ml-0.5">
-                              {range.span}ว.
+                            <span className="whitespace-nowrap font-bold">
+                              {range.span >= 2 ? `แผน: ${item.mc}` : 'แผน'}
                             </span>
+                            {range.span >= 4 && (
+                              <span className="font-mono text-[7px] opacity-90 shrink-0 ml-1">
+                                ({range.span}ว.)
+                              </span>
+                            )}
                           </div>
                         )}
 
-                        {/* 2. Actual Bar (แถบทำจริง) */}
+                        {/* 2. Actual Bar (แถบทำจริง) - Clean full text without cutoff */}
                         {actRange && (
                           <div
                             style={{
@@ -507,10 +541,10 @@ export default function PMMonthlyPrintModal({
                               width: 'calc(100% - 2px)',
                               boxSizing: 'border-box',
                             }}
-                            className={`absolute z-3 rounded px-1 flex items-center justify-between font-bold text-white shadow-xs overflow-hidden ${
+                            className={`absolute z-3 rounded px-1.5 flex items-center justify-start font-bold text-white shadow-xs overflow-hidden ${
                               hasOverlap
-                                ? 'bottom-[2px] h-[12px] text-[7.5px]'
-                                : 'inset-y-0 my-auto h-[18px] text-[8.5px]'
+                                ? 'bottom-[2px] h-[15px] text-[8px] leading-tight'
+                                : 'inset-y-0 my-auto h-[20px] text-[8.5px] leading-tight'
                             } ${
                               item.status === 'COMPLETED'
                                 ? 'bg-emerald-600'
@@ -522,9 +556,11 @@ export default function PMMonthlyPrintModal({
                             }`}
                             title={`ทำจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate})`}
                           >
-                            <span className="truncate">จริง: {item.actualTech || item.mc}</span>
-                            {item.workOrderId && !hasOverlap && (
-                              <span className="font-mono text-[7px] opacity-90 shrink-0 ml-0.5">
+                            <span className="whitespace-nowrap font-bold">
+                              จริง: {item.actualTech || item.mc}
+                            </span>
+                            {item.workOrderId && actRange.span >= 4 && !hasOverlap && (
+                              <span className="font-mono text-[7px] opacity-90 shrink-0 ml-1">
                                 ({item.workOrderId.slice(-4)})
                               </span>
                             )}
@@ -624,15 +660,15 @@ export default function PMMonthlyPrintModal({
                           <td className="py-1 px-2 font-mono text-[9px] text-slate-800 border border-slate-200">
                             {actualText}
                           </td>
-                          <td className="py-1 px-2 text-slate-700 border border-slate-200 truncate max-w-[100px]">
+                          <td className="py-1 px-2 text-slate-700 border border-slate-200">
                             {item.actualTech || item.assignedTech || '—'}
                           </td>
                           <td className="py-1 px-2 text-center border border-slate-200">
-                            <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold border ${statusBadgeClass}`}>
+                            <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[8.5px] font-bold border whitespace-nowrap shadow-xs ${statusBadgeClass}`}>
                               {statusLabel}
                             </span>
                           </td>
-                          <td className="py-1 px-2 text-[9px] text-slate-600 border border-slate-200 truncate max-w-[140px]">
+                          <td className="py-1 px-2 text-[9px] text-slate-600 border border-slate-200">
                             {item.workOrderId ? (
                               <span className="font-mono text-blue-700 font-bold mr-1">
                                 {item.workOrderId}
