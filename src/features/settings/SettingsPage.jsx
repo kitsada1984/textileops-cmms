@@ -1,0 +1,1851 @@
+import { useState, useEffect } from 'react'
+import { db } from '../../api/dbClient'
+import {
+  Save, Database, User, Shield, Send, CheckCircle, AlertCircle, RefreshCw,
+  UserPlus, Smartphone, Download, MessageSquare, Bell, Eye, EyeOff, Copy,
+  Pencil, Trash2, Lock, ShieldAlert, AlertTriangle, KeyRound, Sparkles, ExternalLink, BookOpen
+} from 'lucide-react'
+import { useT } from '../../contexts/LanguageContext'
+import { useAuth, hashPassword } from '../../contexts/AuthContext'
+import { APP_VERSION, APP_BUILD_DATE } from '../../version'
+import { fetchTelegramContacts, loadTelegramSettings, saveTelegramSettings, saveTelegramSettingsDB, loadTelegramSettingsDB, testTelegram } from '../../utils/telegram'
+import { fetchLineContacts, loadLineSettings, saveLineSettingsDB, loadLineSettingsDB, testLineNotification, DEFAULT_LINE_SETTINGS } from '../../utils/line'
+import { useRealtimeTables } from '../../api/realtimeSync'
+import { useToast } from '../../components/ui/Toast'
+import usePagePerms from '../../hooks/usePagePerms'
+import { syncNotificationTechsToRegistry } from '../../utils/technicianSync'
+import Modal from '../../components/ui/Modal'
+import { telegramAdminSchema } from '../../schemas/telegramAdminSchema'
+import { getGeminiConfig, saveGeminiConfig, testGeminiConnection, DEFAULT_GEMINI_MODEL } from '../../utils/geminiVision'
+
+const TABLES = [
+  ['machines','เครื่องจักร'], ['cylinders','กระบอก'], ['workorders','ใบสั่งงาน'],
+  ['pmplans','แผน PM'], ['spareparts','อะไหล่'], ['purchaseorders','ใบสั่งซื้อ'],
+  ['stocktransactions','เคลื่อนไหวสต็อก'], ['auditlogs','บันทึกระบบ'], ['appconfigs','ตั้งค่าแอป'],
+]
+
+import Card from '../../components/ui/Card'
+
+function SectionCard({ icon: Icon, title, children }) {
+  return (
+    <Card>
+      <Card.Header>
+        <Card.Title icon={Icon}>{title}</Card.Title>
+      </Card.Header>
+      <Card.Body>{children}</Card.Body>
+    </Card>
+  )
+}
+
+export default function SettingsPage() {
+  const { t } = useT()
+  const { user, refreshUser } = useAuth()
+  const { canEdit, canDelete } = usePagePerms('settings')
+  const toast = useToast()
+  const [counts,     setCounts]     = useState({})
+  const [newPwd,     setNewPwd]     = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
+  const [pwdMsg,     setPwdMsg]     = useState('')
+  const [pwdLoading, setPwdLoading] = useState(false)
+
+  const [tg,        setTg]         = useState(() => {
+    const saved = loadTelegramSettings()
+    if (!saved.admins) saved.admins = [{ name: 'กฤษดา (Admin)', chat_id: '6981653027' }]
+    if (!saved.supervisors) saved.supervisors = saved.supervisor_chat_id ? [{ name: 'Supervisor', chat_id: saved.supervisor_chat_id }] : []
+    if (!saved.technicians) saved.technicians = saved.technician_chat_id ? [{ name: 'ช่างเทคนิค', chat_id: saved.technician_chat_id }] : []
+    return saved
+  })
+  const [tgMsg,     setTgMsg]      = useState('')
+  const [tgTesting, setTgTesting]  = useState(false)
+  const [tgContacts, setTgContacts] = useState([])
+  const [tgContactLoading, setTgContactLoading] = useState(false)
+
+  // Admin Management & Double-Confirmation Password Security Modal
+  const [adminModalOpen, setAdminModalOpen] = useState(false)
+  const [adminModalMode, setAdminModalMode] = useState('add') // 'add' | 'edit' | 'delete'
+  const [adminModalIndex, setAdminModalIndex] = useState(-1)
+  const [adminFormName, setAdminFormName] = useState('')
+  const [adminFormChatId, setAdminFormChatId] = useState('')
+  const [adminAuthPwd, setAdminAuthPwd] = useState('')
+  const [adminAuthError, setAdminAuthError] = useState('')
+  const [adminStep, setAdminStep] = useState(1) // 1: Password Auth, 2: Final Double Confirmation
+  const [adminSubmitting, setAdminSubmitting] = useState(false)
+  const [showAdminPwd, setShowAdminPwd] = useState(false)
+
+  // LINE Notification State
+  const [line, setLine] = useState(DEFAULT_LINE_SETTINGS)
+  const [lineMsg, setLineMsg] = useState('')
+  const [lineIsOk, setLineIsOk] = useState(true)
+  const [lineTesting, setLineTesting] = useState(false)
+  const [showLineToken, setShowLineToken] = useState(false)
+  const [lineContacts, setLineContacts] = useState([])
+  const [lineContactLoading, setLineContactLoading] = useState(false)
+  const [webhookCopied, setWebhookCopied] = useState(false)
+
+  // Gemini AI Vision State
+  const [geminiKey, setGeminiKey] = useState('')
+  const [geminiModel, setGeminiModel] = useState(DEFAULT_GEMINI_MODEL)
+  const [geminiTesting, setGeminiTesting] = useState(false)
+  const [geminiSaving, setGeminiSaving] = useState(false)
+  const [showGeminiKey, setShowGeminiKey] = useState(false)
+  const [geminiStatus, setGeminiStatus] = useState(null)
+
+  const reloadSettings = async () => {
+    try {
+      const { data } = await db.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
+      if (data?.value) {
+        const cfg = JSON.parse(data.value)
+        if (!cfg.admins) cfg.admins = cfg.supervisors?.length ? cfg.supervisors : [{ name: 'กฤษดา (Admin)', chat_id: '6981653027' }]
+        if (!cfg.supervisors) cfg.supervisors = []
+        if (!cfg.technicians) cfg.technicians = []
+        setTg(cfg)
+      }
+      const lineCfg = await loadLineSettingsDB()
+      if (lineCfg) setLine(lineCfg)
+      const geminiCfg = await getGeminiConfig()
+      if (geminiCfg) {
+        setGeminiKey(geminiCfg.apiKey || '')
+        const loadedModel = geminiCfg.model || DEFAULT_GEMINI_MODEL
+        setGeminiModel(
+          loadedModel.startsWith('gemini-1.5') || loadedModel === 'gemini-2.5-flash'
+            ? DEFAULT_GEMINI_MODEL
+            : loadedModel
+        )
+      }
+    } catch {}
+  }
+
+  const reloadCounts = () => {
+    Promise.allSettled(
+      TABLES.map(([tb]) => db.from(tb).select('id', { count: 'exact', head: true }))
+    ).then(results => {
+      const c = {}
+      results.forEach((r, i) => {
+        c[TABLES[i][0]] = r.status === 'fulfilled' ? (r.value.count ?? '—') : '—'
+      })
+      setCounts(c)
+    })
+  }
+
+  useEffect(() => {
+    ;(async () => {
+      const { data } = await db.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
+      if (data?.value) {
+        // DB has data — load it
+        const cfg = JSON.parse(data.value)
+        if (!cfg.admins) cfg.admins = cfg.supervisors?.length ? cfg.supervisors : [{ name: 'กฤษดา (Admin)', chat_id: '6981653027' }]
+        if (!cfg.supervisors) cfg.supervisors = []
+        if (!cfg.technicians) cfg.technicians = []
+        setTg(cfg)
+      } else {
+        // DB empty — sync localStorage → DB immediately
+        const local = loadTelegramSettings()
+        if (!local.admins) local.admins = [{ name: 'กฤษดา (Admin)', chat_id: '6981653027' }]
+        if (!local.supervisors) local.supervisors = []
+        if (!local.technicians) local.technicians = []
+        setTg(local)
+        saveTelegramSettingsDB(local)
+      }
+
+      // Load LINE settings from DB
+      const lineCfg = await loadLineSettingsDB()
+      if (lineCfg) setLine(lineCfg)
+      const geminiCfg = await getGeminiConfig()
+      if (geminiCfg) {
+        setGeminiKey(geminiCfg.apiKey || '')
+        const loadedModel = geminiCfg.model || DEFAULT_GEMINI_MODEL
+        setGeminiModel(
+          loadedModel.startsWith('gemini-1.5') || loadedModel === 'gemini-2.5-flash'
+            ? DEFAULT_GEMINI_MODEL
+            : loadedModel
+        )
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    reloadCounts()
+  }, [])
+
+  useRealtimeTables(['appconfigs'], () => {
+    reloadSettings()
+  })
+
+  useRealtimeTables(TABLES.map(t => t[0]), () => {
+    reloadCounts()
+  })
+
+  const changePassword = async () => {
+    setPwdMsg('')
+    if (!newPwd) { setPwdMsg(t('set_pwd_req')); return }
+    if (newPwd.length < 6) { setPwdMsg(t('set_pwd_short')); return }
+    if (newPwd !== confirmPwd) { setPwdMsg('รหัสผ่านไม่ตรงกัน'); return }
+
+    setPwdLoading(true)
+    try {
+      const hash = await hashPassword(newPwd)
+      const { error } = await db
+        .from('users')
+        .update({ password_hash: hash })
+        .eq('id', user.id)
+
+      if (error) throw new Error(error.message)
+      setPwdMsg(t('set_pwd_ok'))
+      setNewPwd('')
+      setConfirmPwd('')
+    } catch (e) {
+      setPwdMsg(e.message)
+    }
+    setPwdLoading(false)
+  }
+
+  const isOk = pwdMsg.includes('✓') || pwdMsg.toLowerCase().includes('success') || pwdMsg.includes('สำเร็จ')
+
+  const saveTg = async () => {
+    if (!canEdit) {
+      toast.error('ไม่มีสิทธิ์ดำเนินการ', 'บัญชีของคุณไม่มีสิทธิ์แก้ไขการตั้งค่าระบบ')
+      return
+    }
+    try {
+      await saveTelegramSettingsDB(tg)
+      const syncResult = await syncNotificationTechsToRegistry(tg.technicians, 'TELEGRAM')
+      if (syncResult.createdCount > 0) {
+        setTgMsg(`บันทึกแล้ว ✓ (เพิ่มเข้าทะเบียนช่าง ${syncResult.createdCount} ท่าน: ${syncResult.createdNames.join(', ')})`)
+        toast.success('บันทึกและซิงค์ทะเบียนช่างสำเร็จ', `เพิ่มช่างใหม่เข้าทะเบียนช่าง: ${syncResult.createdNames.join(', ')}`)
+      } else if (syncResult.updatedCount > 0) {
+        setTgMsg('บันทึกแล้ว ✓ (อัปเดตเชื่อมโยงทะเบียนช่างเรียบร้อย)')
+      } else {
+        setTgMsg('บันทึกแล้ว ✓')
+      }
+    } catch (e) {
+      setTgMsg(`ผิดพลาด: ${e.message}`)
+      toast.error('เกิดข้อผิดพลาดในการบันทึก', e.message)
+    }
+    setTimeout(() => setTgMsg(''), 5000)
+  }
+
+  const handleTestTg = async () => {
+    await saveTelegramSettingsDB(tg)   // save current state first before testing
+    setTgTesting(true); setTgMsg('')
+    try {
+      const r = await testTelegram()
+      setTgMsg(r.ok ? '✓ ส่งข้อความทดสอบสำเร็จ' : `ผิดพลาด: ${r.description || r.error || 'unknown'}`)
+    } catch (e) {
+      setTgMsg(`ผิดพลาด: ${e.message}`)
+    }
+    setTgTesting(false)
+  }
+
+  const saveLine = async () => {
+    if (!canEdit) {
+      toast.error('ไม่มีสิทธิ์ดำเนินการ', 'บัญชีของคุณไม่มีสิทธิ์แก้ไขการตั้งค่าระบบ')
+      return
+    }
+    try {
+      await saveLineSettingsDB(line)
+      const syncResult = await syncNotificationTechsToRegistry(line.technicians, 'LINE')
+      setLineIsOk(true)
+      if (syncResult.createdCount > 0) {
+        setLineMsg(`บันทึกการตั้งค่า LINE สำเร็จ ✓ (เพิ่มเข้าทะเบียนช่าง ${syncResult.createdCount} ท่าน: ${syncResult.createdNames.join(', ')})`)
+        toast.success('บันทึกและซิงค์ทะเบียนช่างสำเร็จ', `เพิ่มช่างใหม่เข้าทะเบียนช่าง: ${syncResult.createdNames.join(', ')}`)
+      } else if (syncResult.updatedCount > 0) {
+        setLineMsg('บันทึกการตั้งค่า LINE สำเร็จ ✓ (อัปเดตเชื่อมโยงทะเบียนช่างเรียบร้อย)')
+      } else {
+        setLineMsg('บันทึกการตั้งค่า LINE สำเร็จ ✓')
+      }
+    } catch (e) {
+      setLineIsOk(false)
+      setLineMsg(`ผิดพลาด: ${e.message}`)
+      toast.error('เกิดข้อผิดพลาดในการบันทึก', e.message)
+    }
+    setTimeout(() => setLineMsg(''), 5000)
+  }
+
+  const handleTestLine = async () => {
+    await saveLineSettingsDB(line)
+    setLineTesting(true)
+    setLineMsg('')
+    try {
+      const r = await testLineNotification()
+      if (r.ok) {
+        setLineIsOk(true)
+        setLineMsg('✓ ส่งข้อความแจ้งเตือนทดสอบเข้า LINE สำเร็จเรียบร้อย!')
+      } else {
+        setLineIsOk(false)
+        setLineMsg(`ผิดพลาด: ${r.error || 'ไม่สามารถส่งข้อความเข้า LINE ได้'}`)
+      }
+    } catch (e) {
+      setLineIsOk(false)
+      setLineMsg(`ผิดพลาด: ${e.message}`)
+    }
+    setLineTesting(false)
+  }
+
+  const handleTestGemini = async () => {
+    if (!geminiKey.trim()) {
+      toast.warning('กรุณาระบุ Gemini API Key ก่อนทดสอบ')
+      return
+    }
+    setGeminiTesting(true)
+    setGeminiStatus(null)
+    try {
+      const res = await testGeminiConnection(geminiKey, geminiModel)
+      const activeModel = res?.modelUsed || geminiModel
+      if (res?.modelUsed && res.modelUsed !== geminiModel) {
+        setGeminiModel(res.modelUsed)
+      }
+      setGeminiStatus({ ok: true, text: `เชื่อมต่อสำเร็จ! โมเดล ${activeModel} พร้อมใช้งาน` })
+      toast.success('เชื่อมต่อ Google Gemini สำเร็จ', `API Key ใช้งานได้ปกติ (${activeModel})`)
+    } catch (err) {
+      setGeminiStatus({ ok: false, text: err.message || 'เชื่อมต่อไม่สำเร็จ' })
+      toast.error('ทดสอบการเชื่อมต่อไม่สำเร็จ', err.message)
+    } finally {
+      setGeminiTesting(false)
+    }
+  }
+
+  const handleSaveGemini = async () => {
+    setGeminiSaving(true)
+    try {
+      await saveGeminiConfig({
+        apiKey: geminiKey,
+        model: geminiModel,
+        isEnabled: Boolean(geminiKey.trim()),
+      })
+      toast.success('บันทึกการตั้งค่า Gemini AI สำเร็จ', 'ระบบพร้อมสำหรับการค้นหาอะไหล่ด้วยภาพแบบ AI Vision (ความแม่นยำ 98%+)')
+    } catch (err) {
+      toast.error('บันทึกไม่สำเร็จ', err.message)
+    } finally {
+      setGeminiSaving(false)
+    }
+  }
+
+  const loadLineContactsList = async () => {
+    setLineContactLoading(true)
+    setLineMsg('')
+    try {
+      const r = await fetchLineContacts()
+      if (r.ok && r.contacts) {
+        setLineContacts(r.contacts)
+        setLineIsOk(true)
+        setLineMsg(r.contacts.length
+          ? `✓ พบผู้ใช้ที่ทัก LINE บอท ${r.contacts.length} บัญชี`
+          : 'ยังไม่พบบัญชี LINE ใหม่ ให้ช่างหรือหัวหน้าเปิดแชตกับบอทแล้วพิมพ์ข้อความทักทายก่อนครับ')
+      } else {
+        setLineIsOk(false)
+        setLineMsg('ไม่พบรายชื่อในระบบ Webhook')
+      }
+    } catch (e) {
+      setLineIsOk(false)
+      setLineMsg(`ผิดพลาด: ${e.message}`)
+    }
+    setLineContactLoading(false)
+  }
+
+  const addLineContact = (role, contact) => {
+    let key = 'supervisors'
+    let label = 'หัวหน้างาน'
+    if (role === 'technician') {
+      key = 'technicians'
+      label = 'ช่างเทคนิค'
+    } else if (role === 'needle_keeper') {
+      key = 'needle_keepers'
+      label = 'ผู้ดูแลเข็ม'
+    }
+    setLine((p) => {
+      const current = p[key] || []
+      if (current.some((item) => item.user_id === contact.user_id)) return p
+      return { ...p, [key]: [...current, { name: contact.name, user_id: contact.user_id }] }
+    })
+    setLineIsOk(true)
+    setLineMsg(`เพิ่ม ${contact.name} ใน ${label} เรียบร้อยแล้ว (กดบันทึกการตั้งค่าเพื่อเริ่มใช้งานและซิงค์เข้าทะเบียนช่าง)`)
+  }
+
+  const loadTgContacts = async () => {
+    setTgContactLoading(true); setTgMsg('')
+    try {
+      const r = await fetchTelegramContacts(tg.bot_token)
+      if (!r.ok) {
+        setTgMsg(`ผิดพลาด: ${r.error || 'ไม่สามารถดึงรายชื่อจาก Telegram ได้'}`)
+      } else {
+        setTgContacts(r.contacts || [])
+        setTgMsg((r.contacts || []).length
+          ? `พบรายชื่อจาก Telegram ${r.contacts.length} รายการ`
+          : 'ยังไม่พบรายชื่อ ให้ผู้ใช้เปิดแชตกับบอทแล้วกด Start หรือส่งข้อความก่อน')
+      }
+    } catch (e) {
+      setTgMsg(`ผิดพลาด: ${e.message}`)
+    }
+    setTgContactLoading(false)
+  }
+
+  const handleVerifyAdminPassword = async (e) => {
+    e?.preventDefault()
+    setAdminAuthError('')
+    if (!adminAuthPwd) {
+      setAdminAuthError('กรุณากรอกรหัสผ่านเพื่อดำเนินการ')
+      return
+    }
+    if (adminModalMode !== 'delete') {
+      const parseResult = telegramAdminSchema.safeParse({
+        name: adminFormName,
+        chat_id: adminFormChatId,
+      })
+      if (!parseResult.success) {
+        setAdminAuthError(parseResult.error.issues[0]?.message || 'ข้อมูลแอดมินไม่ถูกต้อง')
+        return
+      }
+    }
+
+    setAdminSubmitting(true)
+    try {
+      const hash = await hashPassword(adminAuthPwd)
+      const { data, error } = await db
+        .from('users')
+        .select('id, role')
+        .eq('id', user?.id)
+        .eq('password_hash', hash)
+        .maybeSingle()
+
+      if (error || !data) {
+        setAdminAuthError('รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง')
+        setAdminSubmitting(false)
+        return
+      }
+
+      setAdminStep(2)
+    } catch (err) {
+      setAdminAuthError(`เกิดข้อผิดพลาดในการตรวจสอบ: ${err.message}`)
+    }
+    setAdminSubmitting(false)
+  }
+
+  const handleConfirmAdminAction = async () => {
+    setAdminSubmitting(true)
+    try {
+      let updatedAdmins = [...(tg.admins || [])]
+      let actionDesc = ''
+
+      if (adminModalMode === 'add') {
+        updatedAdmins.push({ name: adminFormName.trim(), chat_id: adminFormChatId.trim() })
+        actionDesc = `เพิ่มแอดมิน ${adminFormName.trim()}`
+      } else if (adminModalMode === 'edit') {
+        if (adminModalIndex >= 0 && adminModalIndex < updatedAdmins.length) {
+          updatedAdmins[adminModalIndex] = { name: adminFormName.trim(), chat_id: adminFormChatId.trim() }
+          actionDesc = `แก้ไขข้อมูลแอดมิน ${adminFormName.trim()}`
+        }
+      } else if (adminModalMode === 'delete') {
+        const removed = updatedAdmins[adminModalIndex]?.name || 'แอดมิน'
+        updatedAdmins = updatedAdmins.filter((_, i) => i !== adminModalIndex)
+        actionDesc = `ลบแอดมิน ${removed}`
+      }
+
+      const newTg = { ...tg, admins: updatedAdmins }
+      setTg(newTg)
+      await saveTelegramSettingsDB(newTg)
+
+      setAdminModalOpen(false)
+      toast.success('บันทึกสำเร็จ', `${actionDesc} เรียบร้อยแล้ว`)
+      setTgMsg(`${actionDesc} เรียบร้อยแล้ว ✓`)
+    } catch (err) {
+      setAdminAuthError(`เกิดข้อผิดพลาดในการบันทึก: ${err.message}`)
+      toast.error('เกิดข้อผิดพลาด', err.message)
+    }
+    setAdminSubmitting(false)
+  }
+
+  const addTgContact = (role, contact) => {
+    if (role === 'admin') {
+      setAdminModalMode('add')
+      setAdminModalIndex(-1)
+      setAdminFormName(contact.name || '')
+      setAdminFormChatId(contact.chat_id || '')
+      setAdminAuthPwd('')
+      setAdminAuthError('')
+      setAdminStep(1)
+      setAdminModalOpen(true)
+      return
+    }
+    let key = 'supervisors'
+    let label = 'หัวหน้างาน'
+    if (role === 'technician') {
+      key = 'technicians'
+      label = 'ช่าง'
+    } else if (role === 'needle_keeper') {
+      key = 'needle_keepers'
+      label = 'ผู้ดูแลเข็ม'
+    }
+    setTg(p => {
+      const current = p[key] || []
+      if (current.some(item => item.chat_id === contact.chat_id)) return p
+      return { ...p, [key]: [...current, { name: contact.name, chat_id: contact.chat_id }] }
+    })
+    setTgMsg(`เพิ่ม ${contact.name} ใน ${label} แล้ว (กดบันทึกเพื่อเริ่มใช้งานและซิงค์เข้าทะเบียนช่าง)`)
+  }
+
+  const tgIsOk = tgMsg.startsWith('✓') || tgMsg.includes('สำเร็จ') || tgMsg.includes('บันทึกแล้ว') || tgMsg.includes('พบรายชื่อ') || tgMsg.includes('เพิ่ม ')
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+
+      {/* DB Info */}
+      <SectionCard icon={Database} title={t('set_db_title')}>
+        <div className="space-y-0 -mx-6 -mb-6">
+          {[
+            ['รหัสโปรเจกต์', <code key="pid" style={{background:'var(--bg-thead)',padding:'2px 8px',borderRadius:6,fontSize:11,fontFamily:'monospace'}}>fyulqejkzuhwppstezko</code>],
+            ['ภูมิภาค',   'ap-northeast-1 (Tokyo)'],
+            ['ฐานข้อมูล', <span key="db" style={{color:'#10b981',fontWeight:600}}>PostgreSQL ✓</span>],
+            ['ระบบล็อกอิน', <span key="auth" style={{color:'#10b981',fontWeight:600}}>ล็อกอินกำหนดเอง ✓</span>],
+          ].map(([k, v], i, arr) => (
+            <div key={k} className="flex items-center justify-between px-6 py-3 text-sm"
+              style={{borderBottom: i < arr.length-1 ? '1px solid var(--border-subtle)' : 'none'}}>
+              <span style={{color:'var(--text-500)'}}>{k}</span>
+              <span style={{color:'var(--text-900)'}}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      {/* Table record counts */}
+      <SectionCard icon={Database} title={t('set_tables')}>
+        <div className="space-y-0 -mx-6 -mb-6">
+          {TABLES.map(([table, label], i) => (
+            <div key={table} className="flex items-center justify-between px-6 py-2.5 text-sm"
+              style={{borderBottom: i < TABLES.length-1 ? '1px solid var(--border-subtle)' : 'none'}}>
+              <span style={{color:'var(--text-700)'}}>{label}</span>
+              <div className="flex items-center gap-3">
+                <code className="text-xs font-mono" style={{color:'var(--text-400)'}}>{table}</code>
+                <span className="font-bold w-8 text-right tabular-nums" style={{color:'var(--text-900)'}}>{counts[table] ?? '...'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      {/* Current user info */}
+      <SectionCard icon={User} title={t('set_cur_user')}>
+        <div className="space-y-0 -mx-6 -mb-6">
+          {[
+            ['ชื่อผู้ใช้', user?.username],
+            ['ชื่อ-นามสกุล', user?.full_name || '—'],
+            ['บทบาท', <span key="role" style={{
+              padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700,
+              textTransform:'uppercase', letterSpacing:'0.06em',
+              background:'rgba(99,102,241,0.12)', color:'#818cf8',
+              border:'1px solid rgba(99,102,241,0.2)',
+            }}>{user?.role}</span>],
+            ['User ID', <code key="uid" style={{background:'var(--bg-thead)',padding:'2px 8px',borderRadius:6,fontSize:10,fontFamily:'monospace',color:'var(--text-400)'}}>{user?.id?.slice(0,18)}…</code>],
+            ['เวอร์ชันระบบ', <span key="ver" style={{fontWeight:700,color:'var(--text-900)'}}>{APP_VERSION}</span>],
+            ['วันที่เผยแพร่', <span key="bdate" style={{color:'var(--text-500)',fontSize:12}}>{APP_BUILD_DATE}</span>],
+          ].map(([k, v], i, arr) => (
+            <div key={k} className="flex items-center justify-between px-6 py-3 text-sm"
+              style={{borderBottom: i < arr.length-1 ? '1px solid var(--border-subtle)' : 'none'}}>
+              <span style={{color:'var(--text-500)'}}>{k}</span>
+              <span style={{color:'var(--text-900)'}}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      {/* Telegram / QR settings */}
+      <SectionCard icon={Send} title="ตั้งค่า Telegram และ QR">
+        <div className="space-y-5">
+
+          {/* Bot Token */}
+          <div>
+            <label className="label">โทเคนบอต</label>
+            <input className="input font-mono text-xs" type="password"
+              value={tg.bot_token || ''}
+              onChange={e => setTg(p => ({ ...p, bot_token: e.target.value }))}
+              placeholder="123456789:AAF…" />
+          </div>
+
+          <div style={{
+            padding: 14, borderRadius: 14, border: '1px solid var(--border)',
+            background: 'var(--bg-page)',
+          }}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-900)' }}>
+                  เพิ่มคนจาก Telegram แบบไม่ต้องกรอก User ID
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-500)', marginTop: 4, lineHeight: 1.6 }}>
+                  ให้ผู้ใช้เปิดแชตกับบอทแล้วกด Start หรือส่งข้อความหนึ่งครั้ง จากนั้นกดดึงรายชื่อ
+                </div>
+              </div>
+              <button onClick={loadTgContacts} disabled={tgContactLoading} className="btn-outline"
+                style={{ padding: '7px 12px', fontSize: 12, flexShrink: 0 }}>
+                <RefreshCw size={13} className={tgContactLoading ? 'animate-spin' : ''}/>
+                {tgContactLoading ? 'กำลังดึง' : 'ดึงรายชื่อ'}
+              </button>
+            </div>
+
+            {tgContacts.length > 0 && (
+              <div className="space-y-2" style={{ marginTop: 12 }}>
+                {tgContacts.map(contact => {
+                  const inSupervisor = (tg.supervisors || []).some(s => s.chat_id === contact.chat_id)
+                  const inTechnician = (tg.technicians || []).some(t => t.chat_id === contact.chat_id)
+                  return (
+                    <div key={contact.chat_id} className="flex items-center gap-2"
+                      style={{
+                        padding: '8px 10px', borderRadius: 10,
+                        background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
+                      }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {contact.name}
+                          {contact.username ? <span style={{ color: 'var(--text-400)', fontWeight: 500 }}> @{contact.username}</span> : null}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-400)', fontFamily: 'monospace' }}>
+                          {contact.chat_id} · {contact.type}
+                        </div>
+                      </div>
+                      <button onClick={() => addTgContact('supervisor', contact)} disabled={inSupervisor}
+                        title="เพิ่มเป็น Supervisor"
+                        style={{
+                          height: 28, padding: '0 9px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          border: '1px solid rgba(99,102,241,0.25)',
+                          background: inSupervisor ? 'var(--bg-thead)' : 'rgba(99,102,241,0.1)',
+                          color: inSupervisor ? 'var(--text-400)' : '#6366f1',
+                          cursor: inSupervisor ? 'default' : 'pointer',
+                        }}>
+                        <UserPlus size={12}/> หัวหน้างาน
+                      </button>
+                      <button onClick={() => addTgContact('needle_keeper', contact)} disabled={(tg.needle_keepers || []).some(k => k.chat_id === contact.chat_id)}
+                        title="เพิ่มเป็น ผู้ดูแลเข็ม"
+                        style={{
+                          height: 28, padding: '0 9px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          border: '1px solid rgba(14,165,233,0.25)',
+                          background: (tg.needle_keepers || []).some(k => k.chat_id === contact.chat_id) ? 'var(--bg-thead)' : 'rgba(14,165,233,0.1)',
+                          color: (tg.needle_keepers || []).some(k => k.chat_id === contact.chat_id) ? 'var(--text-400)' : '#0ea5e9',
+                          cursor: (tg.needle_keepers || []).some(k => k.chat_id === contact.chat_id) ? 'default' : 'pointer',
+                        }}>
+                        <UserPlus size={12}/> ผู้ดูแลเข็ม
+                      </button>
+                      <button onClick={() => addTgContact('technician', contact)} disabled={inTechnician}
+                        title="เพิ่มเป็น Technician"
+                        style={{
+                          height: 28, padding: '0 9px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          border: '1px solid rgba(16,185,129,0.25)',
+                          background: inTechnician ? 'var(--bg-thead)' : 'rgba(16,185,129,0.1)',
+                          color: inTechnician ? 'var(--text-400)' : '#10b981',
+                          cursor: inTechnician ? 'default' : 'pointer',
+                        }}>
+                        <UserPlus size={12}/> ช่าง
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* System Admins & Error Alert Recipients */}
+          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <Shield size={14} className="text-indigo-600 dark:text-indigo-400" />
+                  <label className="label mb-0 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
+                    🛡️ ผู้ดูแลระบบ / ผู้รับแจ้งเตือนข้อผิดพลาดระบบ (System Admins)
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  จะได้รับแจ้งเตือนทาง Telegram ทันทีเมื่อระบบตรวจพบ Error หรือหน้าจอขัดข้อง (ต้องยืนยันรหัสผ่าน 2 ครั้งเพื่อแก้ไข)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminModalMode('add')
+                  setAdminModalIndex(-1)
+                  setAdminFormName('')
+                  setAdminFormChatId('')
+                  setAdminAuthPwd('')
+                  setAdminAuthError('')
+                  setAdminStep(1)
+                  setAdminModalOpen(true)
+                }}
+                className="btn-primary text-xs px-2.5 py-1 flex items-center gap-1"
+                style={{ fontSize: 11 }}
+              >
+                <UserPlus size={12} />
+                <span>+ เพิ่มแอดมิน</span>
+              </button>
+            </div>
+
+            {(!tg.admins || tg.admins.length === 0) ? (
+              <div className="text-xs text-slate-400 py-1">
+                ยังไม่ได้ระบุแอดมินเฉพาะ — ระบบจะส่งแจ้งเตือน Error ไปยังรายชื่อหัวหน้างานเป็นค่าเริ่มต้น
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {tg.admins.map((adm, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-indigo-100 dark:border-indigo-900/40 shadow-sm"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 truncate">
+                          <span>{adm.name}</span>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                            ADMIN
+                          </span>
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                          Chat ID: {adm.chat_id}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminModalMode('edit')
+                          setAdminModalIndex(i)
+                          setAdminFormName(adm.name)
+                          setAdminFormChatId(adm.chat_id)
+                          setAdminAuthPwd('')
+                          setAdminAuthError('')
+                          setAdminStep(1)
+                          setAdminModalOpen(true)
+                        }}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
+                        title="แก้ไขข้อมูลแอดมิน (ต้องยืนยันรหัสผ่าน 2 ครั้ง)"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminModalMode('delete')
+                          setAdminModalIndex(i)
+                          setAdminFormName(adm.name)
+                          setAdminFormChatId(adm.chat_id)
+                          setAdminAuthPwd('')
+                          setAdminAuthError('')
+                          setAdminStep(1)
+                          setAdminModalOpen(true)
+                        }}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors"
+                        title="ลบแอดมิน (ต้องยืนยันรหัสผ่าน 2 ครั้ง)"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Supervisors list */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="label mb-0">หัวหน้างาน</label>
+              <button onClick={() => setTg(p => ({ ...p, supervisors: [...(p.supervisors||[]), { name: '', chat_id: '' }] }))}
+                style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' }}>
+                + เพิ่ม
+              </button>
+            </div>
+            {(tg.supervisors || []).length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text-400)', padding: '8px 0' }}>ยังไม่มีหัวหน้างาน — กด + เพิ่ม</div>
+            )}
+            <div className="space-y-2">
+              {(tg.supervisors || []).map((s, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input className="input text-sm" value={s.name}
+                    onChange={e => setTg(p => { const a=[...p.supervisors]; a[i]={...a[i],name:e.target.value}; return {...p,supervisors:a} })}
+                    placeholder="ชื่อ" style={{ flex: '0 0 130px' }} />
+                  <input className="input font-mono text-xs" value={s.chat_id}
+                    onChange={e => setTg(p => { const a=[...p.supervisors]; a[i]={...a[i],chat_id:e.target.value}; return {...p,supervisors:a} })}
+                    placeholder="Chat ID เช่น -100…" style={{ flex: 1 }} />
+                  <button onClick={() => setTg(p => ({ ...p, supervisors: p.supervisors.filter((_,j)=>j!==i) }))}
+                    style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-page)', color: 'var(--text-400)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Needle Keepers list */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <label className="label mb-0 text-sky-700 dark:text-sky-400 font-bold">🪡 ผู้ดูแลเข็ม / สโตร์เข็ม (Needle Keepers)</label>
+                <div style={{ fontSize: 11, color: 'var(--text-400)' }}>
+                  จะได้รับแจ้งเตือนทันทีเมื่อมีช่างสแกนขอเบิกเข็ม Spare
+                </div>
+              </div>
+              <button onClick={() => setTg(p => ({ ...p, needle_keepers: [...(p.needle_keepers||[]), { name: '', chat_id: '' }] }))}
+                style={{ fontSize: 11, fontWeight: 700, color: '#0ea5e9', background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.25)', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' }}>
+                + เพิ่มผู้ดูแลเข็ม
+              </button>
+            </div>
+            {(!tg.needle_keepers || tg.needle_keepers.length === 0) && (
+              <div style={{ fontSize: 12, color: 'var(--text-400)', padding: '8px 0' }}>ยังไม่ได้ระบุ — ระบบจะส่งแจ้งเตือนหาหัวหน้างานเป็นค่าเริ่มต้น</div>
+            )}
+            <div className="space-y-2">
+              {(tg.needle_keepers || []).map((k, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input className="input text-sm" value={k.name}
+                    onChange={e => setTg(p => { const a=[...(p.needle_keepers||[])]; a[i]={...a[i],name:e.target.value}; return {...p,needle_keepers:a} })}
+                    placeholder="ชื่อผู้ดูแลเข็ม" style={{ flex: '0 0 130px' }} />
+                  <input className="input font-mono text-xs" value={k.chat_id}
+                    onChange={e => setTg(p => { const a=[...(p.needle_keepers||[])]; a[i]={...a[i],chat_id:e.target.value}; return {...p,needle_keepers:a} })}
+                    placeholder="Chat ID เช่น 6981... หรือ -100..." style={{ flex: 1 }} />
+                  <button onClick={() => setTg(p => ({ ...p, needle_keepers: (p.needle_keepers||[]).filter((_,j)=>j!==i) }))}
+                    style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-page)', color: 'var(--text-400)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Technicians list */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="label mb-0">ช่างเทคนิค</label>
+              <button onClick={() => setTg(p => ({ ...p, technicians: [...(p.technicians||[]), { name: '', chat_id: '' }] }))}
+                style={{ fontSize: 11, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' }}>
+                + เพิ่ม
+              </button>
+            </div>
+            {(tg.technicians || []).length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text-400)', padding: '8px 0' }}>ยังไม่มีช่าง — กด + เพิ่ม</div>
+            )}
+            <div className="space-y-2">
+              {(tg.technicians || []).map((t, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input className="input text-sm" value={t.name}
+                    onChange={e => setTg(p => { const a=[...p.technicians]; a[i]={...a[i],name:e.target.value}; return {...p,technicians:a} })}
+                    placeholder="ชื่อช่าง" style={{ flex: '0 0 130px' }} />
+                  <input className="input font-mono text-xs" value={t.chat_id}
+                    onChange={e => setTg(p => { const a=[...p.technicians]; a[i]={...a[i],chat_id:e.target.value}; return {...p,technicians:a} })}
+                    placeholder="Chat ID เช่น -100…" style={{ flex: 1 }} />
+                  <button onClick={() => setTg(p => ({ ...p, technicians: p.technicians.filter((_,j)=>j!==i) }))}
+                    style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-page)', color: 'var(--text-400)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* App Base URL */}
+          <div>
+            <label className="label">URL หลักของแอป <span style={{fontSize:10,color:'var(--text-400)'}}>(สำหรับลิงก์ใน QR และ Telegram)</span></label>
+            <input className="input font-mono text-xs"
+              value={tg.app_base_url || ''}
+              onChange={e => setTg(p => ({ ...p, app_base_url: e.target.value }))}
+              placeholder={window.location.origin} />
+            <div style={{fontSize:10,color:'var(--text-400)',marginTop:4}}>ถ้าว่างจะใช้ {window.location.origin}</div>
+          </div>
+
+          {tgMsg && (
+            <div className="text-sm px-4 py-2.5 rounded-xl flex items-center gap-2" style={{
+              color: tgIsOk ? '#10b981' : '#ef4444',
+              background: tgIsOk ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${tgIsOk ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            }}>
+              {tgIsOk ? <CheckCircle size={13}/> : <AlertCircle size={13}/>}
+              {tgMsg}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button className="btn-primary" onClick={saveTg}>
+              <Save size={14}/> บันทึก
+            </button>
+            <button onClick={handleTestTg} disabled={tgTesting} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+              cursor: tgTesting ? 'not-allowed' : 'pointer',
+              background: 'var(--bg-page)', color: 'var(--text-700)',
+              border: '1px solid var(--border)', transition: 'all 150ms',
+            }}>
+              <Send size={13}/> {tgTesting ? 'กำลังส่ง…' : 'ทดสอบการเชื่อมต่อ'}
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* LINE Notification Settings */}
+      <SectionCard icon={MessageSquare} title="ตั้งค่าการแจ้งเตือน LINE (LINE Official Account & Group)">
+        <div className="space-y-5">
+          
+          {/* Toggle Enabled */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+            <div>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <span>เปิดใช้งานแจ้งเตือนผ่าน LINE</span>
+                <span className={`w-2 h-2 rounded-full ${line.is_enabled ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                ส่งข้อความ Flex Card พร้อมปุ่มเปิดรับงาน PWA เข้ากลุ่ม LINE ของช่างอัตโนมัติ
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(line.is_enabled)}
+                onChange={(e) => setLine((p) => ({ ...p, is_enabled: e.target.checked }))}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
+          {/* Provider Selection */}
+          <div>
+            <label className="label">ประเภทผู้ให้บริการ LINE</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setLine((p) => ({ ...p, provider: 'line_oa' }))}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  line.provider === 'line_oa'
+                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm'
+                    : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">🟢 LINE Official Account / Bot</span>
+                  {line.provider === 'line_oa' && <CheckCircle size={14} className="text-emerald-500" />}
+                </div>
+                <div className="text-[10.5px] mt-1 font-normal opacity-80">
+                  ส่ง Flex Card สวยงาม มีปุ่มกดเปิด PWA Standalone (แนะนำสูงสุด)
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLine((p) => ({ ...p, provider: 'line_notify' }))}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  line.provider === 'line_notify'
+                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm'
+                    : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">🟩 LINE Notify Token</span>
+                  {line.provider === 'line_notify' && <CheckCircle size={14} className="text-emerald-500" />}
+                </div>
+                <div className="text-[10.5px] mt-1 font-normal opacity-80">
+                  ส่งข้อความแบบ Text แจ้งเตือนเข้ากลุ่มทั่วไป
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Form fields for LINE OA */}
+          {line.provider === 'line_oa' && (
+            <div className="space-y-5 pt-1">
+              
+              {/* Webhook URL Helper Box */}
+              <div className="p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="font-bold text-blue-800 dark:text-blue-200 flex items-center gap-1.5">
+                    <span>📡 LINE Webhook URL (สำหรับรับ ID ช่างและหัวหน้าอัตโนมัติ)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `${(line.app_base_url || window.location.origin).replace(/\/$/, '')}/api/line-webhook`
+                      navigator.clipboard.writeText(url)
+                      setWebhookCopied(true)
+                      setTimeout(() => setWebhookCopied(false), 2500)
+                    }}
+                    className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-1 text-[11px] transition-all"
+                  >
+                    {webhookCopied ? <CheckCircle size={12} /> : <Copy size={12} />}
+                    <span>{webhookCopied ? 'คัดลอกแล้ว!' : 'คัดลอก URL'}</span>
+                  </button>
+                </div>
+                <div className="font-mono bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-blue-200/80 dark:border-blue-900 text-blue-900 dark:text-blue-300 select-all overflow-x-auto text-[11px]">
+                  {`${(line.app_base_url || window.location.origin).replace(/\/$/, '')}/api/line-webhook`}
+                </div>
+                <p className="text-[10.5px] text-blue-700/80 dark:text-blue-400 mt-1.5 leading-normal">
+                  📌 <b>วิธีใช้งาน:</b> นำ URL นี้ไปวางใน <b>LINE Developers Console</b> &gt; แท็บ <b>Messaging API</b> &gt; <b>Webhook URL</b> แล้วกดเปิด <b>Use webhook</b> จากนั้นเมื่อช่างหรือหัวหน้าทักบอท ระบบจะเก็บ ID ให้ทันทีครับ
+                </p>
+              </div>
+
+              {/* Channel Access Token */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="label mb-0">LINE Channel Access Token (Long-Lived) *</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowLineToken((s) => !s)}
+                    className="text-[11px] text-blue-500 hover:underline flex items-center gap-1"
+                  >
+                    {showLineToken ? <EyeOff size={12} /> : <Eye size={12} />}
+                    <span>{showLineToken ? 'ซ่อน' : 'แสดง'}</span>
+                  </button>
+                </div>
+                <input
+                  className="input font-mono text-xs"
+                  type={showLineToken ? 'text' : 'password'}
+                  value={line.channel_access_token || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, channel_access_token: e.target.value }))}
+                  placeholder="คัดลอกจาก LINE Developers Console > Messaging API"
+                />
+                <p className="text-[10.5px] text-slate-400 mt-1">
+                  ออก Token จากแท็บ Messaging API ใน <a href="https://developers.line.biz/" target="_blank" rel="noreferrer" className="text-blue-500 underline">LINE Developers Console</a>
+                </p>
+              </div>
+
+              {/* Auto Contacts Fetcher from LINE Webhook */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      รายชื่อที่ทัก LINE บอทเข้ามา (ดึงอัตโนมัติ)
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      ให้ช่างหรือหัวหน้าเปิดแชตแล้วพิมพ์ทักบอท จากนั้นกดดึงรายชื่อเพื่อกดเพิ่มได้ทันที
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={loadLineContactsList}
+                    disabled={lineContactLoading}
+                    className="btn-outline px-3 py-1 text-xs flex items-center gap-1.5"
+                  >
+                    <RefreshCw size={12} className={lineContactLoading ? 'animate-spin' : ''} />
+                    <span>{lineContactLoading ? 'กำลังดึง...' : 'ดึงรายชื่อจาก LINE'}</span>
+                  </button>
+                </div>
+
+                {lineContacts.length > 0 && (
+                  <div className="space-y-2 mt-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+                    {lineContacts.map((c, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {c.picture_url ? (
+                            <img src={c.picture_url} alt="" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 text-[10px] flex-shrink-0">
+                              {c.name?.[0] || 'L'}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{c.name}</div>
+                            <div className="font-mono text-[10px] text-slate-400 truncate">{c.user_id}</div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => addLineContact('supervisor', c)}
+                            className="px-2.5 py-1 rounded bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800 flex items-center gap-1"
+                          >
+                            <UserPlus size={11} /> + หัวหน้า
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addLineContact('needle_keeper', c)}
+                            className="px-2.5 py-1 rounded bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-600 dark:text-sky-300 text-[11px] font-bold border border-sky-200 dark:border-sky-800 flex items-center gap-1"
+                          >
+                            <UserPlus size={11} /> + ผู้ดูแลเข็ม
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addLineContact('technician', c)}
+                            className="px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1"
+                          >
+                            <UserPlus size={11} /> + ช่าง
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Supervisors List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      รายชื่อหัวหน้างาน / ผู้รับแจ้งซ่อม (Supervisors)
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      จะได้รับแจ้งเตือนเมื่อมีคนแจ้งซ่อมใหม่ และเมื่อช่างปิดงานซ่อม
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLine((p) => ({ ...p, supervisors: [...(p.supervisors || []), { name: '', user_id: '' }] }))}
+                    className="text-xs text-blue-500 hover:underline font-bold flex items-center gap-1"
+                  >
+                    <UserPlus size={12} /> <span>+ เพิ่มหัวหน้า</span>
+                  </button>
+                </div>
+
+                {(!line.supervisors || line.supervisors.length === 0) && (
+                  <div className="text-xs text-slate-400 py-1.5">ยังไม่มีรายชื่อหัวหน้า — กด + เพิ่ม</div>
+                )}
+
+                <div className="space-y-2">
+                  {(line.supervisors || []).map((s, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        className="input text-xs"
+                        value={s.name || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.supervisors || [])]
+                            a[i] = { ...a[i], name: e.target.value }
+                            return { ...p, supervisors: a }
+                          })
+                        }
+                        placeholder="ชื่อหัวหน้า"
+                        style={{ flex: '0 0 130px' }}
+                      />
+                      <input
+                        className="input font-mono text-xs"
+                        value={s.user_id || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.supervisors || [])]
+                            a[i] = { ...a[i], user_id: e.target.value }
+                            return { ...p, supervisors: a }
+                          })
+                        }
+                        placeholder="User ID เช่น U66f2b... หรือ Group ID C..."
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLine((p) => ({
+                            ...p,
+                            supervisors: (p.supervisors || []).filter((_, j) => j !== i),
+                          }))
+                        }
+                        className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 hover:text-red-500 flex items-center justify-center flex-shrink-0 text-sm font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Needle Keepers List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-sky-800 dark:text-sky-300">
+                      🎯 คนคัดเข็ม / ผู้ดูแลสต็อกเข็ม (LINE USER ID ล็อคคนคัดเข็ม)
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      เมื่อช่างสแกนขอเบิกเข็ม Spare ข้อความแจ้งเตือนจะเด้งไปที่ LINE USER ID ของคนคัดเข็มทันที
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLine((p) => ({ ...p, needle_keepers: [...(p.needle_keepers || []), { name: '', user_id: '' }] }))}
+                    className="text-xs text-sky-600 hover:underline font-bold flex items-center gap-1"
+                  >
+                    <UserPlus size={12} /> <span>+ เพิ่ม / ล็อคคนคัดเข็ม</span>
+                  </button>
+                </div>
+
+                {(!line.needle_keepers || line.needle_keepers.length === 0) && (
+                  <div className="text-xs text-slate-400 py-1.5">ยังไม่ได้ล็อค LINE USER ID คนคัดเข็ม — ระบบจะส่งหาหัวหน้างานเป็นค่าเริ่มต้น</div>
+                )}
+
+                <div className="space-y-2">
+                  {(line.needle_keepers || []).map((k, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        className="input text-xs"
+                        value={k.name || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.needle_keepers || [])]
+                            a[i] = { ...a[i], name: e.target.value }
+                            return { ...p, needle_keepers: a }
+                          })
+                        }
+                        placeholder="ชื่อผู้ดูแลเข็ม"
+                        style={{ flex: '0 0 130px' }}
+                      />
+                      <input
+                        className="input font-mono text-xs"
+                        value={k.user_id || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.needle_keepers || [])]
+                            a[i] = { ...a[i], user_id: e.target.value }
+                            return { ...p, needle_keepers: a }
+                          })
+                        }
+                        placeholder="User ID เช่น U66f... หรือ Group ID C..."
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLine((p) => ({
+                            ...p,
+                            needle_keepers: (p.needle_keepers || []).filter((_, j) => j !== i),
+                          }))
+                        }
+                        className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 hover:text-red-500 flex items-center justify-center flex-shrink-0 text-sm font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Technicians List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      รายชื่อช่างเทคนิค (Technicians)
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      เมื่อหัวหน้ากดมอบหมายช่างคนไหน ระบบจะยิงใบสั่งงานตรงเข้า LINE ช่างคนนั้นทันที
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLine((p) => ({ ...p, technicians: [...(p.technicians || []), { name: '', user_id: '' }] }))}
+                    className="text-xs text-blue-500 hover:underline font-bold flex items-center gap-1"
+                  >
+                    <UserPlus size={12} /> <span>+ เพิ่มช่าง</span>
+                  </button>
+                </div>
+
+                {(!line.technicians || line.technicians.length === 0) && (
+                  <div className="text-xs text-slate-400 py-1.5">ยังไม่มีรายชื่อช่าง — กด + เพิ่ม</div>
+                )}
+
+                <div className="space-y-2">
+                  {(line.technicians || []).map((t, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        className="input text-xs"
+                        value={t.name || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.technicians || [])]
+                            a[i] = { ...a[i], name: e.target.value }
+                            return { ...p, technicians: a }
+                          })
+                        }
+                        placeholder="ชื่อช่าง (เช่น หนึ่ง)"
+                        style={{ flex: '0 0 130px' }}
+                      />
+                      <input
+                        className="input font-mono text-xs"
+                        value={t.user_id || ''}
+                        onChange={(e) =>
+                          setLine((p) => {
+                            const a = [...(p.technicians || [])]
+                            a[i] = { ...a[i], user_id: e.target.value }
+                            return { ...p, technicians: a }
+                          })
+                        }
+                        placeholder="User ID เช่น Uxxxxxxxx..."
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLine((p) => ({
+                            ...p,
+                            technicians: (p.technicians || []).filter((_, j) => j !== i),
+                          }))
+                        }
+                        className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-400 hover:text-red-500 flex items-center justify-center flex-shrink-0 text-sm font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Optional Store Needle LINE Notify Token */}
+              <div>
+                <label className="label mb-1">
+                  LINE Notify Token กลุ่มสโตร์เข็ม <span style={{ fontSize: 10, color: 'var(--text-400)' }}>(ทางเลือก สำหรับส่งเข้ากลุ่ม LINE Notify ของสโตร์)</span>
+                </label>
+                <input
+                  className="input font-mono text-xs"
+                  type="password"
+                  value={line.needle_keeper_notify_token || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, needle_keeper_notify_token: e.target.value }))}
+                  placeholder="เช่น LINE Notify Token กลุ่มสโตร์เข็ม"
+                />
+              </div>
+
+            </div>
+          )}
+
+          {/* Form fields for LINE Notify */}
+          {line.provider === 'line_notify' && (
+            <div className="space-y-4 pt-1">
+              <div>
+                <label className="label">LINE Notify Token หลัก (ช่างและหัวหน้า)</label>
+                <input
+                  className="input font-mono text-xs"
+                  type="password"
+                  value={line.notify_token || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, notify_token: e.target.value }))}
+                  placeholder="กรอก Access Token จาก notify-bot.line.me"
+                />
+              </div>
+              <div>
+                <label className="label">LINE Notify Token กลุ่มสโตร์เข็ม (ทางเลือก)</label>
+                <input
+                  className="input font-mono text-xs"
+                  type="password"
+                  value={line.needle_keeper_notify_token || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, needle_keeper_notify_token: e.target.value }))}
+                  placeholder="กรอก Access Token กลุ่มสโตร์เข็ม"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* App Base URL */}
+          <div>
+            <label className="label">URL หลักของแอปสำหรับปุ่มกดรับงาน</label>
+            <input
+              className="input font-mono text-xs"
+              value={line.app_base_url || ''}
+              onChange={(e) => setLine((p) => ({ ...p, app_base_url: e.target.value }))}
+              placeholder={window.location.origin}
+            />
+            <p className="text-[10.5px] text-slate-400 mt-1">
+              ระบบจะต่อท้ายด้วย <code>?openExternalBrowser=1</code> อัตโนมัติเพื่อให้เด้งเปิดแอป PWA บนมือถือ
+            </p>
+          </div>
+
+          {/* ───────────────────────────────────────── */}
+          {/* LINE Login (OAuth 2.1 & QR Code) Settings */}
+          {/* ───────────────────────────────────────── */}
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#06C755]" />
+                  ระบบเข้าสู่ระบบด้วย LINE (LINE Login & สแกน QR Code)
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  เชื่อมต่อ LINE Login v2.1 เพื่อให้พนักงานสแกน QR Code หรือคลิกปุ่มเข้าสู่ระบบได้ทันที
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={line.login_enabled ?? true}
+                  onChange={(e) => setLine((p) => ({ ...p, login_enabled: e.target.checked }))}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#06C755]"></div>
+              </label>
+            </div>
+
+            {/* Callback URL Box */}
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs space-y-2">
+              <div className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
+                <span>📌 Callback URL (นำไปใส่ใน LINE Developers Console):</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cbUrl = `${window.location.origin}/api/auth/line/callback`
+                    navigator.clipboard.writeText(cbUrl)
+                    toast.success('คัดลอก Callback URL แล้ว!')
+                  }}
+                  className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                >
+                  <Copy size={12} /> คัดลอก URL
+                </button>
+              </div>
+              <div className="font-mono bg-white dark:bg-slate-900 px-3 py-2 rounded-lg border border-emerald-500/20 text-slate-700 dark:text-slate-300 select-all overflow-x-auto text-[11px]">
+                {typeof window !== 'undefined' ? `${window.location.origin}/api/auth/line/callback` : '/api/auth/line/callback'}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                วิธีตั้งค่า: เข้าไปที่ <b>LINE Developers Console</b> &gt; เลือก Channel ของคุณ (Channel Type: LINE Login) &gt; ไปที่แท็บ <b>LINE Login</b> &gt; นำ URL ข้างต้นไปใส่ในช่อง <b>Callback URL</b>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">LINE Login Channel ID</label>
+                <input
+                  className="input font-mono text-xs"
+                  value={line.login_channel_id || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, login_channel_id: e.target.value }))}
+                  placeholder="เช่น 2001234567"
+                />
+              </div>
+
+              <div>
+                <label className="label">LINE Login Channel Secret</label>
+                <input
+                  className="input font-mono text-xs"
+                  type="password"
+                  value={line.login_channel_secret || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, login_channel_secret: e.target.value }))}
+                  placeholder="••••••••••••••••••••••••••••••••"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">สิทธิ์เริ่มต้นเมื่อเข้าสู่ระบบครั้งแรก (Default Role)</label>
+                <select
+                  className="select text-xs"
+                  value={line.login_default_role || 'viewer'}
+                  onChange={(e) => setLine((p) => ({ ...p, login_default_role: e.target.value }))}
+                >
+                  <option value="viewer">Viewer (ดูได้เท่านั้น — ไม่สามารถเพิ่ม ลบ หรือแก้ไขได้)</option>
+                  <option value="user">User (สิทธิ์ดูแดชบอร์ด/เครื่องจักร/งานซ่อม)</option>
+                  <option value="technician">Technician (ช่างซ่อมบำรุง)</option>
+                  <option value="supervisor">Supervisor (หัวหน้างาน)</option>
+                </select>
+                <p className="text-[10.5px] text-slate-400 mt-1">
+                  เมื่อผู้ใช้เข้าสู่ระบบด้วย LINE ครั้งแรก ระบบจะสร้างบัญชีด้วยบทบาทนี้ โดย Admin สามารถเข้าไปปรับเพิ่ม/ลดสิทธิ์ในเมนูผู้ใช้งานได้ตลอดเวลา
+                </p>
+              </div>
+
+              <div>
+                <label className="label">Custom Callback URL (เว้นว่างเพื่อใช้ตามโดเมนอัตโนมัติ)</label>
+                <input
+                  className="input font-mono text-xs"
+                  value={line.login_callback_url || ''}
+                  onChange={(e) => setLine((p) => ({ ...p, login_callback_url: e.target.value }))}
+                  placeholder={`${typeof window !== 'undefined' ? window.location.origin : ''}/api/auth/line/callback`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Status Alert Banner */}
+          {lineMsg && (
+            <div
+              className={`text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 ${
+                lineIsOk
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+              }`}
+            >
+              {lineIsOk ? <CheckCircle size={14} className="flex-shrink-0" /> : <AlertCircle size={14} className="flex-shrink-0" />}
+              <span>{lineMsg}</span>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3 pt-2">
+            <button className="btn-primary" onClick={saveLine}>
+              <Save size={14} /> <span>บันทึกการตั้งค่า LINE</span>
+            </button>
+            <button
+              onClick={handleTestLine}
+              disabled={lineTesting}
+              className="btn-outline flex items-center gap-1.5 text-xs font-bold"
+            >
+              <Send size={13} />
+              <span>{lineTesting ? 'กำลังส่งข้อความทดสอบ...' : '🔔 ทดสอบส่งข้อความเข้า LINE'}</span>
+            </button>
+          </div>
+
+        </div>
+      </SectionCard>
+
+      {/* ── GOOGLE GEMINI AI VISION SETTINGS ─────────────────────── */}
+      <SectionCard icon={Sparkles} title="ระบบ AI ค้นหาอะไหล่ด้วยภาพ (Google Gemini Vision AI)">
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-200 space-y-1.5 leading-relaxed">
+            <div className="flex items-center gap-1.5 font-bold text-sm text-purple-700 dark:text-purple-300">
+              <Sparkles size={16} className="text-amber-500" />
+              <span>Google Gemini Flash Vision (Free Tier)</span>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300">
+              ยกระดับความแม่นยำในการค้นหาอะไหล่จากรูปถ่ายเป็น <b>98%+</b> โดย AI จะวิเคราะห์แยกประเภทและจับคู่กับรายการอะไหล่ในคลังอย่างแม่นยำ ไม่สับสนกับพื้นหลังสีขาว
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700">
+                ✓ ฟรี 1,500 ครั้ง/วัน
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700">
+                ✓ ไม่ต้องผูกบัตรเครดิต
+              </span>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline ml-auto"
+              >
+                <span>ขอรับ API Key ฟรีที่ Google AI Studio</span>
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="label text-xs font-bold text-slate-700 dark:text-slate-200">
+                Google Gemini API Key
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type={showGeminiKey ? 'text' : 'password'}
+                  className="input font-mono text-xs w-full pr-20"
+                  value={geminiKey}
+                  onChange={(e) => {
+                    setGeminiKey(e.target.value)
+                    setGeminiStatus(null)
+                  }}
+                  placeholder="AIzaSy..."
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowGeminiKey((prev) => !prev)}
+                  className="absolute right-2 px-2 py-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  {showGeminiKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="label text-xs font-bold text-slate-700 dark:text-slate-200">
+                โมเดล AI (Vision Model)
+              </label>
+              <select
+                className="input text-xs w-full font-mono"
+                value={geminiModel}
+                onChange={(e) => setGeminiModel(e.target.value)}
+              >
+                <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (แนะนำ - ฟรี 1,500 ครั้ง/วัน ความเร็วสูงสุด ประหยัดโควต้า)</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash (โมเดลอัจฉริยะสูงสุด)</option>
+                <option value="gemini-flash-latest">gemini-flash-latest (เลือกโมเดล Flash ล่าสุดอัตโนมัติ)</option>
+                <option value="gemini-3.5-flash">gemini-3.5-flash (เสถียรและประมวลผลภาพไว)</option>
+              </select>
+            </div>
+
+            {geminiStatus && (
+              <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                geminiStatus.ok
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800'
+              }`}>
+                {geminiStatus.ok ? <CheckCircle size={15} /> : <AlertCircle size={15} />}
+                <span>{geminiStatus.text}</span>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleSaveGemini}
+                disabled={geminiSaving}
+                className="btn-primary flex items-center gap-1.5 text-xs font-bold"
+              >
+                <Save size={14} />
+                <span>{geminiSaving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า Gemini'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleTestGemini}
+                disabled={geminiTesting || !geminiKey.trim()}
+                className="btn-outline flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 border-purple-300 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+              >
+                <Sparkles size={14} className={geminiTesting ? 'animate-spin' : ''} />
+                <span>{geminiTesting ? 'กำลังทดสอบ...' : '⚡ ทดสอบการเชื่อมต่อ'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Change password */}
+      <SectionCard icon={Shield} title={t('set_change_pwd')}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">{t('set_pwd_label')}</label>
+              <input className="input" type="password" value={newPwd}
+                onChange={e => setNewPwd(e.target.value)}
+                placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)" />
+            </div>
+            <div>
+              <label className="label">ยืนยันรหัสผ่าน</label>
+              <input className="input" type="password" value={confirmPwd}
+                onChange={e => setConfirmPwd(e.target.value)}
+                placeholder="พิมพ์รหัสผ่านซ้ำ" />
+            </div>
+          </div>
+
+          {pwdMsg && (
+            <div className="text-sm px-4 py-2.5 rounded-xl" style={{
+              color: isOk ? '#10b981' : '#ef4444',
+              background: isOk ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${isOk ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            }}>{pwdMsg}</div>
+          )}
+
+          <button className="btn-primary" onClick={changePassword} disabled={pwdLoading}>
+            <Save size={14}/> {pwdLoading ? t('saving') : t('set_pwd_btn')}
+          </button>
+        </div>
+      </SectionCard>
+
+{/* User Manual Documentation Card */}
+      <SectionCard icon={BookOpen} title="คู่มือการใช้งานระบบ (User Manual & Documentation)">
+        <div className="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          <p>
+            คู่มือการใช้งานระบบ TextileOps CMMS ฉบับสมบูรณ์ ({APP_VERSION}) ครอบคลุม 14 เมนูหลัก พร้อมภาพประกอบจริงจากระบบ ขั้นตอนการบันทึกงานซ่อม การนับเวลา SLA 12 ชม./วัน และแนวปฏิบัติหน้างาน
+          </p>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <a
+              href="/manual/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary px-4 py-2 text-xs flex items-center gap-2"
+              style={{ background: 'linear-gradient(135deg, #059669, #10b981)', textDecoration: 'none', color: '#ffffff' }}
+            >
+              <BookOpen size={14} />
+              <span>เปิดดูคู่มือออนไลน์ (Interactive Web)</span>
+              <ExternalLink size={12} />
+            </a>
+            <a
+              href="/manual/TextileOps_CMMS_User_Manual.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 text-xs flex items-center gap-2 rounded-xl font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+              style={{ textDecoration: 'none' }}
+            >
+              <Download size={14} />
+              <span>ดาวน์โหลดคู่มือ PDF (A4 คมชัด)</span>
+            </a>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* PWA Mobile App Card */}
+      <SectionCard icon={Smartphone} title="แอปพลิเคชันมือถือ (PWA Mobile App)">
+        <div className="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          <p>
+            ท่านสามารถติดตั้ง <b>TextileOps CMMS</b> เป็นแอปพลิเคชันลงบนหน้าจอมือถือ (Android / iPhone / iPad) เพื่อเปิดใช้งานแบบเต็มหน้าจอ (Full Screen) รวดเร็ว และรองรับการแจ้งเตือนงานซ่อม
+          </p>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              onClick={() => {
+                localStorage.removeItem('pwa_prompt_dismissed')
+                window.location.reload()
+              }}
+              className="btn-primary px-4 py-2 text-xs flex items-center gap-2"
+            >
+              <Download size={14} />
+              <span>แสดงปุ่มติดตั้งแอปบนมือถือ</span>
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Admin Security Gate Modal (2-Step Confirmation + Password Verification) */}
+      {adminModalOpen && (
+        <Modal open={adminModalOpen} onClose={() => !adminSubmitting && setAdminModalOpen(false)}>
+          <Modal.Header
+            title={
+              adminModalMode === 'add'
+                ? '🛡️ เพิ่มผู้ดูแลระบบ (Admin)'
+                : adminModalMode === 'edit'
+                ? '✏️ แก้ไขข้อมูลผู้ดูแลระบบ (Admin)'
+                : '🗑️ ลบผู้ดูแลระบบ (Admin)'
+            }
+          />
+          <Modal.Body className="space-y-4">
+            {adminStep === 1 ? (
+              <form onSubmit={handleVerifyAdminPassword} className="space-y-4">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                  <Lock size={16} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <span className="font-bold">ขั้นตอนที่ 1/2: การยืนยันสิทธิ์ความปลอดภัย</span>
+                    <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+                      การจัดการรายชื่อผู้ดูแลระบบเป็นสิทธิ์ระดับสูง กรุณากรอกรหัสผ่านของคุณ ({user?.username || 'ผู้ใช้'}) เพื่อดำเนินการ
+                    </p>
+                  </div>
+                </div>
+
+                {adminModalMode !== 'delete' ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="label text-xs font-semibold">ชื่อผู้ดูแลระบบ / แอดมิน *</label>
+                      <input
+                        type="text"
+                        className="input text-sm w-full"
+                        value={adminFormName}
+                        onChange={(e) => setAdminFormName(e.target.value)}
+                        placeholder="เช่น กฤษดา (Admin)"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="label text-xs font-semibold">Telegram Chat ID *</label>
+                      <input
+                        type="text"
+                        className="input font-mono text-xs w-full"
+                        value={adminFormChatId}
+                        onChange={(e) => setAdminFormChatId(e.target.value)}
+                        placeholder="เช่น 6981653027 หรือ -100..."
+                        required
+                      />
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        ตัวเลข Chat ID ส่วนตัว หรือ Group ID ที่ติดลบ (-100...)
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs">
+                    <span className="font-semibold text-rose-700 dark:text-rose-400">
+                      คุณกำลังจะลบแอดมิน:
+                    </span>
+                    <div className="mt-1 font-bold text-slate-800 dark:text-slate-100">
+                      {adminFormName} (Chat ID: {adminFormChatId})
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="label text-xs font-semibold">รหัสผ่านของคุณ ({user?.username}) *</label>
+                  <div className="relative">
+                    <input
+                      type={showAdminPwd ? 'text' : 'password'}
+                      className="input text-sm w-full pr-9"
+                      value={adminAuthPwd}
+                      onChange={(e) => {
+                        setAdminAuthPwd(e.target.value)
+                        setAdminAuthError('')
+                      }}
+                      placeholder="กรอกรหัสผ่านเพื่อยืนยัน"
+                      required
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPwd(!showAdminPwd)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showAdminPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                {adminAuthError && (
+                  <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-400 font-medium flex items-center gap-2">
+                    <AlertCircle size={15} />
+                    <span>{adminAuthError}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    className="btn-outline text-xs px-3 py-1.5"
+                    onClick={() => setAdminModalOpen(false)}
+                    disabled={adminSubmitting}
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5"
+                    disabled={adminSubmitting}
+                  >
+                    {adminSubmitting ? <RefreshCw size={13} className="animate-spin" /> : <Lock size={13} />}
+                    <span>ถัดไป: ตรวจสอบและยืนยันรอบที่ 2 →</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Step 2: Final Double Confirmation */
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
+                    <ShieldAlert size={20} />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">
+                    ⚠️ ยืนยันการดำเนินการรอบที่ 2 (ขั้นตอนสุดท้าย)
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    โปรดตรวจสอบความถูกต้อง ข้อมูลนี้จะมีผลต่อการรับแจ้งเตือนข้อผิดพลาดระบบ (Crash Alerts) ทันที
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">การดำเนินการ:</span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                      {adminModalMode === 'add' ? 'เพิ่มผู้ดูแลระบบ' : adminModalMode === 'edit' ? 'แก้ไขผู้ดูแลระบบ' : 'ลบผู้ดูแลระบบ'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">ชื่อแอดมิน:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{adminFormName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Telegram Chat ID:</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300">{adminFormChatId}</span>
+                  </div>
+                </div>
+
+                {adminAuthError && (
+                  <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                    {adminAuthError}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    className="btn-outline text-xs px-3 py-1.5"
+                    onClick={() => setAdminStep(1)}
+                    disabled={adminSubmitting}
+                  >
+                    ← ย้อนกลับ
+                  </button>
+                  <button
+                    type="button"
+                    className={adminModalMode === 'delete' ? 'btn-danger text-xs px-4 py-1.5' : 'btn-primary text-xs px-4 py-1.5'}
+                    onClick={handleConfirmAdminAction}
+                    disabled={adminSubmitting}
+                  >
+                    {adminSubmitting ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                    <span>ยืนยันและบันทึกข้อมูล ✓</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </Modal.Body>
+        </Modal>
+      )}
+
+    </div>
+  )
+}

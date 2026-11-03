@@ -2,16 +2,16 @@ import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import SettingsPage from './SettingsPage'
-import * as technicianSync from '../utils/technicianSync'
-import * as lineUtils from '../utils/line'
-import * as telegramUtils from '../utils/telegram'
+import * as technicianSync from '../../utils/technicianSync'
+import * as lineUtils from '../../utils/line'
+import * as telegramUtils from '../../utils/telegram'
 
 // Mock dependencies
-vi.mock('../contexts/LanguageContext', () => ({
+vi.mock('../../contexts/LanguageContext', () => ({
   useT: () => ({ t: (k) => k }),
 }))
 
-vi.mock('../contexts/AuthContext', () => ({
+vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({
     user: { username: 'admin', role: 'admin' },
     refreshUser: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock('../contexts/AuthContext', () => ({
   canAccess: () => true,
 }))
 
-vi.mock('../components/ui/Toast', () => ({
+vi.mock('../../components/ui/Toast', () => ({
   useToast: () => ({
     success: vi.fn(),
     error: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock('../components/ui/Toast', () => ({
   }),
 }))
 
-vi.mock('../api/dbClient', () => ({
+vi.mock('../../api/dbClient', () => ({
   db: {
     from: vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -44,7 +44,7 @@ vi.mock('../api/dbClient', () => ({
   },
 }))
 
-vi.mock('../utils/line', () => ({
+vi.mock('../../utils/line', () => ({
   fetchLineContacts: vi.fn().mockResolvedValue({ ok: true, contacts: [] }),
   loadLineSettings: vi.fn().mockReturnValue({
     provider: 'line_oa',
@@ -73,7 +73,7 @@ vi.mock('../utils/line', () => ({
   },
 }))
 
-vi.mock('../utils/telegram', () => ({
+vi.mock('../../utils/telegram', () => ({
   fetchTelegramContacts: vi.fn().mockResolvedValue({ ok: true, contacts: [] }),
   loadTelegramSettings: vi.fn().mockReturnValue({
     bot_token: 'test_tg_token',
@@ -92,7 +92,7 @@ vi.mock('../utils/telegram', () => ({
   testTelegram: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
-vi.mock('../utils/technicianSync', () => ({
+vi.mock('../../utils/technicianSync', () => ({
   syncNotificationTechsToRegistry: vi.fn().mockResolvedValue({
     createdCount: 1,
     updatedCount: 0,
