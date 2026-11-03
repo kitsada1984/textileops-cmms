@@ -4,7 +4,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://fyulqejkzuhwppstezko.supabase.co"
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5dWxxZWprenVod3Bwc3RlemtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTY2MzYsImV4cCI6MjA5MzI5MjYzNn0.8dqXxqACiOEkjUevt_xFgIRPZ8CcMPgYZKBNM1THI4Y"
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "SET_FROM_ENV__SEE_ENV_EXAMPLE"
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 

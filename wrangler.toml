@@ -8,6 +8,8 @@ database_name = "textileops-db"
 database_id = "b54a2924-8238-408b-ab82-b329dcc6e16d"
 
 [vars]
-VITE_SUPABASE_URL = "https://fyulqejkzuhwppstezko.supabase.co"
-VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5dWxxZWprenVod3Bwc3RlemtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MTY2MzYsImV4cCI6MjA5MzI5MjYzNn0.8dqXxqACiOEkjUevt_xFgIRPZ8CcMPgYZKBNM1THI4Y"
-VITE_GOOGLE_SHEETS_SPREADSHEET_ID = "1U5-xDh7MDyKulvhY_Qkv-CC0G5i5TPMJu64dDsDR_C0"
+# NOTE: secrets must be set in Cloudflare Dashboard (Pages > Settings > Environment variables).
+# Never commit real keys here - placeholders only.
+VITE_SUPABASE_URL = "SET_IN_DASHBOARD"
+VITE_SUPABASE_ANON_KEY = "SET_IN_DASHBOARD"
+VITE_GOOGLE_SHEETS_SPREADSHEET_ID = "SET_IN_DASHBOARD"
