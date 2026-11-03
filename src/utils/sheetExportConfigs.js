@@ -163,7 +163,7 @@ export const SHEET_EXPORTS = [
       col('SL3', 'SL3'),
       col('SL4', 'SL4'),
       col('ImageUrl', 'URL'),
-      col('AppImageUrl', 'รูปใบ App'),
+      col('AppImageUrl', 'แต่งไกด์'),
       col('MasterImageUrl', 'รูป Master'),
       col('Comment', 'หมายเหตุ'),
       col('LastUpdated', 'อัปเดตล่าสุด'),

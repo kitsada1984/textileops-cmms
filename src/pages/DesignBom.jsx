@@ -104,7 +104,7 @@ const getFallbackCols = () => [
   { field: 'SL3',          label: 'SL3',          type: 'text' },
   { field: 'SL4',          label: 'SL4',          type: 'text' },
   { field: 'CoverImage',   label: 'รูปใบปะหน้า',  type: 'text', width: '120px' },
-  { field: 'AppImage',     label: 'รูปใบApp',     type: 'text', width: '120px' },
+  { field: 'AppImage',     label: 'แต่งไกด์',     type: 'text', width: '120px' },
   { field: 'MasterImage',  label: 'รูป Master',   type: 'text', width: '120px' },
   { field: 'Comment',      label: 'หมายเหตุ',     type: 'text' },
   { field: 'LastUpdated',  label: 'อัปเดตล่าสุด',  type: 'date' },
@@ -112,7 +112,7 @@ const getFallbackCols = () => [
 
 const REQUIRED_IMAGE_COLS = [
   { field: 'CoverImage',  label: 'รูปใบปะหน้า', type: 'text', width: '120px' },
-  { field: 'AppImage',    label: 'รูปใบApp',   type: 'text', width: '120px' },
+  { field: 'AppImage',    label: 'แต่งไกด์',   type: 'text', width: '120px' },
   { field: 'MasterImage', label: 'รูป Master', type: 'text', width: '120px' },
 ]
 
@@ -304,7 +304,7 @@ export default function DesignBom() {
 
   const IMAGE_KINDS = {
     cover:  { folder: DESIGN_BOM_COVER_FOLDER,  field: 'CoverImageUrl',  label: 'รูปใบปะหน้า' },
-    app:    { folder: DESIGN_BOM_APP_FOLDER,    field: 'AppImageUrl',    label: 'รูปใบ App' },
+    app:    { folder: DESIGN_BOM_APP_FOLDER,    field: 'AppImageUrl',    label: 'แต่งไกด์' },
     master: { folder: DESIGN_BOM_MASTER_FOLDER, field: 'MasterImageUrl', label: 'รูป Master' },
   }
 
@@ -416,8 +416,8 @@ export default function DesignBom() {
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           <ImageThumbnail
             url={imgUrl}
-            alt={row.Design || row.MC || 'ใบApp'}
-            onClick={() => setPreviewImageModal({ url: imgUrl, title: `ใบ App: ${row.Design || row.MC || ''}` })}
+            alt={row.Design || row.MC || 'แต่งไกด์'}
+            onClick={() => setPreviewImageModal({ url: imgUrl, title: `แต่งไกด์: ${row.Design || row.MC || ''}` })}
           />
         </div>
       )
@@ -563,7 +563,7 @@ export default function DesignBom() {
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รูปภาพเอกสาร</div>
             <div className="text-xs font-black mt-1 text-emerald-600 dark:text-emerald-400 flex flex-col gap-0.5">
               <span>📄 ปะหน้า: {stats.withCover} <span className="font-normal text-slate-400 text-[10px]">แบบ</span></span>
-              <span>📑 ใบ App: {stats.withApp} <span className="font-normal text-slate-400 text-[10px]">แบบ</span></span>
+              <span>📑 แต่งไกด์: {stats.withApp} <span className="font-normal text-slate-400 text-[10px]">แบบ</span></span>
             </div>
           </div>
           <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
@@ -759,19 +759,19 @@ export default function DesignBom() {
                 ),
               }] : [{ label: '📄 รูปใบปะหน้า', value: '—' }]),
               ...(getDesignAppImageUrl(detailRec) ? [{
-                label: '📑 รูปใบ App',
+                label: '📑 แต่งไกด์',
                 full: true,
                 node: (
                   <div className="pt-1">
                     <ImageThumbnail
                       url={getDesignAppImageUrl(detailRec)}
-                      alt={`ใบ App: ${detailRec.Design || detailRec.MC || ''}`}
+                      alt={`แต่งไกด์: ${detailRec.Design || detailRec.MC || ''}`}
                       size={48}
-                      onClick={() => setPreviewImageModal({ url: getDesignAppImageUrl(detailRec), title: `ใบ App: ${detailRec.Design || detailRec.MC || ''}` })}
+                      onClick={() => setPreviewImageModal({ url: getDesignAppImageUrl(detailRec), title: `แต่งไกด์: ${detailRec.Design || detailRec.MC || ''}` })}
                     />
                   </div>
                 ),
-              }] : [{ label: '📑 รูปใบ App', value: '—' }]),
+              }] : [{ label: '📑 แต่งไกด์', value: '—' }]),
               ...(getDesignMasterImageUrl(detailRec) ? [{
                 label: '🧵 รูป Master',
                 full: true,
@@ -951,11 +951,11 @@ export default function DesignBom() {
                 )}
               </div>
 
-              {/* Card 2: รูปใบ App */}
+              {/* Card 2: แต่งไกด์ */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    📑 <span>รูปใบ App</span>
+                    📑 <span>แต่งไกด์</span>
                   </span>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-md font-medium">
                     📁 {DESIGN_BOM_APP_FOLDER}
@@ -972,7 +972,7 @@ export default function DesignBom() {
                     ) : (
                       <>
                         <Upload size={13} />
-                        <span>เลือกรูปใบ App</span>
+                        <span>เลือกรูปแต่งไกด์</span>
                       </>
                     )}
                     <input
@@ -992,7 +992,7 @@ export default function DesignBom() {
                       type="button"
                       onClick={() => setForm((prev) => ({ ...prev, AppImageUrl: '' }))}
                       className="btn-outline text-red-500 hover:text-red-600 hover:border-red-300 py-2 px-2.5"
-                      title="ลบรูปใบ App"
+                      title="ลบรูปแต่งไกด์"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -1006,9 +1006,9 @@ export default function DesignBom() {
                     <div className="flex items-center gap-2 min-w-0">
                       <ImageThumbnail
                         url={form.AppImageUrl}
-                        alt="ใบ App"
+                        alt="แต่งไกด์"
                         size={32}
-                        onClick={() => setPreviewImageModal({ url: form.AppImageUrl, title: 'รูปใบ App' })}
+                        onClick={() => setPreviewImageModal({ url: form.AppImageUrl, title: 'รูปแต่งไกด์' })}
                       />
                       <span className="font-mono text-[11px] text-purple-700 dark:text-purple-300 truncate">{form.AppImageUrl}</span>
                     </div>
