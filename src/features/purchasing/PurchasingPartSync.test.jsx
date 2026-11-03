@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { generatePartCode } from '../utils/inventory'
+import { generatePartCode } from '../../utils/inventory'
 import {
   buildStockMovementPartCodeOptions,
   buildStockMovementPartNameOptions,
   findMatchingSparePart,
-} from '../utils/stockMovementMC'
+} from '../../utils/stockMovementMC'
 import {
   createEmptyPOItem,
   parsePOItems,
