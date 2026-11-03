@@ -19,6 +19,7 @@ try {
 
 const files = tracked.split('\n').map((s) => s.trim()).filter(Boolean)
   .filter((f) => !f.startsWith('scratch/') && !f.startsWith('.compare-vercel/') && !f.endsWith('.zip') && f !== '.env')
+  .filter((f) => f.replace(/\\/g, '/') !== 'scripts/check-secrets.mjs') // self: contains patterns as data, not secrets
 
 // Files where a matched pattern is an intentional non-secret placeholder/marker (not a real key).
 // functions/api/_auth.js contains the literal 'textileops-dev-secret-change-me' only as a
