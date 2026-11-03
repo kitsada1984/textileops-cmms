@@ -156,8 +156,12 @@ async function sendMessage(token, chatId, text) {
   }
 }
 
-// Re-exported from domain module for 100% backward compatibility
-export { normalizeRepairRecord, encodeRepairProblemDescription } from '../modules/repair/repairNormalizer'
+// Re-exported from domain module for 100% backward compatibility.
+// NOTE: imported first (not `export ... from`) so the names are also usable
+// locally below — a bare `export { x } from` creates no local binding and
+// referencing it throws ReferenceError at runtime.
+import { normalizeRepairRecord, encodeRepairProblemDescription } from '../modules/repair/repairNormalizer'
+export { normalizeRepairRecord, encodeRepairProblemDescription }
 
 const fv = (v) => (v === null || v === undefined || v === '' ? '—' : escapeHtml(String(v)))
 

@@ -84,6 +84,7 @@ import {
   getPOAppliedPartCode,
   omitKeys,
   getMissingPurchaseOrderColumn,
+  APPLIED_ITEMS_NOTE_PREFIX,
 } from './purchaseOrderUtils.jsx'
 
 

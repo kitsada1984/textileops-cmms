@@ -57,6 +57,13 @@ export default [
     rules: { ...WARN_ONLY },
   },
   {
+    // Process guard: undefined identifiers crash only at runtime in the
+    // browser (neither vitest nor the bundler rejects them), so this class
+    // of bug ships silently. Escalated to error — everything else stays warn.
+    files: ['**/*.js', '**/*.jsx', '**/*.mjs', '**/*.cjs'],
+    rules: { 'no-undef': 'error' },
+  },
+  {
     // Test files use vitest globals (see vite.config.js: test.globals).
     files: ['**/*.test.{js,jsx}', 'src/test/**'],
     languageOptions: {

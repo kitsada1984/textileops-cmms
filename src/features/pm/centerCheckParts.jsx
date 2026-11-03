@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, Image as ImageIcon } from 'lucide-react'
 import { getDirectImageUrl, getImageFallbackUrls } from '../../utils/imageUrlUtils'
 import { convertHeicDataUrlIfNeeded } from '../../modules/media'
 

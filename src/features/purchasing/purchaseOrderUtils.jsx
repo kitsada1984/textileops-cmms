@@ -50,7 +50,7 @@ const PART_CODE_NOTE_PREFIX = 'PartCode:'
 const PART_NAME_NOTE_PREFIX = 'PartName:'
 const APPLIED_QTY_NOTE_PREFIX = 'InventoryAppliedQty:'
 const APPLIED_PART_NOTE_PREFIX = 'InventoryAppliedPartCode:'
-const APPLIED_ITEMS_NOTE_PREFIX = 'InventoryAppliedItems:'
+export const APPLIED_ITEMS_NOTE_PREFIX = 'InventoryAppliedItems:'
 const PO_NUMERIC_FIELDS = ['Qty', 'UnitPrice', 'Total_Amount']
 const HIDDEN_NOTE_PREFIXES = [
   IMAGE_NOTE_PREFIX,

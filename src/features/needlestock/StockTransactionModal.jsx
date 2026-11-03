@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Box, CheckCircle2, ArrowDownLeft, ArrowUpRight, SlidersHorizontal, Trash2,
-  X, ArrowLeftRight, Camera, Upload, Check, Cloud,
+  CheckCircle2, ArrowDownLeft, ArrowUpRight, SlidersHorizontal, Trash2,
+  X, ArrowLeftRight, Camera, Upload, Check, Cloud, Image as ImageIcon,
 } from 'lucide-react'
 import { useToast } from '../../components/ui/Toast'
 import { NeedleSetAPI, NeedleHistoryAPI } from '../../api/entities'
 import { uploadMedia } from '../../modules/media/mediaUploader'
 import { formatNeedleStockFileName } from '../../utils/needleStockUtils'
+import { extractImageUrl, getImageFallbackUrls, getDirectImageUrl } from '../../utils/imageUrlUtils'
 
 export const NEEDLE_IMAGE_FOLDER = 'Stock-เข็ม'
 
