@@ -23,6 +23,11 @@ const WARN_ONLY = {
   'no-unexpected-multiline': 'warn',
   'no-await-in-loop': 'warn',
   'require-await': 'warn',
+  // Complexity visibility (Medium finding: 7 files >100KB).
+  // Warn-only: makes hotspots visible without failing anything.
+  // Per code-quality threshold: <25 OK. Splitting is logic-scope (grill first).
+  'complexity': ['warn', 25],
+  'max-params': ['warn', 5],
 }
 
 export default [
