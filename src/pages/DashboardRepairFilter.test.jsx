@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { isRepairSyncedWorkOrder } from './Dashboard'
+import {
+  isRepairSyncedWorkOrder,
+  isPendingWorkOrder,
+  isPendingRepairRequest,
+} from './Dashboard'
 
 describe('Dashboard - isRepairSyncedWorkOrder', () => {
   it('returns false for null, undefined, or empty objects', () => {
@@ -67,5 +71,95 @@ describe('Dashboard - isRepairSyncedWorkOrder', () => {
     const dashboardWorkorders = workorders.filter((x) => !isRepairSyncedWorkOrder(x))
     expect(dashboardWorkorders).toHaveLength(2)
     expect(dashboardWorkorders.map((x) => x.Job_ID)).toEqual(['JOB-001', 'JOB-002'])
+  })
+})
+
+describe('Dashboard - isPendingWorkOrder (Filter out COMPLETED and CANCELLED)', () => {
+  it('returns false for null, undefined, or empty objects', () => {
+    expect(isPendingWorkOrder(null)).toBe(false)
+    expect(isPendingWorkOrder(undefined)).toBe(false)
+  })
+
+  it('filters out completed work orders in english and thai', () => {
+    expect(isPendingWorkOrder({ Status: 'COMPLETED' })).toBe(false)
+    expect(isPendingWorkOrder({ Status: 'completed' })).toBe(false)
+    expect(isPendingWorkOrder({ Status: 'เสร็จสิ้น' })).toBe(false)
+    expect(isPendingWorkOrder({ status: 'COMPLETED' })).toBe(false)
+  })
+
+  it('filters out cancelled work orders in english and thai', () => {
+    expect(isPendingWorkOrder({ Status: 'CANCELLED' })).toBe(false)
+    expect(isPendingWorkOrder({ Status: 'cancelled' })).toBe(false)
+    expect(isPendingWorkOrder({ Status: 'ยกเลิก' })).toBe(false)
+    expect(isPendingWorkOrder({ status: 'CANCELLED' })).toBe(false)
+  })
+
+  it('preserves active/pending work orders', () => {
+    expect(isPendingWorkOrder({ Status: 'OPEN' })).toBe(true)
+    expect(isPendingWorkOrder({ Status: 'IN_PROGRESS' })).toBe(true)
+    expect(isPendingWorkOrder({ Status: 'WAITING_TECH' })).toBe(true)
+    expect(isPendingWorkOrder({ Status: 'WAITING_PARTS' })).toBe(true)
+    expect(isPendingWorkOrder({ Status: 'WAITING_SUMMARY' })).toBe(true)
+    expect(isPendingWorkOrder({ Status: 'OVERDUE' })).toBe(true)
+    expect(isPendingWorkOrder({ Status: 'กำลังทำ' })).toBe(true)
+  })
+
+  it('correctly filters a mixed list of work orders showing only pending items', () => {
+    const list = [
+      { Job_ID: 'JOB-1', Status: 'OPEN' },
+      { Job_ID: 'JOB-2', Status: 'COMPLETED' },
+      { Job_ID: 'JOB-3', Status: 'IN_PROGRESS' },
+      { Job_ID: 'JOB-4', Status: 'CANCELLED' },
+      { Job_ID: 'JOB-5', Status: 'เสร็จสิ้น' },
+      { Job_ID: 'JOB-6', Status: 'WAITING_PARTS' },
+      { Job_ID: 'JOB-7', Status: 'ยกเลิก' },
+    ]
+    const pending = list.filter(isPendingWorkOrder)
+    expect(pending.map((x) => x.Job_ID)).toEqual(['JOB-1', 'JOB-3', 'JOB-6'])
+  })
+})
+
+describe('Dashboard - isPendingRepairRequest (Filter out COMPLETED, CANCELLED, and REJECTED)', () => {
+  it('returns false for null, undefined, or empty objects', () => {
+    expect(isPendingRepairRequest(null)).toBe(false)
+    expect(isPendingRepairRequest(undefined)).toBe(false)
+  })
+
+  it('filters out completed repair requests in english and thai', () => {
+    expect(isPendingRepairRequest({ status: 'COMPLETED' })).toBe(false)
+    expect(isPendingRepairRequest({ status: 'completed' })).toBe(false)
+    expect(isPendingRepairRequest({ status: 'เสร็จสิ้น' })).toBe(false)
+    expect(isPendingRepairRequest({ status: 'ซ่อมเสร็จ' })).toBe(false)
+  })
+
+  it('filters out cancelled and rejected repair requests in english and thai', () => {
+    expect(isPendingRepairRequest({ status: 'CANCELLED' })).toBe(false)
+    expect(isPendingRepairRequest({ status: 'cancelled' })).toBe(false)
+    expect(isPendingRepairRequest({ status: 'REJECTED' })).toBe(false)
+    expect(isPendingRepairRequest({ status: 'rejected' })).toBe(false)
+    expect(isPendingRepairRequest({ status: 'ยกเลิก' })).toBe(false)
+    expect(isPendingRepairRequest({ status: 'ไม่อนุมัติ' })).toBe(false)
+  })
+
+  it('preserves active/pending repair requests', () => {
+    expect(isPendingRepairRequest({ status: 'PENDING' })).toBe(true)
+    expect(isPendingRepairRequest({ status: 'IN_PROGRESS' })).toBe(true)
+    expect(isPendingRepairRequest({ status: 'WAIT_PARTS' })).toBe(true)
+    expect(isPendingRepairRequest({ status: 'APPROVED' })).toBe(true)
+  })
+
+  it('correctly filters a mixed list of repair requests showing only pending items', () => {
+    const list = [
+      { id: 'REQ-1', status: 'PENDING' },
+      { id: 'REQ-2', status: 'COMPLETED' },
+      { id: 'REQ-3', status: 'IN_PROGRESS' },
+      { id: 'REQ-4', status: 'CANCELLED' },
+      { id: 'REQ-5', status: 'REJECTED' },
+      { id: 'REQ-6', status: 'WAIT_PARTS' },
+      { id: 'REQ-7', status: 'ซ่อมเสร็จ' },
+      { id: 'REQ-8', status: 'ยกเลิก' },
+    ]
+    const pending = list.filter(isPendingRepairRequest)
+    expect(pending.map((x) => x.id)).toEqual(['REQ-1', 'REQ-3', 'REQ-6'])
   })
 })

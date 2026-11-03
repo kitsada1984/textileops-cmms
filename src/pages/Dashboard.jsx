@@ -184,6 +184,32 @@ export function isRepairSyncedWorkOrder(wo = {}) {
   return false
 }
 
+/**
+ * ตรวจสอบว่าใบสั่งงานเป็นงานที่ค้างอยู่หรือไม่ (ไม่เสร็จสิ้น และไม่ถูกยกเลิก)
+ */
+export function isPendingWorkOrder(wo) {
+  if (!wo) return false
+  const status = String(wo.Status || wo.status || '').trim().toUpperCase()
+  const rawStatus = String(wo.Status || wo.status || '').trim()
+
+  if (status === 'COMPLETED' || rawStatus === 'เสร็จสิ้น') return false
+  if (status === 'CANCELLED' || rawStatus === 'ยกเลิก') return false
+  return true
+}
+
+/**
+ * ตรวจสอบว่างานแจ้งซ่อมเป็นงานที่ค้างอยู่หรือไม่ (ไม่เสร็จสิ้น และไม่ถูกยกเลิก/ปฏิเสธ)
+ */
+export function isPendingRepairRequest(req) {
+  if (!req) return false
+  const status = String(req.status || req.Status || '').trim().toUpperCase()
+  const rawStatus = String(req.status || req.Status || '').trim()
+
+  if (status === 'COMPLETED' || rawStatus === 'เสร็จสิ้น' || rawStatus === 'ซ่อมเสร็จ') return false
+  if (status === 'CANCELLED' || status === 'REJECTED' || rawStatus === 'ยกเลิก' || rawStatus === 'ไม่อนุมัติ') return false
+  return true
+}
+
 export default function Dashboard() {
   const { t } = useT()
   const navigate = useNavigate()
@@ -214,8 +240,12 @@ export default function Dashboard() {
       const repairRequests = rawRepairRequests.map(normalizeRepairRecord)
 
       const pendingRepairs = repairRequests
-        .filter((x) => x.status !== 'COMPLETED' && x.status !== 'REJECTED')
+        .filter(isPendingRepairRequest)
         .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+
+      const pendingWorkorders = dashboardWorkorders
+        .filter(isPendingWorkOrder)
+        .sort((a, b) => new Date(b.StartDate || b.DateStart || b.created_at || 0) - new Date(a.StartDate || a.DateStart || a.created_at || 0))
 
       const pendingApprove = repairRequests.filter((x) => x.status === 'PENDING').length
       const inProgressRepairs = repairRequests.filter((x) => x.status === 'IN_PROGRESS').length
@@ -236,7 +266,7 @@ export default function Dashboard() {
         inProgressRepairs,
         waitPartsRepairs,
         pendingRepairsList: pendingRepairs,
-        recentWO: dashboardWorkorders.slice(0, 5),
+        recentWO: pendingWorkorders,
       })
     } finally {
       if (!silent) setLoading(false)
@@ -578,8 +608,13 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <ClipboardList size={16} className="text-blue-600 dark:text-blue-400" />
             <div>
-              <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">{t('dash_wo_table')}</h2>
-              <p className="text-[11px] text-slate-500">คลิกที่รายการเพื่อดูรายละเอียดใบสั่งงาน</p>
+              <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <span>{t('dash_wo_table')} (ที่ค้างในระบบ)</span>
+                <span className="badge badge-blue font-bold text-xs px-2 py-0.5">
+                  {stats.recentWO?.length || 0} รายการ
+                </span>
+              </h2>
+              <p className="text-[11px] text-slate-500">คลิกที่รายการเพื่อดูรายละเอียดใบสั่งงานที่กำลังดำเนินการ</p>
             </div>
           </div>
           <Link
@@ -628,7 +663,9 @@ export default function Dashboard() {
               {!stats.recentWO?.length && (
                 <tr>
                   <td colSpan={5} className="text-center py-10 text-slate-400">
-                    {t('no_data')}
+                    <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-500 opacity-80" />
+                    <p className="font-semibold text-slate-600 dark:text-slate-400">ไม่มีใบสั่งงานค้างในระบบ</p>
+                    <p className="text-[11px] mt-0.5 text-slate-400">ทุกรายการได้รับการดำเนินการเสร็จสิ้นเรียบร้อยแล้ว</p>
                   </td>
                 </tr>
               )}
