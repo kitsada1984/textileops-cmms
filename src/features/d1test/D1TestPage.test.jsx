@@ -2,10 +2,10 @@ import React from 'react'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import D1TestPage from './D1TestPage'
-import { useUIStore } from '../stores/useUIStore'
+import { useUIStore } from '../../stores/useUIStore'
 
 // Mock d1 and supabase clients
-vi.mock('../api/d1Client', () => ({
+vi.mock('../../api/d1Client', () => ({
   d1: {
     channel: () => ({
       on: () => ({
@@ -30,7 +30,7 @@ vi.mock('../api/d1Client', () => ({
   },
 }))
 
-vi.mock('../supabase', () => ({
+vi.mock('../../supabase', () => ({
   supabase: {
     from: () => ({
       select: () => ({
