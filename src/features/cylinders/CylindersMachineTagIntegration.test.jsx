@@ -3,27 +3,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import Cylinders from './Cylinders'
 
 // Mock dependencies
-vi.mock('../contexts/AuthContext', () => ({
+vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { role: 'admin' } }),
 }))
 
-vi.mock('../contexts/LanguageContext', () => ({
+vi.mock('../../contexts/LanguageContext', () => ({
   useT: () => ({ t: (k) => k }),
 }))
 
-vi.mock('../contexts/DeviceViewContext', () => ({
+vi.mock('../../contexts/DeviceViewContext', () => ({
   useDeviceView: () => ({ isMobile: false, isTablet: false, isDesktop: true }),
 }))
 
-vi.mock('../components/ui/Toast', () => ({
+vi.mock('../../components/ui/Toast', () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn() }),
 }))
 
-vi.mock('../hooks/usePagePerms', () => ({
+vi.mock('../../hooks/usePagePerms', () => ({
   default: () => ({ canAdd: true, canEdit: true, canDelete: true }),
 }))
 
-vi.mock('../hooks/useEntity', () => ({
+vi.mock('../../hooks/useEntity', () => ({
   default: (api) => ({
     data: [
       {
@@ -60,7 +60,7 @@ vi.mock('../hooks/useEntity', () => ({
   }),
 }))
 
-vi.mock('../hooks/useWebBuilderMenu', () => ({
+vi.mock('../../hooks/useWebBuilderMenu', () => ({
   default: () => ({ columns: [], loading: false }),
   useWebBuilderColumn: () => ({ columns: [] }),
 }))
