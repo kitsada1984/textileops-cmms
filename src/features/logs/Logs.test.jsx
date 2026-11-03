@@ -55,7 +55,7 @@ const mockLogs = [
   },
 ]
 
-vi.mock('../hooks/useEntity', () => ({
+vi.mock('../../hooks/useEntity', () => ({
   default: () => ({
     data: mockLogs,
     loading: false,
@@ -63,7 +63,7 @@ vi.mock('../hooks/useEntity', () => ({
   }),
 }))
 
-vi.mock('../contexts/LanguageContext', () => ({
+vi.mock('../../contexts/LanguageContext', () => ({
   useT: () => ({ t: (k) => k }),
 }))
 
