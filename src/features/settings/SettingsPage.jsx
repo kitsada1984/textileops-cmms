@@ -18,24 +18,8 @@ import Modal from '../../components/ui/Modal'
 import { telegramAdminSchema } from '../../schemas/telegramAdminSchema'
 import { getGeminiConfig, saveGeminiConfig, testGeminiConnection, DEFAULT_GEMINI_MODEL } from '../../utils/geminiVision'
 
-const TABLES = [
-  ['machines','เครื่องจักร'], ['cylinders','กระบอก'], ['workorders','ใบสั่งงาน'],
-  ['pmplans','แผน PM'], ['spareparts','อะไหล่'], ['purchaseorders','ใบสั่งซื้อ'],
-  ['stocktransactions','เคลื่อนไหวสต็อก'], ['auditlogs','บันทึกระบบ'], ['appconfigs','ตั้งค่าแอป'],
-]
-
 import Card from '../../components/ui/Card'
-
-function SectionCard({ icon: Icon, title, children }) {
-  return (
-    <Card>
-      <Card.Header>
-        <Card.Title icon={Icon}>{title}</Card.Title>
-      </Card.Header>
-      <Card.Body>{children}</Card.Body>
-    </Card>
-  )
-}
+import { TABLES, SectionCard } from './settingsComponents.jsx'
 
 export default function SettingsPage() {
   const { t } = useT()
