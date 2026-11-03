@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
-import useEntity from '../hooks/useEntity'
-import { AuditLogAPI } from '../api/entities'
-import SearchInput from '../components/ui/SearchInput'
-import FilterSortPanel, { INIT_FS } from '../components/ui/FilterSortPanel'
-import StatusBadge from '../components/ui/StatusBadge'
-import { useT } from '../contexts/LanguageContext'
-import { useToast } from '../components/ui/Toast'
-import { applyFilterSort, buildFilterSortColumns } from '../utils/filterSort'
+import useEntity from '../../hooks/useEntity'
+import { AuditLogAPI } from '../../api/entities'
+import SearchInput from '../../components/ui/SearchInput'
+import FilterSortPanel, { INIT_FS } from '../../components/ui/FilterSortPanel'
+import StatusBadge from '../../components/ui/StatusBadge'
+import { useT } from '../../contexts/LanguageContext'
+import { useToast } from '../../components/ui/Toast'
+import { applyFilterSort, buildFilterSortColumns } from '../../utils/filterSort'
 
 function parseSnapshot(value) {
   if (!value) return {}
