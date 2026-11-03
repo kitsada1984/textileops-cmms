@@ -1,6 +1,6 @@
 #!/bin/sh
 # .githooks/pre-commit (P-C) — fast safety net, additive only.
-# Runs: secrets guard + repo-hygiene/version tests (~10s).
+# Runs: secrets guard + eslint on staged files + repo-hygiene/version tests.
 # Skips gracefully when node_modules is missing (fresh clone).
 # Bypass any time with: git commit --no-verify
 # Enabled per-clone with: git config core.hooksPath .githooks
@@ -16,6 +16,18 @@ echo "pre-commit: check-secrets…"
 if ! node scripts/check-secrets.mjs; then
   echo "pre-commit BLOCKED: tracked secret detected. Untrack it or move it to .env (see .env.example)."
   exit 1
+fi
+
+echo "pre-commit: eslint staged files (errors block, warnings pass)…"
+STAGED_JS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|mjs|cjs)$' || true)
+if [ -n "$STAGED_JS" ]; then
+  # shellcheck disable=SC2086
+  if ! npx eslint $STAGED_JS; then
+    echo "pre-commit BLOCKED: eslint errors in staged files (fix them or use --no-verify to bypass)."
+    exit 1
+  fi
+else
+  echo "pre-commit: no staged JS files — skipping eslint."
 fi
 
 echo "pre-commit: hygiene/version guards…"
