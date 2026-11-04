@@ -84,6 +84,7 @@ import {
   normalizeOptions,
   FormField,
   CylinderCard,
+  buildSwapAuditEntry,
 } from './cylinderParts.jsx'
 import { CylindersMobileView } from './CylindersMobileView.jsx'
 
@@ -570,99 +571,12 @@ export default function Cylinders() {
       throw err
     }
 
-    const sanitizeSnapshot = (c) => (!c ? null : {
-      id: c.id || c._id || '',
-      Serial_NOW: c.Serial_NOW || '',
-      Serial_OLD: c.Serial_OLD || '',
-      NewMC: c.NewMC || '',
-      Location: c.Location || '',
-      Standard: c.Standard || '',
-      Feeder: c.Feeder || '',
-      Manufacturer: c.Manufacturer || '',
-      Type: c.Type || '',
-      Diameter: c.Diameter || '',
-      Gauge: c.Gauge || '',
-      Needle: c.Needle || '',
-      Machine_Ref: c.Machine_Ref || '',
-      Comment: stripCylinderImageMeta(c.Comment || ''),
-    })
 
     const sourceIn = origIn || payload.newIn
     const sourceOut = origOut || payload.newOut
 
     try {
-      await AuditLogAPI.create({
-        Module: 'CYLINDERS',
-        ActionType: 'SWAP',
-        RecordID: `${payload.newIn.Serial_NOW || ''} <-> ${payload.newOut.Serial_NOW || ''}`,
-        FieldName: 'SwapCylinder',
-        OldValue: JSON.stringify({
-          snapshotIn: sanitizeSnapshot(sourceIn),
-          snapshotOut: sanitizeSnapshot(sourceOut),
-          in: {
-            id: meta.inId,
-            serial: sourceIn?.Serial_NOW || payload.newIn.Serial_NOW,
-            mc: sourceIn?.NewMC || payload.newIn.NewMC || '',
-            loc: sourceIn?.Location || payload.newIn.Location || '',
-            standard: sourceIn?.Standard || payload.newIn.Standard || '',
-            feeder: sourceIn?.Feeder || '',
-            type: sourceIn?.Type || '',
-            dia: sourceIn?.Diameter || '',
-            gauge: sourceIn?.Gauge || '',
-            needle: sourceIn?.Needle || '',
-            mfr: sourceIn?.Manufacturer || '',
-            machineRef: sourceIn?.Machine_Ref || '',
-          },
-          out: {
-            id: meta.outId,
-            serial: sourceOut?.Serial_NOW || payload.newOut.Serial_NOW,
-            mc: sourceOut?.NewMC || payload.newOut.NewMC || '',
-            loc: sourceOut?.Location || payload.newOut.Location || '',
-            standard: sourceOut?.Standard || payload.newOut.Standard || '',
-            feeder: sourceOut?.Feeder || '',
-            type: sourceOut?.Type || '',
-            dia: sourceOut?.Diameter || '',
-            gauge: sourceOut?.Gauge || '',
-            needle: sourceOut?.Needle || '',
-            mfr: sourceOut?.Manufacturer || '',
-            machineRef: sourceOut?.Machine_Ref || '',
-          },
-        }),
-        NewValue: JSON.stringify({
-          swapCols: meta.swapCols || ['Location', 'Machine_Ref', 'Feeder'],
-          snapshotIn: sanitizeSnapshot(payload.newIn),
-          snapshotOut: sanitizeSnapshot(payload.newOut),
-          in: {
-            id: inId,
-            serial: payload.newIn.Serial_NOW,
-            mc: payload.newIn.NewMC || '',
-            loc: payload.newIn.Location || '',
-            standard: payload.newIn.Standard || '',
-            feeder: payload.newIn.Feeder || '',
-            type: payload.newIn.Type || '',
-            dia: payload.newIn.Diameter || '',
-            gauge: payload.newIn.Gauge || '',
-            needle: payload.newIn.Needle || '',
-            mfr: payload.newIn.Manufacturer || '',
-            machineRef: payload.newIn.Machine_Ref || '',
-          },
-          out: {
-            id: outId,
-            serial: payload.newOut.Serial_NOW,
-            mc: payload.newOut.NewMC || '',
-            loc: payload.newOut.Location || '',
-            standard: payload.newOut.Standard || '',
-            feeder: payload.newOut.Feeder || '',
-            type: payload.newOut.Type || '',
-            dia: payload.newOut.Diameter || '',
-            gauge: payload.newOut.Gauge || '',
-            needle: payload.newOut.Needle || '',
-            mfr: payload.newOut.Manufacturer || '',
-            machineRef: payload.newOut.Machine_Ref || '',
-          },
-        }),
-        Comment: `สลับกระบอก ${payload.newIn.Serial_NOW} (MC: ${payload.newIn.NewMC || '—'}) กับ ${payload.newOut.Serial_NOW} (MC: ${payload.newOut.NewMC || '—'})`,
-      })
+      await AuditLogAPI.create(buildSwapAuditEntry({ payload, sourceIn, sourceOut, meta, inId, outId }))
       loadAuditLogs?.()
     } catch {}
 

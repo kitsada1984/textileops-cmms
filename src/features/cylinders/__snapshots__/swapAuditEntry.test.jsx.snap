@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`swap audit entry builder > builds the exact audit entry shape 1`] = `
+{
+  "ActionType": "SWAP",
+  "Comment": "สลับกระบอก 60709 (MC: SA-361M) กับ 63873 (MC: DB-301M)",
+  "FieldName": "SwapCylinder",
+  "Module": "CYLINDERS",
+  "NewValue": "{"swapCols":["Location","Machine_Ref"],"snapshotIn":{"id":"in-1","Serial_NOW":"60709","Serial_OLD":"1GK1","NewMC":"SA-361M","Location":"GMK1","Standard":"STD","Feeder":"8","Manufacturer":"PAILUNG","Type":"S","Diameter":"30","Gauge":"28","Needle":"2640","Machine_Ref":"In-use-GMK1","Comment":"SA361M"},"snapshotOut":{"id":"out-1","Serial_NOW":"63873","Serial_OLD":"4GK3","NewMC":"DB-301M","Location":"GMK3","Standard":"STD","Feeder":"12","Manufacturer":"PAILUNG","Type":"D","Diameter":"30","Gauge":"28","Needle":"3000","Machine_Ref":"Spare-GMK3","Comment":"DB-301M"},"in":{"id":"in-1","serial":"60709","mc":"SA-361M","loc":"GMK1","standard":"STD","feeder":"8","type":"S","dia":"30","gauge":"28","needle":"2640","mfr":"PAILUNG","machineRef":"In-use-GMK1"},"out":{"id":"out-1","serial":"63873","mc":"DB-301M","loc":"GMK3","standard":"STD","feeder":"12","type":"D","dia":"30","gauge":"28","needle":"3000","mfr":"PAILUNG","machineRef":"Spare-GMK3"}}",
+  "OldValue": "{"snapshotIn":{"id":"in-1","Serial_NOW":"60709","Serial_OLD":"1GK1","NewMC":"SA-361M","Location":"GMK1","Standard":"STD","Feeder":"8","Manufacturer":"PAILUNG","Type":"S","Diameter":"30","Gauge":"28","Needle":"2640","Machine_Ref":"In-use-GMK1","Comment":"SA361M"},"snapshotOut":{"id":"out-1","Serial_NOW":"63873","Serial_OLD":"4GK3","NewMC":"DB-301M","Location":"GMK3","Standard":"STD","Feeder":"12","Manufacturer":"PAILUNG","Type":"D","Diameter":"30","Gauge":"28","Needle":"3000","Machine_Ref":"Spare-GMK3","Comment":"DB-301M"},"in":{"id":"in-1","serial":"60709","mc":"SA-361M","loc":"GMK1","standard":"STD","feeder":"8","type":"S","dia":"30","gauge":"28","needle":"2640","mfr":"PAILUNG","machineRef":"In-use-GMK1"},"out":{"id":"out-1","serial":"63873","mc":"DB-301M","loc":"GMK3","standard":"STD","feeder":"12","type":"D","dia":"30","gauge":"28","needle":"3000","mfr":"PAILUNG","machineRef":"Spare-GMK3"}}",
+  "RecordID": "60709 <-> 63873",
+}
+`;
