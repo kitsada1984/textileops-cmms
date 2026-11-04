@@ -56,6 +56,7 @@ import ImagePreviewModal from '../../components/ui/ImagePreviewModal'
 import { buildCylinderInspectionSync } from '../../utils/needleConditionSync'
 import { pickPreviousWithCounter } from '../../utils/counterDiff'
 import { CENTER_CHECK_IMAGE_FOLDER, NEEDLE_COND_OPTIONS, STANDARD_NEEDLE_CONDS, CenterCheckPhotoCard } from './centerCheckParts.jsx'
+import { CenterCheckTabs } from './centerCheckTabs.jsx'
 
 export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan, onRecordSaved }) {
   const { t } = useT()
@@ -1042,34 +1043,7 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
         </div>
       </div>
 
-      {/* ── SUB-TAB SWITCHER (History vs Form) ──────────────── */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap pb-2 sm:pb-1.5">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('history')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all min-h-[36px] flex-shrink-0 whitespace-nowrap ${
-            activeSubTab === 'history'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <FileText size={14} />
-          <span>ประวัติการตรวจ (History Log)</span>
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${
-            activeSubTab === 'history' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-          }`}>
-            {filteredRecords.length}
-          </span>
-        </button>
-
-        {(activeSubTab === 'single_form' || activeSubTab === 'double_form') && (
-          <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-800 rounded-xl text-xs font-bold text-blue-600 border border-slate-200 dark:border-slate-700">
-            <Pencil size={13} />
-            <span>{editingId ? 'แก้ไขใบบันทึก' : 'ฟอร์มบันทึกใหม่'} ({formType} Jersey)</span>
-          </div>
-        )}
-      </div>
-
+      <CenterCheckTabs activeSubTab={activeSubTab} setActiveSubTab={setActiveSubTab} editingId={editingId} formType={formType} count={filteredRecords.length} />
       {/* ══════════════════════════════════════════════════════════ */}
       {/* ── TAB CONTENT: 1. HISTORY LOG ──────────────────────────── */}
       {/* ══════════════════════════════════════════════════════════ */}
