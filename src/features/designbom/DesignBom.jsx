@@ -589,7 +589,7 @@ export default function DesignBom() {
             <button
               type="button"
               onClick={load}
-              className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5"
+              className="btn-outline text-xs px-3 py-2 min-h-[44px] flex items-center gap-1.5"
               title="รีเฟรชข้อมูล"
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
@@ -600,7 +600,7 @@ export default function DesignBom() {
               <button
                 type="button"
                 onClick={openNew}
-                className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[38px] hidden sm:flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+                className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[44px] hidden sm:flex items-center gap-1.5 shadow-md shadow-blue-500/20"
               >
                 <Plus size={15} />
                 <span>เพิ่ม Design/BOM</span>

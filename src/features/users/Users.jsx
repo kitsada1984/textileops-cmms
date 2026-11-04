@@ -124,8 +124,8 @@ export default function UsersPage() {
         </div>
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 flex-nowrap w-full sm:w-auto">
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
-          <button className="btn-outline min-h-[38px] text-xs px-3 py-2 flex items-center gap-1.5 flex-shrink-0 cursor-pointer" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
-          {canAdd && <button className="btn-primary min-h-[38px] text-xs px-3.5 py-2 hidden sm:flex items-center gap-1.5 flex-shrink-0 cursor-pointer" onClick={openNew}><Plus size={15}/> เพิ่มผู้ใช้</button>}
+          <button className="btn-outline min-h-[44px] text-xs px-3 py-2 flex items-center gap-1.5 flex-shrink-0 cursor-pointer" onClick={load}><RefreshCw size={14}/> {t('refresh')}</button>
+          {canAdd && <button className="btn-primary min-h-[44px] text-xs px-3.5 py-2 hidden sm:flex items-center gap-1.5 flex-shrink-0 cursor-pointer" onClick={openNew}><Plus size={15}/> เพิ่มผู้ใช้</button>}
         </div>
       </div>
 
@@ -225,8 +225,8 @@ export default function UsersPage() {
                   </td>
                   <td>
                     <div className="flex gap-2">
-                      {canEdit && <button className="btn-outline min-h-[36px] min-w-[36px] p-2 rounded-xl text-xs flex items-center justify-center cursor-pointer" onClick={() => openEdit(u)} title="แก้ไข"><Pencil size={14}/></button>}
-                      {canDelete && <button className="btn-danger min-h-[36px] min-w-[36px] p-2 rounded-xl text-xs flex items-center justify-center cursor-pointer" onClick={() => del(u._id || u.id)} title="ลบ"><Trash2 size={14}/></button>}
+                      {canEdit && <button className="btn-outline min-h-[44px] min-w-[44px] p-2 rounded-xl text-xs flex items-center justify-center cursor-pointer" onClick={() => openEdit(u)} title="แก้ไข"><Pencil size={14}/></button>}
+                      {canDelete && <button className="btn-danger min-h-[44px] min-w-[44px] p-2 rounded-xl text-xs flex items-center justify-center cursor-pointer" onClick={() => del(u._id || u.id)} title="ลบ"><Trash2 size={14}/></button>}
                       {!canEdit && !canDelete && (
                         <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
                       )}

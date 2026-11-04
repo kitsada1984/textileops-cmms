@@ -670,7 +670,7 @@ export default function Cylinders() {
             <button
               type="button"
               onClick={load}
-              className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5"
+              className="btn-outline text-xs px-3 py-2 min-h-[44px] flex items-center gap-1.5"
               title={t('refresh')}
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
@@ -681,7 +681,7 @@ export default function Cylinders() {
               <button
                 type="button"
                 onClick={openNew}
-                className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[38px] hidden sm:flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+                className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[44px] hidden sm:flex items-center gap-1.5 shadow-md shadow-blue-500/20"
               >
                 <Plus size={15} />
                 <span>{t('cyl_add')}</span>
@@ -709,7 +709,7 @@ export default function Cylinders() {
           <button
             type="button"
             onClick={() => setBatchQrOpen(true)}
-            className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5 flex-shrink-0"
+            className="btn-outline text-xs px-3 py-2 min-h-[44px] flex items-center gap-1.5 flex-shrink-0"
             title="ดาวน์โหลด QR ทั้งหมด"
           >
             <QrCode size={13} />
@@ -718,12 +718,12 @@ export default function Cylinders() {
 
           {/* Swap + settings button */}
           {canEdit && (
-            <div className="flex items-center rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm flex-shrink-0 min-h-[38px]">
+            <div className="flex items-center rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm flex-shrink-0 min-h-[44px]">
               <button
                 type="button"
                 onClick={openSwapWithLatestData}
                 disabled={openingSwap || loading}
-                className="btn text-xs px-3 py-2 min-h-[38px] bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 border-r border-slate-200 dark:border-slate-800"
+                className="btn text-xs px-3 py-2 min-h-[44px] bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 border-r border-slate-200 dark:border-slate-800"
               >
                 {openingSwap ? <RefreshCw size={13} className="animate-spin" /> : <ArrowLeftRight size={13} />}
                 <span>{openingSwap ? 'โหลด...' : 'สลับกระบอก'}</span>
@@ -732,7 +732,7 @@ export default function Cylinders() {
                 type="button"
                 onClick={() => setSwapCfgOpen(true)}
                 title="ตั้งค่าสลับกระบอก"
-                className="p-2.5 min-h-[38px] bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center"
+                className="p-2.5 min-h-[44px] bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center"
               >
                 <Settings2 size={14} />
               </button>

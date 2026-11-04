@@ -1071,7 +1071,7 @@ export default function Purchasing() {
             <button
               type="button"
               onClick={load}
-              className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5"
+              className="btn-outline text-xs px-3 py-2 min-h-[44px] flex items-center gap-1.5"
               title={t('refresh')}
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
@@ -1082,7 +1082,7 @@ export default function Purchasing() {
               <button
                 type="button"
                 onClick={openNew}
-                className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[38px] hidden sm:flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+                className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[44px] hidden sm:flex items-center gap-1.5 shadow-md shadow-blue-500/20"
               >
                 <Plus size={15} />
                 <span>สร้างใบสั่งซื้อ</span>
@@ -1128,7 +1128,7 @@ export default function Purchasing() {
         <button
           type="button"
           onClick={() => setStatusFilters([])}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
+          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
             statusFilters.length === 0
               ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
               : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -1155,7 +1155,7 @@ export default function Purchasing() {
               key={opt.value}
               type="button"
               onClick={() => toggleStatusFilter(opt.value)}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[36px] cursor-pointer active:scale-[0.98] ${
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                 isSelected
                   ? opt.activeClass
                   : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'

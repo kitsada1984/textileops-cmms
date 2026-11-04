@@ -1429,7 +1429,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
-                  className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[38px] hidden sm:flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+                  className="btn-primary text-xs px-3.5 sm:px-4 py-2 min-h-[44px] hidden sm:flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
                   onClick={openSyncPMModal}
                   disabled={syncingPM || !canAdd || !cylinderPMSource.length}
                 >
@@ -1457,7 +1457,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
               />
               <button
                 type="button"
-                className="btn-outline text-xs px-3 sm:px-3.5 py-2 min-h-[38px] flex items-center justify-center gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shadow-sm font-bold flex-shrink-0"
+                className="btn-outline text-xs px-3 sm:px-3.5 py-2 min-h-[44px] flex items-center justify-center gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shadow-sm font-bold flex-shrink-0"
                 onClick={syncLatestFromCenterCheck}
                 disabled={syncingPM}
                 title="ดึงวันที่เช็คศูนย์ล่าสุดของแต่ละเครื่องมาอัปเดตแผน PM อัตโนมัติ"

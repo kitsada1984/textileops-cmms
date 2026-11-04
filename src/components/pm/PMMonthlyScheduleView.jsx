@@ -1728,7 +1728,7 @@ export default function PMMonthlyScheduleView({
                 type="button"
                 onClick={handleAutoGenerate}
                 disabled={savingSchedule}
-                className="btn-primary text-xs px-3 py-1.5 min-h-[36px] flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+                className="btn-primary text-xs px-3 py-1.5 min-h-[44px] flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
                 title={`สร้างตารางแผน PM ${daysPerMachine} วันต่อเครื่องให้อัตโนมัติ โดยข้ามวันอาทิตย์`}
               >
                 <Sparkles size={14} />
@@ -1741,7 +1741,7 @@ export default function PMMonthlyScheduleView({
                 type="button"
                 onClick={handleExplicitSaveSchedule}
                 disabled={savingSchedule}
-                className="px-3 py-1.5 min-h-[36px] rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50 shrink-0"
+                className="px-3 py-1.5 min-h-[44px] rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50 shrink-0"
                 title="บันทึกแผนของเดือนนี้ลงฐานข้อมูล"
               >
                 {savingSchedule ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
@@ -1753,7 +1753,7 @@ export default function PMMonthlyScheduleView({
                 type="button"
                 onClick={() => setDeleteMonthModalOpen(true)}
                 disabled={savingSchedule}
-                className="px-2.5 py-1.5 min-h-[36px] rounded-xl font-bold text-xs border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50 shrink-0"
+                className="px-2.5 py-1.5 min-h-[44px] rounded-xl font-bold text-xs border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all disabled:opacity-50 shrink-0"
                 title="ลบแผนงานทั้งหมดของเดือนนี้"
               >
                 <Trash2 size={14} />
@@ -1766,7 +1766,7 @@ export default function PMMonthlyScheduleView({
               <button
                 type="button"
                 onClick={() => setPrintModalOpen(true)}
-                className="btn-outline text-xs px-2.5 py-1.5 min-h-[36px] flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                className="btn-outline text-xs px-2.5 py-1.5 min-h-[44px] flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
                 title="ดูตัวอย่างเอกสารแผน PM ประจำเดือน (A4)"
               >
                 <Eye size={14} />
@@ -1776,7 +1776,7 @@ export default function PMMonthlyScheduleView({
               <button
                 type="button"
                 onClick={() => setPrintModalOpen(true)}
-                className="btn-outline text-xs px-2.5 py-1.5 min-h-[36px] flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                className="btn-outline text-xs px-2.5 py-1.5 min-h-[44px] flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
                 title="พิมพ์ตารางแผน PM ขนาด A4"
               >
                 <Printer size={14} />
@@ -1786,7 +1786,7 @@ export default function PMMonthlyScheduleView({
               <button
                 type="button"
                 onClick={() => setPrintModalOpen(true)}
-                className="px-2.5 py-1.5 min-h-[36px] rounded-xl font-bold text-xs border border-blue-200 dark:border-blue-900/50 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+                className="px-2.5 py-1.5 min-h-[44px] rounded-xl font-bold text-xs border border-blue-200 dark:border-blue-900/50 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
                 title="ดาวน์โหลดแผน PM เป็นไฟล์ PDF"
               >
                 <Download size={14} />
@@ -1928,7 +1928,7 @@ export default function PMMonthlyScheduleView({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="ค้นหา M/C, KI, ช่าง, สถานที่..."
-                  className="input pl-8 py-1.5 text-xs w-full min-h-[36px]"
+                  className="input pl-8 py-1.5 text-xs w-full min-h-[44px]"
                 />
                 {searchQuery && (
                   <button
@@ -1946,7 +1946,7 @@ export default function PMMonthlyScheduleView({
                 <button
                   type="button"
                   onClick={() => setStatusFilter('ALL')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[32px] ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[44px] ${
                     statusFilter === 'ALL'
                       ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-xs'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
@@ -1961,7 +1961,7 @@ export default function PMMonthlyScheduleView({
                       key={opt.value}
                       type="button"
                       onClick={() => setStatusFilter(opt.value)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[32px] ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[44px] ${
                         statusFilter === opt.value
                           ? 'bg-blue-600 text-white shadow-xs'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
@@ -1982,7 +1982,7 @@ export default function PMMonthlyScheduleView({
                 <button
                   type="button"
                   onClick={() => setViewLocationFilter(['ALL'])}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[32px] ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 min-h-[44px] ${
                     viewLocationFilter.includes('ALL')
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
@@ -2008,7 +2008,7 @@ export default function PMMonthlyScheduleView({
                           return [...prev, loc.id]
                         })
                       }}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 min-h-[32px] ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 min-h-[44px] ${
                         isSelected
                           ? 'bg-blue-600 text-white shadow-xs ring-1 ring-blue-400'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
@@ -2031,7 +2031,7 @@ export default function PMMonthlyScheduleView({
                   <button
                     type="button"
                     onClick={() => setScheduleDisplayMode('timeline')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[44px] ${
                       scheduleDisplayMode === 'timeline'
                         ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2044,7 +2044,7 @@ export default function PMMonthlyScheduleView({
                   <button
                     type="button"
                     onClick={() => setScheduleDisplayMode('list')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[44px] ${
                       scheduleDisplayMode === 'list'
                         ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2062,7 +2062,7 @@ export default function PMMonthlyScheduleView({
                     <button
                       type="button"
                       onClick={() => setTimelineBarFilter('both')}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[44px] ${
                         timelineBarFilter === 'both'
                           ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2074,7 +2074,7 @@ export default function PMMonthlyScheduleView({
                     <button
                       type="button"
                       onClick={() => setTimelineBarFilter('planned')}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[44px] ${
                         timelineBarFilter === 'planned'
                           ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2086,7 +2086,7 @@ export default function PMMonthlyScheduleView({
                     <button
                       type="button"
                       onClick={() => setTimelineBarFilter('actual')}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[44px] ${
                         timelineBarFilter === 'actual'
                           ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -2105,7 +2105,7 @@ export default function PMMonthlyScheduleView({
                   type="button"
                   onClick={() => syncWithWorkOrders(currentItems, true)}
                   disabled={syncingWO}
-                  className="btn-outline text-xs px-2.5 py-1.5 min-h-[36px] flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="btn-outline text-xs px-2.5 py-1.5 min-h-[44px] flex items-center gap-1.5 cursor-pointer shrink-0"
                   title="คลิกเพื่อดึงใบสั่งงาน PM ล่าสุดเข้าสู่แผน"
                 >
                   <RefreshCw size={13} className={syncingWO ? "animate-spin text-blue-500" : ""} />
@@ -2117,7 +2117,7 @@ export default function PMMonthlyScheduleView({
                   <button
                     type="button"
                     onClick={handleOpenAddModal}
-                    className="btn-outline text-xs px-3 py-1.5 min-h-[36px] flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                    className="btn-outline text-xs px-3 py-1.5 min-h-[44px] flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                   >
                     <Plus size={14} />
                     <span>เพิ่มเครื่องในแผน</span>
@@ -2315,7 +2315,7 @@ export default function PMMonthlyScheduleView({
 
                               {/* Day Grid with Single-Row Compact Bars (~36px) */}
                               <div
-                                className="flex-1 grid relative py-0.5 h-[36px] min-h-[36px]"
+                                className="flex-1 grid relative py-0.5 h-[36px] min-h-[44px]"
                                 style={{ gridTemplateColumns: `repeat(${daysInMonth}, minmax(32px, 1fr))` }}
                               >
                                 {/* Background Day Columns */}

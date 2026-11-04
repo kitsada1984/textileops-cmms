@@ -274,7 +274,7 @@ export default function Reports() {
             type="button"
             onClick={() => fetchData(true)}
             disabled={refreshing}
-            className="min-h-[38px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+            className="min-h-[44px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
             title="รีเฟรชข้อมูลล่าสุด"
           >
             <RefreshCw size={15} className={refreshing ? 'animate-spin text-blue-500' : ''} />
@@ -285,7 +285,7 @@ export default function Reports() {
           <button
             type="button"
             onClick={handlePrint}
-            className="min-h-[38px] px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             title="พิมพ์หรือส่งออกรายงาน PDF"
           >
             <Printer size={15} />

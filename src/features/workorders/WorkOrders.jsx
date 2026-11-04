@@ -701,7 +701,7 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onInterruption(job)}
-              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[36px] ${
+              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[44px] ${
                 sla.activeInterruption
                   ? 'bg-amber-500 text-white animate-pulse shadow-md shadow-amber-500/30'
                   : sla.lostHoursDecimal > 0
@@ -720,7 +720,7 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onComplete(job)}
-              className="btn-success px-3 py-1.5 text-xs font-bold flex items-center gap-1 rounded-xl min-h-[36px]"
+              className="btn-success px-3 py-1.5 text-xs font-bold flex items-center gap-1 rounded-xl min-h-[44px]"
               title="บันทึกจบงาน"
             >
               <CheckCircle2 size={14} />
@@ -733,7 +733,7 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onDailyLog?.(job)}
-              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[36px] ${
+              className={`p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[44px] ${
                 dailyLogs.length > 0
                   ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600'
@@ -753,7 +753,7 @@ function WorkOrderCard({
           <button
             type="button"
             onClick={() => onPrint(job)}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 min-h-[36px]"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-blue-600 min-h-[44px]"
             title="พิมพ์ใบสั่งงาน A4"
           >
             <Printer size={15} />
@@ -764,7 +764,7 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onEdit(job)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-600 min-h-[36px]"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-amber-600 min-h-[44px]"
               title="แก้ไข"
             >
               <Pencil size={15} />
@@ -776,7 +776,7 @@ function WorkOrderCard({
             <button
               type="button"
               onClick={() => onDelete(job)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-600 min-h-[36px]"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-red-600 min-h-[44px]"
               title="ลบ"
             >
               <Trash2 size={15} />
@@ -2271,7 +2271,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('records')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'records'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -2289,7 +2289,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('repair_requests')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'repair_requests'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -2302,7 +2302,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('dashboard')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'dashboard'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -2315,7 +2315,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('technicians')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'technicians'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -2333,7 +2333,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <button
           type="button"
           onClick={() => setCurrentTab('settings')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[40px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
             currentTab === 'settings'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -3095,7 +3095,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   <button
                     type="button"
                     onClick={() => setCreateModalOpen(true)}
-                    className="btn-primary text-xs px-3.5 py-2 min-h-[38px] flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer flex-shrink-0"
+                    className="btn-primary text-xs px-3.5 py-2 min-h-[44px] flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer flex-shrink-0"
                     title="เปิดหน้าต่างบันทึกเริ่มงานซ่อม / เปิดใบสั่งงาน"
                   >
                     <Plus size={15} />
@@ -3106,7 +3106,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                 <button
                   type="button"
                   onClick={() => setReportModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors font-bold text-xs shadow-2xs flex-shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors font-bold text-xs shadow-2xs flex-shrink-0 cursor-pointer"
                   title="พิมพ์รายงานใบสั่งงานตามเงื่อนไขที่กรองบนหน้าเว็บ"
                 >
                   <Printer size={13} />
@@ -3125,7 +3125,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                       setCauseFilter('')
                       setSearch('')
                     }}
-                    className="inline-flex items-center gap-1 px-3 py-2 min-h-[38px] rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-bold text-xs flex-shrink-0 cursor-pointer"
+                    className="inline-flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-bold text-xs flex-shrink-0 cursor-pointer"
                     title="ล้างตัวกรองทั้งหมดกลับเป็นค่าเริ่มต้น"
                   >
                     <RotateCcw size={12} />
@@ -3133,7 +3133,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                   </button>
                 )}
 
-                <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 cursor-pointer select-none px-2.5 py-1.5 min-h-[38px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium flex-shrink-0">
+                <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 cursor-pointer select-none px-2.5 py-1.5 min-h-[44px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium flex-shrink-0">
                   <input
                     type="checkbox"
                     checked={showDeleted}
@@ -3191,7 +3191,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     <button
                       type="button"
                       onClick={() => setTypeFilters([])}
-                      className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                         typeFilters.length === 0
                           ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                           : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3218,7 +3218,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                           key={opt.value}
                           type="button"
                           onClick={() => toggleTypeFilter(opt.value)}
-                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                             isSelected
                               ? opt.activeClass
                               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3288,7 +3288,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     <button
                       type="button"
                       onClick={() => setStatusFilters([])}
-                      className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                         statusFilters.length === 0
                           ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent shadow-xs'
                           : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3315,7 +3315,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                           key={opt.value}
                           type="button"
                           onClick={() => toggleStatusFilter(opt.value)}
-                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                          className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                             isSelected
                               ? opt.activeClass
                               : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3385,7 +3385,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     <button
                       type="button"
                       onClick={() => setCauseFilter('')}
-                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                         !causeFilter
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                           : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3407,7 +3407,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     <button
                       type="button"
                       onClick={() => toggleCauseFilter('คน')}
-                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                         causeFilter === 'คน'
                           ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
                           : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3431,7 +3431,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     <button
                       type="button"
                       onClick={() => toggleCauseFilter('เครื่องจักร')}
-                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                         causeFilter === 'เครื่องจักร'
                           ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                           : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3455,7 +3455,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     <button
                       type="button"
                       onClick={() => toggleCauseFilter('วัตถุดิบ')}
-                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                         causeFilter === 'วัตถุดิบ'
                           ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                           : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3479,7 +3479,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                     <button
                       type="button"
                       onClick={() => toggleCauseFilter('UNSPECIFIED')}
-                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[34px] cursor-pointer active:scale-[0.98] ${
+                      className={`px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 border text-xs min-h-[44px] cursor-pointer active:scale-[0.98] ${
                         causeFilter === 'UNSPECIFIED'
                           ? 'bg-slate-700 text-white border-slate-700 shadow-xs'
                           : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -3825,7 +3825,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
                               <button
                                 type="button"
                                 onClick={() => openCompleteModal(job)}
-                                className="btn-success px-3 py-1.5 text-xs min-h-[36px] rounded-xl font-bold flex items-center gap-1"
+                                className="btn-success px-3 py-1.5 text-xs min-h-[44px] rounded-xl font-bold flex items-center gap-1"
                                 title="บันทึกจบงาน"
                               >
                                 <CheckCircle2 size={13} />

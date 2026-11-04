@@ -587,7 +587,7 @@ export default function NeedleStock() {
             type="button"
             onClick={() => loadData(true)}
             disabled={refreshing}
-            className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
+            className="btn-outline text-xs px-3 py-2 min-h-[44px] flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
             title="รีเฟรชข้อมูล"
           >
             <RotateCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-sky-600' : ''}`} />
@@ -597,7 +597,7 @@ export default function NeedleStock() {
           <button
             type="button"
             onClick={activeTab === 'inventory' ? exportSetsCSV : exportLedgerCSV}
-            className="btn-outline text-xs px-3 py-2 min-h-[38px] flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
+            className="btn-outline text-xs px-3 py-2 min-h-[44px] flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
@@ -608,7 +608,7 @@ export default function NeedleStock() {
               <button
                 type="button"
                 onClick={() => openStockModal(null)}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 min-h-[38px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition shadow-blue-500/20 cursor-pointer flex-shrink-0"
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 min-h-[44px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition shadow-blue-500/20 cursor-pointer flex-shrink-0"
                 title="ทำรายการสต็อกเข็ม (เบิกออก / รับเข้า / ตัดยอด / ตัดทิ้ง)"
               >
                 <ArrowLeftRight className="w-4 h-4" />
@@ -618,7 +618,7 @@ export default function NeedleStock() {
               <button
                 type="button"
                 onClick={() => setAddModalOpen(true)}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 min-h-[38px] bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-semibold shadow-xs transition shadow-sky-600/30 cursor-pointer flex-shrink-0 hidden sm:inline-flex"
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 min-h-[44px] bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-semibold shadow-xs transition shadow-sky-600/30 cursor-pointer flex-shrink-0 hidden sm:inline-flex"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>เพิ่มชุดเข็มใหม่</span>
@@ -1066,7 +1066,7 @@ export default function NeedleStock() {
                         </div>
 
                         {/* Location Row */}
-                        <div className="flex items-center space-x-2 text-xs bg-slate-50 border border-slate-200/70 px-2.5 py-1.5 rounded-xl min-h-[34px]">
+                        <div className="flex items-center space-x-2 text-xs bg-slate-50 border border-slate-200/70 px-2.5 py-1.5 rounded-xl min-h-[44px]">
                           <MapPin className={`w-3.5 h-3.5 ${item.location ? 'text-emerald-600' : 'text-slate-300'} shrink-0`} />
                           <span className="text-[11px] text-slate-400 shrink-0">ตำแหน่งจัดเก็บ:</span>
                           <span className="font-semibold text-slate-700 truncate">{item.location || 'ไม่ระบุ'}</span>

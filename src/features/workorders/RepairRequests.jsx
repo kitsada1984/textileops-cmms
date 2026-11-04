@@ -450,12 +450,12 @@ export default function RepairRequests() {
             columns={cols}
             rows={displayRows}
             totalCount={data.length}
-            className="btn-outline text-xs flex items-center gap-1.5 active:scale-95 transition-all duration-150 py-2 px-3 rounded-xl whitespace-nowrap min-h-[36px]"
+            className="btn-outline text-xs flex items-center gap-1.5 active:scale-95 transition-all duration-150 py-2 px-3 rounded-xl whitespace-nowrap min-h-[44px]"
           />
           <div className="flex items-center gap-2 flex-shrink-0">
             {canAdd && (
               <button
-                className="btn-primary text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all duration-150 py-2 px-3.5 rounded-xl whitespace-nowrap min-h-[36px]"
+                className="btn-primary text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all duration-150 py-2 px-3.5 rounded-xl whitespace-nowrap min-h-[44px]"
                 onClick={openAdd}
               >
                 <Plus size={14} />
@@ -463,7 +463,7 @@ export default function RepairRequests() {
               </button>
             )}
             <button
-              className="btn-ghost text-xs flex items-center gap-1.5 active:scale-95 transition-all duration-150 py-2 px-3 rounded-xl whitespace-nowrap min-h-[36px]"
+              className="btn-ghost text-xs flex items-center gap-1.5 active:scale-95 transition-all duration-150 py-2 px-3 rounded-xl whitespace-nowrap min-h-[44px]"
               onClick={load}
               disabled={loading}
             >

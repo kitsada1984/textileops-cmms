@@ -6,7 +6,7 @@ export function CenterCheckTabs({ activeSubTab, setActiveSubTab, editingId, form
         <button
           type="button"
           onClick={() => setActiveSubTab('history')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all min-h-[36px] flex-shrink-0 whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap ${
             activeSubTab === 'history'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'

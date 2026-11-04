@@ -117,7 +117,7 @@ export default function MachinesMobileView({ logic }) {
           type="button"
           onClick={load}
           disabled={loading}
-          className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-500 active:scale-90 transition-transform ml-auto flex-shrink-0 min-w-[38px] min-h-[38px] flex items-center justify-center shadow-2xs"
+          className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-500 active:scale-90 transition-transform ml-auto flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-2xs"
           title="รีเฟรชข้อมูล"
           aria-label="รีเฟรชข้อมูล"
         >
@@ -340,7 +340,7 @@ export default function MachinesMobileView({ logic }) {
                       <button
                         type="button"
                         onClick={() => del(m._id || m.id)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200/60 dark:border-slate-700/60 active:scale-95 transition-all min-w-[34px] min-h-[34px] flex items-center justify-center shadow-2xs"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200/60 dark:border-slate-700/60 active:scale-95 transition-all min-w-[44px] min-h-[44px] flex items-center justify-center shadow-2xs"
                         title="ลบ"
                       >
                         <Trash2 size={14} />

@@ -91,6 +91,7 @@ html.dark {
     @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm
            transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
            disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap;
+    min-height: 44px;
     letter-spacing: 0.01em;
   }
   .btn-primary {
@@ -145,12 +146,12 @@ html.dark {
   }
 
   .btn-touch-target {
-    @apply min-h-[38px] min-w-[38px] rounded-xl flex items-center justify-center;
+    @apply min-h-[44px] min-w-[44px] rounded-xl flex items-center justify-center;
   }
 
   .btn-mobile-toolbar {
     @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold
-           min-h-[38px] transition-all duration-150 active:scale-95 whitespace-nowrap cursor-pointer select-none;
+           min-h-[44px] transition-all duration-150 active:scale-95 whitespace-nowrap cursor-pointer select-none;
   }
 
   .btn-fab {

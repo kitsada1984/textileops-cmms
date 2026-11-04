@@ -184,7 +184,7 @@ export default function PMMonthlyPrintModal({
             <button
               type="button"
               onClick={() => setViewMode('timeline')}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[44px] ${
                 viewMode === 'timeline'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -198,7 +198,7 @@ export default function PMMonthlyPrintModal({
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[44px] ${
                 viewMode === 'list'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -214,7 +214,7 @@ export default function PMMonthlyPrintModal({
             type="button"
             onClick={handleDownloadPdf}
             disabled={downloading}
-            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0 min-h-[36px]"
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0 min-h-[44px]"
             title="ดาวน์โหลดเป็นไฟล์ PDF"
           >
             {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
@@ -225,7 +225,7 @@ export default function PMMonthlyPrintModal({
           <button
             type="button"
             onClick={handlePrint}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shrink-0 min-h-[36px]"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shrink-0 min-h-[44px]"
             title="พิมพ์เอกสารออกเครื่องพิมพ์หรือ PDF"
           >
             <Printer size={15} />
@@ -236,7 +236,7 @@ export default function PMMonthlyPrintModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 sm:p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer shrink-0 ml-auto sm:ml-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer shrink-0 ml-auto sm:ml-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="ปิดหน้าต่าง (Esc)"
           >
             <X size={18} />

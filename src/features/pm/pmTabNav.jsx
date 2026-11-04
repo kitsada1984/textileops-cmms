@@ -6,7 +6,7 @@ export function PMTabNav({ activeTab, setActiveTab, displayRows }) {
         <button
           type="button"
           onClick={() => setActiveTab('plan')}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'plan'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -25,7 +25,7 @@ export function PMTabNav({ activeTab, setActiveTab, displayRows }) {
         <button
           type="button"
           onClick={() => setActiveTab('center_check')}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'center_check'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -39,7 +39,7 @@ export function PMTabNav({ activeTab, setActiveTab, displayRows }) {
         <button
           type="button"
           onClick={() => setActiveTab('needle')}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'needle'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -53,7 +53,7 @@ export function PMTabNav({ activeTab, setActiveTab, displayRows }) {
         <button
           type="button"
           onClick={() => setActiveTab('log')}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'log'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
@@ -67,7 +67,7 @@ export function PMTabNav({ activeTab, setActiveTab, displayRows }) {
         <button
           type="button"
           onClick={() => setActiveTab('monthly_schedule')}
-          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[38px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-1 sm:flex-none min-w-[44%] sm:min-w-0 whitespace-nowrap ${
             activeTab === 'monthly_schedule'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
