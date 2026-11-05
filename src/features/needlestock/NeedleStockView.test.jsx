@@ -109,6 +109,17 @@ describe('NeedleStock characterization', () => {
     expect(screen.getAllByText('เบิกออก').length).toBeGreaterThan(0)
   })
 
+  it('shows the inventory toolbar with search and view switcher', async () => {
+    render(<NeedleStock />)
+    await screen.findAllByText('SET-A-01')
+
+    expect(
+      screen.getByPlaceholderText('ค้นหา: รหัสเครื่อง, รุ่นเข็ม, หมายเหตุ, ที่เก็บ')
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('การ์ด').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('ตาราง').length).toBeGreaterThan(0)
+  })
+
   it('switches to the ledger tab content on click', async () => {
     render(<NeedleStock />)
     await screen.findAllByText('SET-A-01')
