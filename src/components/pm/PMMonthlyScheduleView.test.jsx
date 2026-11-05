@@ -804,8 +804,9 @@ describe('Countdown Priority & Most Overdue First Scheduling Logic', () => {
     expect(overdueRes.days).toBeLessThan(0)
     expect(overdueRes.label).toMatch(/^เกิน \d+ วัน$/)
 
-    // Date today
-    const todayStr = new Date().toISOString().slice(0, 10)
+    // Date today (local calendar day — toISOString is UTC and flakes near midnight +07:00)
+    const now = new Date()
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     const todayRes = getPMCountdown(todayStr)
     expect(todayRes.color).toBe('yellow')
     expect(todayRes.days).toBe(0)
