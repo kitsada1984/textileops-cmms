@@ -77,4 +77,20 @@ describe('swap audit entry builder', () => {
     expect(JSON.parse(entry.NewValue).swapCols).toEqual(['Location', 'Machine_Ref'])
     expect(entry).toMatchSnapshot()
   })
+
+  it('preserves fallback and empty semantics on sparse input', () => {
+    const entry = buildSwapAuditEntry({
+      payload: { newIn: {}, newOut: {} },
+      sourceIn: {},
+      sourceOut: {},
+      meta: {},
+      inId: 'x',
+      outId: 'y',
+    })
+    const oldIn = JSON.parse(entry.OldValue).in
+    // serial has no '' fallback (dropped from JSON), others default to ''
+    expect(oldIn.serial).toBeUndefined()
+    expect(oldIn.mc).toBe('')
+    expect(entry.Comment).toBe('สลับกระบอก undefined (MC: —) กับ undefined (MC: —)')
+  })
 })
