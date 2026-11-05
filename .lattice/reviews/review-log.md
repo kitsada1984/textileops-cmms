@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Group-A batch (10 splits) + v1.3.247
+- **Scope**: 10 files, 1 extraction each + single release bump
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0 all, suite 127/958 green
+- **Strengths**: per-file commits, one bump/deploy; 3 boundary traps caught
+
 ## 2026-11-05 — Needle scanner-modal split + v1.3.246
 - **Scope**: 3 files + version bump, pure extraction (9 props incl. refs)
 - **Atoms**: clean-code, test-quality
