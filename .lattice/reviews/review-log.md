@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 11 (visual search results split)
+- **Scope**: results + hero + candidates blocks, verbatim + tests
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — modal 68 cleared, 13 tests green
+- **Strengths**: paren-depth matching after first-match truncation failed
+
 ## 2026-11-05 — Sub-25 batch 10 (needle normalize + alt-WO matcher)
 - **Scope**: needle set/log groups, alt-WO split + key-order proofs
 - **Atoms**: clean-code, architecture, test-quality
