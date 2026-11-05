@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — NeedleCondition stats split + v1.3.240
+- **Scope**: 3 files + version bump, pure extraction
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 119/940 green
+- **Strengths**: new view-test file green first run; 5 stale icons cleaned
+
 ## 2026-11-05 — PMPlan preview-modals split + v1.3.239
 - **Scope**: 4 files + version bump, pure extraction (2 modals)
 - **Atoms**: clean-code, test-quality
