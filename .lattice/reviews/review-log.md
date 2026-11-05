@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders handlers (edit/delete with behavior locks)
+- **Scope**: edit payload + tech diff + LINE notify + delete flow + tests
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — pre-commit hook caught a dropped import, fixed
+- **Strengths**: fire-and-forget LINE timing preserved verbatim
+
 ## 2026-11-06 — Auth hardening (fail-closed + salted dual-verify)
 - **Scope**: 3 functions files + tests, grilled approach executed
 - **Atoms**: secure-coding, clean-code, test-quality
