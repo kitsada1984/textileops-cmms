@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import NeedleCondition from './NeedleCondition'
 
@@ -86,5 +86,15 @@ describe('NeedleCondition characterization', () => {
     expect(await screen.findAllByText('SN-001')).not.toHaveLength(0)
     expect(screen.getAllByText('SN-002').length).toBeGreaterThan(0)
     expect(screen.getAllByText('ซีเรียล (Serial)').length).toBeGreaterThan(0)
+  })
+
+  it('opens the entry form modal from the toolbar button', async () => {
+    render(<NeedleCondition />)
+    await screen.findAllByText('SN-001')
+
+    fireEvent.click(screen.getByTitle('กรอกบันทึกสภาพเข็มด้วยตัวเอง'))
+
+    expect(await screen.findAllByText(/บันทึกสภาพเข็ม \(Needle Inspection\)/)).not.toHaveLength(0)
+    expect(screen.getAllByText('ยกเลิก').length).toBeGreaterThan(0)
   })
 })
