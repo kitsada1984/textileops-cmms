@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — Release v1.3.254 (auth hardening + handlers)
+- **Scope**: full suite green, bump-first-then-build, Pages deploy
+- **Atoms**: secure-coding, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: timezone flake fixed; live login 401 unchanged message
+- **Strengths**: deploy blocked on red, fixed before shipping
+
 ## 2026-11-06 — WorkOrders handlers (edit/delete with behavior locks)
 - **Scope**: edit payload + tech diff + LINE notify + delete flow + tests
 - **Atoms**: clean-code, test-quality
