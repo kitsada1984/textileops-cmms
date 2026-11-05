@@ -1070,6 +1070,13 @@ describe('Save Plan, Delete Month Plan, and Item Actions (Edit/Delete)', () => {
     expect(screen.getByText(/แก้ไขแผน: DA-306M/)).toBeInTheDocument()
   })
 
+  it('renders planned and actual timeline bars for scheduled items', async () => {
+    render(<PMMonthlyScheduleView machinesList={testMachines} />)
+
+    expect(screen.getByText('แผน: DA-306M')).toBeInTheDocument()
+    expect(screen.getAllByText(/จริง:/).length).toBeGreaterThan(0)
+  })
+
   it('renders machine code (MC) and countdown badge, but hides serial (KI) and location text from inline view while keeping them in tooltip', () => {
     const customMachines = [
       { mc: 'DA-306M', ki: '66936', location: 'GK3', type: 'D', countdownDays: -83, countdownLabel: 'เกิน 83 วัน', countdownColor: 'red' }
