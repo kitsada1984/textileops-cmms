@@ -58,6 +58,7 @@
    - `package.json` (`version`)
    - `public/sw.js` (`CACHE_NAME`)
 3. **Build Verification:** รัน `npm run build` เพื่อตรวจสอบว่าไม่มี Syntax Error หรือ Module Missing และสร้างโฟลเดอร์ `dist`
+   - **⚠️ ลำดับบังคับ: ต้อง Bump (ข้อ 2) ก่อน Build เสมอ** ห้าม build ก่อน bump เพราะ `dist` จะค้างเวอร์ชันเก่าแล้วถูก deploy ผิดเวอร์ชัน (เคยหลุด 2 รอบติด)
 4. **Git Commit & Push:** บันทึกการเปลี่ยนแปลงด้วย Semantic Commit Message และ Push ขึ้น GitHub (`origin/master`)
 5. **Cloudflare Pages Production Deploy:** รันคำสั่ง `npx wrangler pages deploy dist --project-name textileops-cmms` เพื่อ Deploy ขึ้นระบบจริง (`https://textileops-cmms.pages.dev`) *โดยต้องตรวจสอบว่า wrangler เชื่อมต่อกับ `kitsada1984@gmail.com` เสมอ*
 6. **Verify Live Chunk & Cache:** ตรวจสอบผ่าน `https://textileops-cmms.pages.dev/sw.js` ว่า Cache Name ตรงกับเวอร์ชันล่าสุด
