@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { DesignBomStats } from './designBomStats.jsx'
 import {
   Plus,
   Pencil,
@@ -8,7 +9,6 @@ import {
   SlidersHorizontal,
   FileSpreadsheet,
   Palette,
-  Cpu,
   Layers,
   FileText,
   Image as ImageIcon,
@@ -521,56 +521,8 @@ export default function DesignBom() {
   return (
     <div className="space-y-5">
       {/* ── HEADER & STATS ────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
-          <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รายการทั้งหมด</div>
-            <div className="text-xl font-black mt-0.5" style={{ color: 'var(--text-900)' }}>
-              {stats.total} <span className="text-xs font-normal text-slate-400">รายการ</span>
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
-            <Layers size={18} />
-          </div>
-        </div>
+      <DesignBomStats stats={stats} />
 
-        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
-          <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">เครื่องจักร (MC)</div>
-            <div className="text-xl font-black mt-0.5 text-blue-600 dark:text-blue-400">
-              {stats.uniqueMCs} <span className="text-xs font-normal text-slate-400">เครื่อง</span>
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
-            <Cpu size={18} />
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
-          <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">แบบงาน (Design)</div>
-            <div className="text-xl font-black mt-0.5 text-indigo-600 dark:text-indigo-400">
-              {stats.uniqueDesigns} <span className="text-xs font-normal text-slate-400">แบบ</span>
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold">
-            <Palette size={18} />
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center justify-between border border-slate-200 dark:border-slate-800">
-          <div>
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">รูปภาพเอกสาร</div>
-            <div className="text-xs font-black mt-1 text-emerald-600 dark:text-emerald-400 flex flex-col gap-0.5">
-              <span>📄 ปะหน้า: {stats.withCover} <span className="font-normal text-slate-400 text-[10px]">แบบ</span></span>
-              <span>📑 แต่งไกด์: {stats.withApp} <span className="font-normal text-slate-400 text-[10px]">แบบ</span></span>
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
-            <ImageIcon size={18} />
-          </div>
-        </div>
-      </div>
 
       {/* ── TOOLBAR ───────────────────────────────────────────── */}
       <div className="space-y-2">
