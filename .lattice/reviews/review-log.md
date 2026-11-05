@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 6 (pm plan-match + sync filter + apply)
+- **Scope**: pm monthly sync pipeline + helpers, pure extraction
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 26/68/70/90-filter cleared, 52 tests green
+- **Strengths**: caught case-change trap (no toUpperCase reuse) before commit
+
 ## 2026-11-05 — Sub-25 batch 5 (history modal + compare + machine resolve)
 - **Scope**: modal main/arrow, compare/filter utils, machine resolver + helpers
 - **Atoms**: clean-code, architecture, test-quality
