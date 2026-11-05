@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Swap summarizer split + v1.3.222 (af76986)
+- **Scope**: 2 files + version bump, pure extraction
+- **Atoms**: clean-code
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — snapshot unchanged, edge test proves undefined-drop parity
+- **Strengths**: JS default-param trap caught by the new edge test, not production
+
 ## 2026-11-05 — CenterCheck toolbar extraction
 - **Scope**: 2 files, presentation slice (verbatim move + import back)
 - **Atoms**: clean-code
