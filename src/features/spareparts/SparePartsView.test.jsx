@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import SpareParts from './SpareParts'
 
@@ -62,5 +62,14 @@ describe('SpareParts characterization', () => {
 
     expect(await screen.findAllByText('รายการอะไหล่ทั้งหมด')).not.toHaveLength(0)
     expect(screen.getAllByText('มูลค่าสต๊อกรวม').length).toBeGreaterThan(0)
+  })
+
+  it('opens the add/edit modal from the add button', async () => {
+    render(<SpareParts />)
+    await screen.findAllByText('รายการอะไหล่ทั้งหมด')
+
+    fireEvent.click(screen.getByText('sp_add'))
+
+    expect(await screen.findAllByText(/เพิ่มข้อมูลอะไหล่ใหม่/)).not.toHaveLength(0)
   })
 })
