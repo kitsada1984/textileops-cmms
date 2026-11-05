@@ -188,4 +188,13 @@ describe('CenterCheck characterization', () => {
 
     expect(await screen.findAllByText(/รูปถ่ายสภาพเข็ม \/ ชิ้นส่วน/)).not.toHaveLength(0)
   })
+
+  it('shows the page header with entry actions', async () => {
+    render(<CenterCheck />)
+    await screen.findAllByText('CS-S-001')
+
+    expect(screen.getAllByText('บันทึกประวัติการตั้งศูนย์เครื่องถักกลม').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('เช็คศูนย์ Single Jersey').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('เช็คศูนย์ Double Jersey').length).toBeGreaterThan(0)
+  })
 })
