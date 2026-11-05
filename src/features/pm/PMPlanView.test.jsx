@@ -36,6 +36,7 @@ const seedPlans = [
     Last_PM_Date: '2026-10-01',
     Next_PM_Date: '2026-12-30',
     Status: 'SCHEDULED',
+    ImageUrl: 'https://example.com/pm1.jpg',
   },
 ]
 
@@ -164,6 +165,24 @@ describe('PMPlan characterization', () => {
     fireEvent.click(screen.getAllByText('MC-01')[0])
 
     expect(await screen.findAllByText('dr_main_info')).not.toHaveLength(0)
+  })
+
+  it('opens the pdf preview modal from the row pdf button', async () => {
+    render(<PMPlan />)
+    await screen.findAllByText('MC-01')
+
+    fireEvent.click(screen.getAllByTitle('ดูเอกสาร PDF และพิมพ์')[0])
+
+    expect(await screen.findAllByText(/พิมพ์เอกสาร \/ บันทึก PDF/)).not.toHaveLength(0)
+  })
+
+  it('opens the image preview modal from the plan thumbnail', async () => {
+    render(<PMPlan />)
+    await screen.findAllByText('MC-01')
+
+    fireEvent.click(screen.getByAltText('แผน PM MC-01'))
+
+    expect(await screen.findAllByText(/แผน PM เครื่อง/)).not.toHaveLength(0)
   })
 
   it('search narrows the plan rows', async () => {

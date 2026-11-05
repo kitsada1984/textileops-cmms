@@ -32,9 +32,6 @@ import PMLog from './PMLog'
 import CenterCheck from './CenterCheck'
 import NeedleCondition from './NeedleCondition'
 import PMMonthlyScheduleView from '../../components/pm/PMMonthlyScheduleView'
-import PdfPreviewModal from '../../components/ui/PdfPreviewModal'
-import { generatePMPlanPdfProps } from '../../utils/pdfDocGenerators'
-import ImagePreviewModal from '../../components/ui/ImagePreviewModal'
 import ImageThumbnail from '../../components/ui/ImageThumbnail'
 
 import {
@@ -68,6 +65,8 @@ import { PMPlanTable } from './pmPlanTable.jsx'
 import { PMSyncModal } from './pmSyncModal.jsx'
 import { PMEditModal } from './pmEditModal.jsx'
 import { PMDetailDrawer } from './pmDetailDrawer.jsx'
+import { PMPdfModal } from './pmPdfModal.jsx'
+import { PMImageModal } from './pmImageModal.jsx'
 import { PMTypeCards } from './pmTypeCards.jsx'
 
 
@@ -1301,23 +1300,10 @@ export default function PMPlan({ defaultTab = 'plan' }) {
       )}
 
       {/* ── PDF PREVIEW & PRINT MODAL ───────────────────────── */}
-      {pdfItem && (
-        <PdfPreviewModal
-          open={!!pdfItem}
-          onClose={() => setPdfItem(null)}
-          {...generatePMPlanPdfProps(pdfItem)}
-        />
-      )}
+      <PMPdfModal pdfItem={pdfItem} setPdfItem={setPdfItem} />
 
-      {/* ── IMAGE PREVIEW MODAL ───────────────────────── */}
-      {previewImageModal && (
-        <ImagePreviewModal
-          open={Boolean(previewImageModal)}
-          onClose={() => setPreviewImageModal(null)}
-          url={previewImageModal.url}
-          title={previewImageModal.title}
-        />
-      )}
+      <PMImageModal previewImageModal={previewImageModal} setPreviewImageModal={setPreviewImageModal} />
+
     </div>
   )
 }
