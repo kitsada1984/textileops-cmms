@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 3 (reports/repair/spare/stock arrows+mains)
+- **Scope**: 12 extractions, verbatim JSX + pure helpers, residual-diff 0
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — all 7 gate warnings cleared, 11 files/33 tests green
+- **Strengths**: characterization-first every split; no logic change
+
 ## 2026-11-05 — Logic-safe batch (row + pure helpers) + v1.3.253
 - **Scope**: 3 extractions, zero-logic verified + single release bump
 - **Atoms**: clean-code, test-quality
