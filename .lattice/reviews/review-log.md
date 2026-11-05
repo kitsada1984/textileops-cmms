@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — PMPlan drawer split + v1.3.238
+- **Scope**: 3 files + version bump, pure extraction (11 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/937 green
+- **Strengths**: 9 missed identifiers caught in one eslint pass; row-click coverage added
+
 ## 2026-11-05 — PMPlan edit-modal split + v1.3.237
 - **Scope**: 3 files + version bump, pure extraction (11 props)
 - **Atoms**: clean-code, test-quality
