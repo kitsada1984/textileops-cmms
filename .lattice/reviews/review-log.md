@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Needle history drawer split + v1.3.243
+- **Scope**: 3 files + version bump, pure extraction (5 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 119/943 green
+- **Strengths**: history-button coverage added; 2 missed identifiers caught fast
+
 ## 2026-11-05 — NeedleCondition form split + v1.3.242
 - **Scope**: 3 files + version bump, pure extraction (17 props)
 - **Atoms**: clean-code, test-quality
