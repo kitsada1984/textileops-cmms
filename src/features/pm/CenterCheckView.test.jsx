@@ -156,4 +156,13 @@ describe('CenterCheck characterization', () => {
 
     expect(await screen.findAllByText(/ตั้งค่ามาตรฐานการตรวจเช็คศูนย์/)).not.toHaveLength(0)
   })
+
+  it('opens the SQL-schema modal from the toolbar button', async () => {
+    render(<CenterCheck />)
+    await screen.findAllByText('CS-S-001')
+
+    fireEvent.click(screen.getByTitle('ดูคำสั่ง SQL สำหรับสร้างตารางบน Supabase'))
+
+    expect(await screen.findAllByText(/คำสั่ง SQL สร้างตารางในฐานข้อมูล Supabase/)).not.toHaveLength(0)
+  })
 })
