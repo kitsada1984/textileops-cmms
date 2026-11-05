@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 4 (swap/audit/app/monthly logic)
+- **Scope**: 4 named targets + helpers, pure + verbatim JSX, characterization-first
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 235/176/97/90 all ≤25, 8 files/81 tests green
+- **Strengths**: `?.` counts toward complexity — split helpers to stay ≤25
+
 ## 2026-11-05 — Sub-25 batch 3 (reports/repair/spare/stock arrows+mains)
 - **Scope**: 12 extractions, verbatim JSX + pure helpers, residual-diff 0
 - **Atoms**: clean-code, test-quality
