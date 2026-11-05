@@ -79,4 +79,31 @@ describe('FormField - React Composition Patterns', () => {
 
     expect(screen.getByLabelText('เปิดใช้งานสถานะนี้')).toBeChecked()
   })
+
+  it('renders textarea and boolean legacy types', () => {
+    const setForm = vi.fn()
+
+    const { rerender } = render(
+      <FormField id="notes" label="หมายเหตุ" rows={4} form={{ notes: 'x' }} setForm={setForm} />
+    )
+    expect(screen.getByText('หมายเหตุ')).toBeInTheDocument()
+
+    rerender(
+      <FormField id="flag" label="ธง" type="boolean" form={{ flag: true }} setForm={setForm} />
+    )
+    expect(screen.getByText('ใช่')).toBeInTheDocument()
+  })
+
+  it('coerces number inputs while keeping empty blank', () => {
+    const setForm = vi.fn()
+
+    render(
+      <FormField id="qty" label="จำนวน" type="number" form={{ qty: 3 }} setForm={setForm} />
+    )
+    const input = screen.getByLabelText('จำนวน')
+    expect(input).toHaveValue(3)
+
+    fireEvent.change(input, { target: { value: '' } })
+    expect(setForm).toHaveBeenCalled()
+  })
 })

@@ -2,20 +2,14 @@ import { createContext, useContext } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useWebBuilderColumn } from '../../hooks/useWebBuilderMenu'
+import { normalizeFieldOptions } from './formFieldUtils'
+import { resolveFieldConfig, FormSelectInput, FormTextAreaInput, FormBooleanInput, FormTextInput } from './formFieldInputs'
 
 /* ── Context ─────────────────────────────────────────────────────────────── */
 const FormFieldContext = createContext(null)
 
 export function useFormFieldContext() {
   return useContext(FormFieldContext)
-}
-
-function normalizeOptions(opts = []) {
-  return opts.map(o => (
-    typeof o === 'string'
-      ? { label: o, value: o }
-      : { label: o.label ?? o.value ?? o.id, value: o.value ?? o.label ?? o.id }
-  )).filter(o => o.value !== undefined && o.value !== null)
 }
 
 /* ── Explicit Compound Variants ─────────────────────────────────────────── */
@@ -39,7 +33,7 @@ export function FormFieldInput({ className = '', id, ...props }) {
 export function FormFieldSelect({ children, options = [], className = '', id, ...props }) {
   const ctx = useFormFieldContext()
   const targetId = id || ctx?.fieldId
-  const norm = normalizeOptions(options)
+  const norm = normalizeFieldOptions(options)
   return (
     <select id={targetId} className={`select ${className}`} {...props}>
       {children || (
@@ -121,19 +115,9 @@ export default function FormField({
   }
 
   const wbCol = useBuilder && pathname ? useWebBuilderColumn(pathname, id) : null
-  const val = form ? form[id] ?? '' : undefined
   const set = (v) => onChange ? onChange(v) : setForm ? setForm(p => ({ ...p, [id]: v })) : undefined
-  const fieldId = id ? `ff-${String(pathname || '').replace(/\W+/g, '')}-${id}` : undefined
-
-  const effectiveType = wbCol?.type || (opts ? 'select' : rows ? 'textarea' : type)
-  const effectiveOptions = effectiveType === 'select'
-    ? normalizeOptions((wbCol?.options?.length ? wbCol.options : opts) || [])
-    : []
-  const effectiveRows = Number(wbCol?.height || rows || 2)
-  const effectiveLabel = wbCol?.label
-    ? `${wbCol.label}${wbCol.required ? ' *' : ''}`
-    : label
-  const currentOptionExists = effectiveOptions.some(o => String(o.value) === String(val))
+  const { val, fieldId, effectiveType, effectiveOptions, effectiveRows, effectiveLabel: wbLabel, currentOptionExists } = resolveFieldConfig({ wbCol, opts, rows, type, form, id, pathname })
+  const effectiveLabel = wbLabel !== undefined ? wbLabel : label
 
   const contextValue = { fieldId, label: effectiveLabel, id, value: val, onChange: set }
   const [parent] = useAutoAnimate()
@@ -147,28 +131,12 @@ export default function FormField({
           <>
             {effectiveLabel && <label className="label" htmlFor={fieldId}>{effectiveLabel}</label>}
             {effectiveType === 'select'
-              ? <select id={fieldId} className="select" value={val ?? ''} onChange={e => set(e.target.value)}>
-                  <option value="">—</option>
-                  {val !== '' && val !== undefined && !currentOptionExists && <option value={val}>{val}</option>}
-                  {effectiveOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+              ? <FormSelectInput fieldId={fieldId} val={val} set={set} effectiveOptions={effectiveOptions} currentOptionExists={currentOptionExists} />
               : effectiveType === 'textarea'
-                ? <textarea id={fieldId} className="input" rows={effectiveRows} placeholder={placeholder} value={val ?? ''} onChange={e => set(e.target.value)} />
+                ? <FormTextAreaInput fieldId={fieldId} effectiveRows={effectiveRows} placeholder={placeholder} val={val} set={set} />
                 : effectiveType === 'boolean'
-                  ? <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-700)' }}>
-                      <input
-                        type="checkbox"
-                        checked={!!val}
-                        onChange={e => set(e.target.checked)}
-                        style={{ width: 16, height: 16 }}
-                      />
-                      <span>{val ? 'ใช่' : 'ไม่ใช่'}</span>
-                    </label>
-                  : <input id={fieldId} className="input" type={effectiveType} placeholder={placeholder} value={val ?? ''}
-                      onChange={e => set(effectiveType === 'number'
-                        ? (e.target.value === '' ? '' : +e.target.value)
-                        : e.target.value
-                      )} />
+                  ? <FormBooleanInput val={val} set={set} />
+                  : <FormTextInput fieldId={fieldId} effectiveType={effectiveType} placeholder={placeholder} val={val} set={set} />
             }
           </>
         )}
