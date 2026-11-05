@@ -26,6 +26,13 @@ import {
 } from '../utils/cylinderHistory'
 import { CylinderAPI } from '../api/entities'
 import { getCylinderImageUrl, stripCylinderImageMeta } from '../utils/cylinderImage'
+import {
+  parseFallbackSerials,
+  resolveSwapSerial,
+  buildEnrichedCylinder,
+  applyReciprocalLocation,
+  buildAfterSwap,
+} from './swapReconstruct'
 
 /* ── Column Definitions matching SwapCylinder.jsx ──────────────────────── */
 const SWAP_COL_DEFS = [
@@ -331,35 +338,10 @@ export function reconstructSwapCylinders(item, cylinders = []) {
   const afterOut = item.snapshotOutAfter || item.out || {}
   const afterIn = item.snapshotInAfter || item.in || {}
 
-  let fallbackOutSerial = ''
-  let fallbackInSerial = ''
-  if (item.raw?.RecordID && (item.raw.RecordID.includes('<->') || item.raw.RecordID.includes('↔'))) {
-    const parts = item.raw.RecordID.split(/<->|↔/).map((s) => s.trim())
-    if (parts.length >= 2) {
-      fallbackOutSerial = parts[0]
-      fallbackInSerial = parts[1]
-    }
-  }
+  const { fallbackOutSerial, fallbackInSerial } = parseFallbackSerials(item)
 
-  const outSerial =
-    rawOut.Serial_NOW ||
-    item.out?.serial ||
-    rawOut.serial ||
-    item.out?.Serial_NOW ||
-    afterOut.Serial_NOW ||
-    afterOut.serial ||
-    fallbackOutSerial ||
-    ''
-
-  const inSerial =
-    rawIn.Serial_NOW ||
-    item.in?.serial ||
-    rawIn.serial ||
-    item.in?.Serial_NOW ||
-    afterIn.Serial_NOW ||
-    afterIn.serial ||
-    fallbackInSerial ||
-    ''
+  const outSerial = resolveSwapSerial(rawOut, item.out, afterOut, fallbackOutSerial)
+  const inSerial = resolveSwapSerial(rawIn, item.in, afterIn, fallbackInSerial)
 
   const masterOut =
     findCylinderBySerial(outSerial, cylinders) ||
@@ -370,203 +352,13 @@ export function reconstructSwapCylinders(item, cylinders = []) {
     findCylinderBySerial(rawIn.Serial_OLD || item.in?.Serial_OLD, cylinders)
 
   // Base state before swap - enriched with master cylinder attributes by serial
-  const cylOut = {
-    Serial_NOW:
-      rawOut.Serial_NOW ||
-      item.out?.serial ||
-      rawOut.serial ||
-      masterOut?.Serial_NOW ||
-      outSerial ||
-      '',
-    Serial_OLD:
-      rawOut.Serial_OLD ||
-      item.out?.Serial_OLD ||
-      masterOut?.Serial_OLD ||
-      rawOut.serial ||
-      item.out?.serial ||
-      masterOut?.Serial_NOW ||
-      '',
-    Standard:
-      rawOut.Standard ||
-      rawOut.standard ||
-      item.out?.standard ||
-      masterOut?.Standard ||
-      '',
-    NewMC:
-      rawOut.NewMC ||
-      rawOut.mc ||
-      item.out?.mc ||
-      masterOut?.NewMC ||
-      '',
-    Location:
-      rawOut.Location ||
-      rawOut.loc ||
-      item.out?.loc ||
-      masterOut?.Location ||
-      '',
-    Type:
-      rawOut.Type ||
-      rawOut.type ||
-      item.out?.type ||
-      masterOut?.Type ||
-      '',
-    Gauge:
-      rawOut.Gauge ||
-      rawOut.gauge ||
-      item.out?.gauge ||
-      masterOut?.Gauge ||
-      '',
-    Needle:
-      rawOut.Needle ||
-      rawOut.needle ||
-      item.out?.needle ||
-      masterOut?.Needle ||
-      '',
-    Diameter:
-      rawOut.Diameter ||
-      rawOut.dia ||
-      item.out?.dia ||
-      masterOut?.Diameter ||
-      '',
-    Feeder:
-      rawOut.Feeder ||
-      rawOut.feeder ||
-      item.out?.feeder ||
-      masterOut?.Feeder ||
-      '',
-    Manufacturer:
-      rawOut.Manufacturer ||
-      rawOut.mfr ||
-      item.out?.mfr ||
-      masterOut?.Manufacturer ||
-      '',
-    Machine_Ref:
-      rawOut.Machine_Ref ||
-      rawOut.machineRef ||
-      item.out?.machineRef ||
-      masterOut?.Machine_Ref ||
-      '',
-    ImageUrl:
-      rawOut.ImageUrl ||
-      masterOut?.ImageUrl ||
-      '',
-    Comment:
-      rawOut.Comment ||
-      item.comment ||
-      masterOut?.Comment ||
-      '',
-  }
+  const cylOut = buildEnrichedCylinder(rawOut, item.out, masterOut, outSerial, item)
+  const cylIn = buildEnrichedCylinder(rawIn, item.in, masterIn, inSerial, item)
 
-  const cylIn = {
-    Serial_NOW:
-      rawIn.Serial_NOW ||
-      item.in?.serial ||
-      rawIn.serial ||
-      masterIn?.Serial_NOW ||
-      inSerial ||
-      '',
-    Serial_OLD:
-      rawIn.Serial_OLD ||
-      item.in?.Serial_OLD ||
-      masterIn?.Serial_OLD ||
-      rawIn.serial ||
-      item.in?.serial ||
-      masterIn?.Serial_NOW ||
-      '',
-    Standard:
-      rawIn.Standard ||
-      rawIn.standard ||
-      item.in?.standard ||
-      masterIn?.Standard ||
-      '',
-    NewMC:
-      rawIn.NewMC ||
-      rawIn.mc ||
-      item.in?.mc ||
-      masterIn?.NewMC ||
-      '',
-    Location:
-      rawIn.Location ||
-      rawIn.loc ||
-      item.in?.loc ||
-      masterIn?.Location ||
-      '',
-    Type:
-      rawIn.Type ||
-      rawIn.type ||
-      item.in?.type ||
-      masterIn?.Type ||
-      '',
-    Gauge:
-      rawIn.Gauge ||
-      rawIn.gauge ||
-      item.in?.gauge ||
-      masterIn?.Gauge ||
-      '',
-    Needle:
-      rawIn.Needle ||
-      rawIn.needle ||
-      item.in?.needle ||
-      masterIn?.Needle ||
-      '',
-    Diameter:
-      rawIn.Diameter ||
-      rawIn.dia ||
-      item.in?.dia ||
-      masterIn?.Diameter ||
-      '',
-    Feeder:
-      rawIn.Feeder ||
-      rawIn.feeder ||
-      item.in?.feeder ||
-      masterIn?.Feeder ||
-      '',
-    Manufacturer:
-      rawIn.Manufacturer ||
-      rawIn.mfr ||
-      item.in?.mfr ||
-      masterIn?.Manufacturer ||
-      '',
-    Machine_Ref:
-      rawIn.Machine_Ref ||
-      rawIn.machineRef ||
-      item.in?.machineRef ||
-      masterIn?.Machine_Ref ||
-      '',
-    ImageUrl:
-      rawIn.ImageUrl ||
-      masterIn?.ImageUrl ||
-      '',
-    Comment:
-      rawIn.Comment ||
-      item.comment ||
-      masterIn?.Comment ||
-      '',
-  }
-
-  // Reciprocal location inference if location is swapped
-  if (swapCols.includes('Location')) {
-    if (!cylOut.Location && cylIn.Location) cylOut.Location = cylIn.Location
-    if (!cylIn.Location && cylOut.Location) cylIn.Location = cylOut.Location
-  }
+  applyReciprocalLocation(cylOut, cylIn, swapCols)
 
   // After swap states
-  const afterSwap = {
-    newOut: {
-      ...cylOut,
-      Location: afterOut.Location || afterOut.loc || (swapCols.includes('Location') ? cylIn.Location : cylOut.Location),
-      Machine_Ref: afterOut.Machine_Ref || afterOut.machineRef || (swapCols.includes('Machine_Ref') ? cylIn.Machine_Ref : cylOut.Machine_Ref),
-      Feeder: afterOut.Feeder || afterOut.feeder || (swapCols.includes('Feeder') ? cylIn.Feeder : cylOut.Feeder),
-      NewMC: afterOut.NewMC || afterOut.mc || cylOut.NewMC,
-    },
-    newIn: {
-      ...cylIn,
-      Location: afterIn.Location || afterIn.loc || (swapCols.includes('Location') ? cylOut.Location : cylIn.Location),
-      Machine_Ref: afterIn.Machine_Ref || afterIn.machineRef || (swapCols.includes('Machine_Ref') ? cylOut.Machine_Ref : cylIn.Machine_Ref),
-      Feeder: afterIn.Feeder || afterIn.feeder || (swapCols.includes('Feeder') ? cylOut.Feeder : cylIn.Feeder),
-      NewMC: afterIn.NewMC || afterIn.mc || cylIn.NewMC,
-    },
-  }
+  const afterSwap = buildAfterSwap(cylOut, cylIn, afterOut, afterIn, swapCols)
 
   return { cylOut, cylIn, afterSwap, swapCols }
 }
