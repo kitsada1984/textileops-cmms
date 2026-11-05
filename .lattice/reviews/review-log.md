@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — Auth hardening (fail-closed + salted dual-verify)
+- **Scope**: 3 functions files + tests, grilled approach executed
+- **Atoms**: secure-coding, clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 9 auth tests green, prod secret verified set
+- **Strengths**: rehash failures only warn, never block login
+
 ## 2026-11-05 — Grill batch (auth + hashing + workorders decisions)
 - **Scope**: 3 blocked items, interview only, zero code touched
 - **Atoms**: secure-coding, collaborative-judgment
