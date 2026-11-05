@@ -1,4 +1,5 @@
-import { FileText, History, Pencil, QrCode, Tag, Trash2 } from 'lucide-react'
+import { FormFieldInput } from './formFieldInput.jsx'
+import { CylinderCardActions } from './cylinderCardActions.jsx'
 import { useWebBuilderColumn } from '../../hooks/useWebBuilderMenu'
 import StatusBadge from '../../components/ui/StatusBadge'
 import ImageThumbnail from '../../components/ui/ImageThumbnail'
@@ -194,52 +195,8 @@ export function FormField({ label, id, type = 'text', opts, form, onChange, plac
   return (
     <div>
       <label className="label" htmlFor={fieldId}>{effectiveLabel}</label>
-      {effectiveType === 'select'
-        ? (
-          <select id={fieldId} className="select" value={val} onChange={handleChange}>
-            <option value="">—</option>
-            {val !== '' && !currentOptionExists && <option value={val}>{val}</option>}
-            {effectiveOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        )
-        : effectiveType === 'textarea'
-          ? (
-            <textarea
-              id={fieldId}
-              className="input"
-              rows={effectiveRows}
-              placeholder={placeholder}
-              value={val}
-              onChange={handleChange}
-              onPaste={handlePaste}
-            />
-          )
-          : effectiveType === 'boolean'
-            ? (
-              <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={!!val}
-                  onChange={(e) => onChange(id, e.target.checked)}
-                  style={{ width: 16, height: 16 }}
-                />
-                <span>{val ? 'Yes' : 'No'}</span>
-              </label>
-            )
-            : (
-              <input
-                id={fieldId}
-                className="input"
-                type={effectiveType}
-                placeholder={placeholder}
-                value={val}
-                onChange={(e) => onChange(id, effectiveType === 'number'
-                  ? (e.target.value === '' ? '' : +e.target.value)
-                  : e.target.value
-                )}
-                onPaste={effectiveType !== 'number' ? handlePaste : undefined}
-              />
-            )}
+      <FormFieldInput effectiveType={effectiveType} fieldId={fieldId} val={val} effectiveOptions={effectiveOptions} currentOptionExists={currentOptionExists} effectiveRows={effectiveRows} placeholder={placeholder} handleChange={handleChange} handlePaste={handlePaste} id={id} onChange={onChange} />
+
     </div>
   )
 }
@@ -328,88 +285,8 @@ export function CylinderCard({
       </div>
 
       {/* Footer: Serial OLD + Action Buttons */}
-      <div
-        className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <span className="text-[10px] font-mono text-slate-400 truncate max-w-[150px]">
-          {c.Serial_OLD ? `OLD: ${c.Serial_OLD}` : ''}
-        </span>
+      <CylinderCardActions c={c} canEdit={canEdit} canDelete={canDelete} onPdf={onPdf} onQr={onQr} onHistory={onHistory} onPrintTag={onPrintTag} onPrintMachineTag={onPrintMachineTag} onEdit={onEdit} onDelete={onDelete} />
 
-        <div className="flex items-center gap-1">
-          {onPrintMachineTag && (
-            <button
-              type="button"
-              onClick={() => onPrintMachineTag(c)}
-              className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition-colors border border-emerald-200 dark:border-emerald-900/50"
-              title="พิมพ์ Tack (เครื่องปัจจุบัน 20x7cm)"
-              aria-label="พิมพ์ Tack"
-            >
-              <Tag size={14} />
-            </button>
-          )}
-          {onPrintTag && (
-            <button
-              type="button"
-              onClick={() => onPrintTag(c)}
-              className="p-1.5 rounded-lg text-amber-600 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition-colors border border-amber-200 dark:border-amber-900/50"
-              title="พิมพ์ Tack Spare (A4 แนวนอน)"
-              aria-label="พิมพ์ Tack Spare"
-            >
-              <Tag size={14} />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => onPdf(c)}
-            className="p-1.5 rounded-lg text-rose-600 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 transition-colors border border-rose-200 dark:border-rose-900/50"
-            title="พิมพ์ PDF"
-          >
-            <FileText size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => onQr(c, e)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 transition-colors"
-            title="QR Code"
-          >
-            <QrCode size={14} />
-          </button>
-          {onHistory && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onHistory(c)
-              }}
-              className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors border border-indigo-200 dark:border-indigo-800/60"
-              title="ประวัติการเปลี่ยนกระบอก"
-            >
-              <History size={14} />
-            </button>
-          )}
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => onEdit(c)}
-              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-blue-600 bg-slate-100 dark:bg-slate-800 transition-colors"
-              title="แก้ไข"
-            >
-              <Pencil size={14} />
-            </button>
-          )}
-          {canDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(c._id || c.id)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 bg-slate-100 dark:bg-slate-800 transition-colors"
-              title="ลบ"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
