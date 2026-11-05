@@ -33,43 +33,55 @@ const KNOWN_NUMERIC_FIELDS = new Set([
   'amount',
 ])
 
-function getBadFieldFromError(error, payload) {
+function matchTimestampField(msg, payload) {
+  const quotedMatch = msg.match(/"([^"]*)"/)
+  const badVal = quotedMatch ? quotedMatch[1].trim() : ''
+  if (badVal) {
+    for (const [k, v] of Object.entries(payload)) {
+      if (String(v).trim() === badVal) return k
+    }
+  }
+  for (const [k, v] of Object.entries(payload)) {
+    if (typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v.trim())) return k
+  }
+  for (const k of ['StartTime', 'EndTime', 'DateStart', 'DateEnd', 'time', 'start_time', 'end_time']) {
+    if (Object.hasOwn(payload, k)) return k
+  }
+  return null
+}
+
+function matchNumericField(msg, payload) {
+  const quotedMatch = msg.match(/"([^"]*)"/)
+  const badVal = quotedMatch ? quotedMatch[1].trim() : ''
+  if (badVal) {
+    for (const [k, v] of Object.entries(payload)) {
+      if (String(v).trim() === badVal) return k
+    }
+  }
+  // Check if any known numeric field has empty string or non-numeric string
+  for (const [k, v] of Object.entries(payload)) {
+    if (v === '' && KNOWN_NUMERIC_FIELDS.has(k)) return k
+    if (typeof v === 'string' && v !== '' && KNOWN_NUMERIC_FIELDS.has(k) && isNaN(Number(v))) return k
+  }
+  for (const k of ['ITEM', 'Duration', 'WorkingHoursDecimal', 'GrossDurationHours', 'LostDurationHours', 'SundayDurationHours']) {
+    if (Object.hasOwn(payload, k)) return k
+  }
+  return null
+}
+
+export function getBadFieldFromError(error, payload) {
   const msg = String(error?.message || '')
-  
+
   // Timestamp / date syntax error
   if (msg.toLowerCase().includes('invalid input syntax for type timestamp') || msg.toLowerCase().includes('invalid input syntax for type date')) {
-    const quotedMatch = msg.match(/"([^"]*)"/)
-    const badVal = quotedMatch ? quotedMatch[1].trim() : ''
-    if (badVal) {
-      for (const [k, v] of Object.entries(payload)) {
-        if (String(v).trim() === badVal) return k
-      }
-    }
-    for (const [k, v] of Object.entries(payload)) {
-      if (typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v.trim())) return k
-    }
-    for (const k of ['StartTime', 'EndTime', 'DateStart', 'DateEnd', 'time', 'start_time', 'end_time']) {
-      if (Object.hasOwn(payload, k)) return k
-    }
+    const found = matchTimestampField(msg, payload)
+    if (found) return found
   }
 
   // Numeric / float / integer syntax error
   if (msg.toLowerCase().includes('invalid input syntax for type numeric') || msg.toLowerCase().includes('invalid input syntax for type double precision') || msg.toLowerCase().includes('invalid input syntax for type integer') || msg.toLowerCase().includes('invalid input syntax for type bigint')) {
-    const quotedMatch = msg.match(/"([^"]*)"/)
-    const badVal = quotedMatch ? quotedMatch[1].trim() : ''
-    if (badVal) {
-      for (const [k, v] of Object.entries(payload)) {
-        if (String(v).trim() === badVal) return k
-      }
-    }
-    // Check if any known numeric field has empty string or non-numeric string
-    for (const [k, v] of Object.entries(payload)) {
-      if (v === '' && KNOWN_NUMERIC_FIELDS.has(k)) return k
-      if (typeof v === 'string' && v !== '' && KNOWN_NUMERIC_FIELDS.has(k) && isNaN(Number(v))) return k
-    }
-    for (const k of ['ITEM', 'Duration', 'WorkingHoursDecimal', 'GrossDurationHours', 'LostDurationHours', 'SundayDurationHours']) {
-      if (Object.hasOwn(payload, k)) return k
-    }
+    const found = matchNumericField(msg, payload)
+    if (found) return found
   }
 
   return null
