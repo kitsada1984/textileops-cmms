@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 9 (pm main view blocks)
+- **Scope**: header/modals/annual/filters/empty + const moves, verbatim
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — main 63→≤25, 66 tests green
+- **Strengths**: recovered from oversized-cut mistake via HEAD replay
+
 ## 2026-11-05 — Sub-25 batch 8 (pm planned-block + timeline rows)
 - **Scope**: plan-block builder, machine cell, planned/actual bars + tests
 - **Atoms**: clean-code, architecture, test-quality
