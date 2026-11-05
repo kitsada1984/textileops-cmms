@@ -56,6 +56,7 @@ import ImagePreviewModal from '../../components/ui/ImagePreviewModal'
 import { buildCylinderInspectionSync } from '../../utils/needleConditionSync'
 import { pickPreviousWithCounter } from '../../utils/counterDiff'
 import { CENTER_CHECK_IMAGE_FOLDER, NEEDLE_COND_OPTIONS, STANDARD_NEEDLE_CONDS, CenterCheckPhotoCard } from './centerCheckParts.jsx'
+import { CenterCheckToolbar } from './centerCheckToolbar.jsx'
 import { CenterCheckTabs } from './centerCheckTabs.jsx'
 
 export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan, onRecordSaved }) {
@@ -1049,45 +1050,8 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       {/* ══════════════════════════════════════════════════════════ */}
       {activeSubTab === 'history' && (
         <div className="space-y-4">
-          {/* Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2 flex-1">
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder="ค้นหาเลขที่เอกสาร, เครื่อง M/C, ช่าง หรือ Serial..."
-                className="max-w-md"
-              />
+          <CenterCheckToolbar search={search} setSearch={setSearch} typeFilter={typeFilter} setTypeFilter={setTypeFilter} statusFilter={statusFilter} setStatusFilter={setStatusFilter} sheetColumns={sheetColumns} filteredRecords={filteredRecords} />
 
-              {/* Type Filter */}
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="select text-xs font-semibold py-2 px-3 min-w-[130px]"
-              >
-                <option value="ALL">ทุกประเภทเครื่อง</option>
-                <option value="Single">🔵 Single Jersey</option>
-                <option value="Double">🟢 Double Jersey</option>
-              </select>
-
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="select text-xs font-semibold py-2 px-3 min-w-[130px]"
-              >
-                <option value="ALL">ทุกผลการตรวจ</option>
-                <option value="ผ่าน">✅ ผ่านมาตรฐาน</option>
-                <option value="ไม่ผ่าน">❌ ไม่ผ่านมาตรฐาน</option>
-              </select>
-            </div>
-
-            <GoogleSheetSyncButton
-              sheetName="ประวัติการเช็คศูนย์"
-              columns={sheetColumns}
-              rows={filteredRecords}
-            />
-          </div>
 
           {/* Records Table */}
           <div className="card overflow-hidden border border-slate-200 dark:border-slate-800">
