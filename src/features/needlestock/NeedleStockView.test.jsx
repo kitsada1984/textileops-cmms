@@ -99,6 +99,16 @@ describe('NeedleStock characterization', () => {
     expect(screen.getAllByText('เบิกออกสะสม (Out)').length).toBeGreaterThan(0)
   })
 
+  it('opens the stock transaction modal from the toolbar button', async () => {
+    render(<NeedleStock />)
+    await screen.findAllByText('SET-A-01')
+
+    fireEvent.click(screen.getByTitle('ทำรายการสต็อกเข็ม (เบิกออก / รับเข้า / ตัดยอด / ตัดทิ้ง)'))
+
+    expect(await screen.findAllByText('รับเข้า')).not.toHaveLength(0)
+    expect(screen.getAllByText('เบิกออก').length).toBeGreaterThan(0)
+  })
+
   it('switches to the ledger tab content on click', async () => {
     render(<NeedleStock />)
     await screen.findAllByText('SET-A-01')
