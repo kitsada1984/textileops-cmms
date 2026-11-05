@@ -47,4 +47,15 @@ describe('StepReport characterization', () => {
 
     expect(screen.getByText('🔴 ด่วนที่สุด')).toBeInTheDocument()
   })
+
+  it('shows technician selector only for EASY workflow', async () => {
+    renderStep()
+    await screen.findAllByText(/ขั้นตอนการแจ้งซ่อม/)
+
+    expect(screen.getByText(/เลือกช่างผู้รับผิดชอบงานนี้/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText(/งานยาก \/ งานซ่อมใหญ่/))
+
+    expect(screen.queryByText(/เลือกช่างผู้รับผิดชอบงานนี้/)).toBeNull()
+  })
 })
