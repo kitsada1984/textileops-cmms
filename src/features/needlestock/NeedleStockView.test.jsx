@@ -90,6 +90,15 @@ describe('NeedleStock characterization', () => {
     expect(screen.getAllByText('SET-A-01')).not.toHaveLength(0)
   })
 
+  it('shows the stock activity strip with computed totals', async () => {
+    render(<NeedleStock />)
+    await screen.findAllByText('SET-A-01')
+
+    expect(screen.getAllByText('สต็อกพร้อมใช้ (A+B)').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('รับเข้าสะสม (In)').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('เบิกออกสะสม (Out)').length).toBeGreaterThan(0)
+  })
+
   it('switches to the ledger tab content on click', async () => {
     render(<NeedleStock />)
     await screen.findAllByText('SET-A-01')
