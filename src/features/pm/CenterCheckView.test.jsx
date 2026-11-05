@@ -137,4 +137,14 @@ describe('CenterCheck characterization', () => {
 
     expect(await screen.findAllByText(/ฟอร์มบันทึกใหม่ \(Single Jersey\)/)).not.toHaveLength(0)
   })
+
+  it('opens the record-details modal from the history row', async () => {
+    render(<CenterCheck />)
+    await screen.findAllByText('CS-S-001')
+
+    fireEvent.click(screen.getAllByTitle('ดูรายละเอียดข้อตรวจ')[0])
+
+    expect(await screen.findAllByText(/รายละเอียดใบบันทึก CS-S-001/)).not.toHaveLength(0)
+    expect(screen.getAllByText('พิมพ์เอกสาร A4').length).toBeGreaterThan(0)
+  })
 })
