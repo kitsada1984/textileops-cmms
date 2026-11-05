@@ -79,4 +79,12 @@ describe('NeedleCondition characterization', () => {
     expect(screen.getAllByText('สึกเล็กน้อย').length).toBeGreaterThan(0)
     expect(screen.getAllByText('สึกมาก (ควรเปลี่ยน)').length).toBeGreaterThan(0)
   })
+
+  it('lists seeded inspection rows in the data table', async () => {
+    render(<NeedleCondition />)
+
+    expect(await screen.findAllByText('SN-001')).not.toHaveLength(0)
+    expect(screen.getAllByText('SN-002').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('ซีเรียล (Serial)').length).toBeGreaterThan(0)
+  })
 })
