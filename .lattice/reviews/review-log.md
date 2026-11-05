@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 12 (PDF preview split)
+- **Scope**: print meta + topbar + picker + header + tables + signatures
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — modal 42 cleared, 61 ui tests green
+- **Strengths**: bare-wrapper fragment rule kept DOM identical
+
 ## 2026-11-05 — Sub-25 batch 11 (visual search results split)
 - **Scope**: results + hero + candidates blocks, verbatim + tests
 - **Atoms**: clean-code, architecture, test-quality
