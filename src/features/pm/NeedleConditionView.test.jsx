@@ -97,4 +97,13 @@ describe('NeedleCondition characterization', () => {
     expect(await screen.findAllByText(/บันทึกสภาพเข็ม \(Needle Inspection\)/)).not.toHaveLength(0)
     expect(screen.getAllByText('ยกเลิก').length).toBeGreaterThan(0)
   })
+
+  it('opens the history drawer from the row history button', async () => {
+    render(<NeedleCondition />)
+    await screen.findAllByText('SN-001')
+
+    fireEvent.click(screen.getAllByTitle('ดูประวัติการตรวจสภาพเข็มย้อนหลัง')[0])
+
+    expect(await screen.findAllByText(/ประวัติการตรวจสภาพเข็มย้อนหลัง \(SN-001\)/)).not.toHaveLength(0)
+  })
 })
