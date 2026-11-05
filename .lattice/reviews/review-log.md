@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — CenterCheck image-modal split + v1.3.232
+- **Scope**: 3 files + version bump, pure extraction
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/933 green
+- **Strengths**: seed extended without breaking 9 existing tests; all 4 modals now split
+
 ## 2026-11-05 — CenterCheck print-modal split + v1.3.231
 - **Scope**: 3 files + version bump, pure extraction
 - **Atoms**: clean-code, test-quality
