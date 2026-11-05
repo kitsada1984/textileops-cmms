@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Needle detail drawer split + v1.3.244
+- **Scope**: 3 files + version bump, pure extraction (10 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 119/944 green
+- **Strengths**: bridge-substring check before removing DetailDrawer import
+
 ## 2026-11-05 — Needle history drawer split + v1.3.243
 - **Scope**: 3 files + version bump, pure extraction (5 props)
 - **Atoms**: clean-code, test-quality
