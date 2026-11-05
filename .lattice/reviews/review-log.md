@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 10 (needle normalize + alt-WO matcher)
+- **Scope**: needle set/log groups, alt-WO split + key-order proofs
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 67/53/26 cleared, 36 tests green
+- **Strengths**: HEAD-executed ground truth caught 3 key-order drifts
+
 ## 2026-11-05 — Sub-25 batch 9 (pm main view blocks)
 - **Scope**: header/modals/annual/filters/empty + const moves, verbatim
 - **Atoms**: clean-code, architecture, test-quality
