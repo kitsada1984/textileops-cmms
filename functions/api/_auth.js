@@ -11,7 +11,13 @@ export const CORS_HEADERS = {
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 
 function getSecret(env) {
-  return env?.AUTH_SECRET || 'textileops-dev-secret-change-me'
+  const secret = env?.AUTH_SECRET
+  if (!secret) {
+    // Fail closed: never fall back to a hard-coded development secret.
+    // Production must set AUTH_SECRET in Pages Settings > Environment variables.
+    throw new Error('AUTH_SECRET is not configured')
+  }
+  return secret
 }
 
 function bytesToB64Url(bytes) {
@@ -43,6 +49,47 @@ async function hmacSign(secret, dataStr) {
 export async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function randomSaltHex() {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * Salted password hashing (dual-verify migration scheme).
+ * - New hashes: { salt, hash: sha256(salt + password) }, salt stored in users.password_salt.
+ * - Legacy rows have password_salt NULL and a plain sha256(password) hash.
+ * String comparison matches the prior SQL-equality strength; login attempts
+ * are rate-limited by Cloudflare, so no timing oracle is introduced here.
+ */
+export async function hashPassword(password) {
+  const salt = randomSaltHex()
+  const hash = await sha256Hex(salt + password)
+  return { salt, hash }
+}
+
+export async function verifyPasswordHash(password, storedHash, storedSalt) {
+  if (storedSalt) {
+    const hash = await sha256Hex(storedSalt + password)
+    return hash === storedHash
+  }
+  const legacy = await sha256Hex(password)
+  return legacy === storedHash
+}
+
+export async function maybeRehashPassword(db, row, password) {
+  if (row.password_salt) return
+  try {
+    const upgraded = await hashPassword(password)
+    await db
+      .prepare('UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?')
+      .bind(upgraded.hash, upgraded.salt, row.id)
+      .run()
+  } catch (rehashErr) {
+    console.warn('Password rehash failed:', rehashErr?.message)
+  }
 }
 
 export async function createAuthToken(env, payload) {

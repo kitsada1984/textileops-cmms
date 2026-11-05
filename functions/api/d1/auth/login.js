@@ -1,7 +1,7 @@
 // functions/api/d1/auth/login.js
 // Cloudflare Pages Function: D1-native login (username + SHA-256 password hash stored in users table)
 
-import { CORS_HEADERS, jsonResponse, sha256Hex, createAuthToken } from '../../_auth.js'
+import { CORS_HEADERS, jsonResponse, verifyPasswordHash, maybeRehashPassword, createAuthToken } from '../../_auth.js'
 
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
@@ -27,14 +27,17 @@ export async function onRequestPost(context) {
   }
 
   try {
-    const hash = await sha256Hex(password)
     const row = await db
-      .prepare('SELECT id, username, full_name, role, status, permissions, line_user_id, line_display_name, line_picture_url FROM users WHERE username = ? AND password_hash = ?')
-      .bind(username, hash)
+      .prepare('SELECT id, username, full_name, role, status, permissions, password_hash, password_salt, line_user_id, line_display_name, line_picture_url FROM users WHERE username = ?')
+      .bind(username)
       .first()
 
-    if (!row) return jsonResponse({ ok: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' }, 401)
+    const valid = row && await verifyPasswordHash(password, row.password_hash, row.password_salt)
+    if (!valid) return jsonResponse({ ok: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' }, 401)
     if (row.status === 'inactive') return jsonResponse({ ok: false, error: 'บัญชีนี้ถูกปิดใช้งาน' }, 403)
+
+    // Dual-verify migration: upgrade legacy unsalted hashes on successful login.
+    await maybeRehashPassword(db, row, password)
 
     let permissions = {}
     try { permissions = typeof row.permissions === 'string' ? JSON.parse(row.permissions) : (row.permissions || {}) } catch {}
