@@ -891,6 +891,16 @@ describe('Countdown Priority & Most Overdue First Scheduling Logic', () => {
     // Block 3 MUST have MC-NORMAL
     expect(sched[2].mc).toBe('MC-NORMAL')
   })
+
+  it('autoGenerateMonthlySchedule falls back to MC-XX codes when no machines exist', () => {
+    localStorage.clear()
+
+    const sched = autoGenerateMonthlySchedule(2026, 10, [], ['ALL'], [], 3)
+
+    expect(sched.length).toBeGreaterThan(0)
+    expect(sched[0].mc).toBe('MC-01')
+    expect(sched[0].status).toBe('SCHEDULED')
+  })
 })
 
 describe('Configurable Days Per Machine (1, 2, 3, 4, 5 days/machine)', () => {

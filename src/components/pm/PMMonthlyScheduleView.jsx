@@ -54,6 +54,7 @@ import {
   applySyncWoToItem,
   buildUnplannedSyncItem,
 } from './monthlySyncItem'
+import { buildPlannedBlockItem } from './monthlyPlanGenerate'
 import {
   resolveScheduleTargetMonth,
   loadScheduleItems,
@@ -566,39 +567,7 @@ export function autoGenerateMonthlySchedule(year, month1Indexed, machines = [], 
     const machine = availableMachines.length > 0
       ? availableMachines[idx % availableMachines.length]
       : null
-    const mc = machine?.NewMC || machine?.mc || machine?.Machine_MC || machine?.Mc || `MC-${String(idx + 1).padStart(2, '0')}`
-    const ki = machine?.Serial_OLD || machine?.ki || machine?.Machine_KI || ''
-    const location = machine?.Location || machine?.location || 'GMK1'
-    const type = machine?.Type || machine?.type || 'Double'
-    const nextPmDate = machine?.nextPmDate || ''
-    const lastPmDate = machine?.lastPmDate || ''
-    const countdownDays = machine?.countdownDays ?? null
-    const countdownLabel = machine?.countdownLabel || ''
-    const countdownColor = machine?.countdownColor || 'gray'
-
-    return {
-      id: `PMSCH-${monthKey.replace('-', '')}-${String(idx + 1).padStart(2, '0')}`,
-      mc,
-      ki,
-      location,
-      type,
-      nextPmDate,
-      lastPmDate,
-      countdownDays,
-      countdownLabel,
-      countdownColor,
-      plannedStartDate: block.startDate,
-      plannedEndDate: block.endDate,
-      actualStartDate: '',
-      actualEndDate: '',
-      assignedTech: '',
-      actualTech: '',
-      status: 'SCHEDULED',
-      notes: '',
-      workingDays: block.workingDaysCount || daysPerMachine,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
+    return buildPlannedBlockItem(block, idx, machine, monthKey, daysPerMachine)
   })
 }
 
