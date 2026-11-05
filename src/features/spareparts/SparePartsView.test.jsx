@@ -6,8 +6,8 @@ import SpareParts from './SpareParts'
 // splitting presentational blocks out of the main component.
 
 const seedParts = [
-  { id: 'p1', Part_Name: 'เข็ม S-01', Stock_Qty: 10, Min_Qty: 2, Unit_Price: 100 },
-  { id: 'p2', Part_Name: 'เข็ม D-01', Stock_Qty: 0, Min_Qty: 5, Unit_Price: 200 },
+  { id: 'p1', Part_Code: 'SP-001', Part_Name_EN: 'Needle S-01', Part_Name: 'เข็ม S-01', Stock_Qty: 10, Min_Qty: 2, Unit_Price: 100 },
+  { id: 'p2', Part_Code: 'SP-002', Part_Name_EN: 'Needle D-01', Part_Name: 'เข็ม D-01', Stock_Qty: 0, Min_Qty: 5, Unit_Price: 200 },
 ]
 
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -71,5 +71,30 @@ describe('SpareParts characterization', () => {
     fireEvent.click(screen.getByText('sp_add'))
 
     expect(await screen.findAllByText(/เพิ่มข้อมูลอะไหล่ใหม่/)).not.toHaveLength(0)
+  })
+
+  it('opens the category modal from the toolbar button', async () => {
+    render(<SpareParts />)
+    await screen.findAllByText('รายการอะไหล่ทั้งหมด')
+
+    fireEvent.click(screen.getByText('จัดการหมวดหมู่'))
+
+    expect(await screen.findAllByText(/จัดการหมวดหมู่อะไหล่/)).not.toHaveLength(0)
+  })
+
+  it('shows the data table with manage column', async () => {
+    render(<SpareParts />)
+    await screen.findAllByText('รายการอะไหล่ทั้งหมด')
+
+    expect(screen.getAllByText('จัดการ').length).toBeGreaterThan(0)
+  })
+
+  it('opens the detail drawer on row click', async () => {
+    render(<SpareParts />)
+    await screen.findAllByText('Needle S-01')
+
+    fireEvent.click(screen.getAllByText('Needle S-01')[0])
+
+    expect(await screen.findAllByText('dr_general_info')).not.toHaveLength(0)
   })
 })

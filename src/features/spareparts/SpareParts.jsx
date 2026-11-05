@@ -5,13 +5,11 @@ import {
   Pencil,
   Trash2,
   RefreshCw,
-  Package,
   ExternalLink,
   Check,
   X,
   Layers,
   FileText,
-  ShoppingCart,
   Printer,
   Camera,
 } from 'lucide-react'
@@ -24,7 +22,6 @@ import StatusBadge from '../../components/ui/StatusBadge'
 import SearchInput from '../../components/ui/SearchInput'
 import { useT } from '../../contexts/LanguageContext'
 import usePagePerms from '../../hooks/usePagePerms'
-import DetailDrawer from '../../components/ui/DetailDrawer'
 import { useToast } from '../../components/ui/Toast'
 import F from '../../components/ui/FormField'
 import { useSparePartCategories, DEFAULT_SPARE_PART_CATEGORIES } from '../../modules/sparePart'
@@ -64,6 +61,9 @@ import {
 export * from './sparePartHelpers.jsx'
 import { SparePartsStats } from './sparePartsStats.jsx'
 import { SpareEditModal } from './spareEditModal.jsx'
+import { SpareCategoryModal } from './spareCategoryModal.jsx'
+import { SparePartsTable } from './sparePartsTable.jsx'
+import { SpareDetailDrawer } from './spareDetailDrawer.jsx'
 import {
   SPARE_PART_IMAGE_FOLDER,
   WAREHOUSE_OPTIONS,
@@ -793,390 +793,18 @@ export default function SpareParts() {
       </div>
 
       {/* ── DATA TABLE ────────────────────────────────────────── */}
-      <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="table w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                {cols.map((c) => (
-                  <th key={c.field} style={getColumnWidthStyle(c)} className="py-3 px-3.5 text-left whitespace-nowrap">
-                    {c.label}
-                  </th>
-                ))}
-                <th className="py-3 px-3 text-center w-24">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {loading && (
-                <tr>
-                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
-                    <RefreshCw size={24} className="animate-spin mx-auto mb-2 opacity-50" />
-                    <span>{t('loading')}</span>
-                  </td>
-                </tr>
-              )}
-              {!loading && displayRows.map((p, i) => (
-                <tr
-                  key={p._id || p.id || i}
-                  onClick={() => setDetailRec(p)}
-                  className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
-                >
-                  {cols.map((c) => (
-                    <td key={c.field} style={getColumnWidthStyle(c)} className="py-2.5 px-3.5 whitespace-nowrap">
-                      {renderCellContent(p, c)}
-                    </td>
-                  ))}
-                  <td onClick={(e) => e.stopPropagation()} className="py-2.5 px-3 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handle1ClickPR(p)}
-                        className={`p-1.5 rounded-lg transition-all border ${
-                          getSparePartStatus(p) !== 'IN_STOCK'
-                            ? 'text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 border-amber-300 dark:border-amber-700 font-bold'
-                            : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-slate-200 dark:border-slate-700'
-                        }`}
-                        title="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
-                        aria-label="เปิดใบขอซื้ออะไหล่นี้ทันที (1-Click PR)"
-                      >
-                        <ShoppingCart size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPdfItem(p)}
-                        className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 dark:text-rose-400 transition-all border border-rose-200 dark:border-rose-800/60"
-                        title="ดูเอกสาร PDF และพิมพ์"
-                        aria-label="ดูเอกสาร PDF และพิมพ์"
-                      >
-                        <FileText size={13} />
-                      </button>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={() => openEdit(p)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                          title="แก้ไขข้อมูลอะไหล่"
-                          aria-label="แก้ไขข้อมูลอะไหล่"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => del(p._id || p.id)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                          title="ลบข้อมูล"
-                          aria-label="ลบข้อมูล"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && !displayRows.length && (
-                <tr>
-                  <td colSpan={cols.length + 1} className="text-center py-12 text-slate-400">
-                    <Package size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
-                    <p className="font-semibold text-slate-600 dark:text-slate-400">{t('no_data')}</p>
-                    <p className="text-[11px] mt-0.5 text-slate-400">กดปุ่ม "+ เพิ่มอะไหล่" เพื่อเริ่มต้นบันทึก</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SparePartsTable displayRows={displayRows} cols={cols} loading={loading} canEdit={canEdit} canDelete={canDelete} setDetailRec={setDetailRec} handle1ClickPR={handle1ClickPR} setPdfItem={setPdfItem} openEdit={openEdit} del={del} renderCellContent={renderCellContent} t={t} />
 
       {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
-      <DetailDrawer
-        open={!!detailRec}
-        onClose={() => setDetailRec(null)}
-        title={getSparePartName(detailRec) || detailRec?.Part_Code}
-        subtitle={detailRec ? `${detailRec.Part_Code} · ${detailRec.Category || 'อะไหล่'}` : ''}
-        icon={Package}
-        accentColor="#2563eb"
-        badge={detailRec && <StatusBadge value={getSparePartStatus(detailRec)} />}
-        canEdit={canEdit}
-        canDelete={canDelete}
-        onPdf={() => setPdfItem(detailRec)}
-        onEdit={() => openEdit(detailRec)}
-        onDelete={() => {
-          del(detailRec._id || detailRec.id)
-          setDetailRec(null)
-        }}
-        extraActions={
-          detailRec ? (
-            <button
-              type="button"
-              onClick={() => {
-                const rec = detailRec
-                setDetailRec(null)
-                handle1ClickPR(rec)
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 14px',
-                borderRadius: 11,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                color: '#ffffff',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(37,99,235,0.25)',
-              }}
-            >
-              <ShoppingCart size={14} /> 🛒 เปิดใบขอซื้อ (1-Click PR)
-            </button>
-          ) : null
-        }
-        groups={detailRec ? [
-          {
-            label: t('dr_general_info'),
-            fields: [
-              { label: t('sp_th_code'), value: detailRec.Part_Code, mono: true },
-              { label: t('sp_th_name_en'), value: detailRec.Part_Name_EN },
-              { label: t('sp_th_cat'), value: detailRec.Category },
-              { label: t('field_unit'), value: detailRec.Unit },
-              { label: t('field_warehouse'), value: detailRec.Location_Store },
-              { label: t('field_supplier'), value: detailRec.Supplier },
-              ...(getSparePartImageUrl(detailRec) ? [{
-                label: 'รูปถ่ายอะไหล่',
-                full: true,
-                node: (
-                  <div className="pt-1">
-                    <ImageThumbnail
-                      url={getSparePartImageUrl(detailRec)}
-                      alt={`${detailRec.Part_Code} - ${getSparePartName(detailRec)}`}
-                      size={48}
-                      onClick={() => setPreviewImageModal({ url: getSparePartImageUrl(detailRec), title: `${detailRec.Part_Code} - ${getSparePartName(detailRec)}` })}
-                    />
-                  </div>
-                ),
-              }] : []),
-            ].filter((f) => f && (f.node || f.value)),
-          },
-          {
-            label: 'สต๊อกและราคา',
-            fields: [
-              { label: t('sp_th_stock'), value: detailRec.Stock_Qty != null ? `${detailRec.Stock_Qty} ${detailRec.Unit || ''}` : null },
-              { label: t('sp_th_min'), value: detailRec.Min_Qty != null ? `${detailRec.Min_Qty} ${detailRec.Unit || ''}` : null },
-              { label: t('sp_th_price'), value: detailRec.Unit_Price != null ? `฿${Number(detailRec.Unit_Price).toLocaleString()}` : null },
-              { label: 'เครื่องที่ใช้ได้', value: Array.isArray(detailRec.Compatible_Machines) ? detailRec.Compatible_Machines.join(', ') : detailRec.Compatible_Machines },
-            ].filter((f) => f.value),
-          },
-          ...(detailRec && getTotalStockAcrossWarehouses(data, detailRec.Part_Code).warehouseCount > 1 ? [{
-            label: `📦 สถานะสต๊อกทุกคลังสำหรับรหัสนี้ (รวม ${getTotalStockAcrossWarehouses(data, detailRec.Part_Code).totalStock.toLocaleString()} ${detailRec.Unit || 'ชิ้น'})`,
-            fields: [
-              ...getTotalStockAcrossWarehouses(data, detailRec.Part_Code).locations.map((loc) => ({
-                label: `คลัง ${loc.location}`,
-                mono: true,
-                value: `${loc.stock.toLocaleString()} ${loc.unit || detailRec.Unit || 'ชิ้น'}${loc.id === (detailRec.id || detailRec._id) ? ' (รายการนี้)' : ''}`,
-              })),
-              {
-                label: 'ยอดรวมสต๊อกทุกคลัง',
-                mono: true,
-                value: `${getTotalStockAcrossWarehouses(data, detailRec.Part_Code).totalStock.toLocaleString()} ${detailRec.Unit || 'ชิ้น'}`,
-              },
-            ],
-          }] : []),
-          {
-            label: t('remark'),
-            single: true,
-            fields: [
-              { label: t('remark'), value: stripSparePartImageMeta(detailRec.Remark), full: true },
-            ].filter((f) => f.value),
-          },
-        ].filter((g) => g.fields.length > 0) : []}
-      />
+      <SpareDetailDrawer detailRec={detailRec} setDetailRec={setDetailRec} canEdit={canEdit} canDelete={canDelete} openEdit={openEdit} del={del} setPdfItem={setPdfItem} getSparePartImageUrl={getSparePartImageUrl} setPreviewImageModal={setPreviewImageModal} getSparePartName={getSparePartName} getSparePartStatus={getSparePartStatus} handle1ClickPR={handle1ClickPR} data={data} t={t} />
+
 
       {/* ── ADD / EDIT MODAL ──────────────────────────────────── */}
       <SpareEditModal modal={modal} setModal={setModal} form={form} setForm={setForm} saving={saving} uploadingImage={uploadingImage} submit={submit} handleCopyBasePartInfo={handleCopyBasePartInfo} onPickImageFile={onPickImageFile} t={t} otherWarehousesForForm={otherWarehousesForForm} setCategoryModalOpen={setCategoryModalOpen} allCategories={allCategories} />
 
 
-      {/* ── CATEGORY MANAGEMENT MODAL ───────────────────────── */}
-      <Modal
-        open={categoryModalOpen}
-        onClose={() => {
-          setCategoryModalOpen(false)
-          setNewCategoryInput('')
-        }}
-        title="🏷️ จัดการหมวดหมู่อะไหล่"
-        size="md"
-        footer={
-          <div className="flex items-center justify-between w-full">
-            <button
-              type="button"
-              onClick={handleResetDefaults}
-              disabled={categoryActionLoading}
-              className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
-            >
-              รีเซ็ตเป็นค่าเริ่มต้น
-            </button>
-            <button
-              type="button"
-              className="btn-outline px-4 text-xs"
-              onClick={() => {
-                setCategoryModalOpen(false)
-                setNewCategoryInput('')
-                cancelEditCategory()
-              }}
-            >
-              {t('close') || 'ปิด'}
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-4 text-xs">
-          <p className="text-slate-600 dark:text-slate-400">
-            เพิ่ม ลบ หรือแก้ไขชื่อหมวดหมู่อะไหล่ในดรอปดาวน์ ระบบจะบันทึกและอัปเดตตัวเลือกทันที
-          </p>
+      <SpareCategoryModal categoryModalOpen={categoryModalOpen} setCategoryModalOpen={setCategoryModalOpen} newCategoryInput={newCategoryInput} setNewCategoryInput={setNewCategoryInput} editingCategory={editingCategory} editingCategoryValue={editingCategoryValue} setEditingCategoryValue={setEditingCategoryValue} categoryActionLoading={categoryActionLoading} handleAddCategory={handleAddCategory} startEditCategory={startEditCategory} cancelEditCategory={cancelEditCategory} handleSaveEditCategory={handleSaveEditCategory} handleDeleteCategory={handleDeleteCategory} handleResetDefaults={handleResetDefaults} allCategories={allCategories} isDefaultCategory={isDefaultCategory} categoryCounts={categoryCounts} t={t} />
 
-          {/* Add Category Form */}
-          <form onSubmit={handleAddCategory} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Plus size={13} className="text-blue-500" />
-              <span>เพิ่มหมวดหมู่ใหม่</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                className="input flex-1 text-xs"
-                placeholder="ระบุชื่อหมวดหมู่ เช่น ลูกปืน, สายพาน, น้ำมันหล่อลื่น..."
-                value={newCategoryInput}
-                onChange={(e) => setNewCategoryInput(e.target.value)}
-                disabled={categoryActionLoading}
-              />
-              <button
-                type="submit"
-                disabled={categoryActionLoading || !newCategoryInput.trim()}
-                className="btn-primary text-xs px-3 py-2 flex items-center gap-1.5 flex-shrink-0"
-              >
-                {categoryActionLoading ? (
-                  <RefreshCw size={13} className="animate-spin" />
-                ) : (
-                  <Plus size={13} />
-                )}
-                <span>เพิ่ม</span>
-              </button>
-            </div>
-          </form>
-
-          {/* Categories List */}
-          <div className="space-y-1.5">
-            <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-800">
-              <span className="flex items-center gap-1.5">
-                <Layers size={13} className="text-blue-500" />
-                <span>รายการตัวเลือกในดรอปดาวน์ ({allCategories.length})</span>
-              </span>
-              <span className="text-[11px] text-slate-400 font-normal">
-                (คลิก ✏️ เพื่อแก้ไขชื่อ หรือ 🗑️ เพื่อลบ)
-              </span>
-            </div>
-
-            <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
-              {allCategories.map((cat) => {
-                const isEditing = editingCategory === cat
-                const isDefault = isDefaultCategory(cat)
-                const count = categoryCounts[cat] || 0
-
-                if (isEditing) {
-                  return (
-                    <div
-                      key={cat}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-400 dark:border-blue-600 shadow-sm"
-                    >
-                      <input
-                        type="text"
-                        className="input flex-1 text-xs py-1 px-2.5 h-8 bg-white dark:bg-slate-900 font-medium"
-                        value={editingCategoryValue}
-                        onChange={(e) => setEditingCategoryValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleSaveEditCategory(cat)
-                          } else if (e.key === 'Escape') {
-                            cancelEditCategory()
-                          }
-                        }}
-                        autoFocus
-                        disabled={categoryActionLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSaveEditCategory(cat)}
-                        disabled={categoryActionLoading || !editingCategoryValue.trim()}
-                        className="btn-primary text-xs p-1.5 h-8 w-8 flex items-center justify-center flex-shrink-0"
-                        title="บันทึกชื่อหมวดหมู่"
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelEditCategory}
-                        disabled={categoryActionLoading}
-                        className="btn-outline text-xs p-1.5 h-8 w-8 flex items-center justify-center flex-shrink-0 text-slate-500 hover:text-slate-700"
-                        title="ยกเลิก"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  )
-                }
-
-                return (
-                  <div
-                    key={cat}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-medium text-slate-800 dark:text-slate-100 truncate">
-                        {cat}
-                      </span>
-                      {isDefault && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-                          ค่าเริ่มต้น
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 mr-1">
-                        {count} รายการ
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => startEditCategory(cat)}
-                        disabled={categoryActionLoading}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                        title={`แก้ไขชื่อหมวดหมู่ ${cat}`}
-                      >
-                        <Pencil size={13} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(cat)}
-                        disabled={categoryActionLoading}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                        title={`ลบหมวดหมู่ ${cat}`}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </Modal>
 
       {/* ── IMAGE PREVIEW MODAL ───────────────────────────────── */}
       <ImagePreviewModal
