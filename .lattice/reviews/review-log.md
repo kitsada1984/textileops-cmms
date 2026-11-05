@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — CenterCheck print-modal split + v1.3.231
+- **Scope**: 3 files + version bump, pure extraction
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/932 green
+- **Strengths**: weak first assert rejected, replaced with modal-specific text
+
 ## 2026-11-05 — CenterCheck sql-modal split + v1.3.230
 - **Scope**: 3 files + version bump, pure extraction
 - **Atoms**: clean-code, test-quality
