@@ -136,6 +136,8 @@ describe('CenterCheck characterization', () => {
     fireEvent.click(screen.getAllByText('เช็คศูนย์ Single Jersey')[0])
 
     expect(await screen.findAllByText(/ฟอร์มบันทึกใหม่ \(Single Jersey\)/)).not.toHaveLength(0)
+    expect(screen.getAllByText('ยกเลิก').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('บันทึกใบบันทึกเช็คศูนย์').length).toBeGreaterThan(0)
   })
 
   it('opens the record-details modal from the history row', async () => {
