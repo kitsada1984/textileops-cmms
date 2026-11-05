@@ -106,4 +106,13 @@ describe('NeedleCondition characterization', () => {
 
     expect(await screen.findAllByText(/ประวัติการตรวจสภาพเข็มย้อนหลัง \(SN-001\)/)).not.toHaveLength(0)
   })
+
+  it('opens the detail drawer on row click', async () => {
+    render(<NeedleCondition />)
+    await screen.findAllByText('SN-001')
+
+    fireEvent.click(screen.getAllByText('SN-001')[0])
+
+    expect(await screen.findAllByText('สภาพเข็ม: SN-001')).not.toHaveLength(0)
+  })
 })
