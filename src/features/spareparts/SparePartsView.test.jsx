@@ -1,0 +1,66 @@
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import SpareParts from './SpareParts'
+
+// Characterization tests: lock SpareParts stats behavior before
+// splitting presentational blocks out of the main component.
+
+const seedParts = [
+  { id: 'p1', Part_Name: 'เข็ม S-01', Stock_Qty: 10, Min_Qty: 2, Unit_Price: 100 },
+  { id: 'p2', Part_Name: 'เข็ม D-01', Stock_Qty: 0, Min_Qty: 5, Unit_Price: 200 },
+]
+
+vi.mock('react-router-dom', async (importOriginal) => {
+  const orig = await importOriginal()
+  return { ...orig, useNavigate: () => vi.fn() }
+})
+
+vi.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { role: 'admin', full_name: 'Test Admin' }, refreshUser: vi.fn() }),
+}))
+
+vi.mock('../../contexts/LanguageContext', () => ({
+  useT: () => ({ t: (k) => k }),
+}))
+
+vi.mock('../../components/ui/Toast', () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn() }),
+}))
+
+vi.mock('../../hooks/usePagePerms', () => ({
+  default: () => ({ canAdd: true, canEdit: true, canDelete: true }),
+}))
+
+vi.mock('../../hooks/useEntity', () => ({
+  default: () => ({
+    data: seedParts,
+    loading: false,
+    load: vi.fn(),
+    save: vi.fn(),
+    remove: vi.fn(),
+  }),
+}))
+
+vi.mock('../../api/realtimeSync', () => ({
+  useRealtimeTables: () => {},
+}))
+
+vi.mock('../../hooks/useWebBuilderMenu', () => ({
+  default: () => null,
+  useWebBuilderColumn: () => null,
+  useFieldOptions: (route, field, fallback) => fallback,
+}))
+
+describe('SpareParts characterization', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.print = vi.fn()
+  })
+
+  it('shows stats summary computed from seeded parts', async () => {
+    render(<SpareParts />)
+
+    expect(await screen.findAllByText('รายการอะไหล่ทั้งหมด')).not.toHaveLength(0)
+    expect(screen.getAllByText('มูลค่าสต๊อกรวม').length).toBeGreaterThan(0)
+  })
+})
