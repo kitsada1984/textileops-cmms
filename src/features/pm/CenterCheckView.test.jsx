@@ -147,4 +147,13 @@ describe('CenterCheck characterization', () => {
     expect(await screen.findAllByText(/รายละเอียดใบบันทึก CS-S-001/)).not.toHaveLength(0)
     expect(screen.getAllByText('พิมพ์เอกสาร A4').length).toBeGreaterThan(0)
   })
+
+  it('opens the standards-config modal from the toolbar button', async () => {
+    render(<CenterCheck />)
+    await screen.findAllByText('CS-S-001')
+
+    fireEvent.click(screen.getByTitle('ตั้งค่ามาตรฐานเริ่มต้น (Center Check Standards)'))
+
+    expect(await screen.findAllByText(/ตั้งค่ามาตรฐานการตรวจเช็คศูนย์/)).not.toHaveLength(0)
+  })
 })
