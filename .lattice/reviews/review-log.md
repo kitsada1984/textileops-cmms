@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 2 (form/card/dashboard) + v1.3.252
+- **Scope**: 6 new files, pure JSX extraction + single release bump
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0 all, suite 127/964 green
+- **Strengths**: all 4 targets verify clean of complexity gate
+
 ## 2026-11-05 — Sub-25 batch (line/needle/workorders) + v1.3.251
 - **Scope**: 11 new files, pure JSX extraction + single release bump
 - **Atoms**: clean-code, test-quality
