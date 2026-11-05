@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Remainder batch (3 splits) + v1.3.250
+- **Scope**: 3 files, pure JSX extraction + single release bump
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0 all, suite 127/964 green
+- **Strengths**: test-file repair before split; substring-grep discipline kept
+
 ## 2026-11-05 — Needle modals bundle + v1.3.249
 - **Scope**: 2 files + version bump, pure extraction (60 props)
 - **Atoms**: clean-code, test-quality
