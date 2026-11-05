@@ -60,6 +60,7 @@ import { CenterCheckViewModal } from './centerCheckViewModal.jsx'
 import { CenterCheckStandardsModal } from './centerCheckStandardsModal.jsx'
 import { CenterCheckSqlModal } from './centerCheckSqlModal.jsx'
 import { CenterCheckPrintModal } from './centerCheckPrintModal.jsx'
+import { CenterCheckImageModal } from './centerCheckImageModal.jsx'
 import { CenterCheckStats } from './centerCheckStats.jsx'
 
 export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan, onRecordSaved }) {
@@ -1618,14 +1619,8 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
 
 
       {/* ── MODAL: 4. IMAGE PREVIEW MODAL ───────────────────────── */}
-      {previewImage && (
-        <ImagePreviewModal
-          url={typeof previewImage === 'object' ? previewImage.url || previewImage.localUrl : previewImage}
-          title="รูปถ่ายสภาพเข็ม / ชิ้นส่วน"
-          open={!!previewImage}
-          onClose={() => setPreviewImage(null)}
-        />
-      )}
+      <CenterCheckImageModal previewImage={previewImage} setPreviewImage={setPreviewImage} />
+
     </div>
   )
 }

@@ -16,7 +16,7 @@ const seedRecords = [
     status: 'ผ่าน',
     counter_total: 100,
     items: [],
-    needle_images: [],
+    needle_images: ['https://example.com/n1.jpg'],
   },
   {
     id: 'cc-2',
@@ -173,5 +173,17 @@ describe('CenterCheck characterization', () => {
     fireEvent.click(screen.getAllByTitle('ดู PDF / พิมพ์รายงานตรวจเช็คศูนย์')[0])
 
     expect(await screen.findAllByText(/พิมพ์เอกสาร \/ บันทึก PDF/)).not.toHaveLength(0)
+  })
+
+  it('opens the image-preview modal from the record photo', async () => {
+    render(<CenterCheck />)
+    await screen.findAllByText('CS-S-001')
+
+    fireEvent.click(screen.getAllByTitle('ดูรายละเอียดข้อตรวจ')[0])
+    await screen.findAllByText(/รายละเอียดใบบันทึก CS-S-001/)
+
+    fireEvent.click(screen.getByAltText('Needle condition 1'))
+
+    expect(await screen.findAllByText(/รูปถ่ายสภาพเข็ม \/ ชิ้นส่วน/)).not.toHaveLength(0)
   })
 })
