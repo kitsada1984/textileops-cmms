@@ -1,144 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Printer,
-  X,
   FileText,
   CheckCircle2,
   AlertCircle,
   QrCode as QrIcon,
   Image as ImageIcon,
   ExternalLink,
-  ShieldCheck,
   Calendar,
   Layers,
   Wrench,
 } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
 import { format } from 'date-fns'
 import gemmaLogo from '../../assets/logo-gemma.png'
 import { getDirectImageUrl, getImageFallbackUrls, getFullResolutionImageUrl } from '../../utils/imageUrlUtils'
 import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
+import { DOC_THEMES, getStatusStyle, buildSelectableItems, resolvePrintHeader } from './pdfPrintMeta'
+import { PdfTopBar } from './PdfTopBar'
+import { PdfSectionPicker } from './PdfSectionPicker'
+import { PdfDocHeader } from './PdfDocHeader'
+import { PdfSignatures } from './PdfSignatures'
+import { PdfDataTable } from './PdfDataTable'
 
-/* ── DOCUMENT THEME CONFIGURATION ─────────────────────────────────────────── */
-const DOC_THEMES = {
-  machine: {
-    accent: '#2563eb',
-    gradient: 'from-blue-600 to-indigo-700',
-    badgeBg: '#dbeafe',
-    badgeText: '#1e40af',
-    border: '#bfdbfe',
-    icon: '🏭',
-    code: 'MC-SPEC',
-    enType: 'Machine Data Sheet',
-  },
-  cylinder: {
-    accent: '#0284c7',
-    gradient: 'from-sky-600 to-blue-700',
-    badgeBg: '#e0f2fe',
-    badgeText: '#0369a1',
-    border: '#bae6fd',
-    icon: '⚙️',
-    code: 'CYL-SPEC',
-    enType: 'Cylinder Data Sheet',
-  },
-  workorder: {
-    accent: '#4f46e5',
-    gradient: 'from-indigo-600 to-violet-700',
-    badgeBg: '#e0e7ff',
-    badgeText: '#3730a3',
-    border: '#c7d2fe',
-    icon: '📋',
-    code: 'WO-JOB',
-    enType: 'Work Order Report',
-  },
-  repair_request: {
-    accent: '#e11d48',
-    gradient: 'from-rose-600 to-red-700',
-    badgeBg: '#ffe4e6',
-    badgeText: '#9f1239',
-    border: '#fecdd3',
-    icon: '⚠️',
-    code: 'RR-REP',
-    enType: 'Machine Repair Request',
-  },
-  pmplan: {
-    accent: '#7c3aed',
-    gradient: 'from-violet-600 to-purple-700',
-    badgeBg: '#ede9fe',
-    badgeText: '#5b21b6',
-    border: '#ddd6fe',
-    icon: '📅',
-    code: 'PM-PLAN',
-    enType: 'Preventive Maintenance Plan',
-  },
-  centercheck: {
-    accent: '#0d9488',
-    gradient: 'from-teal-600 to-emerald-700',
-    badgeBg: '#ccfbf1',
-    badgeText: '#115e59',
-    border: '#99f6e4',
-    icon: '📐',
-    code: 'CC-INSP',
-    enType: 'Center Check Report',
-  },
-  needle: {
-    accent: '#059669',
-    gradient: 'from-emerald-600 to-teal-700',
-    badgeBg: '#d1fae5',
-    badgeText: '#065f46',
-    border: '#a7f3d0',
-    icon: '🪡',
-    code: 'NDL-REP',
-    enType: 'Needle Inspection Report',
-  },
-  sparepart: {
-    accent: '#d97706',
-    gradient: 'from-amber-600 to-orange-700',
-    badgeBg: '#fef3c7',
-    badgeText: '#92400e',
-    border: '#fde68a',
-    icon: '📦',
-    code: 'SP-INV',
-    enType: 'Spare Part Data Sheet',
-  },
-  purchasing: {
-    accent: '#9333ea',
-    gradient: 'from-purple-600 to-indigo-700',
-    badgeBg: '#f3e8ff',
-    badgeText: '#6b21a8',
-    border: '#e9d5ff',
-    icon: '🛒',
-    code: 'PR-REQ',
-    enType: 'Purchase Request',
-  },
-  general: {
-    accent: '#475569',
-    gradient: 'from-slate-700 to-slate-900',
-    badgeBg: '#f1f5f9',
-    badgeText: '#334155',
-    border: '#e2e8f0',
-    icon: '📄',
-    code: 'DOC-SYS',
-    enType: 'System Document',
-  },
-}
 
-/* ── STATUS BADGE HELPER ─────────────────────────────────────────────────── */
-function getStatusStyle(status = '') {
-  const norm = String(status || '').toUpperCase()
-  if (norm.includes('APPROVED') || norm.includes('อนุมัติ') || norm.includes('ซ่อมเสร็จ') || norm.includes('COMPLETED') || norm.includes('ปกติ') || norm.includes('ผ่าน') || norm.includes('RUNNING')) {
-    return { bg: '#dcfce7', text: '#15803d', border: '#bbf7d0', dot: '#22c55e' }
-  }
-  if (norm.includes('REJECTED') || norm.includes('ไม่อนุมัติ') || norm.includes('BREAKDOWN') || norm.includes('ต่ำกว่าเกณฑ์') || norm.includes('ควรเปลี่ยน') || norm.includes('CRITICAL') || norm.includes('ด่วนที่สุด') || norm.includes('มาก')) {
-    return { bg: '#fee2e2', text: '#b91c1c', border: '#fecaca', dot: '#ef4444' }
-  }
-  if (norm.includes('WAIT_PARTS') || norm.includes('รออะไหล่')) {
-    return { bg: '#f3e8ff', text: '#7e22ce', border: '#e9d5ff', dot: '#a855f7' }
-  }
-  // Pending / In progress / Default
-  return { bg: '#fef3c7', text: '#b45309', border: '#fde68a', dot: '#f59e0b' }
-}
 
 /* ── ATTACHED PHOTO ITEM COMPONENT ───────────────────────────────────────── */
 function PdfAttachedPhotoItem({ item, index, totalCount, docAccent }) {
@@ -316,16 +200,7 @@ export default function PdfPreviewModal({
   const [excludedKeys, setExcludedKeys] = useState(null)
 
   const selectableItems = useMemo(() => {
-    const items = []
-    sections.forEach((s, i) => {
-      if (s?.title) items.push({ key: `sec-${i}`, label: s.title })
-    })
-    if (tableData?.title && tableData?.rows?.length) items.push({ key: 'table', label: tableData.title })
-    if (historyTable?.title && historyTable?.rows?.length) items.push({ key: 'history', label: historyTable.title })
-    if (images?.length) items.push({ key: 'images', label: 'รูปถ่ายประกอบ' })
-    if (remarks) items.push({ key: 'remarks', label: 'หมายเหตุและบันทึกเพิ่มเติม' })
-    if (signatories?.length) items.push({ key: 'sign', label: 'ลายเซ็นผู้เกี่ยวข้อง' })
-    return items
+    return buildSelectableItems(sections, tableData, historyTable, images, remarks, signatories)
   }, [sections, tableData, historyTable, images, remarks, signatories])
 
   const isExcluded = (key) => excludedKeys instanceof Set && excludedKeys.has(key)
@@ -364,101 +239,16 @@ export default function PdfPreviewModal({
     window.print()
   }
 
-  const theme = DOC_THEMES[docType] || DOC_THEMES.general
+  const { theme, currentDateStr, formattedDocDate, qrValue } = resolvePrintHeader({ docType, docDate, docNo })
   const statusCfg = getStatusStyle(status)
-  const currentDateStr = format(new Date(), 'dd/MM/yyyy HH:mm')
-  const formattedDocDate = docDate
-    ? (String(docDate).includes('/') ? docDate : format(new Date(docDate), 'dd/MM/yyyy'))
-    : format(new Date(), 'dd/MM/yyyy')
-
-  const qrValue = typeof window !== 'undefined'
-    ? window.location.origin + (docNo ? `?doc=${encodeURIComponent(docNo)}` : '')
-    : ''
 
   return createPortal(
     <div className="fixed inset-0 z-[999] flex flex-col bg-slate-900/85 backdrop-blur-md overflow-y-auto">
       {/* ── TOP ACTION BAR (Hidden when printing) ── */}
-      <div className="sticky top-0 z-50 bg-slate-900/95 border-b border-slate-700/80 px-4 py-3 shadow-2xl print:hidden flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg shadow-md font-bold"
-            style={{ background: `linear-gradient(135deg, ${theme.accent}, #0f172a)` }}
-          >
-            {theme.icon}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-white text-sm font-bold tracking-tight">{title}</h2>
-              {docNo && (
-                <span className="px-2 py-0.5 rounded bg-slate-800 text-blue-400 font-mono text-xs font-bold border border-slate-700">
-                  {docNo}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
-              <span>{theme.enType}</span>
-              <span>·</span>
-              <span>ขนาดมาตรฐาน A4 พร้อมระบบพิมพ์และแนบรูปภาพคมชัด</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-          >
-            <Printer size={16} />
-            <span>พิมพ์เอกสาร / บันทึก PDF (A4)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-            title="ปิดหน้าต่าง (Esc)"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      </div>
+      <PdfTopBar title={title} docNo={docNo} theme={theme} handlePrint={handlePrint} onClose={onClose} />
 
       {/* ── SECTION PICKER BAR (screen-only, never printed) ── */}
-      {selectableItems.length > 1 && (
-        <div className="print:hidden bg-slate-800/90 border-b border-slate-700/80 px-4 py-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-slate-300 text-[11px] font-bold mr-1">พิมพ์หัวข้อ:</span>
-          <button
-            type="button"
-            onClick={selectAllSections}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
-              excludedKeys === null || excludedKeys.size === 0
-                ? 'bg-blue-600 text-white border-blue-500'
-                : 'bg-slate-900 text-slate-300 border-slate-600 hover:border-slate-400'
-            }`}
-          >
-            พิมพ์ทั้งหมด
-          </button>
-          {selectableItems.map((item) => {
-            const active = !isExcluded(item.key)
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => toggleSectionKey(item.key)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer max-w-[240px] truncate ${
-                  active
-                    ? 'bg-emerald-600/90 text-white border-emerald-500'
-                    : 'bg-slate-900 text-slate-500 border-slate-700 line-through hover:border-slate-500'
-                }`}
-                title={item.label}
-              >
-                {active ? '✓ ' : ''}{item.label.length > 34 ? item.label.slice(0, 34) + '…' : item.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
+      <PdfSectionPicker selectableItems={selectableItems} excludedKeys={excludedKeys} selectAllSections={selectAllSections} toggleSectionKey={toggleSectionKey} isExcluded={isExcluded} />
 
       {/* ── PRINT STYLES ── */}
       <style>{`
@@ -515,90 +305,7 @@ export default function PdfPreviewModal({
           />
 
           {/* ── TOP HEADER ── */}
-          <div>
-            <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4 mb-5 gap-4">
-              {/* Company Logo & Identity */}
-              <div className="flex items-center gap-3.5">
-                <img
-                  src={gemmaLogo}
-                  alt="Gemma Knits Logo"
-                  className="w-13 h-13 object-contain drop-shadow-xs"
-                />
-                <div>
-                  <h1 className="text-base font-black tracking-tight text-slate-950 uppercase leading-tight">
-                    บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)
-                  </h1>
-                  <p className="text-[11px] font-bold text-slate-700 tracking-wide uppercase mt-0.5">
-                    TEXTILE OPERATIONS CMMS · MAINTENANCE & ENGINEERING
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                    ระบบบริหารจัดการงานบำรุงรักษาและควบคุมการผลิตสิ่งทอ
-                  </p>
-                </div>
-              </div>
-
-              {/* Document Type Badge & Identification */}
-              <div className="text-right">
-                <div
-                  className="inline-flex items-center gap-1.5 px-3 py-1 text-white rounded-md text-xs font-black tracking-wider uppercase mb-1.5 shadow-xs"
-                  style={{ backgroundColor: theme.accent }}
-                >
-                  <span>{theme.icon}</span>
-                  <span>{title}</span>
-                </div>
-                <div className="text-[11.5px] font-mono text-slate-800 flex items-center justify-end gap-1">
-                  <span className="text-slate-500 font-sans text-[10.5px]">เลขที่เอกสาร:</span>
-                  <strong className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-900 font-bold border border-slate-200">
-                    {docNo || 'DOC-' + format(new Date(), 'yyyyMMdd')}
-                  </strong>
-                </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">
-                  วันที่เอกสาร: <span className="font-semibold text-slate-700">{formattedDocDate}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* ── STATUS & METADATA BAR ── */}
-            <div className="flex items-center justify-between bg-slate-50/90 border border-slate-200 rounded-lg p-2.5 mb-5 text-xs">
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* Status Badge */}
-                {status && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">สถานะ:</span>
-                    <span
-                      style={{
-                        backgroundColor: statusCfg.bg,
-                        color: statusCfg.text,
-                        borderColor: statusCfg.border,
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-[11px] border"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusCfg.dot }} />
-                      <span>{status}</span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Priority / Extra Tag */}
-                {priority && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">ข้อมูลจำเพาะ / ตำแหน่ง:</span>
-                    <span className="px-2.5 py-0.5 rounded-md font-bold text-[11px] bg-slate-200/80 text-slate-800 border border-slate-300">
-                      {priority}
-                    </span>
-                  </div>
-                )}
-
-                {/* Doc Code Tag */}
-                <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white text-slate-600 border border-slate-200">
-                  {theme.code}
-                </span>
-              </div>
-
-              <div className="text-[10px] text-slate-500 font-medium">
-                พิมพ์เมื่อ: <span className="font-mono text-slate-700 font-bold">{currentDateStr}</span>
-              </div>
-            </div>
+          <PdfDocHeader theme={theme} title={title} docNo={docNo} formattedDocDate={formattedDocDate} status={status} statusCfg={statusCfg} priority={priority} currentDateStr={currentDateStr} />
 
             {/* ── SECTION GROUPS ── */}
             <div className="space-y-4">
@@ -649,79 +356,9 @@ export default function PdfPreviewModal({
                 </div>
               ))}
 
-              {/* ── DETAIL TABLE (IF PROVIDED) ── */}
-              {!isExcluded('table') && tableData && tableData.rows && tableData.rows.length > 0 && (
-                <div className="space-y-1.5 mt-4">
-                  {tableData.title && (
-                    <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
-                      <span className="w-2 h-3.5 rounded-xs" style={{ backgroundColor: theme.accent }} />
-                      <span>{tableData.title}</span>
-                    </div>
-                  )}
+              <PdfDataTable gateKey='table' table={tableData} themeAccent={theme.accent} isExcluded={isExcluded} />
 
-                  <div className="border border-slate-300 rounded-xl overflow-hidden shadow-2xs">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-slate-800 text-white text-[10.5px] font-black uppercase">
-                          {tableData.headers.map((h, hIdx) => (
-                            <th key={hIdx} className="py-2 px-2.5 border-r border-slate-700 last:border-r-0 tracking-wide">
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 text-[11px]">
-                        {tableData.rows.map((row, rIdx) => (
-                          <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'}>
-                            {row.map((cell, cIdx) => (
-                              <td key={cIdx} className="py-2 px-2.5 border-r border-slate-200 last:border-r-0 font-medium text-slate-800">
-                                {cell}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* ── HISTORY TABLE (IF PROVIDED) ── */}
-              {!isExcluded('history') && historyTable && historyTable.rows && historyTable.rows.length > 0 && (
-                <div className="space-y-1.5 mt-4">
-                  {historyTable.title && (
-                    <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
-                      <span className="w-2 h-3.5 rounded-xs" style={{ backgroundColor: theme.accent }} />
-                      <span>{historyTable.title}</span>
-                    </div>
-                  )}
-
-                  <div className="border border-slate-300 rounded-xl overflow-hidden shadow-2xs">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-slate-800 text-white text-[10.5px] font-black uppercase">
-                          {historyTable.headers.map((h, hIdx) => (
-                            <th key={hIdx} className="py-2 px-2.5 border-r border-slate-700 last:border-r-0 tracking-wide">
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 text-[11px]">
-                        {historyTable.rows.map((row, rIdx) => (
-                          <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'}>
-                            {row.map((cell, cIdx) => (
-                              <td key={cIdx} className="py-2 px-2.5 border-r border-slate-200 last:border-r-0 font-medium text-slate-800">
-                                {cell}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+              <PdfDataTable gateKey='history' table={historyTable} themeAccent={theme.accent} isExcluded={isExcluded} />
 
               {/* ── ATTACHED PHOTO GALLERY (STANDARDIZED PHOTO SHOWCASE) ── */}
               {!isExcluded('images') && <PdfPhotoGallery images={images} docAccent={theme.accent} />}
@@ -742,54 +379,8 @@ export default function PdfPreviewModal({
           </div>
 
           {/* ── BOTTOM SECTION: SIGNATURES & VERIFICATION ── */}
-          <div className={`mt-8 pt-4 border-t-2 border-slate-900 space-y-5 ${isExcluded('sign') ? 'hidden' : ''}`}>
-            {/* 4 Standard Signatures */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
-              {signatories.map((sig, sIdx) => (
-                <div
-                  key={sIdx}
-                  className="border border-slate-300 rounded-xl p-2.5 flex flex-col justify-between text-center min-h-[96px] bg-slate-50/50 shadow-2xs"
-                >
-                  <div className="text-[10px] font-bold text-slate-700 uppercase border-b border-slate-200 pb-1">
-                    {sig.title}
-                  </div>
-                  <div className="my-auto py-2">
-                    <div className="border-b border-dashed border-slate-400 w-3/4 mx-auto mb-1"></div>
-                    <div className="text-xs font-bold text-slate-900 truncate">
-                      {sig.name || '...........................................'}
-                    </div>
-                  </div>
-                  <div className="text-[9px] text-slate-500 font-medium">
-                    วันที่: <span className="font-semibold">{sig.date || '....../....../......'}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* ── FOOTER & VERIFICATION ── */}
-            <div className="flex items-center justify-between text-[9.5px] text-slate-400 pt-2 border-t border-slate-200">
-              <div className="flex items-center gap-2.5">
-                <div className="p-1 bg-white border border-slate-200 rounded-md shadow-2xs">
-                  <QRCodeSVG value={qrValue} size={36} />
-                </div>
-                <div>
-                  <div className="font-bold text-slate-700 flex items-center gap-1">
-                    <ShieldCheck size={11} className="text-emerald-600" />
-                    <span>TEXTILEOPS CMMS VERIFIED DOCUMENT</span>
-                  </div>
-                  <div className="text-[8.5px] text-slate-500">สแกน QR เพื่อตรวจสอบความถูกต้องของข้อมูลผ่านระบบออนไลน์</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-bold text-slate-600">หน้า 1 จาก 1 · เอกสารควบคุมภายใน บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)</div>
-                <div className="font-mono text-[8.5px] text-slate-400">
-                  DOC-REF: {docNo || 'N/A'} · GEN: {currentDateStr}
-                </div>
-              </div>
-            </div>
-          </div>
+          <PdfSignatures signatories={signatories} isExcluded={isExcluded} qrValue={qrValue} docNo={docNo} currentDateStr={currentDateStr} />
         </div>
-      </div>
     </div>,
     document.body
   )
