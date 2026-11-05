@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { RepairStatusRow } from './repairStatusRow.jsx'
 import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../../hooks/useEntity'
@@ -413,27 +414,8 @@ export default function RepairRequests() {
     <div className="space-y-4">
 
       {/* Stats row (Horizontally scrollable on mobile) */}
-      <div
-        className="flex gap-2.5 overflow-x-auto no-scrollbar scrollbar-none pb-1 flex-nowrap sm:flex-wrap"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        {REPAIR_STATUS.map(s => {
-          const cfg = STATUS_CFG[s.value] || {}
-          return (
-            <div key={s.value} className="flex-shrink-0" style={{
-              padding: '10px 16px', borderRadius: 12,
-              background: cfg.bg || 'var(--bg-card)',
-              border: `1px solid ${cfg.border || 'var(--border)'}`,
-              minWidth: 96, textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1, color: cfg.color || 'var(--text-900)' }}>{byStatus[s.value]}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, marginTop: 4, color: cfg.color || 'var(--text-400)' }}>
-                {s.label}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      <RepairStatusRow byStatus={byStatus} STATUS_CFG={STATUS_CFG} />
+
 
       {/* Toolbar (Responsive search and horizontally scrollable action buttons) */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
