@@ -3,6 +3,7 @@ import { db } from './dbClient'
 import initialCenterChecks from '../data/initialCenterChecks.json'
 import initialNeedleSets from '../data/initialNeedleSets.json'
 import { getSystemConfig, saveSystemConfig, deleteSystemConfig } from '../modules/systemConfig'
+import { resolveNeedleImageSource, resolveNeedleSetMachine, resolveNeedleSetGrade, resolveNeedleSetDates, resolveNeedleSetPlace, resolveNeedleLogHead, resolveNeedleLogMeta, resolveNeedleLogStock } from './needleNormalize'
 
 export const DEFAULT_TECHS = []
 
@@ -333,100 +334,41 @@ export function parseNeedleImages(raw) {
 
 export function normalizeNeedleSet(item = {}) {
   const setId = item.id || item.Set_ID || item.setId || `NS-${Date.now()}`
-  const rawImgs =
-    item.images ??
-    item.Image_URLs ??
-    item.imageUrls ??
-    item.image_urls ??
-    item.Photos ??
-    item.photos ??
-    item.Photo_URLs ??
-    item.photo_urls ??
-    item.Image_URL ??
-    item.image_url ??
-    item.Image ??
-    item.image
-  const images = parseNeedleImages(rawImgs)
+  const images = parseNeedleImages(resolveNeedleImageSource(item))
 
   return {
     ...item,
     id: setId,
     setId,
     Set_ID: setId,
-    machineType: item.Machine_Type || item.machineType || 'Single',
-    Machine_Type: item.Machine_Type || item.machineType || 'Single',
-    gauge: item.Gauge || item.gauge || '28G',
-    Gauge: item.Gauge || item.gauge || '28G',
-    machineId: item.Machine_ID || item.machineId || '',
-    Machine_ID: item.Machine_ID || item.machineId || '',
-    brand: item.Brand || item.brand || '',
-    Brand: item.Brand || item.brand || '',
-    needleModel: item.Needle_Model || item.needleModel || '',
-    Needle_Model: item.Needle_Model || item.needleModel || '',
-    grade: item.Grade || item.grade || 'เกรด B',
-    Grade: item.Grade || item.grade || 'เกรด B',
-    conditionDetail: item.Condition_Detail || item.conditionDetail || 'สึกปานกลาง',
-    Condition_Detail: item.Condition_Detail || item.conditionDetail || 'สึกปานกลาง',
-    status: item.Status || item.status || 'คัดแล้ว',
-    Status: item.Status || item.status || 'คัดแล้ว',
+    ...resolveNeedleSetMachine(item),
+    ...resolveNeedleSetGrade(item),
     // `quantity` (lowercase) is the value the app edits; `Quantity` is the DB
     // column copied along in spreads. Prefer the edited value, otherwise a
     // stock-out would write the old balance back.
     quantity: parseNeedleQuantity(item),
     Quantity: parseNeedleQuantity(item),
-    dateRecorded: item.Date_Recorded || item.dateRecorded || '',
-    Date_Recorded: item.Date_Recorded || item.dateRecorded || '',
-    inspector: item.Inspector || item.inspector || 'ช่างประจำกะ',
-    Inspector: item.Inspector || item.inspector || 'ช่างประจำกะ',
-    remarks: item.Remarks || item.remarks || '',
-    Remarks: item.Remarks || item.remarks || '',
+    ...resolveNeedleSetDates(item),
     images,
     Image_URLs: images,
-    location: item.Location || item.location || 'STORE',
-    Location: item.Location || item.location || 'STORE',
-    updatedAt: item.updated_at || item.Updated_At || item.updatedAt || new Date().toISOString(),
+    ...resolveNeedleSetPlace(item),
   }
 }
 
 export function normalizeNeedleLog(log = {}) {
   const logId = log.id || log.Log_ID || log.logId || `LOG-${Date.now()}`
-  const rawImgs =
-    log.images ??
-    log.Image_URLs ??
-    log.imageUrls ??
-    log.image_urls ??
-    log.Photos ??
-    log.photos ??
-    log.Photo_URLs ??
-    log.photo_urls ??
-    log.Image_URL ??
-    log.image_url ??
-    log.Image ??
-    log.image
-  const images = parseNeedleImages(rawImgs)
+  const images = parseNeedleImages(resolveNeedleImageSource(log))
 
   return {
     ...log,
     id: logId,
     logId,
     Log_ID: logId,
-    setId: log.Set_ID || log.setId || '',
-    Set_ID: log.Set_ID || log.setId || '',
-    actionType: log.Action_Type || log.actionType || '',
-    Action_Type: log.Action_Type || log.actionType || '',
-    oldGrade: log.Old_Grade || log.oldGrade || '',
-    newGrade: log.New_Grade || log.newGrade || '',
-    conditionDetail: log.Condition_Detail || log.conditionDetail || '',
+    ...resolveNeedleLogHead(log),
     quantity: parseInt(log.Quantity ?? log.quantity, 10) || 0,
-    dateAction: log.Date_Action || log.dateAction || '',
-    technician: log.Technician || log.technician || 'tuk',
-    remarks: log.Remarks || log.remarks || '',
-    targetMachine: log.Target_Machine || log.targetMachine || '',
-    sourceFrom: log.Source_From || log.sourceFrom || '',
-    scrapReason: log.Scrap_Reason || log.scrapReason || '',
-    qtyChange: log.Qty_Change || log.qtyChange || '',
+    ...resolveNeedleLogMeta(log),
     balanceAfter: parseInt(log.Balance_After ?? log.balanceAfter, 10) || 0,
-    stockDetail: log.Stock_Detail || log.stockDetail || 'PM',
+    ...resolveNeedleLogStock(log),
     images,
     Image_URLs: images,
     createdAt: log.created_at || log.Created_At || log.createdAt || new Date().toISOString(),

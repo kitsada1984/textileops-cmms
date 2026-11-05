@@ -248,4 +248,18 @@ describe('normalizeNeedleSet quantity precedence', () => {
     expect(normalizeNeedleSet({ id: 'NS-4' }).quantity).toBe(0)
     expect(normalizeNeedleSet({ id: 'NS-4', quantity: '', Quantity: 120 }).quantity).toBe(120)
   })
+
+  it('resolves image source through the alias chain and mirrors grade pairs', () => {
+    const withImages = normalizeNeedleSet({ id: 'NS-5', Image_URLs: ['a.jpg'], image: 'b.jpg' })
+    expect(withImages.images).toEqual(['a.jpg'])
+    expect(withImages.Image_URLs).toEqual(['a.jpg'])
+
+    const graded = normalizeNeedleSet({ id: 'NS-6', grade: 'เกรด A' })
+    expect(graded.grade).toBe('เกรด A')
+    expect(graded.Grade).toBe('เกรด A')
+
+    const located = normalizeNeedleSet({ id: 'NS-7', location: 'GMK1' })
+    expect(located.location).toBe('GMK1')
+    expect(located.Location).toBe('GMK1')
+  })
 })
