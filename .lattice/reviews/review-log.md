@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — CenterCheck toolbar extraction
+- **Scope**: 2 files, presentation slice (verbatim move + import back)
+- **Atoms**: clean-code
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/926 green
+- **Strengths**: search test covers the moved toolbar directly
+
 ## 2026-11-05 — PMPlan type cards extraction (4ae4244)
 - **Scope**: 2 files, presentation slice (verbatim move + import back)
 - **Atoms**: clean-code
