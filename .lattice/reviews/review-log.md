@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — CenterCheck stats split + v1.3.223
+- **Scope**: 2 files + version bump, pure extraction
+- **Atoms**: clean-code
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/928 green
+- **Strengths**: caught stale-dist deploy (built before bump), rebuilt correctly
+
 ## 2026-11-05 — Swap summarizer split + v1.3.222 (af76986)
 - **Scope**: 2 files + version bump, pure extraction
 - **Atoms**: clean-code
