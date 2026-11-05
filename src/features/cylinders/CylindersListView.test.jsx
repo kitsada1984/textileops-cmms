@@ -108,4 +108,13 @@ describe('Cylinders list tab characterization', () => {
 
     expect(screen.getAllByRole('button', { name: /แก้ไขข้อมูลกระบอก/i }).length).toBeGreaterThan(0)
   })
+
+  it('opens the add/edit modal from the add button', async () => {
+    render(<Cylinders />)
+    await screen.findAllByText('CYL-2026-01')
+
+    fireEvent.click(screen.getByText('cyl_add'))
+
+    expect(await screen.findAllByText(/เพิ่มข้อมูลกระบอกใหม่/)).not.toHaveLength(0)
+  })
 })
