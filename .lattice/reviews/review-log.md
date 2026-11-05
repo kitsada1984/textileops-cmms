@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Needle modals bundle + v1.3.249
+- **Scope**: 2 files + version bump, pure extraction (60 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 127/961 green
+- **Strengths**: learnValues-vs-onLearnValues trap caught; stale modal imports cleaned
+
 ## 2026-11-05 — Group-B partial (needle+settings) + v1.3.248
 - **Scope**: 2 files, pure JSX extraction + single release bump
 - **Atoms**: clean-code, test-quality, secure-coding (auth triage)
