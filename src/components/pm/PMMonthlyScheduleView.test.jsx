@@ -1171,6 +1171,38 @@ describe('PM Work Order Deletion Sync (removePMWorkOrderFromMonthlyPlan & remove
     expect(result[0].actualTech).toBe('Wichai')
   })
 
+  it('returns the same array when deleted work order is missing', () => {
+    const monthlyItems = [{ id: 'A', mc: 'MC-1' }]
+
+    expect(removePMWorkOrderFromMonthlyPlan(monthlyItems, null, [], [], 2026, 11)).toBe(monthlyItems)
+    expect(removePMWorkOrderFromMonthlyPlan(monthlyItems, undefined, [], [], 2026, 11)).toBe(monthlyItems)
+  })
+
+  it('re-links unplanned item with PM fallback note when alternative has no comment', () => {
+    const monthlyItems = [
+      {
+        id: 'PMSCH-202611-UNPLANNED-JOB-DEL-009',
+        mc: 'DA-306M',
+        ki: '66936',
+        workOrderId: 'JOB-DEL-009',
+        status: 'IN_PROGRESS',
+        isUnplanned: true,
+      },
+    ]
+    const deletedWO = { Job_ID: 'JOB-DEL-009', JobType: 'PM', MC: 'DA-306M', KI: '66936' }
+    const remainingWos = [
+      { Job_ID: 'JOB-REMAIN-009', JobType: 'PM', MC: 'DA-306M', KI: '66936', StartDate: '2026-11-07', Status: 'SCHEDULED' },
+    ]
+
+    const result = removePMWorkOrderFromMonthlyPlan(monthlyItems, deletedWO, remainingWos, mockMachines, 2026, 11)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].workOrderId).toBe('JOB-REMAIN-009')
+    expect(result[0].status).toBe('SCHEDULED')
+    expect(result[0].notes).toBe('ใบสั่งงาน PM นอกแผน')
+    expect(result[0].updatedAt).toBeDefined()
+  })
+
   it('removePMWorkOrderFromMonthlySchedule removes item from localStorage and dispatches CustomEvent', async () => {
     const now = new Date()
     const y = now.getFullYear()

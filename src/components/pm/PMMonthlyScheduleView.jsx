@@ -34,6 +34,15 @@ import { AppConfigAPI, WorkOrderAPI, CylinderAPI, PMPlanAPI, countWorkingDaysExc
 import { useToast } from '../ui/Toast'
 import Modal from '../ui/Modal'
 import PMMonthlyPrintModal from './PMMonthlyPrintModal'
+import {
+  resolveDeletedWoKeys,
+  matchEffectiveMachine,
+  resolveEffectiveKeys,
+  findAlternativeWO,
+  matchMonthlyItem,
+  buildRelinkedItem,
+  resetPlannedItem,
+} from './monthlyPlanRemoval'
 
 // Thai Month Names
 export const THAI_MONTHS = [
@@ -606,53 +615,17 @@ export function removePMWorkOrderFromMonthlyPlan(
 ) {
   if (!deletedWorkOrder || !Array.isArray(monthlyItems)) return monthlyItems
 
-  const delWoId = String(deletedWorkOrder.Job_ID || deletedWorkOrder.WO_ID || deletedWorkOrder.id || '').trim()
-  const delMC = String(deletedWorkOrder.MC || deletedWorkOrder.Mc || deletedWorkOrder.machine_mc || deletedWorkOrder.Machine_MC || '').trim().toUpperCase()
-  const delKI = String(deletedWorkOrder.KI || deletedWorkOrder.Ki || deletedWorkOrder.Machine_KI || deletedWorkOrder.Serial_OLD || '').trim().toUpperCase()
+  const { delWoId, delMC, delKI } = resolveDeletedWoKeys(deletedWorkOrder)
 
   // Match deleted work order to effective machines if available
-  const matchedMachine = (Array.isArray(effectiveMachines) ? effectiveMachines : []).find(m => {
-    const mSerial = String(m?.Serial_OLD || m?.ki || m?.Machine_KI || '').trim().toUpperCase()
-    const mCode = String(m?.NewMC || m?.mc || m?.Machine_MC || '').trim().toUpperCase()
-    if (delKI && mSerial && delKI === mSerial) return true
-    if (delMC && mCode && delMC === mCode) return true
-    return false
-  })
+  const matchedMachine = matchEffectiveMachine(effectiveMachines, delMC, delKI)
 
-  const effectiveMC = (matchedMachine?.NewMC || matchedMachine?.mc || delMC).toUpperCase()
-  const effectiveKI = (matchedMachine?.Serial_OLD || matchedMachine?.ki || delKI).toUpperCase()
-
-  // Helper: check if another active PM work order in remainingWorkOrders matches a machine
-  const findAlternativeWO = (itemMC, itemKI) => {
-    return (Array.isArray(remainingWorkOrders) ? remainingWorkOrders : []).find(wo => {
-      if (!wo) return false
-      const type = String(wo.JobType || wo.Job_Type || wo.job_type || wo.jobType || '').toUpperCase()
-      if (type !== 'PM') return false
-      const wId = String(wo.Job_ID || wo.WO_ID || wo.id || '').trim()
-      if (delWoId && wId === delWoId) return false
-
-      const wMC = String(wo.MC || wo.Mc || wo.machine_mc || wo.Machine_MC || '').trim().toUpperCase()
-      const wKI = String(wo.KI || wo.Ki || wo.Machine_KI || wo.Serial_OLD || '').trim().toUpperCase()
-      if (itemKI && wKI && itemKI === wKI) return true
-      if (itemMC && wMC && itemMC === wMC) return true
-      return false
-    })
-  }
+  const { effectiveMC, effectiveKI } = resolveEffectiveKeys(matchedMachine, delMC, delKI)
 
   const updatedItems = []
 
   for (const item of monthlyItems) {
-    const itemMC = String(item.mc || '').toUpperCase()
-    const itemKI = String(item.ki || '').toUpperCase()
-    const itemWoId = String(item.workOrderId || '').trim()
-    const itemId = String(item.id || '')
-
-    const isMatch = Boolean(
-      (delWoId && itemWoId && itemWoId === delWoId) ||
-      (delWoId && itemId.includes(delWoId)) ||
-      (effectiveMC && itemMC && effectiveMC === itemMC) ||
-      (effectiveKI && itemKI && effectiveKI === itemKI)
-    )
+    const { itemMC, itemKI, isMatch } = matchMonthlyItem(item, { delWoId, effectiveMC, effectiveKI })
 
     if (!isMatch) {
       updatedItems.push(item)
@@ -661,67 +634,21 @@ export function removePMWorkOrderFromMonthlyPlan(
 
     // It is a match! Check if it's unplanned or in-plan
     if (item.isUnplanned) {
-      const altWO = findAlternativeWO(itemMC, itemKI)
+      const altWO = findAlternativeWO(remainingWorkOrders, delWoId, itemMC, itemKI)
       if (altWO) {
         // Re-link to the other PM work order
-        const sDate = String(altWO.StartDate || altWO.DateStart || altWO.StartTime || altWO.created_at || '').slice(0, 10)
-        const rawEndDate = String(altWO.EndDate || altWO.DateEnd || altWO.EndTime || '').slice(0, 10)
-        const woStatus = String(altWO.Status || altWO.status || '').toUpperCase()
-        const isCompleted = ['COMPLETED', 'เสร็จสิ้น', 'DONE', 'CLOSED'].includes(woStatus)
-        const isScheduled = ['SCHEDULED', 'ตามแผน', 'PLANNED'].includes(woStatus)
-        const mappedStatus = isCompleted ? 'COMPLETED' : (isScheduled ? 'SCHEDULED' : 'IN_PROGRESS')
-        updatedItems.push({
-          ...item,
-          workOrderId: altWO.Job_ID || altWO.WO_ID || altWO.id,
-          actualStartDate: sDate,
-          actualEndDate: mappedStatus === 'COMPLETED' ? (rawEndDate || sDate) : rawEndDate,
-          actualTech: altWO.Technicians || altWO.Tech || '',
-          status: mappedStatus,
-          notes: altWO.Comment || altWO.Details || 'ใบสั่งงาน PM นอกแผน',
-          updatedAt: new Date().toISOString(),
-        })
+        updatedItems.push(buildRelinkedItem(item, altWO, { notesFallback: 'ใบสั่งงาน PM นอกแผน', trackOnTime: false }))
       } else {
         // No alternative WO: REMOVE UNPLANNED ITEM COMPLETELY!
       }
     } else {
       // In-plan machine: DO NOT delete the row, but reset its actual execution progress
-      const altWO = findAlternativeWO(itemMC, itemKI)
+      const altWO = findAlternativeWO(remainingWorkOrders, delWoId, itemMC, itemKI)
       if (altWO) {
         // Re-link to the other PM work order
-        const sDate = String(altWO.StartDate || altWO.DateStart || altWO.StartTime || altWO.created_at || '').slice(0, 10)
-        const rawEndDate = String(altWO.EndDate || altWO.DateEnd || altWO.EndTime || '').slice(0, 10)
-        const woStatus = String(altWO.Status || altWO.status || '').toUpperCase()
-        const isCompleted = ['COMPLETED', 'เสร็จสิ้น', 'DONE', 'CLOSED'].includes(woStatus)
-        const isScheduled = ['SCHEDULED', 'ตามแผน', 'PLANNED'].includes(woStatus)
-        const mappedStatus = isCompleted ? 'COMPLETED' : (isScheduled ? 'SCHEDULED' : 'IN_PROGRESS')
-        let isOnTime = item.isOnTime
-        if (mappedStatus === 'COMPLETED' && rawEndDate && item.plannedEndDate) {
-          isOnTime = rawEndDate <= item.plannedEndDate
-        }
-        updatedItems.push({
-          ...item,
-          workOrderId: altWO.Job_ID || altWO.WO_ID || altWO.id,
-          actualStartDate: sDate,
-          actualEndDate: mappedStatus === 'COMPLETED' ? (rawEndDate || sDate) : rawEndDate,
-          actualTech: altWO.Technicians || altWO.Tech || '',
-          status: mappedStatus,
-          notes: altWO.Comment || altWO.Details || item.notes,
-          isOnTime,
-          updatedAt: new Date().toISOString(),
-        })
+        updatedItems.push(buildRelinkedItem(item, altWO, { notesFallback: item.notes, trackOnTime: true }))
       } else {
-        // Reset back to planned state (ตามแผน)
-        updatedItems.push({
-          ...item,
-          workOrderId: null,
-          actualStartDate: null,
-          actualEndDate: null,
-          actualTech: '',
-          status: 'SCHEDULED',
-          isOnTime: null,
-          notes: (item.notes && item.notes.startsWith('ใบสั่งงาน PM')) ? '' : item.notes,
-          updatedAt: new Date().toISOString(),
-        })
+        updatedItems.push(resetPlannedItem(item))
       }
     }
   }
