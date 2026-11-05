@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Needle scanner-modal split + v1.3.246
+- **Scope**: 3 files + version bump, pure extraction (9 props incl. refs)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 119/947 green
+- **Strengths**: riskiest block (camera refs) split with zero misses first try
+
 ## 2026-11-05 — Needle preview-modals split + v1.3.245
 - **Scope**: 4 files + version bump, pure extraction (2 modals)
 - **Atoms**: clean-code, test-quality
