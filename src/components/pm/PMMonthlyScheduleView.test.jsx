@@ -1308,6 +1308,11 @@ describe('PM Work Order Deletion Sync (removePMWorkOrderFromMonthlyPlan & remove
     window.removeEventListener('textileops_pm_schedule_updated', eventSpy)
   })
 
+  it('removePMWorkOrderFromMonthlySchedule returns null for missing or non-PM orders', async () => {
+    expect(await removePMWorkOrderFromMonthlySchedule(null, [])).toBeNull()
+    expect(await removePMWorkOrderFromMonthlySchedule({ Job_ID: 'X', JobType: 'REPAIR' }, [])).toBeNull()
+  })
+
   it('removes unplanned item when deleted work order has matching ID or machine', () => {
     const monthlyItems = [
       {

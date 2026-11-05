@@ -121,3 +121,22 @@ export function dispatchScheduleUpdated(configKey, targetYear, targetMonth, upda
     }))
   }
 }
+
+export async function loadRemainingWorkOrders(deletedWorkOrder) {
+  // 3b. Fetch all WorkOrders excluding the deleted one
+  let allWos = []
+  try {
+    allWos = await WorkOrderAPI.list().catch(() => [])
+  } catch {}
+  if (!Array.isArray(allWos) || allWos.length === 0) {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? (localStorage.getItem('textileops_tbl_workorders') || localStorage.getItem('txops_tbl_workorders')) : null
+      allWos = raw ? JSON.parse(raw) : []
+    } catch {}
+  }
+  const delWoId = deletedWorkOrder.Job_ID || deletedWorkOrder.WO_ID || deletedWorkOrder.id
+  return allWos.filter(w => {
+    const id = w.Job_ID || w.WO_ID || w.id
+    return id && id !== delWoId
+  })
+}
