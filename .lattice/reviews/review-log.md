@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Release-protocol doc fix + v1.3.226
+- **Scope**: 1 doc file + version bump, no code touched
+- **Atoms**: clean-code
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — waza finding #3 closed, commits kept separate
+- **Strengths**: bump-before-build executed correctly this round
+
 ## 2026-11-05 — CenterCheck records table + v1.3.225
 - **Scope**: 2 files + version bump, pure extraction
 - **Atoms**: clean-code
