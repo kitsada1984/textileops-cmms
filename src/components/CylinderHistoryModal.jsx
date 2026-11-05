@@ -5,12 +5,10 @@ import {
   Pencil,
   Calendar,
   User,
-  Cpu,
   Disc,
   Search,
   Check,
   CheckCircle2,
-  Layers,
   ChevronRight,
   ChevronLeft,
   AlertTriangle,
@@ -26,6 +24,10 @@ import {
 } from '../utils/cylinderHistory'
 import { CylinderAPI } from '../api/entities'
 import { getCylinderImageUrl, stripCylinderImageMeta } from '../utils/cylinderImage'
+import { resolveEffectiveRefs, resolveHistoryCriteria, filterHistoryItems } from './historyModalView'
+import { CylinderHistoryTitle } from './CylinderHistoryTitle'
+import { HistoryFilterTabs } from './HistoryFilterTabs'
+import { HistorySwapSummary } from './HistorySwapSummary'
 import {
   parseFallbackSerials,
   resolveSwapSerial,
@@ -657,12 +659,13 @@ export default function CylinderHistoryModal({
     }
   }, [open, cylinders])
 
-  const effectiveCylinders = (Array.isArray(cylinders) && cylinders.length > 0)
-    ? cylinders
-    : internalCylinders
-
-  const effectiveSerial = cylinder?.Serial_NOW || cylinder?.Serial_OLD || ''
-  const effectiveMc = machineCode || cylinder?.NewMC || cylinder?.OLDMC || ''
+  const { list: effectiveCylinders, serial: effectiveSerial, mc: effectiveMc } = resolveEffectiveRefs(
+    cylinder,
+    machineCode,
+    cylinders,
+    internalCylinders
+  )
+  const cylinderId = (cylinder || {}).id || (cylinder || {})._id
 
   useEffect(() => {
     if (open) {
@@ -671,18 +674,8 @@ export default function CylinderHistoryModal({
   }, [open, cylinder, machineCode])
 
   const criteria = useMemo(() => {
-    if (activeTab === 'cylinder') {
-      return { serial: effectiveSerial, cylinderId: cylinder?.id || cylinder?._id }
-    }
-    if (activeTab === 'machine') {
-      return { mc: effectiveMc }
-    }
-    return {
-      serial: effectiveSerial,
-      mc: effectiveMc,
-      cylinderId: cylinder?.id || cylinder?._id,
-    }
-  }, [activeTab, effectiveSerial, effectiveMc, cylinder])
+    return resolveHistoryCriteria(activeTab, effectiveSerial, effectiveMc, cylinderId)
+  }, [activeTab, effectiveSerial, effectiveMc, cylinderId])
 
   const historyList = useMemo(() => {
     return filterCylinderHistory(auditLogs, criteria)
@@ -693,49 +686,15 @@ export default function CylinderHistoryModal({
   }, [historyList])
 
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return historyList
-    const q = search.trim().toLowerCase()
-    return historyList.filter((item) => {
-      const comment = String(item.comment || '').toLowerCase()
-      const user = String(item.user || '').toLowerCase()
-      const serials = [item.in?.serial, item.out?.serial, item.serial].filter(Boolean).join(' ').toLowerCase()
-      const mcs = [item.in?.mc, item.out?.mc, item.mcFrom, item.mcTo].filter(Boolean).join(' ').toLowerCase()
-      return comment.includes(q) || user.includes(q) || serials.includes(q) || mcs.includes(q)
-    })
+    return filterHistoryItems(historyList, search)
   }, [historyList, search])
 
   if (!open) return null
 
   // If viewing a selected item: show exact Swap modal title "สลับกระบอก" matching user's image!
-  const modalTitle = selectedItem
-    ? (selectedItem.type === 'SWAP' ? 'สลับกระบอก' : 'แก้ไขข้อมูลกระบอก')
-    : (
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-          <History size={18} />
-        </div>
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-              ประวัติการเปลี่ยน / สลับกระบอกเข็ม
-            </span>
-            {effectiveMc && (
-              <span className="font-mono font-bold text-[11px] bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-lg border border-blue-500/20">
-                เครื่อง {effectiveMc}
-              </span>
-            )}
-            {effectiveSerial && (
-              <span className="font-mono font-bold text-[11px] bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-lg border border-indigo-500/20">
-                กระบอก {effectiveSerial}
-              </span>
-            )}
-          </div>
-          <div className="text-[11px] text-slate-400 font-normal mt-0.5">
-            คลิกที่รายการใดก็ได้เพื่อดูรายละเอียดแบบเต็มเหมือนหน้าสลับกระบอก
-          </div>
-        </div>
-      </div>
-    )
+  const modalTitle = (
+    <CylinderHistoryTitle selectedItem={selectedItem} effectiveMc={effectiveMc} effectiveSerial={effectiveSerial} />
+  )
 
   return (
     <Modal
@@ -802,48 +761,7 @@ export default function CylinderHistoryModal({
 
           {/* ── Filter Tabs & Search Bar ── */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl flex-wrap">
-              {effectiveSerial && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('cylinder')}
-                  className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
-                    activeTab === 'cylinder'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Disc size={13} />
-                  <span>ตามกระบอกนี้</span>
-                </button>
-              )}
-              {effectiveMc && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('machine')}
-                  className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
-                    activeTab === 'machine'
-                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Cpu size={13} />
-                  <span>ตามเครื่อง ({effectiveMc})</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setActiveTab('all')}
-                className={`px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1.5 ${
-                  activeTab === 'all' || activeTab === 'auto'
-                    ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Layers size={13} />
-                <span>ทั้งหมด</span>
-              </button>
-            </div>
+            <HistoryFilterTabs effectiveSerial={effectiveSerial} effectiveMc={effectiveMc} activeTab={activeTab} setActiveTab={setActiveTab} />
 
             <div className="relative flex-1 sm:w-64">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -915,26 +833,7 @@ export default function CylinderHistoryModal({
 
                     <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[11px] ml-1">
                       {isSwap ? (
-                        <div className="flex items-center justify-between gap-2 flex-wrap font-mono">
-                          <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[10px]">OUT</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">{item.out?.serial || '—'}</span>
-                            <span className="text-slate-400">
-                              (เครื่อง {item.out?.mc || findCylinderBySerial(item.out?.serial, effectiveCylinders)?.NewMC || '—'})
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 text-indigo-500 font-bold text-[11px]">
-                            <ArrowLeftRight size={12} />
-                            <span className="text-[10px] uppercase font-sans">สลับคู่กับ</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[10px]">IN</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">{item.in?.serial || '—'}</span>
-                            <span className="text-slate-400">
-                              (เครื่อง {item.in?.mc || findCylinderBySerial(item.in?.serial, effectiveCylinders)?.NewMC || '—'})
-                            </span>
-                          </div>
-                        </div>
+                        <HistorySwapSummary item={item} effectiveCylinders={effectiveCylinders} />
                       ) : (
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-slate-500">เครื่องจักร:</span>

@@ -125,4 +125,39 @@ describe('CylinderHistoryModal Component', () => {
     expect(screen.getAllByText('In-use-GMK1').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Spare-GMK1').length).toBeGreaterThanOrEqual(1)
   })
+
+  it('shows title chips for the target machine and cylinder', () => {
+    render(
+      <CylinderHistoryModal
+        open={true}
+        onClose={vi.fn()}
+        cylinder={{ Serial_NOW: '11574', NewMC: 'GA-306W' }}
+        auditLogs={mockAuditLogs}
+      />
+    )
+
+    expect(screen.getByText('เครื่อง GA-306W')).toBeInTheDocument()
+    expect(screen.getByText('กระบอก 11574')).toBeInTheDocument()
+  })
+
+  it('filters the timeline by search text', () => {
+    render(
+      <CylinderHistoryModal
+        open={true}
+        onClose={vi.fn()}
+        cylinder={{ Serial_NOW: '11574', NewMC: 'GA-306W' }}
+        auditLogs={mockAuditLogs}
+      />
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('ค้นหา ช่าง, เครื่อง, ซีเรียล...'), {
+      target: { value: 'ไม่มีทางตรงนี้' },
+    })
+    expect(screen.getByText('ยังไม่พบประวัติการเปลี่ยนกระบอก')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('ค้นหา ช่าง, เครื่อง, ซีเรียล...'), {
+      target: { value: 'สมชาย' },
+    })
+    expect(screen.getByText('ช่างสมชาย')).toBeInTheDocument()
+  })
 })
