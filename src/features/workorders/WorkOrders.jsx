@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { WorkOrderCardActions } from './workOrderCardActions.jsx'
+import { WorkOrderCardDetails } from './workOrderCardDetails.jsx'
+import { WorkOrderCardMeta } from './workOrderCardMeta.jsx'
 import { createPortal } from 'react-dom'
 import {
   Plus,
@@ -615,77 +617,11 @@ function WorkOrderCard({
       </div>
 
       {/* Design and Details */}
-      {(job.Design || detailsDisplay !== '—' || latestDailyLog) && (
-        <div className="text-xs space-y-1.5 py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 mb-2">
-          {job.Design && (
-            <div className="font-semibold text-slate-700 dark:text-slate-200 truncate">
-              {job.Design}
-            </div>
-          )}
-          {detailsDisplay !== '—' && (
-            <div className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">
-              {detailsDisplay}
-            </div>
-          )}
-          {latestDailyLog && (
-            <div
-              onClick={(e) => {
-                e.stopPropagation()
-                onDailyLog?.(job)
-              }}
-              className="mt-1 flex items-center gap-1.5 p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-[11px] text-indigo-800 dark:text-indigo-300 font-semibold cursor-pointer active:scale-[0.98] transition-transform"
-              title={`อัปเดตงานล่าสุด (${latestDailyLog.date}): ${latestDailyLog.details} (แตะเพื่อดูประวัติหรืออัปเดต)`}
-            >
-              <CalendarClock size={12} className="flex-shrink-0 text-indigo-600 dark:text-indigo-400" />
-              <span className="flex-shrink-0">ล่าสุด ({latestDailyLog.date}):</span>
-              <span className="truncate flex-1 font-normal text-slate-700 dark:text-slate-300">{latestDailyLog.details}</span>
-              {dailyLogs.length > 1 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 dark:bg-indigo-900 text-[10px] flex-shrink-0">
-                  +{dailyLogs.length - 1}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      <WorkOrderCardDetails job={job} detailsDisplay={detailsDisplay} latestDailyLog={latestDailyLog} dailyLogs={dailyLogs} onDailyLog={onDailyLog} />
+
 
       {/* Technicians, Time & SLA */}
-      <div className="grid grid-cols-2 gap-2 text-xs py-1.5 text-slate-600 dark:text-slate-400">
-        <div className="min-w-0">
-          <div className="text-[10px] text-slate-400 font-medium">ช่างผู้ปฏิบัติงาน:</div>
-          <div className="font-semibold truncate text-slate-700 dark:text-slate-300">
-            {job.Technicians || '—'}
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] text-slate-400 font-medium">ระยะเวลา & SLA:</div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-              {job.WorkingDurationText || (isCompleted ? `${job.WorkingHoursDecimal} ชม.` : (sla.durationText && sla.durationText !== '—' ? sla.durationText : 'กำลังทำ...'))}
-            </span>
-            <span className={`badge text-[9px] px-1.5 py-0 ${sla.badgeClass}`}>
-              {sla.label}
-            </span>
-          </div>
-          {(sla.offShiftHoursDecimal > 0 || sla.sundayHoursDecimal > 0) && (
-            <div className="text-[9px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-medium">
-              {sla.offShiftHoursDecimal > 0 && <span className="text-indigo-600 dark:text-indigo-400">🌙 หักนอกกะ {sla.offShiftDurationText}</span>}
-              {sla.sundayHoursDecimal > 0 && <span className="text-sky-600 dark:text-sky-400">🏖️ หักอาทิตย์ {sla.sundayDurationText}</span>}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Interruption banner if active */}
-      {sla.activeInterruption && (
-        <div className="mt-1 p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-xs text-amber-700 dark:text-amber-300">
-          <div className="flex items-center gap-1.5 font-bold">
-            <Pause size={12} className="animate-pulse" />
-            <span>พักงาน: {sla.activeInterruption.task_name}</span>
-          </div>
-          <span className="text-[10px] font-mono">กำลังจับเวลาแทรก</span>
-        </div>
-      )}
+      <WorkOrderCardMeta job={job} sla={sla} isCompleted={isCompleted} />
 
       <WorkOrderCardActions job={job} sla={sla} isCompleted={isCompleted} dailyLogs={dailyLogs} canEdit={canEdit} canDelete={canDelete} onInterruption={onInterruption} onComplete={onComplete} onPrint={onPrint} onEdit={onEdit} onDelete={onDelete} onDailyLog={onDailyLog} />
 
