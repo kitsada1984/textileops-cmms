@@ -250,6 +250,33 @@ describe('cylinderHistory utility', () => {
       expect(typeRow.outOld).toBe('Interlock')
       expect(typeRow.inOld).toBe('Rib')
     })
+
+    it('returns empty rows for non-SWAP items', () => {
+      const { rows, outCyl, inCyl, swapCount } = buildSwapCompareTable({ type: 'UPDATE' })
+
+      expect(rows).toEqual([])
+      expect(outCyl).toBeNull()
+      expect(inCyl).toBeNull()
+      expect(swapCount).toBe(0)
+    })
+
+    it('infers missing after-values from the opposite side for legacy logs', () => {
+      const item = {
+        type: 'SWAP',
+        swapCols: ['Location'],
+        in: { serial: 'CYL-01' },
+        out: { serial: 'CYL-02' },
+        inBefore: { serial: 'CYL-01', loc: 'Line B' },
+        outBefore: { serial: 'CYL-02', loc: 'Line A' },
+      }
+
+      const { rows, swapCount } = buildSwapCompareTable(item)
+      const locRow = rows.find((r) => r.key === 'Location')
+
+      expect(swapCount).toBeGreaterThan(0)
+      expect(locRow.outNew).toBe('Line B')
+      expect(locRow.inNew).toBe('Line A')
+    })
   })
 
   describe('buildUpdateCompareTable', () => {

@@ -8,6 +8,15 @@
 
 import { format } from 'date-fns'
 import { parseSwapLog, parseUpdateLog } from './swapAuditParse'
+import {
+  HISTORY_COMPARE_COLUMNS,
+  extractFieldValue,
+  resolveCompareSerial,
+  buildCompareSide,
+  buildCompareRow,
+  matchSwapHistoryEntry,
+  matchUpdateHistoryEntry,
+} from './swapCompare'
 
 /**
  * Safely parses JSON string or returns fallback.
@@ -35,21 +44,6 @@ export function formatHistoryDate(dateVal, fmt = 'dd/MM/yyyy HH:mm') {
   }
 }
 
-export const HISTORY_COMPARE_COLUMNS = [
-  { key: 'Location', label: 'สถานที่จัดเก็บ (Location)', fieldAliases: ['Location', 'loc'] },
-  { key: 'NewMC', label: 'เครื่องปัจจุบัน (Machine)', fieldAliases: ['NewMC', 'mc'] },
-  { key: 'Machine_Ref', label: 'สถานะเครื่อง (Machine Ref)', fieldAliases: ['Machine_Ref', 'machineRef'] },
-  { key: 'Standard', label: 'มาตรฐานเครื่อง (Standard)', fieldAliases: ['Standard', 'standard'] },
-  { key: 'Serial_NOW', label: 'ซีเรียลปัจจุบัน (Serial NOW)', fieldAliases: ['Serial_NOW', 'serial'] },
-  { key: 'Serial_OLD', label: 'ซีเรียลเดิม (Serial OLD)', fieldAliases: ['Serial_OLD'] },
-  { key: 'Feeder', label: 'ฟีดเดอร์ (Feeder)', fieldAliases: ['Feeder', 'feeder'] },
-  { key: 'Type', label: 'ประเภทกระบอก (Type)', fieldAliases: ['Type', 'type'] },
-  { key: 'Diameter', label: 'ขนาดเส้นผ่านศูนย์กลาง (Dia)', fieldAliases: ['Diameter', 'dia'], suffix: '"' },
-  { key: 'Gauge', label: 'เกจ (Gauge)', fieldAliases: ['Gauge', 'gauge'], suffix: 'G' },
-  { key: 'Needle', label: 'จำนวนเข็ม (Needle)', fieldAliases: ['Needle', 'needle'] },
-  { key: 'Manufacturer', label: 'ผู้ผลิต (Manufacturer)', fieldAliases: ['Manufacturer', 'mfr'] },
-  { key: 'Comment', label: 'หมายเหตุ (Comment)', fieldAliases: ['Comment', 'comment'] },
-]
 
 /**
  * Finds a cylinder in a list by Serial_NOW, Serial_OLD, or id/_id.
@@ -83,23 +77,6 @@ export function findCylinderBySerial(serial, cylinders = []) {
   return null
 }
 
-export function extractFieldValue(sourceObj, fallbackSnapshot, aliases = []) {
-  if (fallbackSnapshot && typeof fallbackSnapshot === 'object') {
-    for (const k of aliases) {
-      if (fallbackSnapshot[k] !== undefined && fallbackSnapshot[k] !== null && fallbackSnapshot[k] !== '') {
-        return fallbackSnapshot[k]
-      }
-    }
-  }
-  if (sourceObj && typeof sourceObj === 'object') {
-    for (const k of aliases) {
-      if (sourceObj[k] !== undefined && sourceObj[k] !== null && sourceObj[k] !== '') {
-        return sourceObj[k]
-      }
-    }
-  }
-  return ''
-}
 
 /**
  * Builds detailed column comparison rows matching the swap modal (CompareTable).
@@ -118,68 +95,24 @@ export function buildSwapCompareTable(item = {}, cylinders = []) {
   const snapOutAfter = item.snapshotOutAfter || null
   const snapInAfter = item.snapshotInAfter || null
 
-  const outSerial = outAfter.serial || extractFieldValue(outAfter, snapOutAfter, ['Serial_NOW', 'serial']) || extractFieldValue(outBefore, snapOutBefore, ['Serial_NOW', 'serial']) || ''
-  const inSerial = inAfter.serial || extractFieldValue(inAfter, snapInAfter, ['Serial_NOW', 'serial']) || extractFieldValue(inBefore, snapInBefore, ['Serial_NOW', 'serial']) || ''
-
-  const masterOut = findCylinderBySerial(outSerial, cylinders) || findCylinderBySerial(outBefore.Serial_OLD, cylinders)
-  const masterIn = findCylinderBySerial(inSerial, cylinders) || findCylinderBySerial(inBefore.Serial_OLD, cylinders)
-
-  const outCyl = {
-    Serial_NOW: outSerial || masterOut?.Serial_NOW || '',
-    NewMC: outAfter.mc || extractFieldValue(outAfter, snapOutAfter, ['NewMC', 'mc']) || outAfter.standard || masterOut?.NewMC || masterOut?.Standard || '',
-  }
-  const inCyl = {
-    Serial_NOW: inSerial || masterIn?.Serial_NOW || '',
-    NewMC: inAfter.mc || extractFieldValue(inAfter, snapInAfter, ['NewMC', 'mc']) || inAfter.standard || masterIn?.NewMC || masterIn?.Standard || '',
-  }
+  const masterOut = findCylinderBySerial(resolveCompareSerial(outAfter, snapOutAfter, outBefore, snapOutBefore), cylinders) || findCylinderBySerial(outBefore.Serial_OLD, cylinders)
+  const masterIn = findCylinderBySerial(resolveCompareSerial(inAfter, snapInAfter, inBefore, snapInBefore), cylinders) || findCylinderBySerial(inBefore.Serial_OLD, cylinders)
+  const outSide = buildCompareSide(outAfter, outBefore, snapOutAfter, snapOutBefore, masterOut)
+  const inSide = buildCompareSide(inAfter, inBefore, snapInAfter, snapInBefore, masterIn)
+  const outSerial = outSide.serial
+  const inSerial = inSide.serial
+  const outCyl = outSide.cyl
+  const inCyl = inSide.cyl
 
   let swapCount = 0
 
   const rows = HISTORY_COMPARE_COLUMNS.map((col) => {
-    const isColSwap = swapCols.some(
-      (sc) => sc === col.key || col.fieldAliases.includes(sc)
-    )
-
-    let outOld = extractFieldValue(outBefore, snapOutBefore, col.fieldAliases) || (masterOut ? extractFieldValue(masterOut, null, col.fieldAliases) : '')
-    let inOld = extractFieldValue(inBefore, snapInBefore, col.fieldAliases) || (masterIn ? extractFieldValue(masterIn, null, col.fieldAliases) : '')
-    let outNew = extractFieldValue(outAfter, snapOutAfter, col.fieldAliases)
-    let inNew = extractFieldValue(inAfter, snapInAfter, col.fieldAliases)
-
-    if (isColSwap) {
-      swapCount += 1
-      // If after value is not explicitly present in legacy logs, swap from the other cylinder's old value
-      if (!outNew && inOld) outNew = inOld
-      if (!inNew && outOld) inNew = outOld
-      // If before value was not stored (legacy log), infer from opposite after value
-      if (!outOld && inNew) outOld = inNew
-      if (!inOld && outNew) inOld = outNew
-    } else {
-      // If column is kept, new value matches old
-      if (!outNew && outOld) outNew = outOld
-      if (!inNew && inOld) inNew = inOld
-      if (!outOld && outNew) outOld = outNew
-      if (!inOld && inNew) inOld = inNew
-    }
-
-    // Skip if all values are empty
-    if (!outOld && !outNew && !inOld && !inNew) {
-      return null
-    }
-
-    const outChanged = isColSwap && String(outOld ?? '') !== String(outNew ?? '')
-    const inChanged = isColSwap && String(inOld ?? '') !== String(inNew ?? '')
-
-    return {
-      key: col.key,
-      label: col.label,
-      isSwap: isColSwap,
-      outOld: outOld ? `${outOld}${col.suffix || ''}` : '',
-      outNew: outNew ? `${outNew}${col.suffix || ''}` : '',
-      inOld: inOld ? `${inOld}${col.suffix || ''}` : '',
-      inNew: inNew ? `${inNew}${col.suffix || ''}` : '',
-      outChanged,
-      inChanged,
-    }
+    const built = buildCompareRow(col, {
+      swapCols, outBefore, snapOutBefore, inBefore, snapInBefore,
+      outAfter, snapOutAfter, inAfter, snapInAfter, masterOut, masterIn,
+    })
+    if (built.isSwap) swapCount += 1
+    return built.row
   }).filter(Boolean)
 
   return { rows, outCyl, inCyl, swapCount }
@@ -251,15 +184,17 @@ export function parseCylinderAuditLog(log = {}) {
  * @param {Object} criteria - { serial, mc, cylinderId }
  * @returns {Array} Parsed history entries sorted descending by date
  */
+
 export function filterCylinderHistory(logs = [], { serial = '', mc = '', cylinderId = '' } = {}) {
   if (!Array.isArray(logs) || !logs.length) return []
 
   const targetSerial = String(serial || '').trim().toLowerCase()
   const targetMc = String(mc || '').trim().toLowerCase()
   const targetId = String(cylinderId || '').trim()
+  const targets = { targetSerial, targetMc, targetId }
 
   const cylinderLogs = logs.filter((l) => {
-    const mod = String(l?.Module || '').toUpperCase()
+    const mod = String((l || {}).Module || '').toUpperCase()
     return mod === 'CYLINDERS' || mod === 'CYLINDER' || mod === 'MACHINE'
   })
 
@@ -267,43 +202,14 @@ export function filterCylinderHistory(logs = [], { serial = '', mc = '', cylinde
 
   for (const raw of cylinderLogs) {
     const parsed = parseCylinderAuditLog(raw)
+    const rawRecordId = (raw || {}).RecordID || ''
     let isMatch = false
 
     if (parsed.type === 'SWAP') {
-      const inSerial = String(parsed.in.serial || '').toLowerCase()
-      const outSerial = String(parsed.out.serial || '').toLowerCase()
-      const inMc = String(parsed.in.mc || '').toLowerCase()
-      const outMc = String(parsed.out.mc || '').toLowerCase()
-      const inId = String(parsed.in.id || '')
-      const outId = String(parsed.out.id || '')
-      const commentLower = String(parsed.comment || '').toLowerCase()
-      const recordIdLower = String(raw.RecordID || '').toLowerCase()
-
-      if (targetSerial && (inSerial.includes(targetSerial) || outSerial.includes(targetSerial) || recordIdLower.includes(targetSerial) || commentLower.includes(targetSerial))) {
-        isMatch = true
-      }
-      if (targetMc && (inMc.includes(targetMc) || outMc.includes(targetMc) || commentLower.includes(targetMc))) {
-        isMatch = true
-      }
-      if (targetId && (inId === targetId || outId === targetId)) {
-        isMatch = true
-      }
+      isMatch = matchSwapHistoryEntry(parsed, rawRecordId, targets)
     } else {
       // UPDATE or CREATE
-      const entrySerial = String(parsed.serial || raw.RecordID || '').toLowerCase()
-      const mcFrom = String(parsed.mcFrom || '').toLowerCase()
-      const mcTo = String(parsed.mcTo || '').toLowerCase()
-      const commentLower = String(parsed.comment || '').toLowerCase()
-
-      if (targetSerial && (entrySerial.includes(targetSerial) || commentLower.includes(targetSerial))) {
-        isMatch = true
-      }
-      if (targetMc && (mcFrom.includes(targetMc) || mcTo.includes(targetMc) || commentLower.includes(targetMc))) {
-        isMatch = true
-      }
-      if (targetId && String(raw.RecordID || '').includes(targetId)) {
-        isMatch = true
-      }
+      isMatch = matchUpdateHistoryEntry(parsed, rawRecordId, targets)
     }
 
     if (isMatch) {
