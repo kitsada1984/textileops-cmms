@@ -64,6 +64,44 @@ describe('cylinderHistory utility', () => {
       expect(parsed.mcTo).toBe('MC-03')
       expect(parsed.serial).toBe('CYL-05')
     })
+
+    it('falls back before-side serials to counterpart + snapshots', () => {
+      const rawLog = {
+        id: 'log-3',
+        ActionType: 'SWAP',
+        created_at: '2026-10-12T12:00:00Z',
+        OldValue: JSON.stringify({
+          in: { id: 'c1', mc: 'MC-01' },
+          out: { id: 'c2', mc: 'MC-02' },
+          snapshotIn: { Serial_NOW: 'SNAP-IN', NewMC: 'MC-SNAP' },
+        }),
+        NewValue: JSON.stringify({
+          in: { id: 'c1', serial: 'CYL-01' },
+          out: { id: 'c2', serial: 'CYL-02' },
+        }),
+      }
+
+      const parsed = parseCylinderAuditLog(rawLog)
+      expect(parsed.inBefore.serial).toBe('SNAP-IN')
+      expect(parsed.inBefore.mc).toBe('MC-01')
+      expect(parsed.outBefore.serial).toBe('CYL-02')
+      expect(parsed.swapCols).toEqual(['Location', 'Machine_Ref', 'Feeder'])
+    })
+
+    it('parses CREATE logs with new-cylinder title', () => {
+      const rawLog = {
+        id: 'log-4',
+        ActionType: 'CREATE',
+        created_at: '2026-10-12T13:00:00Z',
+        NewValue: JSON.stringify({ serial: 'CYL-09', mc: 'MC-09' }),
+      }
+
+      const parsed = parseCylinderAuditLog(rawLog)
+      expect(parsed.type).toBe('CREATE')
+      expect(parsed.title).toBe('เพิ่มกระบอกใหม่ (New Cylinder)')
+      expect(parsed.serial).toBe('CYL-09')
+      expect(parsed.user).toBe('ระบบ')
+    })
   })
 
   describe('filterCylinderHistory', () => {

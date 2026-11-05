@@ -7,6 +7,7 @@
  */
 
 import { format } from 'date-fns'
+import { parseSwapLog, parseUpdateLog } from './swapAuditParse'
 
 /**
  * Safely parses JSON string or returns fallback.
@@ -237,106 +238,10 @@ export function parseCylinderAuditLog(log = {}) {
   const comment = log.Comment || ''
 
   if (action === 'SWAP') {
-    const inItem = newVal.in || {}
-    const outItem = newVal.out || {}
-    const oldInItem = oldVal.in || {}
-    const oldOutItem = oldVal.out || {}
-    const swapCols = Array.isArray(newVal.swapCols) ? newVal.swapCols : ['Location', 'Machine_Ref', 'Feeder']
-
-    const snapshotInBefore = oldVal.snapshotIn || null
-    const snapshotOutBefore = oldVal.snapshotOut || null
-    const snapshotInAfter = newVal.snapshotIn || null
-    const snapshotOutAfter = newVal.snapshotOut || null
-
-    return {
-      id: log.id || log._id || `${date}-${log.RecordID}`,
-      raw: log,
-      date,
-      type: 'SWAP',
-      title: 'สลับกระบอกเข็ม (Swap Cylinder)',
-      user,
-      comment,
-      swapCols,
-      in: {
-        id: inItem.id || oldInItem.id || null,
-        serial: inItem.serial || snapshotInAfter?.Serial_NOW || '',
-        mc: inItem.mc || snapshotInAfter?.NewMC || '',
-        loc: inItem.loc || snapshotInAfter?.Location || '',
-        standard: inItem.standard || snapshotInAfter?.Standard || '',
-        machineRef: inItem.machineRef || snapshotInAfter?.Machine_Ref || '',
-        feeder: inItem.feeder || snapshotInAfter?.Feeder || '',
-        type: inItem.type || snapshotInAfter?.Type || '',
-        dia: inItem.dia || snapshotInAfter?.Diameter || '',
-        gauge: inItem.gauge || snapshotInAfter?.Gauge || '',
-        needle: inItem.needle || snapshotInAfter?.Needle || '',
-        mfr: inItem.mfr || snapshotInAfter?.Manufacturer || '',
-      },
-      out: {
-        id: outItem.id || oldOutItem.id || null,
-        serial: outItem.serial || snapshotOutAfter?.Serial_NOW || '',
-        mc: outItem.mc || snapshotOutAfter?.NewMC || '',
-        loc: outItem.loc || snapshotOutAfter?.Location || '',
-        standard: outItem.standard || snapshotOutAfter?.Standard || '',
-        machineRef: outItem.machineRef || snapshotOutAfter?.Machine_Ref || '',
-        feeder: outItem.feeder || snapshotOutAfter?.Feeder || '',
-        type: outItem.type || snapshotOutAfter?.Type || '',
-        dia: outItem.dia || snapshotOutAfter?.Diameter || '',
-        gauge: outItem.gauge || snapshotOutAfter?.Gauge || '',
-        needle: outItem.needle || snapshotOutAfter?.Needle || '',
-        mfr: outItem.mfr || snapshotOutAfter?.Manufacturer || '',
-      },
-      inBefore: {
-        id: oldInItem.id || null,
-        serial: oldInItem.serial || snapshotInBefore?.Serial_NOW || inItem.serial || '',
-        mc: oldInItem.mc || snapshotInBefore?.NewMC || '',
-        loc: oldInItem.loc || snapshotInBefore?.Location || '',
-        standard: oldInItem.standard || snapshotInBefore?.Standard || '',
-        machineRef: oldInItem.machineRef || snapshotInBefore?.Machine_Ref || '',
-        feeder: oldInItem.feeder || snapshotInBefore?.Feeder || '',
-        type: oldInItem.type || snapshotInBefore?.Type || '',
-        dia: oldInItem.dia || snapshotInBefore?.Diameter || '',
-        gauge: oldInItem.gauge || snapshotInBefore?.Gauge || '',
-        needle: oldInItem.needle || snapshotInBefore?.Needle || '',
-        mfr: oldInItem.mfr || snapshotInBefore?.Manufacturer || '',
-      },
-      outBefore: {
-        id: oldOutItem.id || null,
-        serial: oldOutItem.serial || snapshotOutBefore?.Serial_NOW || outItem.serial || '',
-        mc: oldOutItem.mc || snapshotOutBefore?.NewMC || '',
-        loc: oldOutItem.loc || snapshotOutBefore?.Location || '',
-        standard: oldOutItem.standard || snapshotOutBefore?.Standard || '',
-        machineRef: oldOutItem.machineRef || snapshotOutBefore?.Machine_Ref || '',
-        feeder: oldOutItem.feeder || snapshotOutBefore?.Feeder || '',
-        type: oldOutItem.type || snapshotOutBefore?.Type || '',
-        dia: oldOutItem.dia || snapshotOutBefore?.Diameter || '',
-        gauge: oldOutItem.gauge || snapshotOutBefore?.Gauge || '',
-        needle: oldOutItem.needle || snapshotOutBefore?.Needle || '',
-        mfr: oldOutItem.mfr || snapshotOutBefore?.Manufacturer || '',
-      },
-      snapshotInBefore,
-      snapshotOutBefore,
-      snapshotInAfter,
-      snapshotOutAfter,
-    }
+    return parseSwapLog(log, date, user, comment, oldVal, newVal)
   }
 
-  // Action: UPDATE
-  return {
-    id: log.id || log._id || `${date}-${log.RecordID}`,
-    raw: log,
-    date,
-    type: action === 'CREATE' ? 'CREATE' : 'UPDATE',
-    title: action === 'CREATE' ? 'เพิ่มกระบอกใหม่ (New Cylinder)' : 'แก้ไข/ย้ายเครื่องกระบอก (Cylinder Update)',
-    user,
-    comment,
-    oldData: oldVal,
-    newData: newVal,
-    mcFrom: oldVal.mc || oldVal.NewMC || '',
-    mcTo: newVal.mc || newVal.NewMC || '',
-    locFrom: oldVal.loc || oldVal.Location || '',
-    locTo: newVal.loc || newVal.Location || '',
-    serial: newVal.serial || newVal.Serial_NOW || oldVal.serial || oldVal.Serial_NOW || log.RecordID || '',
-  }
+  return parseUpdateLog(log, action, date, user, comment, oldVal, newVal)
 }
 
 /**
