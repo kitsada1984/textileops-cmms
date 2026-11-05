@@ -28,19 +28,27 @@ export function resolveEffectiveKeys(matchedMachine, delMC, delKI) {
 }
 
 // Helper: check if another active PM work order in remainingWorkOrders matches a machine
+export function isActivePmCandidate(wo, delWoId) {
+  if (!wo) return false
+  const type = String(wo.JobType || wo.Job_Type || wo.job_type || wo.jobType || '').toUpperCase()
+  if (type !== 'PM') return false
+  const wId = String(wo.Job_ID || wo.WO_ID || wo.id || '').trim()
+  if (delWoId && wId === delWoId) return false
+  return true
+}
+
+export function matchCandidateMachine(wo, itemMC, itemKI) {
+  const wMC = String(wo.MC || wo.Mc || wo.machine_mc || wo.Machine_MC || '').trim().toUpperCase()
+  const wKI = String(wo.KI || wo.Ki || wo.Machine_KI || wo.Serial_OLD || '').trim().toUpperCase()
+  if (itemKI && wKI && itemKI === wKI) return true
+  if (itemMC && wMC && itemMC === wMC) return true
+  return false
+}
+
 export function findAlternativeWO(remainingWorkOrders, delWoId, itemMC, itemKI) {
   return (Array.isArray(remainingWorkOrders) ? remainingWorkOrders : []).find(wo => {
-    if (!wo) return false
-    const type = String(wo.JobType || wo.Job_Type || wo.job_type || wo.jobType || '').toUpperCase()
-    if (type !== 'PM') return false
-    const wId = String(wo.Job_ID || wo.WO_ID || wo.id || '').trim()
-    if (delWoId && wId === delWoId) return false
-
-    const wMC = String(wo.MC || wo.Mc || wo.machine_mc || wo.Machine_MC || '').trim().toUpperCase()
-    const wKI = String(wo.KI || wo.Ki || wo.Machine_KI || wo.Serial_OLD || '').trim().toUpperCase()
-    if (itemKI && wKI && itemKI === wKI) return true
-    if (itemMC && wMC && itemMC === wMC) return true
-    return false
+    if (!isActivePmCandidate(wo, delWoId)) return false
+    return matchCandidateMachine(wo, itemMC, itemKI)
   })
 }
 
