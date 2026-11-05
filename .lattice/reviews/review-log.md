@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 7 (pm sync/remove pipelines)
+- **Scope**: sync + remove schedule pipelines, step helpers with same I/O order
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 54/53 cleared, 54 tests green
+- **Strengths**: reused target-month loader across both pipelines, zero duplication
+
 ## 2026-11-05 — Sub-25 batch 6 (pm plan-match + sync filter + apply)
 - **Scope**: pm monthly sync pipeline + helpers, pure extraction
 - **Atoms**: clean-code, architecture, test-quality
