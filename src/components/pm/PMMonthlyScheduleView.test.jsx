@@ -500,6 +500,26 @@ describe('syncWorkOrdersToMonthlyPlan - PM Work Order Auto-Sync', () => {
     expect(synced[0].status).toBe('SCHEDULED')
   })
 
+  it('maps CANCELLED work order to CANCELLED status on the linked item', () => {
+    const mockWOs = [
+      {
+        Job_ID: 'WO-202610-CANCEL-01',
+        JobType: 'PM',
+        MC: 'DA-306M',
+        KI: '66936',
+        StartDate: '2026-10-02',
+        Status: 'CANCELLED',
+      },
+    ]
+
+    const synced = syncWorkOrdersToMonthlyPlan(initialPlan, mockWOs, inUseMachines, 2026, 10)
+    const item = synced.find(i => i.mc === 'DA-306M')
+
+    expect(item).toBeDefined()
+    expect(item.status).toBe('CANCELLED')
+    expect(item.workOrderId).toBe('WO-202610-CANCEL-01')
+  })
+
   it('updates completed PM work order to span full duration from StartDate to EndDate with COMPLETED status', () => {
     const mockWOs = [
       {

@@ -96,3 +96,23 @@ export function isMonthlyPmWorkOrder(wo, targetPrefix, isSystemWorkOrder) {
   const eDate = String(wo.EndDate || wo.DateEnd || wo.EndTime || wo.EndTimestamp || '').slice(0, 10)
   return (sDate && sDate.startsWith(targetPrefix)) || (eDate && eDate.startsWith(targetPrefix))
 }
+
+export function matchSyncMachine(effectiveMachines, woKI, woMC) {
+  return effectiveMachines.find(m => {
+    const mSerial = String(m?.Serial_OLD || m?.ki || m?.Machine_KI || '').trim()
+    const mCode = String(m?.NewMC || m?.mc || m?.Machine_MC || '').trim()
+    if (woKI && mSerial && woKI.toUpperCase() === mSerial.toUpperCase()) return true
+    if (woMC && mCode && woMC.toUpperCase() === mCode.toUpperCase()) return true
+    return false
+  })
+}
+
+export function matchSyncPlanItem(updatedItems, effectiveKI, effectiveMC) {
+  return updatedItems.findIndex(item => {
+    const itemMC = String(item.mc || '').toUpperCase()
+    const itemKI = String(item.ki || '').toUpperCase()
+    if (effectiveKI && itemKI && effectiveKI.toUpperCase() === itemKI) return true
+    if (effectiveMC && itemMC && effectiveMC.toUpperCase() === itemMC) return true
+    return false
+  })
+}

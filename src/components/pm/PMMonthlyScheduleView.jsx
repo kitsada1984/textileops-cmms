@@ -43,7 +43,17 @@ import {
   resolveMatchedSchedule,
   matchPmPlan,
   isMonthlyPmWorkOrder,
+  matchSyncMachine,
+  matchSyncPlanItem,
 } from './monthlyMachineResolve'
+import {
+  resolveSyncWoDates,
+  mapSyncWoStatus,
+  resolveSyncWoMeta,
+  resolveSyncEffectiveKeys,
+  applySyncWoToItem,
+  buildUnplannedSyncItem,
+} from './monthlySyncItem'
 import {
   resolveDeletedWoKeys,
   matchEffectiveMachine,
@@ -362,87 +372,24 @@ export function syncWorkOrdersToMonthlyPlan(
     const woKI = String(wo.KI || wo.Ki || wo.Machine_KI || wo.Serial_OLD || '').trim()
 
     // Match cylinder
-    const matchedMachine = effectiveMachines.find(m => {
-      const mSerial = String(m?.Serial_OLD || m?.ki || m?.Machine_KI || '').trim()
-      const mCode = String(m?.NewMC || m?.mc || m?.Machine_MC || '').trim()
-      if (woKI && mSerial && woKI.toUpperCase() === mSerial.toUpperCase()) return true
-      if (woMC && mCode && woMC.toUpperCase() === mCode.toUpperCase()) return true
-      return false
-    })
+    const matchedMachine = matchSyncMachine(effectiveMachines, woKI, woMC)
 
-    const effectiveMC = matchedMachine?.NewMC || matchedMachine?.mc || woMC
-    const effectiveKI = matchedMachine?.Serial_OLD || matchedMachine?.ki || woKI
+    const { effectiveMC, effectiveKI } = resolveSyncEffectiveKeys(matchedMachine, woMC, woKI)
 
     // Find existing item in plan
-    const existingIndex = updatedItems.findIndex(item => {
-      const itemMC = String(item.mc || '').toUpperCase()
-      const itemKI = String(item.ki || '').toUpperCase()
-      if (effectiveKI && itemKI && effectiveKI.toUpperCase() === itemKI) return true
-      if (effectiveMC && itemMC && effectiveMC.toUpperCase() === itemMC) return true
-      return false
-    })
+    const existingIndex = matchSyncPlanItem(updatedItems, effectiveKI, effectiveMC)
 
-    const sDate = String(wo.StartDate || wo.DateStart || wo.StartTime || wo.StartTimestamp || wo.created_at || `${targetPrefix}-01`).slice(0, 10)
-    const hasEnded = Boolean(wo.EndDate || wo.DateEnd || wo.EndTime || wo.EndTimestamp)
-    const rawEndDate = hasEnded ? String(wo.EndDate || wo.DateEnd || wo.EndTime || wo.EndTimestamp).slice(0, 10) : ''
-    const eDate = rawEndDate || sDate
-    const woStatus = String(wo.Status || wo.status || '').toUpperCase()
-
-    // Status mapping:
-    // If completed: 'COMPLETED'
-    // If cancelled: 'CANCELLED'
-    // If explicitly scheduled: 'SCHEDULED'
-    // Any active/open state (OPEN, IN_PROGRESS, WAITING_TECH, WAITING_PARTS, WAITING_SUMMARY, ASSIGNED, etc.): 'IN_PROGRESS'
-    const isCompleted = ['COMPLETED', 'เสร็จสิ้น', 'DONE', 'CLOSED'].includes(woStatus)
-    const isCancelled = ['CANCELLED', 'CANCELED', 'ยกเลิก'].includes(woStatus)
-    const isScheduled = ['SCHEDULED', 'ตามแผน', 'PLANNED'].includes(woStatus)
-    const mappedStatus = isCompleted ? 'COMPLETED' : (isCancelled ? 'CANCELLED' : (isScheduled ? 'SCHEDULED' : 'IN_PROGRESS'))
-
-    const techName = wo.Technicians || wo.Tech || wo.Technician || ''
-    const woNotes = wo.Comment || wo.Details || wo.Problem || ''
-    const woId = wo.Job_ID || wo.WO_ID || wo.id
+    const { sDate, rawEndDate, eDate } = resolveSyncWoDates(wo, targetPrefix)
+    const mappedStatus = mapSyncWoStatus(wo)
+    const { techName, woNotes, woId } = resolveSyncWoMeta(wo)
+    const woFields = { sDate, rawEndDate, eDate, mappedStatus, techName, woNotes, woId }
 
     if (existingIndex >= 0) {
       const item = updatedItems[existingIndex]
-      let isOnTime = item.isOnTime
-      if (mappedStatus === 'COMPLETED' && eDate && item.plannedEndDate) {
-        isOnTime = eDate <= item.plannedEndDate
-      }
-
-      updatedItems[existingIndex] = {
-        ...item,
-        actualStartDate: sDate || item.actualStartDate,
-        actualEndDate: mappedStatus === 'COMPLETED' ? eDate : (rawEndDate || item.actualEndDate || sDate),
-        actualTech: techName || item.actualTech,
-        status: mappedStatus,
-        notes: woNotes || item.notes,
-        workOrderId: woId || item.workOrderId,
-        isOnTime: isOnTime !== undefined ? isOnTime : item.isOnTime,
-        updatedAt: new Date().toISOString(),
-      }
+      updatedItems[existingIndex] = applySyncWoToItem(item, woFields)
     } else {
       // Append unplanned PM work order
-      const newItem = {
-        id: `PMSCH-${monthKey.replace('-', '')}-UNPLANNED-${woId || Date.now().toString(36)}`,
-        mc: effectiveMC,
-        ki: effectiveKI,
-        location: matchedMachine?.Location || matchedMachine?.location || 'GMK1',
-        type: matchedMachine?.Type || matchedMachine?.type || 'Double',
-        plannedStartDate: '',
-        plannedEndDate: '',
-        actualStartDate: sDate,
-        actualEndDate: mappedStatus === 'COMPLETED' ? eDate : (rawEndDate || ''),
-        assignedTech: '',
-        actualTech: techName,
-        status: mappedStatus,
-        notes: woNotes || 'ใบสั่งงาน PM นอกแผน',
-        workingDays: 0,
-        workOrderId: woId,
-        isUnplanned: true,
-        isOnTime: null,
-        createdAt: wo.created_at || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
+      const newItem = buildUnplannedSyncItem(wo, woFields, effectiveMC, effectiveKI, matchedMachine, monthKey)
       updatedItems.push(newItem)
     }
   })
