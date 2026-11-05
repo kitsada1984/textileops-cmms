@@ -105,6 +105,15 @@ describe('CenterCheck characterization', () => {
     expect(screen.getAllByText('2').length).toBeGreaterThan(0)
   })
 
+  it('shows stats summary computed from seeded records', async () => {
+    render(<CenterCheck />)
+    await screen.findAllByText('CS-S-001')
+
+    expect(screen.getAllByText('อัตราผ่านเกณฑ์มาตรฐาน').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Single Jersey').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Double Jersey').length).toBeGreaterThan(0)
+  })
+
   it('search narrows the history rows', async () => {
     render(<CenterCheck />)
     await screen.findAllByText('CS-S-001')
