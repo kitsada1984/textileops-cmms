@@ -68,3 +68,22 @@ export function resolveMatchedSchedule(item, matched, getPMCountdown) {
     countdownColor: (countdown && countdown.color) ? countdown.color : (item.countdownColor || 'gray'),
   }
 }
+
+export function matchPmPlan(pmPlans, ki, mc) {
+  let matchedPlan = null
+  if (Array.isArray(pmPlans) && pmPlans.length > 0) {
+    if (ki) {
+      matchedPlan = pmPlans.find(p => {
+        const pKI = String(p.Machine_KI || p.ki || p.Serial_OLD || '').trim().toUpperCase()
+        return pKI && pKI === ki
+      })
+    }
+    if (!matchedPlan && mc) {
+      matchedPlan = pmPlans.find(p => {
+        const pMC = String(p.Machine_MC || p.mc || p.NewMC || '').trim().toUpperCase()
+        return pMC && pMC === mc
+      })
+    }
+  }
+  return matchedPlan
+}

@@ -41,6 +41,7 @@ import {
   resolveMatchedCodes,
   resolveMatchedMeta,
   resolveMatchedSchedule,
+  matchPmPlan,
 } from './monthlyMachineResolve'
 import {
   resolveDeletedWoKeys,
@@ -123,21 +124,7 @@ export function augmentMachineWithPMPlan(machine, pmPlans = []) {
   const mc = String(machine.NewMC || machine.mc || machine.Machine_MC || '').trim().toUpperCase()
   const ki = String(machine.Serial_OLD || machine.ki || machine.Machine_KI || '').trim().toUpperCase()
 
-  let matchedPlan = null
-  if (Array.isArray(pmPlans) && pmPlans.length > 0) {
-    if (ki) {
-      matchedPlan = pmPlans.find(p => {
-        const pKI = String(p.Machine_KI || p.ki || p.Serial_OLD || '').trim().toUpperCase()
-        return pKI && pKI === ki
-      })
-    }
-    if (!matchedPlan && mc) {
-      matchedPlan = pmPlans.find(p => {
-        const pMC = String(p.Machine_MC || p.mc || p.NewMC || '').trim().toUpperCase()
-        return pMC && pMC === mc
-      })
-    }
-  }
+  const matchedPlan = matchPmPlan(pmPlans, ki, mc)
 
   const nextPmDate = matchedPlan?.Next_PM_Date || machine?.nextPmDate || machine?.Next_PM_Date || ''
   const lastPmDate = matchedPlan?.Last_PM_Date || machine?.lastPmDate || machine?.Last_PM_Date || ''

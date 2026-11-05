@@ -814,6 +814,18 @@ describe('Countdown Priority & Most Overdue First Scheduling Logic', () => {
     expect(augmented.countdownColor).toBe('red')
   })
 
+  it('augmentMachineWithPMPlan passes null through and matches by MC alone', () => {
+    expect(augmentMachineWithPMPlan(null, [])).toBeNull()
+
+    const pmPlans = [
+      { Machine_MC: 'DA-306M', Next_PM_Date: '2026-06-15', Last_PM_Date: '2026-05-15' },
+    ]
+    const augmented = augmentMachineWithPMPlan({ mc: 'DA-306M', ki: '', location: 'GK3' }, pmPlans)
+
+    expect(augmented.nextPmDate).toBe('2026-06-15')
+    expect(augmented.lastPmDate).toBe('2026-05-15')
+  })
+
   it('autoGenerateMonthlySchedule places the most overdue machine in the very first block', () => {
     const machines = [
       { mc: 'MC-NORMAL', ki: '001', location: 'GK1', countdownDays: 5, countdownLabel: 'เหลือ 5 วัน' },
