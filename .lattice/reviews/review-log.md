@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — PMPlan edit-modal split + v1.3.237
+- **Scope**: 3 files + version bump, pure extraction (11 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/936 green
+- **Strengths**: seed-plan wiring unlocked edit-button coverage; 6 stale imports cleaned
+
 ## 2026-11-05 — PMPlan sync-modal split + v1.3.236
 - **Scope**: 3 files + version bump, pure extraction (14 props)
 - **Atoms**: clean-code, test-quality
