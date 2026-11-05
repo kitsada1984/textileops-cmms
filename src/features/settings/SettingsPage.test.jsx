@@ -120,6 +120,13 @@ describe('SettingsPage - Technician Sync Integration', () => {
     expect(screen.getAllByText(/ตั้งค่าการแจ้งเตือน LINE/).length).toBeGreaterThan(0)
   })
 
+  it('shows the AI vision settings section', async () => {
+    render(<SettingsPage />)
+    await screen.findByDisplayValue('ช่างบอย')
+
+    expect(screen.getAllByText(/Google Gemi/).length).toBeGreaterThan(0)
+  })
+
   it('calls syncNotificationTechsToRegistry when saving LINE settings', async () => {
     render(<SettingsPage />)
 
