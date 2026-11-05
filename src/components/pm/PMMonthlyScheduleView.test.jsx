@@ -317,6 +317,8 @@ describe('PMMonthlyScheduleView UI Component', () => {
     const autoGenBtn = screen.getByRole('button', { name: /สร้างแผนอัตโนมัติ/ })
     fireEvent.click(autoGenBtn)
 
+    expect(screen.getByText('ทุกโรงงาน (ทั้งหมด)')).toBeInTheDocument()
+
     const confirmBtn = screen.getByRole('button', { name: /ยืนยันสร้างแผนงาน/ })
     fireEvent.click(confirmBtn)
 
@@ -1075,6 +1077,36 @@ describe('Save Plan, Delete Month Plan, and Item Actions (Edit/Delete)', () => {
 
     expect(screen.getByText('แผน: DA-306M')).toBeInTheDocument()
     expect(screen.getAllByText(/จริง:/).length).toBeGreaterThan(0)
+  })
+
+  it('renders the monthly header with auto-generate action', async () => {
+    render(<PMMonthlyScheduleView machinesList={testMachines} />)
+
+    expect(screen.getByText('จัดทำแผน PM รายเดือน')).toBeInTheDocument()
+    expect(screen.getByTitle(/สร้างตารางแผน PM/)).toBeInTheDocument()
+  })
+
+  it('opens the update-actual modal from the planned bar', async () => {
+    render(<PMMonthlyScheduleView machinesList={testMachines} />)
+
+    fireEvent.click(screen.getByText('แผน: DA-306M'))
+
+    expect(screen.getByText('บันทึกผลงานจริง')).toBeInTheDocument()
+  })
+
+  it('switches to the annual summary hub', async () => {
+    render(<PMMonthlyScheduleView machinesList={testMachines} />)
+
+    fireEvent.click(screen.getByText('สรุปภาพรวมทั้งปี (12 เดือน)'))
+
+    expect(screen.getByText(/แผน PM รวมทั้งปี/)).toBeInTheDocument()
+  })
+
+  it('renders status and location filter chips', async () => {
+    render(<PMMonthlyScheduleView machinesList={testMachines} />)
+
+    expect(screen.getByText(/ทั้งหมด \(/)).toBeInTheDocument()
+    expect(screen.getByText('โรงงาน:')).toBeInTheDocument()
   })
 
   it('renders machine code (MC) and countdown badge, but hides serial (KI) and location text from inline view while keeping them in tooltip', () => {
