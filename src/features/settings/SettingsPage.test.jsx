@@ -106,6 +106,13 @@ describe('SettingsPage - Technician Sync Integration', () => {
     vi.clearAllMocks()
   })
 
+  it('shows the Telegram settings section', async () => {
+    render(<SettingsPage />)
+    await screen.findByDisplayValue('ช่างเก่ง')
+
+    expect(screen.getAllByText('ตั้งค่า Telegram และ QR').length).toBeGreaterThan(0)
+  })
+
   it('calls syncNotificationTechsToRegistry when saving LINE settings', async () => {
     render(<SettingsPage />)
 
