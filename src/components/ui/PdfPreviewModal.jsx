@@ -11,11 +11,9 @@ import {
   Layers,
   Wrench,
 } from 'lucide-react'
-import { format } from 'date-fns'
-import gemmaLogo from '../../assets/logo-gemma.png'
 import { getDirectImageUrl, getImageFallbackUrls, getFullResolutionImageUrl } from '../../utils/imageUrlUtils'
 import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
-import { DOC_THEMES, getStatusStyle, buildSelectableItems, resolvePrintHeader } from './pdfPrintMeta'
+import { getStatusStyle, buildSelectableItems, resolvePrintHeader } from './pdfPrintMeta'
 import { PdfTopBar } from './PdfTopBar'
 import { PdfSectionPicker } from './PdfSectionPicker'
 import { PdfDocHeader } from './PdfDocHeader'
