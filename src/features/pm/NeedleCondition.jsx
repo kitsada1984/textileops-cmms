@@ -34,9 +34,6 @@ import Modal from '../../components/ui/Modal'
 import SearchInput from '../../components/ui/SearchInput'
 import FilterSortPanel, { INIT_FS } from '../../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../../components/ui/GoogleSheetSyncButton'
-import ImagePreviewModal from '../../components/ui/ImagePreviewModal'
-import PdfPreviewModal from '../../components/ui/PdfPreviewModal'
-import { generateNeedleConditionPdfProps } from '../../utils/pdfDocGenerators'
 import { applyFilterSort } from '../../utils/filterSort'
 import { getDirectImageUrl, getImageFallbackUrls } from '../../utils/imageUrlUtils'
 import { uploadMediaBatch, convertHeicDataUrlIfNeeded } from '../../modules/media'
@@ -54,6 +51,8 @@ import { NeedleConditionTable } from './needleConditionTable.jsx'
 import { NeedleConditionForm } from './needleConditionForm.jsx'
 import { NeedleHistoryDrawer } from './needleHistoryDrawer.jsx'
 import { NeedleDetailDrawer } from './needleDetailDrawer.jsx'
+import { NeedleImageModal } from './needleImageModal.jsx'
+import { NeedlePdfModal } from './needlePdfModal.jsx'
 
 export default function NeedleCondition() {
   const { t } = useT()
@@ -850,26 +849,10 @@ export default function NeedleCondition() {
       <NeedleDetailDrawer detailItem={detailItem} setDetailItem={setDetailItem} canEdit={canEdit} canDelete={canDelete} handleEdit={handleEdit} handleDelete={handleDelete} setPdfItem={setPdfItem} setPreviewImageModal={setPreviewImageModal} renderStatusBadge={renderStatusBadge} t={t} />
 
 
-      {/* ── STANDARD IMAGE PREVIEW MODAL (FULL SIZE & ZOOM) ────────── */}
-      <ImagePreviewModal
-        open={!!previewImageModal}
-        onClose={() => setPreviewImageModal(null)}
-        url={previewImageModal?.url}
-        title={previewImageModal?.title || 'รูปถ่ายสภาพเข็ม'}
-      />
+      <NeedleImageModal previewImageModal={previewImageModal} setPreviewImageModal={setPreviewImageModal} />
 
-      {/* ── PDF PREVIEW & PRINT MODAL ──────────────────────────────── */}
-      {pdfItem && (
-        <PdfPreviewModal
-          open={!!pdfItem}
-          onClose={() => setPdfItem(null)}
-          {...generateNeedleConditionPdfProps(
-            pdfItem,
-            historyMap.get(normalizeSerial(pdfItem.serial) || normalizeMachine(pdfItem.machine_mc) || pdfItem.id) || [],
-            { cylinders }
-          )}
-        />
-      )}
+      <NeedlePdfModal pdfItem={pdfItem} setPdfItem={setPdfItem} historyMap={historyMap} cylinders={cylinders} />
+
     </div>
   )
 }

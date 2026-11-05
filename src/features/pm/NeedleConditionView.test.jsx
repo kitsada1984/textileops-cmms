@@ -12,6 +12,7 @@ const seedInspections = [
     machine_mc: 'MC-01',
     status: 'สึกเล็กน้อย',
     inspection_date: '2026-10-20',
+    images: ['https://example.com/nc1.jpg'],
   },
   {
     id: 'nc-2',
@@ -114,5 +115,23 @@ describe('NeedleCondition characterization', () => {
     fireEvent.click(screen.getAllByText('SN-001')[0])
 
     expect(await screen.findAllByText('สภาพเข็ม: SN-001')).not.toHaveLength(0)
+  })
+
+  it('opens the pdf preview modal from the row pdf button', async () => {
+    render(<NeedleCondition />)
+    await screen.findAllByText('SN-001')
+
+    fireEvent.click(screen.getAllByTitle('ดูเอกสาร PDF และพิมพ์รายงานสภาพเข็ม')[0])
+
+    expect(await screen.findAllByText(/พิมพ์เอกสาร \/ บันทึก PDF/)).not.toHaveLength(0)
+  })
+
+  it('opens the image preview modal from the row thumbnail', async () => {
+    render(<NeedleCondition />)
+    await screen.findAllByText('SN-001')
+
+    fireEvent.click(screen.getByAltText('สภาพเข็ม SN-001'))
+
+    expect(await screen.findAllByText(/สภาพเข็ม: SN-001 \(Counter:/)).not.toHaveLength(0)
   })
 })
