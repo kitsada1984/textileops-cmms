@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — CenterCheck form split + v1.3.233
+- **Scope**: 3 files + version bump, pure extraction (574 lines, 22 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/933 green
+- **Strengths**: 5 missed props + 10 stale imports cleaned in same round
+
 ## 2026-11-05 — CenterCheck image-modal split + v1.3.232
 - **Scope**: 3 files + version bump, pure extraction
 - **Atoms**: clean-code, test-quality
