@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Unused-import cleanup + v1.3.227
+- **Scope**: 1 file import block + version bump, no logic touched
+- **Atoms**: clean-code
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 3 warnings removed, pre-existing ones left alone
+- **Strengths**: eslint proof before/after, commits kept separate
+
 ## 2026-11-05 — Release-protocol doc fix + v1.3.226
 - **Scope**: 1 doc file + version bump, no code touched
 - **Atoms**: clean-code
