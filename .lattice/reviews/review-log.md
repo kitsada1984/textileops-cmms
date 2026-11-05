@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Group-B partial (needle+settings) + v1.3.248
+- **Scope**: 2 files, pure JSX extraction + single release bump
+- **Atoms**: clean-code, test-quality, secure-coding (auth triage)
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0 all, suite 127/960 green
+- **Strengths**: refused 2 auth items with evidence instead of fast-tracking
+
 ## 2026-11-05 — Group-A batch (10 splits) + v1.3.247
 - **Scope**: 10 files, 1 extraction each + single release bump
 - **Atoms**: clean-code, test-quality
