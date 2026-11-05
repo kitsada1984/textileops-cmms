@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — PMPlan preview-modals split + v1.3.239
+- **Scope**: 4 files + version bump, pure extraction (2 modals)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0 both, suite 118/939 green
+- **Strengths**: re-export chain verified; both modals covered by row-click tests
+
 ## 2026-11-05 — PMPlan drawer split + v1.3.238
 - **Scope**: 3 files + version bump, pure extraction (11 props)
 - **Atoms**: clean-code, test-quality
