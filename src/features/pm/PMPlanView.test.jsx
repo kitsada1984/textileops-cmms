@@ -107,6 +107,7 @@ describe('PMPlan characterization', () => {
 
     expect(await screen.findAllByText('MC-01')).not.toHaveLength(0)
     expect(screen.getAllByText('MC-02')).not.toHaveLength(0)
+    expect(screen.getAllByText('จัดการ').length).toBeGreaterThan(0)
   })
 
   it('search narrows the plan rows', async () => {
