@@ -27,6 +27,18 @@ const seedCylinders = [
   },
 ]
 
+const seedPlans = [
+  {
+    id: 'plan-1',
+    Machine_KI: 'OLD-01',
+    Frequency_Type: 'CALENDAR',
+    Frequency_Value: 90,
+    Last_PM_Date: '2026-10-01',
+    Next_PM_Date: '2026-12-30',
+    Status: 'SCHEDULED',
+  },
+]
+
 vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { role: 'admin', full_name: 'Test Admin' }, refreshUser: vi.fn() }),
 }))
@@ -44,8 +56,25 @@ vi.mock('../../hooks/usePagePerms', () => ({
 }))
 
 vi.mock('../../hooks/useEntity', () => ({
-  default: () => ({ data: [], loading: false, load: vi.fn(), save: vi.fn(), remove: vi.fn() }),
+  default: (api) => ({
+    data: api && api.__kind === 'pmplan' ? seedPlans : [],
+    loading: false,
+    load: vi.fn(),
+    save: vi.fn(),
+    remove: vi.fn(),
+  }),
 }))
+
+vi.mock('../../api/entities', async (importOriginal) => {
+  const orig = await importOriginal()
+  return {
+    ...orig,
+    PMPlanAPI: {
+      ...(orig.PMPlanAPI || {}),
+      __kind: 'pmplan',
+    },
+  }
+})
 
 vi.mock('../../api/realtimeSync', () => ({
   useRealtimeTables: () => {},
@@ -117,6 +146,15 @@ describe('PMPlan characterization', () => {
     fireEvent.click(screen.getByText('อัพเดตแผน PM'))
 
     expect(await screen.findAllByText(/อัพเดตแผน PM จากเมนูกระบอก/)).not.toHaveLength(0)
+  })
+
+  it('opens the add/edit modal from the row edit button', async () => {
+    render(<PMPlan />)
+    await screen.findAllByText('MC-01')
+
+    fireEvent.click(screen.getAllByTitle('แก้ไขข้อมูลแผน PM')[0])
+
+    expect(await screen.findAllByText('pm_edit')).not.toHaveLength(0)
   })
 
   it('search narrows the plan rows', async () => {
