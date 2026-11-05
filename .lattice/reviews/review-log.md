@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — PMPlan sync-modal split + v1.3.236
+- **Scope**: 3 files + version bump, pure extraction (14 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/935 green
+- **Strengths**: 4 missed props caught by eslint; no stale imports left
+
 ## 2026-11-05 — PMPlan table split + v1.3.235
 - **Scope**: 3 files + version bump, pure extraction (11 props)
 - **Atoms**: clean-code, test-quality
