@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Chore batch (dead imports from PDF split)
+- **Scope**: 1 file, import cleanup only
+- **Atoms**: clean-code
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 3 dead imports removed, 8 tests green
+- **Strengths**: case-sensitive usage check before each removal
+
 ## 2026-11-05 — Sub-25 batch 12 (PDF preview split)
 - **Scope**: print meta + topbar + picker + header + tables + signatures
 - **Atoms**: clean-code, architecture, test-quality
