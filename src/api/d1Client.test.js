@@ -1,6 +1,69 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { D1Client } from './d1Client'
 
+describe('d1Client - execute query paths', () => {
+  const realFetch = global.fetch
+
+  afterEach(() => {
+    global.fetch = realFetch
+    vi.restoreAllMocks()
+  })
+
+  it('short-circuits empty IN() selects without fetching', async () => {
+    const fetchSpy = vi.fn()
+    global.fetch = fetchSpy
+    const client = new D1Client({ apiUrl: '/api/d1/query' })
+
+    const res = await client.from('machines').select().in('Mc', []).execute()
+
+    expect(res.error).toBeNull()
+    expect(res.data).toEqual([])
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('runs the head-count branch and returns the count', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ count: 7 }),
+    })
+    const client = new D1Client({ apiUrl: '/api/d1/query' })
+
+    const res = await client.from('machines').select('*', { count: 'exact' }).execute()
+
+    expect(res.error).toBeNull()
+    expect(res.count).toBe(7)
+    expect(res.data).toBeNull()
+  })
+
+  it(' surfaces server error messages on HTTP failure', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Server Error',
+      json: async () => ({ error: 'boom' }),
+    })
+    const client = new D1Client({ apiUrl: '/api/d1/query' })
+
+    const res = await client.from('machines').select().execute()
+
+    expect(res.data).toBeNull()
+    expect(res.error.message).toBe('boom')
+  })
+
+  it('unwraps single() to the first row', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: 1 }, { id: 2 }] }),
+    })
+    const client = new D1Client({ apiUrl: '/api/d1/query' })
+
+    const res = await client.from('machines').select().single().execute()
+
+    expect(res.error).toBeNull()
+    expect(res.data).toEqual({ id: 1 })
+  })
+})
+
 describe('d1Client - Realtime Channel & Page Visibility Quota Saver', () => {
   let client
   let channel

@@ -23,6 +23,61 @@ function authHeaders(extra = {}) {
   return token ? { Authorization: `Bearer ${token}`, ...extra } : { ...extra }
 }
 
+function buildEmptySelectResult(selectOptions) {
+  return { data: selectOptions?.count ? null : [], count: selectOptions?.count === 'exact' ? 0 : null, error: null }
+}
+
+async function executeCountQuery(apiUrl, headers, payload) {
+  const res = await fetch(apiUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
+  })
+  const result = await res.json()
+  if (!res.ok || result.error) {
+    return { data: null, count: null, error: { message: result.error || `${res.status} ${res.statusText}` } }
+  }
+  return { data: null, count: result.count ?? 0, error: null }
+}
+
+async function parseErrorBody(res) {
+  let errMsg = `${res.status} ${res.statusText}`
+  try {
+    const errJson = await res.json()
+    if (errJson?.error) errMsg = errJson.error
+  } catch {}
+  return { data: null, error: { message: errMsg } }
+}
+
+function normalizeSingleResult(data, isSingle) {
+  if (isSingle) {
+    if (Array.isArray(data)) {
+      data = data.length > 0 ? data[0] : null
+    }
+    // Non-array mutation result (object) passes through unchanged
+  }
+  return data
+}
+
+function broadcastMutation(table, action, data) {
+  // Broadcast mutation to same-browser tabs for 0ms multi-tab sync
+  if (['insert', 'update', 'delete', 'upsert'].includes(action)) {
+    try {
+      if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('txops_d1_realtime')
+        bc.postMessage({
+          table,
+          eventType: action.toUpperCase(),
+          recordId: Array.isArray(data) ? data[0]?.id : data?.id,
+          new: Array.isArray(data) ? data[0] : data,
+          time: Date.now()
+        })
+        bc.close()
+      }
+    } catch {}
+  }
+}
+
 class D1QueryBuilder {
   constructor(table, client) {
     this.table = table
@@ -162,7 +217,7 @@ class D1QueryBuilder {
 
   async execute() {
     if (this.emptyResult && this.action === 'select') {
-      return { data: this.selectOptions?.count ? null : [], count: this.selectOptions?.count === 'exact' ? 0 : null, error: null }
+      return buildEmptySelectResult(this.selectOptions)
     }
 
     try {
@@ -181,16 +236,7 @@ class D1QueryBuilder {
       // Supabase-style head count: only the number of rows is needed
       if (this.action === 'select' && this.selectOptions?.count === 'exact') {
         payload.action = 'count'
-        const res = await fetch(this.client.apiUrl, {
-          method: 'POST',
-          headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(payload)
-        })
-        const result = await res.json()
-        if (!res.ok || result.error) {
-          return { data: null, count: null, error: { message: result.error || `${res.status} ${res.statusText}` } }
-        }
-        return { data: null, count: result.count ?? 0, error: null }
+        return executeCountQuery(this.client.apiUrl, authHeaders({ 'Content-Type': 'application/json' }), payload)
       }
 
       const res = await fetch(this.client.apiUrl, {
@@ -200,12 +246,7 @@ class D1QueryBuilder {
       })
 
       if (!res.ok) {
-        let errMsg = `${res.status} ${res.statusText}`
-        try {
-          const errJson = await res.json()
-          if (errJson?.error) errMsg = errJson.error
-        } catch {}
-        return { data: null, error: { message: errMsg } }
+        return parseErrorBody(res)
       }
 
       const result = await res.json()
@@ -213,30 +254,9 @@ class D1QueryBuilder {
         return { data: null, error: { message: result.error } }
       }
 
-      let data = result.data
-      if (this.isSingle) {
-        if (Array.isArray(data)) {
-          data = data.length > 0 ? data[0] : null
-        }
-        // Non-array mutation result (object) passes through unchanged
-      }
+      let data = normalizeSingleResult(result.data, this.isSingle)
 
-      // Broadcast mutation to same-browser tabs for 0ms multi-tab sync
-      if (['insert', 'update', 'delete', 'upsert'].includes(this.action)) {
-        try {
-          if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
-            const bc = new BroadcastChannel('txops_d1_realtime')
-            bc.postMessage({
-              table: this.table,
-              eventType: this.action.toUpperCase(),
-              recordId: Array.isArray(data) ? data[0]?.id : data?.id,
-              new: Array.isArray(data) ? data[0] : data,
-              time: Date.now()
-            })
-            bc.close()
-          }
-        } catch {}
-      }
+      broadcastMutation(this.table, this.action, data)
 
       return { data, error: null }
     } catch (err) {
