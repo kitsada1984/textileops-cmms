@@ -4,6 +4,7 @@ import initialCenterChecks from '../data/initialCenterChecks.json'
 import initialNeedleSets from '../data/initialNeedleSets.json'
 import { getSystemConfig, saveSystemConfig, deleteSystemConfig } from '../modules/systemConfig'
 import { resolveNeedleImageSource, resolveNeedleSetMachine, resolveNeedleSetGrade, resolveNeedleSetDates, resolveNeedleSetPlace, resolveNeedleLogHead, resolveNeedleLogMeta, resolveNeedleLogStock } from './needleNormalize'
+import { resolveSlaStart, buildDirectHoursSla, buildEmptySla, resolveSlaNetHours, buildDurationSla } from './slaPerformance'
 
 export const DEFAULT_TECHS = []
 
@@ -970,83 +971,25 @@ export function calculateSlaPerformance(job, targetDaysMap = { REPAIR: 1.0, DESI
   const targetDays = targetDaysMap[type] || 1.0
   const targetHours = targetDays * hoursPerDay
 
-  const startTimestamp = job.StartTimestamp || job['Start Timestamp'] || job.created_at || (job.StartDate && (job.StartTime ? `${job.StartDate}T${job.StartTime}` : `${job.StartDate}T08:00:00Z`))
+  const startTimestamp = resolveSlaStart(job)
   if (!startTimestamp) {
     const directHours = parseFloat(job.WorkingHoursDecimal || job['Working Hours'] || job.Duration) || 0
     if (directHours > 0) {
-      const isOnTime = directHours <= targetHours
-      const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
-      return {
-        targetDays,
-        targetHours,
-        hoursDecimal: directHours,
-        netHoursDecimal: directHours,
-        grossHoursDecimal: directHours,
-        lostHoursDecimal: 0,
-        sundayHoursDecimal: 0,
-        sundayMinutes: 0,
-        offShiftMinutes: 0,
-        offShiftHoursDecimal: 0,
-        isOnTime,
-        label: isCompleted
-          ? (isOnTime ? 'ทันเป้าหมาย (On-Time)' : 'เกินเป้าหมาย (Overdue)')
-          : (isOnTime ? `อยู่ในเกณฑ์ (${directHours}/${targetHours}ชม.)` : `เกินเวลา SLA (${directHours}/${targetHours}ชม.)`),
-        badgeClass: isCompleted
-          ? (isOnTime ? 'badge-green' : 'badge-red')
-          : (isOnTime ? 'badge-blue' : 'badge-red'),
-      }
+      return buildDirectHoursSla(job, targetDays, targetHours, directHours)
     }
-    return {
-      targetDays,
-      targetHours,
-      isOnTime: true,
-      label: '—',
-      badgeClass: 'badge-gray',
-      hoursDecimal: 0,
-      netHoursDecimal: 0,
-      grossHoursDecimal: 0,
-      lostHoursDecimal: 0,
-      sundayHoursDecimal: 0,
-      sundayMinutes: 0,
-      offShiftMinutes: 0,
-      offShiftHoursDecimal: 0,
-    }
+    return buildEmptySla(targetDays, targetHours)
   }
 
   const endTimestamp = job.EndTimestamp || job['End Timestamp'] || (job.EndDate && job.EndTime ? `${job.EndDate}T${job.EndTime}` : null) || (job.Status === 'COMPLETED' ? (job.completed_at || job.updated_at) : new Date().toISOString())
   const interruptions = job.Interruption_Logs || job.interruption_logs || job.Lost_Time_Logs || []
   const durationResult = calculateDuration(startTimestamp, endTimestamp, interruptions, excludeSunday)
-  
+
   const isCompleted = job.Status === 'COMPLETED' || job.Status === 'เสร็จสิ้น'
-  // If job is already COMPLETED and has an explicitly saved WorkingHoursDecimal, prefer that if durationResult cannot be calculated accurately (e.g. no endTimestamp)
-  const netHours = (isCompleted && typeof job.WorkingHoursDecimal === 'number' && job.WorkingHoursDecimal > 0 && !job.EndTimestamp && !job.EndDate)
-    ? job.WorkingHoursDecimal
-    : durationResult.netHoursDecimal
+  const netHours = resolveSlaNetHours(job, isCompleted, durationResult)
 
   const isOnTime = netHours <= targetHours
 
-  if (isCompleted) {
-    return {
-      targetDays,
-      targetHours,
-      ...durationResult,
-      hoursDecimal: netHours,
-      isOnTime,
-      label: isOnTime ? 'ทันเป้าหมาย (On-Time)' : 'เกินเป้าหมาย (Overdue)',
-      badgeClass: isOnTime ? 'badge-green' : 'badge-red',
-    }
-  }
-
-  // If in progress:
-  return {
-    targetDays,
-    targetHours,
-    ...durationResult,
-    hoursDecimal: netHours,
-    isOnTime,
-    label: isOnTime ? `อยู่ในเกณฑ์ (${netHours}/${targetHours}ชม.)` : `เกินเวลา SLA (${netHours}/${targetHours}ชม.)`,
-    badgeClass: isOnTime ? 'badge-blue' : 'badge-red',
-  }
+  return buildDurationSla({ targetDays, targetHours, durationResult, netHours, isOnTime, isCompleted })
 }
 
 // ============================================================

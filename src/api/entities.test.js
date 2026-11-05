@@ -173,6 +173,27 @@ describe('12h/Day Working Shift & SLA Calculations', () => {
     expect(sla.label).toBe('ทันเป้าหมาย (On-Time)')
     expect(sla.badgeClass).toBe('badge-green')
   })
+
+  it('calculateSlaPerformance uses explicit working hours when no start exists', () => {
+    const sla = calculateSlaPerformance(
+      { Job_ID: 'X', JobType: 'REPAIR', Status: 'COMPLETED', WorkingHoursDecimal: 20 },
+      { REPAIR: 1.0 },
+      12
+    )
+
+    expect(sla.isOnTime).toBe(false)
+    expect(sla.hoursDecimal).toBe(20)
+    expect(sla.label).toBe('เกินเป้าหมาย (Overdue)')
+    expect(sla.badgeClass).toBe('badge-red')
+  })
+
+  it('calculateSlaPerformance returns neutral result with no time data', () => {
+    const sla = calculateSlaPerformance({ Job_ID: 'X', JobType: 'REPAIR', Status: 'OPEN' }, { REPAIR: 1.0 }, 12)
+
+    expect(sla.isOnTime).toBe(true)
+    expect(sla.label).toBe('—')
+    expect(sla.badgeClass).toBe('badge-gray')
+  })
 })
 
 describe('CenterCheckStandardsAPI', () => {
