@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Logic-safe batch (row + pure helpers) + v1.3.253
+- **Scope**: 3 extractions, zero-logic verified + single release bump
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — byte-proofs + unit tests, suite 130/972 green
+- **Strengths**: refused 900-line row + submit handlers instead of guessing
+
 ## 2026-11-05 — Sub-25 batch 2 (form/card/dashboard) + v1.3.252
 - **Scope**: 6 new files, pure JSX extraction + single release bump
 - **Atoms**: clean-code, test-quality
