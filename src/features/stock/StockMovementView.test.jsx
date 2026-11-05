@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import StockMovement from './StockMovement'
 
@@ -68,5 +68,14 @@ describe('StockMovement characterization', () => {
     expect(screen.getAllByText('รายการเคลื่อนไหวทั้งหมด').length).toBeGreaterThan(0)
     expect(screen.getAllByText('รับเข้าสต๊อก (Receive)').length).toBeGreaterThan(0)
     expect(screen.getAllByText('เบิกจ่ายสต๊อก (Issue)').length).toBeGreaterThan(0)
+  })
+
+  it('opens the add/edit modal from the add button', async () => {
+    render(<StockMovement />)
+    await screen.findAllByText('รายการเคลื่อนไหวทั้งหมด')
+
+    fireEvent.click(screen.getByText('บันทึกเคลื่อนไหว'))
+
+    expect(await screen.findAllByText(/บันทึกเคลื่อนไหวสต๊อก/)).not.toHaveLength(0)
   })
 })
