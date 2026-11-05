@@ -1,6 +1,7 @@
-import { Camera, CheckCircle2, Plus, RefreshCw, Sliders, X } from 'lucide-react'
+import { Camera, CheckCircle2, Plus, RefreshCw, Sliders } from 'lucide-react'
 import { NEEDLE_COND_OPTIONS, STANDARD_NEEDLE_CONDS, CenterCheckPhotoCard } from './centerCheckParts.jsx'
 import { CenterCheckFormTail } from './centerCheckFormTail.jsx'
+import { CenterCheckFormHead } from './centerCheckFormHead.jsx'
 
 export function CenterCheckForm({ activeSubTab, setActiveSubTab, formType, editingId, formData, setFormData, saving, uploadingImage, standardsConfig, rawMachines, rawTechs, handleSubmitForm, handleMcChange, handleSerialChange, handleCounterLatestChange, handleItemChange, handleImageUpload, removeImage, setPreviewImage, setStandardsDraft, setStandardsTab, setStandardsModalOpen }) {
   return (
@@ -9,40 +10,8 @@ export function CenterCheckForm({ activeSubTab, setActiveSubTab, formType, editi
         <form onSubmit={handleSubmitForm} className="space-y-6">
           <div className="card p-6 space-y-6 border border-blue-500/20">
             {/* Header info */}
-            <div className="flex flex-wrap items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wide text-white ${
-                    formType === 'Double' ? 'bg-emerald-600' : 'bg-blue-600'
-                  }`}>
-                    {formType} Jersey
-                  </span>
-                  <h2 className="text-base font-extrabold" style={{ color: 'var(--text-900)' }}>
-                    {editingId ? 'แก้ไขใบบันทึกการตั้งศูนย์' : 'แบบบันทึกการตั้งศูนย์เครื่องถักกลม'}
-                  </h2>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  กรอกข้อมูลเครื่องจักร ค่าการตรวจ 10 รายการ และลายมือชื่อช่างผู้ตรวจ
-                </p>
-              </div>
+            <CenterCheckFormHead formType={formType} editingId={editingId} setActiveSubTab={setActiveSubTab} formData={formData} />
 
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-xs font-bold text-slate-400">เลขที่เอกสาร</div>
-                  <div className="text-sm font-mono font-black text-blue-600 dark:text-blue-400">
-                    {formData.doc_no}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveSubTab('history')}
-                  className="btn-outline text-xs px-3"
-                >
-                  <X size={14} />
-                  <span>ยกเลิก</span>
-                </button>
-              </div>
-            </div>
 
             {/* Section 1: Basic info & Counter */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 text-xs">
@@ -506,6 +475,7 @@ export function CenterCheckForm({ activeSubTab, setActiveSubTab, formType, editi
 
             {/* Section 4: Signatures */}
             <CenterCheckFormTail formData={formData} setFormData={setFormData} editingId={editingId} saving={saving} setActiveSubTab={setActiveSubTab} />
+import { CenterCheckFormHead } from './centerCheckFormHead.jsx'
 
           </div>
         </form>
