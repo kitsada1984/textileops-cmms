@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { StepReportProblem } from './stepReportProblem.jsx'
+import { validateStepReportInput, buildStepReportPayload } from './stepReportPayload.js'
 import { StepReportTypeSelector } from './stepReportTypeSelector.jsx'
 import { getStepCompleteGate } from './stepCompleteStatus.jsx'
 import { StepCompleteParts } from './stepCompleteParts.jsx'
@@ -291,15 +292,11 @@ export function StepReport({ serial, cylinder, onSubmitted, onBack }) {
 
   const submit = async () => {
     if (saving) return
-    if (!problem.trim()) return setError('กรุณาระบุรายละเอียดอาการเสียที่พบ')
-    if (!reporter.trim()) return setError('กรุณาระบุชื่อผู้แจ้งซ่อม')
-    if (repairType === 'EASY' && !assignedTech.trim()) {
-      return setError('กรุณาเลือกหรือระบุชื่อช่างผู้รับผิดชอบสำหรับงานง่าย')
-    }
+    const validationError = validateStepReportInput({ problem, reporter, repairType, assignedTech })
+    if (validationError) return setError(validationError)
     setSaving(true)
     setError('')
     try {
-      const isEasy = repairType === 'EASY'
       const encodedProblem = encodeRepairProblemDescription(problem.trim(), {
         Design: design.trim(),
         KI: ki.trim(),
@@ -317,25 +314,19 @@ export function StepReport({ serial, cylinder, onSubmitted, onBack }) {
         console.warn('Repair request_no generation warning:', e)
       }
 
-      let insertPayload = {
-        request_no: requestNo,
-        cylinder_serial: serial || cylinder?.Serial_NOW || cylinder?.Serial_OLD || null,
-        cylinder_location: cylinder?.Location || null,
-        cylinder_standard: cylinder?.Standard || null,
-        machine_mc: cylinder?.NewMC || null,
-        Design: design.trim() || null,
-        KI: ki.trim() ? Number(ki) : null,
-        roll_no: rollNo.trim() ? Number(rollNo) : null,
-        problem_description: encodedProblem,
-        priority: urgency,
-        reported_by: reporter.trim(),
-        repair_type: repairType,
-        status: isEasy ? 'APPROVED' : 'PENDING',
-        technician_name: isEasy ? assignedTech.trim() : null,
-        approved_by: isEasy ? 'ผู้แจ้งซ่อม (งานง่าย)' : null,
-        approved_at: isEasy ? new Date().toISOString() : null,
-        approval_notes: isEasy ? 'งานทั่วไป/งานง่าย (เลือกช่างตรง)' : null,
-      }
+      const insertPayload = buildStepReportPayload({
+        requestNo,
+        serial,
+        cylinder,
+        design,
+        ki,
+        rollNo,
+        encodedProblem,
+        urgency,
+        reporter,
+        repairType,
+        assignedTech,
+      })
       const { data } = await createRepairRequest(insertPayload, { cylinder })
 
       onSubmitted(data)
