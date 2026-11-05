@@ -5,7 +5,6 @@ import {
   Pencil,
   Trash2,
   RefreshCw,
-  ExternalLink,
   Check,
   X,
   Layers,
@@ -18,7 +17,6 @@ import { SparePartAPI, PART_STATUS } from '../../api/entities'
 import { useAuth } from '../../contexts/AuthContext'
 import useWebBuilderMenu, { useFieldOptions } from '../../hooks/useWebBuilderMenu'
 import Modal from '../../components/ui/Modal'
-import StatusBadge from '../../components/ui/StatusBadge'
 import SearchInput from '../../components/ui/SearchInput'
 import { useT } from '../../contexts/LanguageContext'
 import usePagePerms from '../../hooks/usePagePerms'
@@ -49,7 +47,6 @@ import {
 } from '../../utils/imageSearch'
 import { generateSparePartPdfProps } from '../../utils/pdfDocGenerators'
 import ImagePreviewModal from '../../components/ui/ImagePreviewModal'
-import ImageThumbnail from '../../components/ui/ImageThumbnail'
 import {
   appendSparePartImageMeta,
   buildSparePartImagePayload,
@@ -63,6 +60,7 @@ import { SparePartsStats } from './sparePartsStats.jsx'
 import { SpareEditModal } from './spareEditModal.jsx'
 import { SpareCategoryModal } from './spareCategoryModal.jsx'
 import { SparePartsTable } from './sparePartsTable.jsx'
+import { resolveSpareCellValue, renderSpareCodeCell, renderSpareLocationCell, renderSpareImageUrlCell, renderSpareImagePreviewCell, renderSpareStatusCell } from './spareCellRender.jsx'
 import { SpareDetailDrawer } from './spareDetailDrawer.jsx'
 import {
   SPARE_PART_IMAGE_FOLDER,
@@ -566,38 +564,14 @@ export default function SpareParts() {
   }
 
   const renderCellContent = (row, col) => {
-    const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
-      ? getSparePartImageUrl(row)
-      : col.field === 'Part_Name_EN'
-        ? getSparePartName(row)
-        : col.field === 'Status'
-          ? getSparePartStatus(row)
-          : row[col.field]
+    const val = resolveSpareCellValue(row, col, { getSparePartImageUrl, getSparePartName, getSparePartStatus })
 
     if (val === null || val === undefined || val === '') {
       return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
     }
 
     if (col.field === 'Part_Code') {
-      const codeStr = String(val)
-      const sameCodeCount = data.filter(
-        (p) => String(p?.Part_Code || '').trim().toLowerCase() === codeStr.trim().toLowerCase()
-      ).length
-      return (
-        <span className="inline-flex items-center gap-1.5 font-mono">
-          <span className="font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">
-            {codeStr}
-          </span>
-          {sameCodeCount > 1 && (
-            <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/20"
-              title={`รหัสนี้มีจัดเก็บใน ${sameCodeCount} คลังสินค้า (สต๊อกแยกกัน)`}
-            >
-              {sameCodeCount} คลัง
-            </span>
-          )}
-        </span>
-      )
+      return renderSpareCodeCell(val, data)
     }
 
     if (col.field === 'Category') {
@@ -618,7 +592,7 @@ export default function SpareParts() {
     }
 
     if (col.field === 'Status') {
-      return <StatusBadge value={val} />
+      return renderSpareStatusCell(val)
     }
 
     if (col.field === 'Stock_Qty') {
@@ -639,48 +613,15 @@ export default function SpareParts() {
     }
 
     if (col.field === 'Location_Store') {
-      const locStr = String(val || '').trim()
-      const isStore = locStr.toLowerCase() === 'store'
-      const isGMK = locStr.toLowerCase().startsWith('gmk')
-      return (
-        <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] inline-flex items-center gap-1 ${
-          isStore
-            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-            : isGMK
-              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-        }`}>
-          {locStr || '—'}
-        </span>
-      )
+      return renderSpareLocationCell(val)
     }
 
     if (col.field === 'ImageUrl') {
-      return (
-        <a
-          href={String(val)}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-mono text-[11px] flex items-center gap-1 hover:underline max-w-[200px] truncate"
-        >
-          <span className="truncate">{String(val)}</span>
-          <ExternalLink size={11} className="flex-shrink-0 opacity-70" />
-        </a>
-      )
+      return renderSpareImageUrlCell(val, (e) => e.stopPropagation())
     }
 
     if (col.field === 'ImagePreview') {
-      const imgUrl = String(val)
-      return (
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <ImageThumbnail
-            url={imgUrl}
-            alt={`${row.Part_Code} - ${getSparePartName(row)}`}
-            onClick={() => setPreviewImageModal({ url: imgUrl, title: `${row.Part_Code} - ${getSparePartName(row)}` })}
-          />
-        </div>
-      )
+      return renderSpareImagePreviewCell(val, row, { setPreviewImageModal, getSparePartName, onStop: (e) => e.stopPropagation() })
     }
 
     if (col.field === 'Compatible_Machines') {
