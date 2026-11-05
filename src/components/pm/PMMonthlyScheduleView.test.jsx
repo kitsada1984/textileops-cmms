@@ -255,6 +255,18 @@ describe('resolveItemMachine & In-use Cylinder Machine Resolution', () => {
     const resolved = resolveItemMachine(rawItem, [])
     expect(resolved.mc).toBe('DA-306M')
   })
+
+  it('returns blank fields for null item', () => {
+    expect(resolveItemMachine(null, mockCylinders)).toEqual({ mc: '', ki: '', location: '', type: '' })
+    expect(resolveItemMachine(undefined, mockCylinders)).toEqual({ mc: '', ki: '', location: '', type: '' })
+  })
+
+  it('matches generic MC slot by index when KI is missing', () => {
+    const resolved = resolveItemMachine({ id: 'X', mc: 'MC-02', ki: '', location: '', type: '' }, mockCylinders)
+
+    expect(resolved.mc).toBe('SC-368M')
+    expect(resolved.ki).toBe('62407')
+  })
 })
 
 describe('PMMonthlyScheduleView UI Component', () => {

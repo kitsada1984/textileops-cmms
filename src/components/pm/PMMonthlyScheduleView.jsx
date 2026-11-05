@@ -35,6 +35,14 @@ import { useToast } from '../ui/Toast'
 import Modal from '../ui/Modal'
 import PMMonthlyPrintModal from './PMMonthlyPrintModal'
 import {
+  matchMachineBySerial,
+  matchMachineByCode,
+  matchMachineBySlot,
+  resolveMatchedCodes,
+  resolveMatchedMeta,
+  resolveMatchedSchedule,
+} from './monthlyMachineResolve'
+import {
   resolveDeletedWoKeys,
   matchEffectiveMachine,
   resolveEffectiveKeys,
@@ -298,51 +306,25 @@ export function resolveItemMachine(item, cylindersOrMachines = []) {
   const isGenericMC = !rawMC || /^MC-\d+$/i.test(rawMC)
 
   // 1. Try matching by Serial_OLD / KI
-  let matched = effectiveList.find(m => {
-    const serial = String(m?.Serial_OLD || m?.ki || m?.Machine_KI || '').trim()
-    if (rawKI && serial && rawKI.toUpperCase() === serial.toUpperCase()) return true
-    return false
-  })
+  let matched = matchMachineBySerial(effectiveList, rawKI)
 
   // 2. If no match by KI, try matching by current machine code (if not generic)
   if (!matched && !isGenericMC && rawMC) {
-    matched = effectiveList.find(m => {
-      const code = String(m?.NewMC || m?.mc || m?.Machine_MC || '').trim()
-      if (code && rawMC.toUpperCase() === code.toUpperCase()) return true
-      return false
-    })
+    matched = matchMachineByCode(effectiveList, rawMC)
   }
 
   // 3. Fallback for generic MC-XX without KI: match by slot index if applicable
   if (!matched && isGenericMC && effectiveList.length > 0) {
-    const idxMatch = rawMC.match(/^MC-(\d+)$/i)
-    if (idxMatch) {
-      const slot = parseInt(idxMatch[1], 10) - 1
-      if (slot >= 0 && slot < effectiveList.length) {
-        matched = effectiveList[slot]
-      }
-    }
+    matched = matchMachineBySlot(effectiveList, rawMC)
   }
 
-  const resolvedMC = matched
-    ? String(matched?.NewMC || matched?.mc || matched?.Machine_MC || '').trim() || item.mc
-    : item.mc
-
-  const resolvedKI = matched
-    ? String(matched?.Serial_OLD || matched?.ki || matched?.Machine_KI || '').trim() || item.ki
-    : item.ki
-
-  const resolvedLocation = (matched && String(matched?.Location || matched?.location || '').trim())
-    ? String(matched?.Location || matched?.location || '').trim()
-    : item.location
-
-  const resolvedType = (matched && String(matched?.Type || matched?.type || '').trim())
-    ? String(matched?.Type || matched?.type || '').trim()
-    : item.type
-
-  const resolvedNextPmDate = (matched && (matched.nextPmDate || matched.Next_PM_Date)) || item.nextPmDate || ''
-  const resolvedLastPmDate = (matched && (matched.lastPmDate || matched.Last_PM_Date)) || item.lastPmDate || ''
-  const countdown = resolvedNextPmDate ? getPMCountdown(resolvedNextPmDate) : null
+  const { mc: resolvedMC, ki: resolvedKI } = resolveMatchedCodes(item, matched)
+  const { location: resolvedLocation, type: resolvedType } = resolveMatchedMeta(item, matched)
+  const {
+    nextPmDate: resolvedNextPmDate,
+    lastPmDate: resolvedLastPmDate,
+    countdownDays, countdownLabel, countdownColor,
+  } = resolveMatchedSchedule(item, matched, getPMCountdown)
 
   return {
     ...item,
@@ -352,9 +334,9 @@ export function resolveItemMachine(item, cylindersOrMachines = []) {
     type: resolvedType,
     nextPmDate: resolvedNextPmDate,
     lastPmDate: resolvedLastPmDate,
-    countdownDays: countdown ? countdown.days : (item.countdownDays ?? null),
-    countdownLabel: (countdown && countdown.label) ? countdown.label : (item.countdownLabel || '—'),
-    countdownColor: (countdown && countdown.color) ? countdown.color : (item.countdownColor || 'gray'),
+    countdownDays,
+    countdownLabel,
+    countdownColor,
   }
 }
 
