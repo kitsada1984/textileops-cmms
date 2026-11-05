@@ -59,6 +59,7 @@ import { CenterCheckTable } from './centerCheckTable.jsx'
 import { CenterCheckViewModal } from './centerCheckViewModal.jsx'
 import { CenterCheckStandardsModal } from './centerCheckStandardsModal.jsx'
 import { CenterCheckSqlModal } from './centerCheckSqlModal.jsx'
+import { CenterCheckPrintModal } from './centerCheckPrintModal.jsx'
 import { CenterCheckStats } from './centerCheckStats.jsx'
 
 export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPlan, onRecordSaved }) {
@@ -1601,22 +1602,8 @@ export default function CenterCheck({ initialPreset, onClearPreset, onBackToPMPl
       {/* ══════════════════════════════════════════════════════════ */}
       {/* ── MODAL: 2. PRINT A4 SHEET (PDF PREVIEW MODAL) ──────────── */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {printRecord && (
-        <PdfPreviewModal
-          open={!!printRecord}
-          onClose={() => setPrintRecord(null)}
-          {...generateCenterCheckPdfProps(
-            {
-              ...printRecord,
-              location:
-                printRecord.location && printRecord.location !== '—'
-                  ? printRecord.location
-                  : getLatestLocation(printRecord.mc, printRecord.serial, 'โรงทอ'),
-            },
-            { cylinders: rawCylinders, centerChecks: rawRecords }
-          )}
-        />
-      )}
+      <CenterCheckPrintModal printRecord={printRecord} setPrintRecord={setPrintRecord} getLatestLocation={getLatestLocation} rawCylinders={rawCylinders} rawRecords={rawRecords} />
+
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* ── MODAL: 2.5 STANDARDS CONFIG MODAL ────────────────────── */}
