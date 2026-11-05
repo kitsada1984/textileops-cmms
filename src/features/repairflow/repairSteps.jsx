@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { StepReportProblem } from './stepReportProblem.jsx'
 import { StepReportTypeSelector } from './stepReportTypeSelector.jsx'
+import { getStepCompleteGate } from './stepCompleteStatus.jsx'
+import { StepCompleteParts } from './stepCompleteParts.jsx'
+import { StepCompleteDuration } from './stepCompleteDuration.jsx'
 import { loadTelegramSettingsDB } from '../../utils/telegram'
 import {
   createRepairRequest,
@@ -16,14 +19,10 @@ import {
   WorkOrderAPI,
   RepairRequestAPI,
   calculateDuration,
-  formatMinutesToThai,
 } from '../../api/entities'
-import { QUICK_INTERRUPTION_PRESETS } from '../../pages/WorkOrders'
 import { isItemInText, toggleItemInText } from '../../utils/textToggle'
 import {
   CheckCircle,
-  Clock,
-  AlertTriangle,
   ChevronRight,
   ExternalLink,
   CheckCircle2,
@@ -31,7 +30,6 @@ import {
   Cpu,
   Send,
   ArrowLeft,
-  XCircle,
   Loader,
 } from 'lucide-react'
 
@@ -588,35 +586,8 @@ export function StepComplete({ request, onUpdated }) {
     }
   }, [])
 
-  if (request.status === 'PENDING') {
-    return (
-      <div style={{ padding: '36px 20px', textAlign: 'center' }}>
-        <AlertTriangle size={52} style={{ color: '#f59e0b', margin: '0 auto 12px' }} />
-        <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>ไม่สามารถปิดงานได้</div>
-        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>งานซ่อมนี้ยังไม่ได้รับการอนุมัติจากหัวหน้า กรุณารอการอนุมัติก่อน</div>
-      </div>
-    )
-  }
-
-  if (request.status === 'REJECTED') {
-    return (
-      <div style={{ padding: '36px 20px', textAlign: 'center' }}>
-        <XCircle size={52} style={{ color: '#ef4444', margin: '0 auto 12px' }} />
-        <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>งานถูกปฏิเสธแล้ว</div>
-        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>ไม่สามารถบันทึกผลซ่อมสำหรับงานที่ไม่อนุมัติได้</div>
-      </div>
-    )
-  }
-
-  if (request.status === 'COMPLETED') {
-    return (
-      <div style={{ padding: '36px 20px', textAlign: 'center' }}>
-        <CheckCircle size={52} style={{ color: '#10b981', margin: '0 auto 12px' }} />
-        <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>ปิดงานซ่อมเสร็จสมบูรณ์</div>
-        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>บันทึกผลการซ่อมเข้าสู่ระบบเรียบร้อยแล้ว</div>
-      </div>
-    )
-  }
+  const statusGate = getStepCompleteGate(request)
+  if (statusGate) return statusGate
 
   const handleAddCatalogPart = () => {
     if (!selectedPartId) return
@@ -937,113 +908,7 @@ export function StepComplete({ request, onUpdated }) {
             </div>
 
             {/* 📦 ส่วนที่ 3: ระบบเบิกใช้อะไหล่ (Hybrid Spare Part Selector) */}
-            <div style={{ background: '#f8fafc', padding: 14, borderRadius: 14, border: '1.5px solid #cbd5e1' }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
-                📦 อะไหล่ที่เบิกใช้ (ตัดสต็อกอัตโนมัติ)
-              </label>
-
-              {/* 1. Catalog Part Picker */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                <select
-                  value={selectedPartId}
-                  onChange={(e) => setSelectedPartId(e.target.value)}
-                  style={{ ...inputStyle, flex: 1, minHeight: 40, fontSize: 13, padding: '6px 10px' }}
-                >
-                  <option value="">-- เลือกอะไหล่จากคลัง --</option>
-                  {catalogParts.map((p) => {
-                    const id = p.id || p._id
-                    const stock = Number(p.Stock_Qty ?? p.QuantityOnHand ?? p.Stock ?? 0)
-                    const code = p.Part_Code || p.PartNumber || p.Code || ''
-                    const name = p.Part_Name_EN || p.Part_Name_TH || p.PartName || p.Name || 'อะไหล่'
-                    const loc = p.Location_Store || p.location || ''
-                    const locBadge = loc ? ` · คลัง ${loc}` : ''
-                    return (
-                      <option key={id} value={id}>
-                        {name} {code ? `[${code}]` : ''}{locBadge} (คงเหลือ: {stock} {p.Unit || 'ชิ้น'})
-                      </option>
-                    )
-                  })}
-                </select>
-
-                <input
-                  type="number"
-                  min={1}
-                  value={partQty}
-                  onChange={(e) => setPartQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  style={{ ...inputStyle, width: 70, minHeight: 40, textAlign: 'center', fontSize: 13, padding: '6px 4px' }}
-                  title="จำนวนที่เบิกใช้"
-                />
-
-                <button
-                  type="button"
-                  onClick={handleAddCatalogPart}
-                  disabled={!selectedPartId}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: 10,
-                    background: selectedPartId ? '#2563eb' : '#94a3b8',
-                    color: '#ffffff',
-                    fontWeight: 800,
-                    fontSize: 12,
-                    border: 'none',
-                    cursor: selectedPartId ? 'pointer' : 'not-allowed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  + เพิ่ม
-                </button>
-              </div>
-
-              {/* List of Added Catalog Parts */}
-              {selectedPartsList.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                  {selectedPartsList.map((item, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        background: '#dbeafe',
-                        color: '#1e40af',
-                        padding: '4px 10px',
-                        borderRadius: 20,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        border: '1px solid #bfdbfe',
-                      }}
-                    >
-                      <span>📦 {item.PartName} × {item.qty} {item.Unit}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePart(idx)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ef4444',
-                          fontWeight: 900,
-                          cursor: 'pointer',
-                          padding: '0 2px',
-                        }}
-                        title="ลบรายการ"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* 2. Free-text for custom / external parts */}
-              <input
-                value={customPartsText}
-                onChange={(e) => setCustomPartsText(e.target.value)}
-                placeholder="ระบุอะไหล่อื่นๆ / วัสดุภายนอกเพิ่มเติม (ถ้ามี)..."
-                style={{ ...inputStyle, minHeight: 38, fontSize: 13 }}
-              />
-            </div>
+            <StepCompleteParts catalogParts={catalogParts} selectedPartId={selectedPartId} setSelectedPartId={setSelectedPartId} partQty={partQty} setPartQty={setPartQty} selectedPartsList={selectedPartsList} handleAddCatalogPart={handleAddCatalogPart} handleRemovePart={handleRemovePart} customPartsText={customPartsText} setCustomPartsText={setCustomPartsText} inputStyle={inputStyle} />
           </div>
 
           {/* 👉 ฝั่งขวา: ปัญหาที่แจ้งและคำสั่งการหัวหน้า (Problem & Supervisor Notes) */}
@@ -1116,110 +981,7 @@ export function StepComplete({ request, onUpdated }) {
         </div>
 
         {/* ⏱️ ส่วนสรุประยะเวลา & บันทึกงานแทรก/เวลาที่สูญเสียไป */}
-        <div style={{ background: '#f8fafc', borderRadius: 16, padding: '14px 16px', border: '1.5px solid #cbd5e1', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Clock size={16} style={{ color: '#f59e0b' }} />
-              <span>สรุปเวลาปฏิบัติงาน & หักลบงานแทรก</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowIntSection(!showIntSection)}
-              style={{ fontSize: 12, fontWeight: 800, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-            >
-              {showIntSection ? 'ซ่อนการบันทึกงานแทรก' : '+ เพิ่มงานแทรก / เวลาที่เสียไป'}
-            </button>
-          </div>
-
-          {/* Duration Breakdown Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: durationRes.sundayMinutes > 0 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: 8 }}>
-            <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: 10, border: '1px solid #e2e8f0', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>เวลารวม (Gross)</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#334155', fontFamily: 'monospace' }}>{durationRes.grossDurationText}</div>
-            </div>
-            {durationRes.sundayMinutes > 0 && (
-              <div style={{ background: '#f0f9ff', padding: '8px 10px', borderRadius: 10, border: '1px solid #bae6fd', textAlign: 'center' }}>
-                <div style={{ fontSize: 10, color: '#0284c7', fontWeight: 700 }}>🏖️ หักวันอาทิตย์</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#0369a1', fontFamily: 'monospace' }}>- {durationRes.sundayDurationText}</div>
-              </div>
-            )}
-            <div style={{ background: '#fffbeb', padding: '8px 10px', borderRadius: 10, border: '1px solid #fde68a', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: '#d97706', fontWeight: 700 }}>เวลาที่สูญเสียไป</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309', fontFamily: 'monospace' }}>- {durationRes.lostDurationText}</div>
-            </div>
-            <div style={{ background: '#ecfdf5', padding: '8px 10px', borderRadius: 10, border: '1.5px solid #a7f3d0', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: '#059669', fontWeight: 800 }}>👉 เวลาทำงานจริง</div>
-              <div style={{ fontSize: 14, fontWeight: 900, color: '#047857', fontFamily: 'monospace' }}>{durationRes.netDurationText}</div>
-            </div>
-          </div>
-
-          {/* Quick Interruption Add Form */}
-          {showIntSection && (
-            <div style={{ background: '#ffffff', padding: 12, borderRadius: 12, border: '1px solid #dbeafe', display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#1d4ed8' }}>
-                ระบุงานแทรก (เช่น ไปขึ้นด้าย เครื่อง 12334)
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {QUICK_INTERRUPTION_PRESETS.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setIntTaskName(preset.template)}
-                    style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 8, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', cursor: 'pointer' }}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input
-                  type="text"
-                  placeholder="ชื่องานแทรก / รายละเอียด..."
-                  value={intTaskName}
-                  onChange={(e) => setIntTaskName(e.target.value)}
-                  style={{ ...inputStyle, flex: 2, minHeight: 36, fontSize: 12 }}
-                />
-                <input
-                  type="number"
-                  placeholder="นาที (เช่น 30)"
-                  value={intMins}
-                  onChange={(e) => setIntMins(e.target.value)}
-                  style={{ ...inputStyle, flex: 1, minHeight: 36, fontSize: 12, fontFamily: 'monospace' }}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddInterruption}
-                  style={{ padding: '6px 12px', borderRadius: 10, background: '#f59e0b', color: '#ffffff', fontWeight: 800, fontSize: 12, border: 'none', cursor: 'pointer' }}
-                >
-                  + เพิ่ม
-                </button>
-              </div>
-
-              {/* List of Interruptions */}
-              {interruptionLogs.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                  {interruptionLogs.map((item) => (
-                    <div
-                      key={item.id}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fffbeb', padding: '5px 8px', borderRadius: 8, border: '1px solid #fed7aa', fontSize: 11 }}
-                    >
-                      <span style={{ fontWeight: 700, color: '#92400e' }}>
-                        🧵 {item.task_name} ({formatMinutesToThai(item.duration_minutes)})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveInterruption(item.id)}
-                        style={{ color: '#dc2626', background: 'none', border: 'none', fontWeight: 900, cursor: 'pointer' }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <StepCompleteDuration durationRes={durationRes} showIntSection={showIntSection} setShowIntSection={setShowIntSection} intTaskName={intTaskName} setIntTaskName={setIntTaskName} intMins={intMins} setIntMins={setIntMins} interruptionLogs={interruptionLogs} handleAddInterruption={handleAddInterruption} handleRemoveInterruption={handleRemoveInterruption} inputStyle={inputStyle} />
 
         {error && (
           <div
