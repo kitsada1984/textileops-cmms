@@ -6,11 +6,7 @@ import {
   Pencil,
   Trash2,
   Package,
-  ArrowDownLeft,
-  ArrowUpRight,
-  RotateCcw,
   Image as ImageIcon,
-  ExternalLink,
   Upload,
   X,
   Layers,
@@ -36,7 +32,6 @@ import { generateStockTxnId, getPartStockStatus, getSignedStockDelta, toNumber }
 import { getSparePartImageUrl } from '../../utils/sparePartImage'
 import { applyFilterSort, buildFilterSortColumns } from '../../utils/filterSort'
 import ImagePreviewModal from '../../components/ui/ImagePreviewModal'
-import ImageThumbnail from '../../components/ui/ImageThumbnail'
 import MachinePartsHistoryModal from '../../components/inventory/MachinePartsHistoryModal'
 import { useSparePartCategories, DEFAULT_SPARE_PART_CATEGORIES } from '../../modules/sparePart'
 import {
@@ -78,6 +73,8 @@ import {
   omitKeys,
   getMissingStockColumn,
 } from './stockMovementHelpers.jsx'
+import { findExistingSparePart, buildSparePartPayloadFromMovement } from './stockMovementPayload.js'
+import { resolveStockCellValue, renderStockMCButton, renderStockTxnTypeCell, renderStockQtyChangeCell, renderStockImageUrlCell, renderStockImagePreviewCell } from './stockCellRender.jsx'
 
 
 export default function StockMovement() {
@@ -312,12 +309,7 @@ export default function StockMovement() {
     const targetLoc = String(payload.Location_Store || '').trim().toLowerCase()
     const allParts = await SparePartAPI.list()
     // Match by both Part_Code and Location_Store so different warehouses for the same part code remain isolated
-    const existing = allParts.find((part) => {
-      const codeMatch = String(part.Part_Code || '').trim().toLowerCase() === partCode.toLowerCase()
-      if (!codeMatch) return false
-      if (!targetLoc) return true
-      return String(part.Location_Store || '').trim().toLowerCase() === targetLoc
-    }) || allParts.find((part) => String(part.Part_Code || '').trim().toLowerCase() === partCode.toLowerCase())
+    const existing = findExistingSparePart(allParts, partCode, targetLoc)
 
     const delta = getSignedStockDelta(payload.TXN_Type, payload.Qty_Change)
     if (!existing && delta < 0) {
@@ -326,32 +318,7 @@ export default function StockMovement() {
 
     const before = toNumber(existing?.Stock_Qty)
     const after = before + delta
-    const partPayload = existing
-      ? {
-          ...existing,
-          Part_Name_EN: existing.Part_Name_EN || payload.Part_Name_EN || '',
-          Category: existing.Category || payload.Category || '',
-          Unit: existing.Unit || payload.Unit || '',
-          Unit_Price: existing.Unit_Price || toNumber(payload.Unit_Price),
-          Location_Store: existing.Location_Store || payload.Location_Store || '',
-          Stock_Qty: after,
-          Status: getPartStockStatus(after, existing.Min_Qty),
-        }
-      : {
-          Part_Code: partCode,
-          Part_Name_TH: '',
-          Part_Name_EN: payload.Part_Name_EN || partCode,
-          Category: payload.Category || 'อะไหล่',
-          Unit: payload.Unit || '',
-          Stock_Qty: after,
-          Min_Qty: 0,
-          Location_Store: payload.Location_Store || '',
-          Supplier: '',
-          Unit_Price: toNumber(payload.Unit_Price),
-          Compatible_Machines: [],
-          Status: getPartStockStatus(after, 0),
-          Remark: 'สร้างอัตโนมัติจากเมนูเคลื่อนไหวสต๊อก',
-        }
+    const partPayload = buildSparePartPayloadFromMovement(existing, payload, after, getPartStockStatus)
 
     const saved = existing
       ? await SparePartAPI.update(existing.id || existing._id, partPayload)
@@ -437,35 +404,14 @@ export default function StockMovement() {
   }
 
   const renderCellContent = (row, col) => {
-    const val = col.field === 'ImageUrl' || col.field === 'ImagePreview'
-      ? getStockPartImageUrl(row)
-      : col.field === 'Category'
-        ? getStockCategory(row)
-        : col.field === 'MC'
-          ? getMovementMC(row)
-          : col.field === 'created_date'
-            ? getStockTxnDate(row)
-            : row[col.field]
+    const val = resolveStockCellValue(row, col, { getStockPartImageUrl, getStockCategory, getMovementMC, getStockTxnDate })
 
     if (val === null || val === undefined || val === '') {
       return <span className="text-slate-300 dark:text-slate-700 font-mono text-center block">—</span>
     }
 
     if (col.field === 'MC') {
-      return (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            setSelectedMachineForHistory(String(val))
-          }}
-          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-mono font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors shadow-xs group"
-          title={`คลิกเพื่อดูประวัติอะไหล่ของเครื่อง ${val}`}
-        >
-          <Cpu size={12} className="text-blue-500 group-hover:scale-110 transition-transform" />
-          <span>{String(val)}</span>
-        </button>
-      )
+      return renderStockMCButton(val, setSelectedMachineForHistory)
     }
 
     if (col.field === 'TXN_ID') {
@@ -477,20 +423,7 @@ export default function StockMovement() {
     }
 
     if (col.field === 'TXN_Type') {
-      const isRec = val === 'RECEIVE'
-      const isAdj = val === 'ADJUST'
-      return (
-        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-          isRec
-            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20'
-            : isAdj
-              ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20'
-              : 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20'
-        }`}>
-          {isRec ? <ArrowDownLeft size={11} /> : isAdj ? <RotateCcw size={11} /> : <ArrowUpRight size={11} />}
-          <span>{val === 'RECEIVE' ? 'รับเข้า' : val === 'ISSUE' ? 'เบิกจ่าย' : 'ปรับสต๊อก'}</span>
-        </span>
-      )
+      return renderStockTxnTypeCell(val)
     }
 
     if (col.field === 'Part_Code') {
@@ -502,12 +435,7 @@ export default function StockMovement() {
     }
 
     if (col.field === 'Qty_Change') {
-      const delta = getSignedStockDelta(row.TXN_Type, val)
-      return (
-        <span className={`font-mono font-black text-xs ${delta > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-          {delta > 0 ? `+${Number(val).toLocaleString()}` : `-${Number(val).toLocaleString()}`}
-        </span>
-      )
+      return renderStockQtyChangeCell(val, row)
     }
 
     if (col.field === 'Qty_Before' || col.field === 'Qty_After') {
@@ -523,31 +451,11 @@ export default function StockMovement() {
     }
 
     if (col.field === 'ImageUrl') {
-      return (
-        <a
-          href={String(val)}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-mono text-[11px] flex items-center gap-1 hover:underline max-w-[200px] truncate"
-        >
-          <span className="truncate">{String(val)}</span>
-          <ExternalLink size={11} className="flex-shrink-0 opacity-70" />
-        </a>
-      )
+      return renderStockImageUrlCell(val, (e) => e.stopPropagation())
     }
 
     if (col.field === 'ImagePreview') {
-      const imgUrl = String(val)
-      return (
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <ImageThumbnail
-            url={imgUrl}
-            alt={`${row.Part_Code} - ${row.Part_Name_EN || ''}`}
-            onClick={() => setPreviewImageModal({ url: imgUrl, title: `${row.Part_Code} - ${row.Part_Name_EN || ''}` })}
-          />
-        </div>
-      )
+      return renderStockImagePreviewCell(val, row, { setPreviewImageModal, onStop: (e) => e.stopPropagation() })
     }
 
     if (col.field === 'Note') {
