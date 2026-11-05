@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Grill batch (auth + hashing + workorders decisions)
+- **Scope**: 3 blocked items, interview only, zero code touched
+- **Atoms**: secure-coding, collaborative-judgment
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: AUTH_SECRET set in prod (fail-closed safe on go); hashing dual-verify; workorders per-function
+- **Strengths**: no fast-tracking — auth changes wait for window
+
 ## 2026-11-05 — Chore batch (dead imports from PDF split)
 - **Scope**: 1 file, import cleanup only
 - **Atoms**: clean-code
