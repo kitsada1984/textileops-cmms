@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Calendar,
   CalendarRange,
   ScrollText,
   Layers,
   Target,
   Disc,
   ExternalLink,
-  X,
   Sparkles,
   ChevronRight,
   Clock,
@@ -24,7 +22,6 @@ import StatusBadge from '../../components/ui/StatusBadge'
 import SearchInput from '../../components/ui/SearchInput'
 import { useT } from '../../contexts/LanguageContext'
 import usePagePerms from '../../hooks/usePagePerms'
-import DetailDrawer from '../../components/ui/DetailDrawer'
 import { useToast } from '../../components/ui/Toast'
 import FilterSortPanel, { INIT_FS } from '../../components/ui/FilterSortPanel'
 import GoogleSheetSyncButton from '../../components/ui/GoogleSheetSyncButton'
@@ -70,6 +67,7 @@ import { PMToolbar } from './pmToolbar.jsx'
 import { PMPlanTable } from './pmPlanTable.jsx'
 import { PMSyncModal } from './pmSyncModal.jsx'
 import { PMEditModal } from './pmEditModal.jsx'
+import { PMDetailDrawer } from './pmDetailDrawer.jsx'
 import { PMTypeCards } from './pmTypeCards.jsx'
 
 
@@ -1289,84 +1287,8 @@ export default function PMPlan({ defaultTab = 'plan' }) {
 
 
           {/* ── DETAIL DRAWER ─────────────────────────────────────── */}
-          <DetailDrawer
-            open={!!detailRec}
-            onClose={() => setDetailRec(null)}
-            title={detailRec?.Machine_MC}
-            subtitle={detailRec ? `${detailRec.Machine_KI || ''} · ${detailRec.Type || getPMCylinderType(detailRec) || 'กระบอก'}` : ''}
-            icon={Calendar}
-            accentColor="#2563eb"
-            badge={detailRec && <StatusBadge value={detailRec.Status} />}
-            canEdit={canEdit && detailRec?.__hasPMPlan}
-            canDelete={canDelete && detailRec?.__hasPMPlan}
-            onPdf={() => setPdfItem(detailRec)}
-            onEdit={() => openEdit(detailRec)}
-            onDelete={() => {
-              del(detailRec._id || detailRec.id)
-              setDetailRec(null)
-            }}
-            groups={detailRec ? [
-              {
-                label: t('dr_main_info'),
-                fields: [
-                  { label: 'เครื่องปัจจุบัน', value: detailRec.Machine_MC },
-                  { label: 'ตำแหน่ง', value: detailRec.Location },
-                  { label: 'ซีเรียลเดิม', value: detailRec.Machine_KI, mono: true },
-                  { label: 'ประเภท (จากกระบอก)', value: detailRec.Type || getPMCylinderType(detailRec) },
-                  { label: 'รอบ PM (วัน)', value: formatPMCycle(detailRec) },
-                  { label: t('pm_th_dept'), value: detailRec.Department },
-                  { label: t('priority'), value: detailRec.Priority },
-                  { label: t('pm_th_tech'), value: detailRec.Assigned_Tech },
-                ].filter((f) => f.value),
-              },
-              {
-                label: t('dr_schedule'),
-                fields: [
-                  { label: t('field_last_pm'), value: detailRec.Last_PM_Date ? format(new Date(detailRec.Last_PM_Date), 'dd/MM/yyyy') : null },
-                  { label: t('pm_th_next'), value: detailRec.Next_PM_Date ? format(new Date(detailRec.Next_PM_Date), 'dd/MM/yyyy') : null },
-                  {
-                    label: 'นับถอยหลัง',
-                    value: getPMCountdown(detailRec.Next_PM_Date).label,
-                    node: <PMCountdownBadge date={detailRec.Next_PM_Date} />,
-                  },
-                  { label: 'รูปแบบ', value: detailRec.Frequency_Type },
-                  { label: t('field_est_hours'), value: detailRec.Estimated_Hours },
-                  { label: 'แผนเวลาหยุดเครื่อง', value: detailRec.Downtime_Plan },
-                ].filter((f) => f.value),
-              },
-              {
-                label: t('dr_details'),
-                single: true,
-                fields: [
-                  ...(getPMImageUrl(detailRec) ? [{
-                    label: 'รูปภาพประกอบแผน PM',
-                    full: true,
-                    node: (
-                      <div className="flex items-center gap-3 pt-1">
-                        <ImageThumbnail
-                          url={getPMImageUrl(detailRec)}
-                          alt={`แผน PM ${detailRec.Machine_MC || ''}`}
-                          size={48}
-                          onClick={() => setPreviewImageModal({ url: getPMImageUrl(detailRec), title: `แผน PM เครื่อง ${detailRec.Machine_MC || ''}` })}
-                        />
-                        <a
-                          href={getPMImageUrl(detailRec)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-mono break-all"
-                        >
-                          <ExternalLink size={12} className="flex-shrink-0" />
-                          <span>เปิดใน Google Drive</span>
-                        </a>
-                      </div>
-                    ),
-                  }] : []),
-                  { label: t('field_req_parts'), value: detailRec.Required_Parts, full: true },
-                  { label: t('remark'), value: stripImageUrlMeta(detailRec.Remark), full: true },
-                ].filter((f) => f && (f.node || f.value)),
-              },
-            ].filter((g) => g.fields.length > 0) : []}
-          />
+          <PMDetailDrawer detailRec={detailRec} setDetailRec={setDetailRec} canEdit={canEdit} canDelete={canDelete} openEdit={openEdit} del={del} setPdfItem={setPdfItem} getPMImageUrl={getPMImageUrl} setPreviewImageModal={setPreviewImageModal} getPMCylinderType={getPMCylinderType} t={t} />
+
 
           {/* ── SYNC MODAL ────────────────────────────────────────── */}
           <PMSyncModal syncModal={syncModal} setSyncModal={setSyncModal} syncForm={syncForm} setSyncForm={setSyncForm} pmSyncPreviewRows={pmSyncPreviewRows} syncCycleDays={syncCycleDays} syncNextPMDate={syncNextPMDate} syncingPM={syncingPM} handleSyncSourceChange={handleSyncSourceChange} updatePMPlansFromCylinders={updatePMPlansFromCylinders} syncLocationOptions={syncLocationOptions} syncMachineOptions={syncMachineOptions} syncSerialOptions={syncSerialOptions} t={t} />

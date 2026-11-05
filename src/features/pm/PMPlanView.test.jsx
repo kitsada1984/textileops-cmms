@@ -157,6 +157,15 @@ describe('PMPlan characterization', () => {
     expect(await screen.findAllByText('pm_edit')).not.toHaveLength(0)
   })
 
+  it('opens the detail drawer on row click', async () => {
+    render(<PMPlan />)
+    await screen.findAllByText('MC-01')
+
+    fireEvent.click(screen.getAllByText('MC-01')[0])
+
+    expect(await screen.findAllByText('dr_main_info')).not.toHaveLength(0)
+  })
+
   it('search narrows the plan rows', async () => {
     render(<PMPlan />)
     await screen.findAllByText('MC-01')
