@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — NeedleCondition form split + v1.3.242
+- **Scope**: 3 files + version bump, pure extraction (17 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 119/942 green
+- **Strengths**: workdir-loss + comment-rule + substring-grep traps all handled
+
 ## 2026-11-05 — NeedleCondition table split + v1.3.241
 - **Scope**: 3 files + version bump, pure extraction (12 props)
 - **Atoms**: clean-code, test-quality
