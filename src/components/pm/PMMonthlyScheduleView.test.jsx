@@ -586,6 +586,12 @@ describe('syncWorkOrdersToMonthlyPlan - PM Work Order Auto-Sync', () => {
 
     dispatchSpy.mockRestore()
   })
+
+  it('syncPMWorkOrderToMonthlySchedule returns null for missing or non-PM orders', async () => {
+    expect(await syncPMWorkOrderToMonthlySchedule(null, [])).toBeNull()
+    expect(await syncPMWorkOrderToMonthlySchedule({ Job_ID: 'X', JobType: 'REPAIR' }, [])).toBeNull()
+    expect(await syncPMWorkOrderToMonthlySchedule({ Job_ID: 'X', JobType: 'PM', StartDate: 'bad-date' }, [])).toBeNull()
+  })
 })
 
 describe('Dual Timeline View & 3-Mode Filter Controls', () => {
