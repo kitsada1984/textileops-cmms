@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — Sub-25 batch 8 (pm planned-block + timeline rows)
+- **Scope**: plan-block builder, machine cell, planned/actual bars + tests
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 35/46 cleared, 56 tests green
+- **Strengths**: repaired truncated-block mistake via indent-aware re-cut
+
 ## 2026-11-05 — Sub-25 batch 7 (pm sync/remove pipelines)
 - **Scope**: sync + remove schedule pipelines, step helpers with same I/O order
 - **Atoms**: clean-code, architecture, test-quality
