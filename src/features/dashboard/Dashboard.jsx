@@ -1,15 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
+import { DashboardStats } from './dashboardStats.jsx'
 import { useRealtimeTables } from '../../api/realtimeSync'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  Cpu,
-  Disc,
   ClipboardList,
-  Package,
-  AlertTriangle,
   CheckCircle,
-  TrendingUp,
-  Calendar,
   FileSpreadsheet,
   Wrench,
   ArrowRight,
@@ -47,7 +42,6 @@ export * from './dashboardHelpers.jsx'
 import {
   statusLabel,
   SHEET_APIS,
-  StatCard,
   RepairStatusBadge,
   formatDateTime,
   isRepairSyncedWorkOrder,
@@ -214,72 +208,8 @@ export default function Dashboard() {
       </div>
 
       {/* ── 8-STAT CARDS SUMMARY (CLICKABLE TO RESPECTIVE PAGES) ───────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-        <StatCard
-          icon={Cpu}
-          label={t('dash_total_mc')}
-          value={stats.totalMachines}
-          sub={`${stats.running} ${t('dash_running_sub')}`}
-          color="slate"
-          to="/machines"
-        />
-        <StatCard
-          icon={AlertTriangle}
-          label={t('dash_breakdown')}
-          value={stats.breakdown}
-          sub={statusLabel('BREAKDOWN')}
-          color="red"
-          to="/machines"
-        />
-        <StatCard
-          icon={Wrench}
-          label="งานแจ้งซ่อมค้าง"
-          value={stats.pendingRepairsCount ?? 0}
-          sub={`${stats.pendingApprove || 0} รออนุมัติ · ${stats.inProgressRepairs || 0} กำลังซ่อม`}
-          color="amber"
-          to="/repair-requests"
-        />
-        <StatCard
-          icon={ClipboardList}
-          label={t('dash_open_wo')}
-          value={stats.openWO}
-          sub={`${stats.overdueWO} ${t('dash_overdue_sub')}`}
-          color="blue"
-          to="/workorders"
-        />
-        <StatCard
-          icon={Calendar}
-          label={t('dash_pm_sched')}
-          value={stats.pmScheduled}
-          sub={`${stats.pmOverdue} ${t('dash_overdue_sub')}`}
-          color="orange"
-          to="/pm"
-        />
-        <StatCard
-          icon={Package}
-          label={t('dash_low_stock')}
-          value={stats.lowStock}
-          sub={`${stats.outOfStock} ${t('dash_out_sub')}`}
-          color="orange"
-          to="/spareparts"
-        />
-        <StatCard
-          icon={Disc}
-          label={t('dash_pm_overdue')}
-          value={stats.pmOverdue}
-          sub={statusLabel('OVERDUE')}
-          color="rose"
-          to="/pm"
-        />
-        <StatCard
-          icon={TrendingUp}
-          label={t('dash_recent_wo')}
-          value={stats.recentWO?.length || 0}
-          sub={t('dash_latest_sub')}
-          color="violet"
-          to="/workorders"
-        />
-      </div>
+      <DashboardStats stats={stats} t={t} statusLabel={statusLabel} />
+
 
       {/* ── PENDING REPAIR REQUESTS SECTION (CLICKABLE ROWS) ──────────────────── */}
       <div className="card overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
