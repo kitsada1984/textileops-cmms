@@ -110,6 +110,15 @@ describe('PMPlan characterization', () => {
     expect(screen.getAllByText('จัดการ').length).toBeGreaterThan(0)
   })
 
+  it('opens the sync modal from the toolbar button', async () => {
+    render(<PMPlan />)
+    await screen.findAllByText('MC-01')
+
+    fireEvent.click(screen.getByText('อัพเดตแผน PM'))
+
+    expect(await screen.findAllByText(/อัพเดตแผน PM จากเมนูกระบอก/)).not.toHaveLength(0)
+  })
+
   it('search narrows the plan rows', async () => {
     render(<PMPlan />)
     await screen.findAllByText('MC-01')
