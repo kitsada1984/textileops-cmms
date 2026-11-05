@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   Plus,
-  Pencil,
   Trash2,
   RefreshCw,
   Search,
@@ -11,7 +10,6 @@ import {
   XCircle,
   AlertCircle,
   Clock,
-  Eye,
   Camera,
   Layers,
   Sparkles,
@@ -20,7 +18,6 @@ import {
   UserCheck,
   Check,
   X,
-  FileText,
   Sliders,
   Image as ImageIcon,
 } from 'lucide-react'
