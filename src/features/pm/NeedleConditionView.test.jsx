@@ -134,4 +134,13 @@ describe('NeedleCondition characterization', () => {
 
     expect(await screen.findAllByText(/สภาพเข็ม: SN-001 \(Counter:/)).not.toHaveLength(0)
   })
+
+  it('opens the QR scanner modal from the toolbar button', async () => {
+    render(<NeedleCondition />)
+    await screen.findAllByText('SN-001')
+
+    fireEvent.click(screen.getByTitle('เปิดกล้องสแกน QR Code ตัวกระบอก/เครื่องจักร'))
+
+    expect(await screen.findAllByText(/สแกน QR Code บนตัวกระบอก \/ เครื่องจักร/)).not.toHaveLength(0)
+  })
 })
