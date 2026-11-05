@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — CenterCheck header split + v1.3.234
+- **Scope**: 3 files + version bump, pure extraction (15 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/934 green
+- **Strengths**: test-file break + JSX-comment rule both caught pre-commit
+
 ## 2026-11-05 — CenterCheck form split + v1.3.233
 - **Scope**: 3 files + version bump, pure extraction (574 lines, 22 props)
 - **Atoms**: clean-code, test-quality
