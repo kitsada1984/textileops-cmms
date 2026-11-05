@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — PMPlan table split + v1.3.235
+- **Scope**: 3 files + version bump, pure extraction (11 props)
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/934 green
+- **Strengths**: OOM diagnosed as infra (1.4GB free), cleared and re-ran green
+
 ## 2026-11-05 — CenterCheck header split + v1.3.234
 - **Scope**: 3 files + version bump, pure extraction (15 props)
 - **Atoms**: clean-code, test-quality
