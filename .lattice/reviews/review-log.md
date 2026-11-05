@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-05 — CenterCheck view-modal split + v1.3.228
+- **Scope**: 3 files + version bump, pure extraction
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — residual-diff 0, suite 118/929 green
+- **Strengths**: caught block-vs-JSX-container + 3 missed props before commit
+
 ## 2026-11-05 — Unused-import cleanup + v1.3.227
 - **Scope**: 1 file import block + version bump, no logic touched
 - **Atoms**: clean-code
