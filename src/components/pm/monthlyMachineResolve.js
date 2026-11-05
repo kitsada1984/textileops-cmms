@@ -87,3 +87,12 @@ export function matchPmPlan(pmPlans, ki, mc) {
   }
   return matchedPlan
 }
+
+export function isMonthlyPmWorkOrder(wo, targetPrefix, isSystemWorkOrder) {
+  if (!wo || (typeof isSystemWorkOrder === 'function' && isSystemWorkOrder(wo))) return false
+  const type = String(wo.JobType || wo.Job_Type || wo.job_type || wo.jobType || '').toUpperCase()
+  if (type !== 'PM') return false
+  const sDate = String(wo.StartDate || wo.DateStart || wo.StartTime || wo.StartTimestamp || wo.created_at || '').slice(0, 10)
+  const eDate = String(wo.EndDate || wo.DateEnd || wo.EndTime || wo.EndTimestamp || '').slice(0, 10)
+  return (sDate && sDate.startsWith(targetPrefix)) || (eDate && eDate.startsWith(targetPrefix))
+}

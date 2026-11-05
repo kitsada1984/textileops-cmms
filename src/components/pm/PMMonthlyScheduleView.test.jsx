@@ -486,6 +486,20 @@ describe('syncWorkOrdersToMonthlyPlan - PM Work Order Auto-Sync', () => {
     expect(item.workOrderId).toBe('WO-202610-OPEN-01')
   })
 
+  it('ignores non-PM and out-of-month work orders', () => {
+    const mockWOs = [
+      { Job_ID: 'WO-REPAIR', JobType: 'REPAIR', MC: 'DA-306M', KI: '66936', StartDate: '2026-10-02', Status: 'OPEN' },
+      { Job_ID: 'WO-SEPT', JobType: 'PM', MC: 'DA-306M', KI: '66936', StartDate: '2026-09-02', Status: 'COMPLETED' },
+      null,
+    ]
+
+    const synced = syncWorkOrdersToMonthlyPlan(initialPlan, mockWOs, inUseMachines, 2026, 10)
+
+    expect(synced).toHaveLength(2)
+    expect(synced[0].workOrderId).toBeUndefined()
+    expect(synced[0].status).toBe('SCHEDULED')
+  })
+
   it('updates completed PM work order to span full duration from StartDate to EndDate with COMPLETED status', () => {
     const mockWOs = [
       {
