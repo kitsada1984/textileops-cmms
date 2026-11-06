@@ -13,6 +13,7 @@ import { filterWorkOrderJobs } from './workOrderFilters.js'
 import { buildEditJobPayload, resolveNewlyAddedTechs, notifyAddedTechs, confirmAndRemoveJob } from './workOrderEdit.js'
 import { WorkOrderTechModal } from './WorkOrderTechModal.jsx'
 import { WorkOrdersDashboard } from './WorkOrdersDashboard.jsx'
+import { WorkOrdersCancelModal } from './WorkOrdersCancelModal.jsx'
 import { WorkOrdersDailyLogModal } from './WorkOrdersDailyLogModal.jsx'
 import { WorkOrdersInterruptionModal } from './WorkOrdersInterruptionModal.jsx'
 import { WorkOrdersKpiModal } from './WorkOrdersKpiModal.jsx'
@@ -39,8 +40,6 @@ import {
   FileSpreadsheet,
   Hourglass,
   Sparkles,
-  Ban,
-  AlertTriangle,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../../hooks/useEntity'
@@ -1865,74 +1864,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <WorkOrdersDailyLogModal dailyLogModalOpen={dailyLogModalOpen} dailyLogJob={dailyLogJob} setDailyLogModalOpen={setDailyLogModalOpen} dailyLogDate={dailyLogDate} setDailyLogDate={setDailyLogDate} dailyLogDetails={dailyLogDetails} setDailyLogDetails={setDailyLogDetails} dailyLogHours={dailyLogHours} setDailyLogHours={setDailyLogHours} dailyLogStatus={dailyLogStatus} setDailyLogStatus={setDailyLogStatus} dailyLogTechs={dailyLogTechs} setDailyLogTechs={setDailyLogTechs} dailyLogSubmitting={dailyLogSubmitting} cancellingJobSubmitting={cancellingJobSubmitting} handleSaveDailyLog={handleSaveDailyLog} handleDeleteDailyLog={handleDeleteDailyLog} openCancelJobConfirm={openCancelJobConfirm} technicians={technicians} allJobs={allJobs} canEdit={canEdit} canDelete={canDelete} />
 
       {/* 2-Step Confirmation Modal for Cancelling Job */}
-      {cancelJobModalOpen && dailyLogJob && (() => {
-        const jobIdDisplay = dailyLogJob.Job_ID || dailyLogJob['Job ID'] || dailyLogJob.WO_ID
-        return (
-          <Modal
-            open={cancelJobModalOpen}
-            onClose={() => !cancellingJobSubmitting && setCancelJobModalOpen(false)}
-            title="⚠️ ยืนยันการยกเลิกใบสั่งงาน"
-            size="sm"
-            className="border-rose-300 dark:border-rose-900/60 shadow-rose-950/20"
-          >
-            <div className="space-y-4 text-xs">
-              {/* Alert Warning Box */}
-              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-start gap-3">
-                <AlertTriangle className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" size={20} />
-                <div className="space-y-1">
-                  <div className="font-bold text-rose-900 dark:text-rose-200 text-sm">
-                    คุณแน่ใจหรือไม่ว่าต้องการยกเลิกงานนี้?
-                  </div>
-                  <div className="text-rose-700 dark:text-rose-300 leading-relaxed">
-                    ใบสั่งงาน <span className="font-mono font-bold">{jobIdDisplay}</span> (เครื่อง {dailyLogJob.MC || '-'}) จะถูกเปลี่ยนสถานะเป็น <span className="font-bold">"ยกเลิก" (CANCELLED)</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Cancellation Reason Input (Required) */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  เหตุผลในการยกเลิกใบสั่งงาน <span className="text-rose-500 font-bold">*</span>
-                </label>
-                <textarea
-                  rows={3}
-                  value={cancelJobReason}
-                  onChange={(e) => setCancelJobReason(e.target.value)}
-                  placeholder="ระบุสาเหตุที่ต้องยกเลิกงาน เช่น ยกเลิกแผนผลิต, เครื่องถูกย้าย, สั่งงานซ้ำซ้อน..."
-                  className="input text-xs w-full resize-none border-rose-200 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500"
-                  disabled={cancellingJobSubmitting}
-                  required
-                  autoFocus
-                />
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">
-                  * ข้อมูลเหตุผลจะถูกบันทึกลงในประวัติความคืบหน้ารายวัน (Daily Logs) เพื่อความโปร่งใส
-                </span>
-              </div>
-
-              {/* Modal Action Buttons */}
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setCancelJobModalOpen(false)}
-                  disabled={cancellingJobSubmitting}
-                  className="btn-outline px-4 text-xs"
-                >
-                  กลับ
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmCancelJob}
-                  disabled={cancellingJobSubmitting || !cancelJobReason.trim()}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 shadow-sm"
-                >
-                  <Ban size={14} />
-                  <span>{cancellingJobSubmitting ? 'กำลังยกเลิกงาน...' : 'ยืนยันยกเลิกงานนี้'}</span>
-                </button>
-              </div>
-            </div>
-          </Modal>
-        )
-      })()}
+        <WorkOrdersCancelModal cancelJobModalOpen={cancelJobModalOpen} dailyLogJob={dailyLogJob} cancelJobReason={cancelJobReason} setCancelJobReason={setCancelJobReason} cancellingJobSubmitting={cancellingJobSubmitting} setCancelJobModalOpen={setCancelJobModalOpen} handleConfirmCancelJob={handleConfirmCancelJob} />
 
       {/* ── CREATE WORK ORDER MODAL (ป๊อปอัพเปิดใบสั่งงาน) ── */}
       {createModalOpen && (
