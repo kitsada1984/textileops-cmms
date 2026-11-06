@@ -115,7 +115,10 @@ export async function onRequestGet(context) {
     (channelId === '2010027205' || Boolean(lineSettings.channel_access_token) || !channelId)
 
   if (useBotLogin) {
-    const loginText = `เข้าสู่ระบบ TextileOps #${sessionCode}`
+    // Keep the prefilled message short ASCII-only: a long percent-encoded
+    // Thai text balloons the QR to 200+ chars and makes it hard to scan
+    // from a screen. The webhook only needs the #CODE to match the session.
+    const loginText = `TextileOps #${sessionCode}`
     const botDeepLink = `https://line.me/R/oaMessage/${encodeURIComponent(botBasicId)}/?${encodeURIComponent(loginText)}`
 
     if (urlObj.searchParams.get('format') === 'json') {
