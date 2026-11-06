@@ -1,6 +1,8 @@
 # Review Log
 
+
 ## 2026-11-06 — Release v1.3.257 (QR prefill shorten)
+
 - **Scope**: 1-line login text + URL shape test, full suite green, deploy verified
 - **Atoms**: clean-code, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -8,6 +10,7 @@
 - **Strengths**: full suite 182/1214; user-approved before change
 
 ## 2026-11-06 — LINE secret enforced live (verify)
+
 
 ## History
 - 2026-11-05 — mobile touch targets (b8edc47) | 18 files, presentation layer only (CSS classes) | 0 critical, 0 warning, 1 suggestion
@@ -70,7 +73,10 @@
 - 2026-11-06 — WorkOrders edit modal | 189-line modal moved verbatim, props-only | 0 critical, 0 warning, 0 suggestion
 - 2026-11-06 — WorkOrders KPI modal | 91-line modal moved verbatim, props-only | 0 critical, 0 warning, 0 suggestion
 
+- 2026-11-06 — WorkOrders interruption modal | 236-line IIFE modal moved verbatim (gate + IIFE inside component) | 0 critical, 0 warning, 0 suggestion
+- 2026-11-06 — WorkOrders daily-log modal | 252-line IIFE modal moved verbatim (gate + IIFE inside component) | 0 critical, 0 warning, 0 suggestion
 ## 2026-11-06 — LINE secret enforced live (verify)
+
 
 - **Scope**: Pages secret set (exact bytes) + redeploy + forged/signed probes
 - **Atoms**: secure-coding
@@ -80,6 +86,7 @@
 
 ## 2026-11-06 — Release v1.3.256 (LINE webhook fix)
 
+
 - **Scope**: bump 4 targets, full suite green, build after bump, Pages deploy
 - **Atoms**: test-quality, secure-coding
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -87,6 +94,7 @@
 - **Strengths**: signature gate + loud failures now live; secret still needs Pages env to enforce
 
 ## 2026-11-06 — LINE webhook signature + loud failures (fix)
+
 
 - **Scope**: HMAC verify (env→DB secret, warn-open w/o secret); error reply on link failure
 - **Atoms**: secure-coding, clean-code, test-quality
@@ -96,6 +104,7 @@
 
 ## 2026-11-06 — LINE QR miss vs button (per-attempt, not a bug)
 
+
 - **Scope**: QR tab UI + poll + webhook session evidence on prod D1
 - **Atoms**: clean-code, architecture, secure-coding
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -103,6 +112,7 @@
 - **Strengths**: session/poll/match chain proven end-to-end on prod data
 
 ## 2026-11-06 — LINE QR login failure triage
+
 
 - **Scope**: Login QR client + line login/webhook functions + prod D1 evidence
 - **Atoms**: clean-code, architecture, secure-coding
@@ -112,6 +122,7 @@
 
 ## 2026-11-06 — No-delta health check
 
+
 - **Scope**: 0 files (tree clean at bdaa4e0)
 - **Atoms**: none loaded (no delta)
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -119,6 +130,7 @@
 - **Strengths**: trunk stays green between sessions
 
 ## 2026-11-06 — Release v1.3.255 (refactor batch + auth 500 fix)
+
 
 - **Scope**: bump 4 targets, full suite green, build after bump, Pages deploy
 - **Atoms**: test-quality, secure-coding
@@ -128,6 +140,7 @@
 
 ## 2026-11-06 — Web-QA fix verify (login 500 + labels)
 
+
 - **Scope**: login 500 message; label audit
 - **Atoms**: secure-coding, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -135,6 +148,7 @@
 - **Strengths**: no SQL text in UI after fix; 401/400/403 messages untouched
 
 ## 2026-11-06 — WorkOrders modal open-close audit
+
 
 - **Scope**: all 8 modal gates + X-button close paths, cycle tests added
 - **Atoms**: clean-code, test-quality
@@ -144,6 +158,7 @@
 
 ## 2026-11-06 — WorkOrders lifecycle hooks + opener fires
 
+
 - **Scope**: 4 effects → custom hooks (same call order); print/interruption openers + page perms
 - **Atoms**: clean-code, architecture, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -151,6 +166,7 @@
 - **Strengths**: 37 files / 173 tests green; realtime channel/params byte-identical
 
 ## 2026-11-06 — WorkOrders modal-opener builders
+
 
 - **Scope**: complete/edit/daily openers → pure builders + thin wrappers
 - **Atoms**: clean-code, architecture, test-quality
@@ -160,6 +176,7 @@
 
 ## 2026-11-06 — WorkOrders tech/loader/drilldown handlers
 
+
 - **Scope**: openers/builders + save/delete + sync + loader + drilldown, deps-object pattern
 - **Atoms**: clean-code, architecture, secure-coding, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -167,6 +184,7 @@
 - **Strengths**: 35 files / 161 tests green; DB/localStorage surface unchanged (secure)
 
 ## 2026-11-06 — WorkOrders submit/edit/kpi handlers
+
 
 - **Scope**: interruption(4) + daily(3) + start/complete/status(3) + save-edit + save-kpi, deps-object pattern
 - **Atoms**: clean-code, architecture, test-quality
@@ -176,6 +194,7 @@
 
 ## 2026-11-06 — WorkOrders complexity gate ≤25
 
+
 - **Scope**: header/print/report/datalist moved verbatim; double-gated bridges flattened
 - **Atoms**: clean-code, architecture, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -183,6 +202,7 @@
 - **Strengths**: main complexity 48→≤25 (zero warnings); dir 30 files / 134 tests green
 
 ## 2026-11-06 — WorkOrders pure helper extraction
+
 
 - **Scope**: stats/interruptions/machines/filter-toggle modules, verbatim cores + import-back
 - **Atoms**: clean-code, architecture, test-quality
@@ -192,6 +212,7 @@
 
 ## 2026-11-06 — WorkOrders create FAB portal
 
+
 - **Scope**: 12-line portaled FAB moved verbatim, props-only
 - **Atoms**: clean-code, architecture, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -199,6 +220,7 @@
 - **Strengths**: main 4213→1885 lines, complexity 187→48; dir 23 files / 108 tests green
 
 ## 2026-11-06 — WorkOrders create modal
+
 
 - **Scope**: 230-line modal moved verbatim, props-only
 - **Atoms**: clean-code, architecture, test-quality
@@ -208,24 +230,9 @@
 
 ## 2026-11-06 — WorkOrders cancel modal
 
+
 - **Scope**: 68-line IIFE modal moved verbatim (gate + IIFE inside component)
 - **Atoms**: clean-code, architecture, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
 - **Key findings**: none — Ban/AlertTriangle orphans cleaned
 - **Strengths**: 3 tests green first run
-
-## 2026-11-06 — WorkOrders daily-log modal
-
-- **Scope**: 252-line IIFE modal moved verbatim (gate + IIFE inside component)
-- **Atoms**: clean-code, architecture, test-quality
-- **Result**: 0 critical, 0 warning, 0 suggestion
-- **Key findings**: save disabled on empty details — fixture uses real text
-- **Strengths**: Trash2/CalendarClock orphans cleaned; 4 tests green
-
-## 2026-11-06 — WorkOrders interruption modal
-
-- **Scope**: 236-line IIFE modal moved verbatim (gate + IIFE inside component)
-- **Atoms**: clean-code, architecture, test-quality
-- **Result**: 0 critical, 0 warning, 0 suggestion
-- **Key findings**: start button is disabled on empty task name — fixture uses real name
-- **Strengths**: 6 orphaned imports cleaned; main complexity down to 69
