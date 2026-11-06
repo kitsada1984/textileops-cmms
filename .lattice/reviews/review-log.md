@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — LINE QR login failure triage
+- **Scope**: Login QR client + line login/webhook functions + prod D1 evidence
+- **Atoms**: clean-code, architecture, secure-coding
+- **Result**: 1 critical, 1 warning, 0 suggestion
+- **Key findings**: webhook skips signature check (forged-event login risk); user/appUser-null fails silently; this attempt never reached webhook (NQXKFP still pending, no audit row)
+- **Strengths**: past sessions authenticated fine — flow design sound, failure is per-attempt
+
 ## 2026-11-06 — No-delta health check
 - **Scope**: 0 files (tree clean at bdaa4e0)
 - **Atoms**: none loaded (no delta)
