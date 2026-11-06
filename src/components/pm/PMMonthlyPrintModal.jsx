@@ -19,7 +19,7 @@ import { format } from 'date-fns'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import gemmaLogo from '../../assets/logo-gemma.png'
-import { THAI_MONTHS, getItemDayRange, getStatusMeta } from './PMMonthlyScheduleView'
+import { THAI_MONTHS, getItemDayRange, getStatusMeta, resolveEffectiveActualEnd } from './PMMonthlyScheduleView'
 import { REPORT_TABLE, buildReportFilename } from '../ui/reportTheme'
 
 export default function PMMonthlyPrintModal({
@@ -448,10 +448,11 @@ export default function PMMonthlyPrintModal({
               ) : (
                 items.map((item, idx) => {
                   const range = getItemDayRange(item, year, month, daysInMonth)
+                  const effectiveActualEnd = resolveEffectiveActualEnd ? resolveEffectiveActualEnd(item, year, month) : (item.actualEndDate || item.actualStartDate)
                   const actItem = item.actualStartDate
                     ? {
                         plannedStartDate: item.actualStartDate,
-                        plannedEndDate: item.actualEndDate || item.actualStartDate,
+                        plannedEndDate: effectiveActualEnd,
                       }
                     : null
                   const actRange = actItem ? getItemDayRange(actItem, year, month, daysInMonth) : null
@@ -590,7 +591,7 @@ export default function PMMonthlyPrintModal({
                                 ? 'bg-rose-600'
                                 : 'bg-slate-600'
                             }`}
-                            title={`ทำจริง: ${item.mc} (${item.actualStartDate} ถึง ${item.actualEndDate || item.actualStartDate})`}
+                            title={`ทำจริง: ${item.mc} (${item.actualStartDate} ถึง ${effectiveActualEnd || item.actualEndDate || item.actualStartDate})`}
                           >
                             <span
                               style={{ display: 'inline-block', marginBottom: hasOverlap ? '1.5px' : '3px' }}

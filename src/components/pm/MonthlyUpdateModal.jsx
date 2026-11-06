@@ -81,15 +81,32 @@ export function MonthlyUpdateModal({ updateModalOpen, setUpdateModalOpen, select
               />
             </div>
             <div>
-              <label className="label">วันที่เสร็จจริง (Actual End)</label>
+              <label className="label">
+                {actualForm.status === 'COMPLETED' ? 'วันที่เสร็จจริง (Actual End)' : 'วันที่คืบหน้าล่าสุด (Progress Date)'}
+              </label>
               <input
                 type="date"
                 value={actualForm.actualEndDate}
                 onChange={(e) => setActualForm({ ...actualForm, actualEndDate: e.target.value })}
                 className="input font-mono text-xs font-semibold"
               />
+              {actualForm.status === 'IN_PROGRESS' && (
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-1 font-medium">
+                  * กำลังดำเนินการ: ระบบจะอัปเดตความคืบหน้าตามวันที่อัตโนมัติจนกว่าจะจบงาน
+                </span>
+              )}
             </div>
           </div>
+
+          {selectedItem?.latestDailyLog && (
+            <div className="p-2.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 text-xs space-y-1">
+              <div className="flex items-center justify-between text-blue-700 dark:text-blue-300 font-semibold">
+                <span>บันทึกความคืบหน้ารายวันล่าสุด</span>
+                <span className="font-mono text-[11px]">{selectedItem.latestDailyLog.date}</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300">{selectedItem.latestDailyLog.details}</p>
+            </div>
+          )}
 
           {/* Actual Tech & Status */}
           <div className="grid grid-cols-2 gap-3">

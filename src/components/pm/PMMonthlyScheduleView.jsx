@@ -42,6 +42,7 @@ import {
   resolveSyncEffectiveKeys,
   applySyncWoToItem,
   buildUnplannedSyncItem,
+  resolveEffectiveActualEnd,
 } from './monthlySyncItem'
 import { buildPlannedBlockItem, THAI_MONTHS, SHORT_THAI_MONTHS, AVAILABLE_LOCATIONS, matchesLocation, SCHEDULE_STATUS_OPTIONS, sortMachinesByCountdownPriority, getMonthlyWorkingDays, matchScheduleFilter } from './monthlyPlanGenerate'
 import { MonthlyHeader } from './MonthlyHeader'
@@ -52,7 +53,7 @@ import { MonthlyAnnualView } from './MonthlyAnnualView'
 import { MonthlyFilterBar } from './MonthlyFilterBar'
 import { MonthlyEmptyState } from './MonthlyEmptyState'
 
-export { SCHEDULE_STATUS_OPTIONS, AVAILABLE_LOCATIONS, matchesLocation, THAI_MONTHS, SHORT_THAI_MONTHS, sortMachinesByCountdownPriority, getMonthlyWorkingDays }
+export { SCHEDULE_STATUS_OPTIONS, AVAILABLE_LOCATIONS, matchesLocation, THAI_MONTHS, SHORT_THAI_MONTHS, sortMachinesByCountdownPriority, getMonthlyWorkingDays, resolveEffectiveActualEnd }
 import { TimelineMachineCell } from './TimelineMachineCell'
 import { TimelinePlannedBar } from './TimelinePlannedBar'
 import { TimelineActualBar } from './TimelineActualBar'
@@ -268,7 +269,8 @@ export function syncWorkOrdersToMonthlyPlan(
   workOrders = [],
   effectiveMachines = [],
   year = new Date().getFullYear(),
-  month = new Date().getMonth() + 1
+  month = new Date().getMonth() + 1,
+  options = {}
 ) {
   const monthKey = `${year}-${String(month).padStart(2, '0')}`
   const targetPrefix = monthKey
@@ -299,17 +301,24 @@ export function syncWorkOrdersToMonthlyPlan(
     // Find existing item in plan
     const existingIndex = matchSyncPlanItem(updatedItems, effectiveKI, effectiveMC)
 
-    const { sDate, rawEndDate, eDate } = resolveSyncWoDates(wo, targetPrefix)
+    const { sDate, rawEndDate, eDate, progressDate, latestLog } = resolveSyncWoDates(wo, targetPrefix, options)
     const mappedStatus = mapSyncWoStatus(wo)
     const { techName, woNotes, woId } = resolveSyncWoMeta(wo)
-    const woFields = { sDate, rawEndDate, eDate, mappedStatus, techName, woNotes, woId }
+    const woFields = { sDate, rawEndDate, eDate, mappedStatus, techName, woNotes, woId, progressDate, latestLog }
 
     if (existingIndex >= 0) {
       const item = updatedItems[existingIndex]
       updatedItems[existingIndex] = applySyncWoToItem(item, woFields)
     } else {
       // Append unplanned PM work order
-      const newItem = buildUnplannedSyncItem(wo, woFields, effectiveMC, effectiveKI, matchedMachine, monthKey)
+      const newItem = buildUnplannedSyncItem({
+        wo,
+        woFields,
+        effectiveMC,
+        effectiveKI,
+        matchedMachine,
+        monthKey,
+      })
       updatedItems.push(newItem)
     }
   })
@@ -1492,9 +1501,10 @@ export default function PMMonthlyScheduleView({
                           const statusMeta = getStatusMeta(item.status)
                           const range = getItemDayRange(item, selectedYear, selectedMonth, daysInMonth)
                           const showPlanned = (timelineBarFilter === 'both' || timelineBarFilter === 'planned') && Boolean(range)
+                          const effectiveActualEnd = resolveEffectiveActualEnd(item, selectedYear, selectedMonth)
                           const actItem = item.actualStartDate ? {
                             plannedStartDate: item.actualStartDate,
-                            plannedEndDate: item.actualEndDate || item.actualStartDate,
+                            plannedEndDate: effectiveActualEnd,
                           } : null
                           const actRange = actItem ? getItemDayRange(actItem, selectedYear, selectedMonth, daysInMonth) : null
                           const showActual = (timelineBarFilter === 'both' || timelineBarFilter === 'actual') && Boolean(actRange)
@@ -1570,7 +1580,7 @@ export default function PMMonthlyScheduleView({
                                 <TimelinePlannedBar item={item} range={range} hasOverlap={hasOverlap} showPlanned={showPlanned} handleOpenUpdateModal={handleOpenUpdateModal} />
 
                                 {/* 2. Actual Bar (แถบทำจริงจากใบสั่งงาน PM) */}
-                                <TimelineActualBar item={item} actRange={actRange} hasOverlap={hasOverlap} showActual={showActual} statusMeta={statusMeta} handleOpenUpdateModal={handleOpenUpdateModal} />
+                                <TimelineActualBar item={item} actRange={actRange} hasOverlap={hasOverlap} showActual={showActual} statusMeta={statusMeta} handleOpenUpdateModal={handleOpenUpdateModal} effectiveEndDate={effectiveActualEnd} />
                               </div>
                             </div>
                           )
