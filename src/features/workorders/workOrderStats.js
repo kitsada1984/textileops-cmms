@@ -1,5 +1,5 @@
 import { normalizeWorkOrderRow, getWorkOrderStatusMeta } from './workOrderNormalize.js'
-import { isSystemWorkOrder, calculateSlaPerformance } from '../../api/entities'
+import { isSystemWorkOrder, calculateSlaPerformance, KpiSettingsAPI } from '../../api/entities'
 import { calculateProblemCauseStats } from './WorkOrders.jsx'
 
 // Pure stats computations moved verbatim out of the WorkOrders component
@@ -138,5 +138,24 @@ export function computeKpiStats(allJobs, kpiTargets) {
     causeStats,
     userMetrics: Object.entries(userMetricsMap).map(([name, count]) => ({ name, count })),
     recentJobs: activeNonDeleted.slice(0, 5),
+  }
+}
+
+// Was `const handleSaveKpiSettings = async () => {...}` in the component.
+export async function saveKpiSettings({ draftKpi, setKpiTargets, setKpiModalOpen, toast }) {
+  try {
+    await Promise.all([
+      KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_repair', Value: String(draftKpi.REPAIR) }),
+      KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_design', Value: String(draftKpi.DESIGN) }),
+      KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_pm',     Value: String(draftKpi.PM) }),
+      KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_setup',  Value: String(draftKpi.SETUP || 1.0) }),
+    ])
+    setKpiTargets({ ...draftKpi })
+    toast.success('บันทึกเป้าหมาย KPI สำเร็จ', 'อัปเดตระบบคำนวณ SLA เรียบร้อย')
+    setKpiModalOpen(false)
+  } catch (err) {
+    setKpiTargets({ ...draftKpi })
+    toast.success('บันทึกเป้าหมาย KPI เรียบร้อย (Local)', 'อัปเดตระบบคำนวณ SLA เรียบร้อย')
+    setKpiModalOpen(false)
   }
 }

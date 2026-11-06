@@ -9,7 +9,7 @@ import {
 
 export { WORK_ORDER_STATUS_OPTIONS, getWorkOrderStatusMeta, getWorkOrderDetails, getJobDailyLogs, getLatestDailyLog }
 import { filterWorkOrderJobs, toggleMultiFilterValue, nextMultiFilter, nextCauseFilter, togglePersistedOpen } from './workOrderFilters.js'
-import { normalizeAllJobs, computeTypeCounts, computeStatusCounts, computeCauseCounts, computeKpiStats } from './workOrderStats.js'
+import { normalizeAllJobs, computeTypeCounts, computeStatusCounts, computeCauseCounts, computeKpiStats, saveKpiSettings } from './workOrderStats.js'
 import { getJobInterruptions, computeCompleteDuration } from './workOrderInterruptions.js'
 import { startInterruption, stopInterruption, addManualInterruption, deleteInterruption } from './workOrderInterruptionHandlers.js'
 import { saveDailyLog, confirmCancelJob, deleteDailyLog } from './workOrderDailyLogHandlers.js'
@@ -970,21 +970,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Save KPI Settings
   const handleSaveKpiSettings = async () => {
-    try {
-      await Promise.all([
-        KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_repair', Value: String(draftKpi.REPAIR) }),
-        KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_design', Value: String(draftKpi.DESIGN) }),
-        KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_pm',     Value: String(draftKpi.PM) }),
-        KpiSettingsAPI.upsertBy('Key', { Key: 'kpi_target_setup',  Value: String(draftKpi.SETUP || 1.0) }),
-      ])
-      setKpiTargets({ ...draftKpi })
-      toast.success('บันทึกเป้าหมาย KPI สำเร็จ', 'อัปเดตระบบคำนวณ SLA เรียบร้อย')
-      setKpiModalOpen(false)
-    } catch (err) {
-      setKpiTargets({ ...draftKpi })
-      toast.success('บันทึกเป้าหมาย KPI เรียบร้อย (Local)', 'อัปเดตระบบคำนวณ SLA เรียบร้อย')
-      setKpiModalOpen(false)
-    }
+    await saveKpiSettings({ draftKpi, setKpiTargets, setKpiModalOpen, toast })
   }
 
   // Open Print Sheet Modal

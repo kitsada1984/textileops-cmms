@@ -6,6 +6,7 @@ import {
   computeCauseCounts,
   calcJobTypeKpi,
   computeKpiStats,
+  saveKpiSettings,
 } from './workOrderStats'
 
 // Characterization: lock the moved stats computations exactly as the
@@ -66,5 +67,17 @@ describe('workOrderStats characterization', () => {
     expect(kpi.total).toBe(0)
     expect(kpi.rate).toBe(0)
     expect(kpi.avgDurationText).toBe('—')
+  })
+
+  it('saveKpiSettings: persists remotely, falls back to local on failure', async () => {
+    const toast = { success: vi.fn() }
+    const draftKpi = { REPAIR: 1, DESIGN: 3, PM: 2, SETUP: 1 }
+    const setKpiTargets = vi.fn()
+    const setKpiModalOpen = vi.fn()
+
+    await saveKpiSettings({ draftKpi, setKpiTargets, setKpiModalOpen, toast })
+    expect(setKpiTargets).toHaveBeenCalledWith(draftKpi)
+    expect(setKpiModalOpen).toHaveBeenCalledWith(false)
+    expect(toast.success).toHaveBeenCalled()
   })
 })
