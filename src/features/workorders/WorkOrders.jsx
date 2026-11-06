@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react'
-import { normalizeWorkOrderRow } from './workOrderNormalize.js'
 import {
   WORK_ORDER_STATUS_OPTIONS,
   getWorkOrderStatusMeta,
@@ -9,7 +8,10 @@ import {
 } from './workOrderNormalize.js'
 
 export { WORK_ORDER_STATUS_OPTIONS, getWorkOrderStatusMeta, getWorkOrderDetails, getJobDailyLogs, getLatestDailyLog }
-import { filterWorkOrderJobs } from './workOrderFilters.js'
+import { filterWorkOrderJobs, toggleMultiFilterValue, nextMultiFilter, nextCauseFilter, togglePersistedOpen } from './workOrderFilters.js'
+import { normalizeAllJobs, computeTypeCounts, computeStatusCounts, computeCauseCounts, computeKpiStats } from './workOrderStats.js'
+import { getJobInterruptions, computeCompleteDuration } from './workOrderInterruptions.js'
+import { matchActiveMachine, matchEditActiveMachine } from './workOrderMachines.js'
 import { buildEditJobPayload, resolveNewlyAddedTechs, notifyAddedTechs, confirmAndRemoveJob } from './workOrderEdit.js'
 import { WorkOrderTechModal } from './WorkOrderTechModal.jsx'
 import { WorkOrdersDashboard } from './WorkOrdersDashboard.jsx'
@@ -53,7 +55,6 @@ import {
   generateJobId,
   calculateDuration,
   calculateSlaPerformance,
-  isSystemWorkOrder,
 } from '../../api/entities'
 import Modal from '../../components/ui/Modal'
 import { useT } from '../../contexts/LanguageContext'
@@ -436,69 +437,29 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   })
 
   const toggleTypeFilterOpen = () => {
-    setIsTypeFilterOpen((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(WO_FILTER_STORAGE_KEYS.TYPE_OPEN, String(next))
-      } catch {}
-      return next
-    })
+    setIsTypeFilterOpen((prev) => togglePersistedOpen(prev, WO_FILTER_STORAGE_KEYS.TYPE_OPEN))
   }
 
   const toggleStatusFilterOpen = () => {
-    setIsStatusFilterOpen((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(WO_FILTER_STORAGE_KEYS.STATUS_OPEN, String(next))
-      } catch {}
-      return next
-    })
+    setIsStatusFilterOpen((prev) => togglePersistedOpen(prev, WO_FILTER_STORAGE_KEYS.STATUS_OPEN))
   }
 
   const toggleCauseFilterOpen = () => {
-    setIsCauseFilterOpen((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(WO_FILTER_STORAGE_KEYS.CAUSE_OPEN, String(next))
-      } catch {}
-      return next
-    })
+    setIsCauseFilterOpen((prev) => togglePersistedOpen(prev, WO_FILTER_STORAGE_KEYS.CAUSE_OPEN))
   }
 
   // Multi-select toggle helpers for Job Type and Status Cards
   const toggleTypeFilter = (val) => {
-    if (val === 'ALL') {
-      setTypeFilters([])
-      return
-    }
-    setTypeFilters((prev) => {
-      if (prev.includes(val)) {
-        return prev.filter((item) => item !== val)
-      }
-      return [...prev, val]
-    })
+    setTypeFilters((prev) => nextMultiFilter(prev, val))
   }
 
   const toggleStatusFilter = (val) => {
-    if (val === 'ALL') {
-      setStatusFilters([])
-      return
-    }
-    setStatusFilters((prev) => {
-      if (prev.includes(val)) {
-        return prev.filter((item) => item !== val)
-      }
-      return [...prev, val]
-    })
+    setStatusFilters((prev) => nextMultiFilter(prev, val))
   }
 
   // Toggle helper for Problem Cause Filter Cards
   const toggleCauseFilter = (val) => {
-    if (val === 'ALL' || causeFilter === val) {
-      setCauseFilter('')
-      return
-    }
-    setCauseFilter(val)
+    setCauseFilter(nextCauseFilter(causeFilter, val))
   }
 
   // Interactive Quick Drilldown from Dashboard to Records Tab
@@ -537,11 +498,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     return extractInUseMachinesFromCylinders(cylinders)
   }, [cylinders])
 
-  const matchedActiveMachine = useMemo(() => {
-    if (!mc.trim()) return null
-    const target = mc.trim().toUpperCase()
-    return inUseMachines.find((m) => m.code.toUpperCase() === target) || null
-  }, [mc, inUseMachines])
+  const matchedActiveMachine = useMemo(() => matchActiveMachine(inUseMachines, mc), [mc, inUseMachines])
 
   // Modals State
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -556,11 +513,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [editTechs, setEditTechs] = useState([])
   const [editSubmitting, setEditSubmitting] = useState(false)
 
-  const matchedEditActiveMachine = useMemo(() => {
-    const editMc = String(editJob?.MC || '').trim().toUpperCase()
-    if (!editMc) return null
-    return inUseMachines.find((m) => m.code.toUpperCase() === editMc) || null
-  }, [editJob?.MC, inUseMachines])
+  const matchedEditActiveMachine = useMemo(() => matchEditActiveMachine(inUseMachines, editJob?.MC), [editJob?.MC, inUseMachines])
 
   const [techModalOpen, setTechModalOpen] = useState(false)
   const [techForm, setTechForm] = useState({ Name: '', Phone: '', SkillLevel: 'Senior', Specialization: '', Status: 'ACTIVE', Line_ID: '', Telegram_ID: '' })
@@ -604,15 +557,6 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     }, 1000)
     return () => clearInterval(timer)
   }, [])
-
-  // Helper to parse/stringify Interruption Logs safely
-  const getJobInterruptions = (job) => {
-    let logs = job?.Interruption_Logs || job?.interruption_logs || []
-    if (typeof logs === 'string') {
-      try { logs = JSON.parse(logs) } catch { logs = [] }
-    }
-    return Array.isArray(logs) ? logs : []
-  }
 
   // Open Interruption Modal
   const openInterruptionModal = (job) => {
@@ -860,151 +804,29 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }, [])
 
   // Active jobs list filter with legacy and new column normalization
-  const allJobs = useMemo(() => {
-    if (!Array.isArray(rawJobs)) return []
-    return rawJobs
-      .filter((r) => r && !isSystemWorkOrder(r))
-      .map(normalizeWorkOrderRow)
-  }, [rawJobs])
+  const allJobs = useMemo(() => normalizeAllJobs(rawJobs), [rawJobs])
 
   // Live counts for Job Types filter cards
-  const typeCounts = useMemo(() => {
-    const counts = { ALL: 0, REPAIR: 0, DESIGN: 0, PM: 0, SETUP: 0 }
-    const relevant = allJobs.filter((j) => (showDeleted ? Boolean(j.IsDeleted) : !j.IsDeleted))
-    counts.ALL = relevant.length
-    relevant.forEach((j) => {
-      const t = (j.JobType || 'REPAIR').toUpperCase()
-      if (counts[t] !== undefined) counts[t]++
-      else counts.REPAIR++
-    })
-    return counts
-  }, [allJobs, showDeleted])
+  const typeCounts = useMemo(() => computeTypeCounts(allJobs, showDeleted), [allJobs, showDeleted])
 
   // Live counts for Status filter cards
-  const statusCounts = useMemo(() => {
-    const counts = { ALL: 0, IN_PROGRESS: 0, WAITING_TECH: 0, WAITING_PARTS: 0, WAITING_SUMMARY: 0, COMPLETED: 0, CANCELLED: 0 }
-    const relevant = allJobs.filter((j) => (showDeleted ? Boolean(j.IsDeleted) : !j.IsDeleted))
-    counts.ALL = relevant.length
-    relevant.forEach((j) => {
-      const meta = getWorkOrderStatusMeta(j.Status)
-      if (counts[meta.value] !== undefined) counts[meta.value]++
-    })
-    return counts
-  }, [allJobs, showDeleted])
+  const statusCounts = useMemo(() => computeStatusCounts(allJobs, showDeleted), [allJobs, showDeleted])
 
   // Live counts for Problem Cause filter cards
-  const causeCounts = useMemo(() => {
-    const counts = { ALL: 0, คน: 0, เครื่องจักร: 0, วัตถุดิบ: 0, UNSPECIFIED: 0 }
-    const relevant = allJobs.filter((j) => (showDeleted ? Boolean(j.IsDeleted) : !j.IsDeleted))
-    counts.ALL = relevant.length
-    relevant.forEach((j) => {
-      const c = String(j?.ProblemCause || j?.problem_cause || '').trim()
-      if (!c) {
-        counts.UNSPECIFIED++
-      } else if (counts[c] !== undefined) {
-        counts[c]++
-      } else {
-        counts.UNSPECIFIED++
-      }
-    })
-    return counts
-  }, [allJobs, showDeleted])
+  const causeCounts = useMemo(() => computeCauseCounts(allJobs, showDeleted), [allJobs, showDeleted])
 
   const filteredJobs = useMemo(() => filterWorkOrderJobs(allJobs, { showDeleted, typeFilters, statusFilters, causeFilter, search }), [allJobs, typeFilters, statusFilters, showDeleted, search]);
 
   // KPI Breakdown Calculations
-  const kpiStats = useMemo(() => {
-    const activeNonDeleted = allJobs.filter((j) => !j.IsDeleted)
-    const total = activeNonDeleted.length
-    const completed = activeNonDeleted.filter((j) => getWorkOrderStatusMeta(j.Status).isCompleted).length
-    const cancelled = activeNonDeleted.filter((j) => getWorkOrderStatusMeta(j.Status).isCancelled).length
-    const active = activeNonDeleted.filter((j) => {
-      const m = getWorkOrderStatusMeta(j.Status)
-      return !m.isCompleted && !m.isCancelled
-    }).length
-
-    const calcJobTypeKpi = (typeKey) => {
-      const jobsOfType = activeNonDeleted.filter((j) => (j.JobType || 'REPAIR') === typeKey)
-      const targetDays = kpiTargets[typeKey] || 1.0
-      const totalCount = jobsOfType.length
-
-      let onTimeCount = 0
-      let overdueCount = 0
-      let totalHours = 0
-      let countWithDuration = 0
-
-      jobsOfType.forEach((j) => {
-        const sla = calculateSlaPerformance(j, kpiTargets, 12)
-        if (sla.isOnTime) onTimeCount += 1
-        else overdueCount += 1
-
-        const durationVal = parseFloat(j.WorkingHoursDecimal || j.Duration || sla.netHoursDecimal) || 0
-        if (durationVal > 0) {
-          totalHours += durationVal
-          countWithDuration += 1
-        }
-      })
-
-      const rate = totalCount > 0 ? Math.round((onTimeCount / totalCount) * 100) : 0
-      const avgHours = countWithDuration > 0 ? (totalHours / countWithDuration).toFixed(1) : '—'
-      const avgDurationText = avgHours !== '—' ? `${avgHours} ชม.` : '—'
-
-      return {
-        total: totalCount,
-        onTime: onTimeCount,
-        overdue: overdueCount,
-        rate,
-        avgDurationText,
-        targetDays,
-        targetHours: targetDays * 12,
-      }
-    }
-
-    const repairKpi = calcJobTypeKpi('REPAIR')
-    const designKpi = calcJobTypeKpi('DESIGN')
-    const pmKpi     = calcJobTypeKpi('PM')
-    const setupKpi  = calcJobTypeKpi('SETUP')
-
-    const totalOnTime = repairKpi.onTime + designKpi.onTime + pmKpi.onTime + setupKpi.onTime
-    const overallRate = total > 0 ? Math.round((totalOnTime / total) * 100) : 0
-
-    // Problem cause analytics calculation
-    const causeStats = calculateProblemCauseStats(activeNonDeleted, kpiTargets)
-
-    // User metrics
-    const userMetricsMap = {}
-    activeNonDeleted.forEach((j) => {
-      const u = j.CreatedBy || j.CompletedBy || 'ช่างประจำกะ'
-      userMetricsMap[u] = (userMetricsMap[u] || 0) + 1
-    })
-
-    return {
-      total,
-      active,
-      completed,
-      cancelled,
-      overallRate,
-      repair: repairKpi,
-      design: designKpi,
-      pm: pmKpi,
-      setup: setupKpi,
-      causeStats,
-      userMetrics: Object.entries(userMetricsMap).map(([name, count]) => ({ name, count })),
-      recentJobs: activeNonDeleted.slice(0, 5),
-    }
-  }, [allJobs, kpiTargets])
+  const kpiStats = useMemo(() => computeKpiStats(allJobs, kpiTargets), [allJobs, kpiTargets])
 
   // Handle Technician checkbox toggle
   const toggleTechSelection = (techName) => {
-    setSelectedTechs((prev) =>
-      prev.includes(techName) ? prev.filter((t) => t !== techName) : [...prev, techName]
-    )
+    setSelectedTechs((prev) => toggleMultiFilterValue(prev, techName))
   }
 
   const toggleEditTechSelection = (techName) => {
-    setEditTechs((prev) =>
-      prev.includes(techName) ? prev.filter((t) => t !== techName) : [...prev, techName]
-    )
+    setEditTechs((prev) => toggleMultiFilterValue(prev, techName))
   }
 
   // Submit Start New Job
@@ -1127,24 +949,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }
 
   // Calculated duration for Complete Modal with Interruption deduction
-  const compCalcDuration = useMemo(() => {
-    if (!compJob || !compEndDate || !compEndTime) {
-      return {
-        hoursDecimal: 0,
-        durationText: '—',
-        grossHoursDecimal: 0,
-        grossDurationText: '—',
-        lostHoursDecimal: 0,
-        lostDurationText: '0 นาที',
-        netHoursDecimal: 0,
-        netDurationText: '—',
-      }
-    }
-    const start = compJob.StartTimestamp || compJob.DateStart || (compJob.StartDate && compJob.StartTime ? (compJob.StartTime.includes('T') ? compJob.StartTime : `${compJob.StartDate}T${compJob.StartTime}`) : null) || compJob.created_at
-    const end = `${compEndDate}T${compEndTime}:00`
-    const interruptions = getJobInterruptions(compJob)
-    return calculateDuration(start, end, interruptions)
-  }, [compJob, compEndDate, compEndTime])
+  const compCalcDuration = useMemo(() => computeCompleteDuration(compJob, compEndDate, compEndTime), [compJob, compEndDate, compEndTime])
 
   // Submit Complete Job
   const handleCompleteJob = async () => {

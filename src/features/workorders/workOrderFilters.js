@@ -36,3 +36,39 @@ export function filterWorkOrderJobs(allJobs, { showDeleted, typeFilters, statusF
     return true
   })
 }
+
+// Multi-select value-toggle cores moved verbatim out of the WorkOrders
+// component to meet the complexity gate. Pure, params only — the component
+// keeps only the one-line setter calls.
+
+// Shared core of the type/status/tech multi-select toggles:
+// identical shape in all four (`prev.includes(v) ? remove : add`).
+export function toggleMultiFilterValue(prev, val) {
+  if (prev.includes(val)) {
+    return prev.filter((item) => item !== val)
+  }
+  return [...prev, val]
+}
+
+// Full next-state for the ALL-aware type/status filters
+// (`'ALL'` resets to `[]`, otherwise toggles the value).
+export function nextMultiFilter(prev, val) {
+  if (val === 'ALL') return []
+  return toggleMultiFilterValue(prev, val)
+}
+
+// Full next-state for the problem-cause filter
+// (`'ALL'` or re-clicking the active cause resets to `''`).
+export function nextCauseFilter(causeFilter, val) {
+  if (val === 'ALL' || causeFilter === val) return ''
+  return val
+}
+
+// Persisted open/closed toggle core of the collapsible filter panels.
+export function togglePersistedOpen(prev, storageKey) {
+  const next = !prev
+  try {
+    localStorage.setItem(storageKey, String(next))
+  } catch {}
+  return next
+}

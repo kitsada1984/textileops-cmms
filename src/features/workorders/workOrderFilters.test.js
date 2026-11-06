@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { filterWorkOrderJobs } from './workOrderFilters'
+import {
+  filterWorkOrderJobs,
+  toggleMultiFilterValue,
+  nextMultiFilter,
+  nextCauseFilter,
+  togglePersistedOpen,
+} from './workOrderFilters'
 
 // Characterization tests: lock the job-list filtering exactly as the
 // in-component version behaved (moved verbatim, params only).
@@ -31,5 +37,28 @@ describe('filterWorkOrderJobs', () => {
 
     const none = filterWorkOrderJobs(jobs, { ...baseFilters, search: 'ไม่มีคำนี้' })
     expect(none).toHaveLength(0)
+  })
+})
+
+describe('filter toggle cores', () => {
+  it('toggles a value in and out', () => {
+    expect(toggleMultiFilterValue([], 'REPAIR')).toEqual(['REPAIR'])
+    expect(toggleMultiFilterValue(['REPAIR', 'PM'], 'REPAIR')).toEqual(['PM'])
+  })
+
+  it('resets to [] on ALL', () => {
+    expect(nextMultiFilter(['REPAIR'], 'ALL')).toEqual([])
+    expect(nextMultiFilter([], 'PM')).toEqual(['PM'])
+  })
+
+  it('resets the cause filter on ALL or re-click', () => {
+    expect(nextCauseFilter('คน', 'ALL')).toBe('')
+    expect(nextCauseFilter('คน', 'คน')).toBe('')
+    expect(nextCauseFilter('คน', 'เครื่องจักร')).toBe('เครื่องจักร')
+  })
+
+  it('flips the persisted open flag', () => {
+    expect(togglePersistedOpen(true, 'test-key')).toBe(false)
+    expect(togglePersistedOpen(false, 'test-key')).toBe(true)
   })
 })
