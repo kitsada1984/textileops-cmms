@@ -14,6 +14,10 @@ import {
 import { getDirectImageUrl, getImageFallbackUrls, getFullResolutionImageUrl } from '../../utils/imageUrlUtils'
 import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
 import { getStatusStyle, buildSelectableItems, resolvePrintHeader } from './pdfPrintMeta'
+import { REPORT_TABLE, REPORT_FONTS, buildReportFilename } from './reportTheme'
+import { PdfReportCover } from './PdfReportCover'
+import { PdfSummaryCards } from './PdfSummaryCards'
+import { PdfReportChart } from './PdfReportChart'
 import { PdfTopBar } from './PdfTopBar'
 import { PdfSectionPicker } from './PdfSectionPicker'
 import { PdfDocHeader } from './PdfDocHeader'
@@ -183,6 +187,9 @@ export default function PdfPreviewModal({
   historyTable = null,
   images = [],
   remarks = '',
+  cover = null,
+  summary = [],
+  chart = null,
   signatories = [
     { title: 'ผู้จัดทำ / ผู้ขอ', name: '', date: '' },
     { title: 'ช่างผู้ปฏิบัติงาน', name: '', date: '' },
@@ -234,7 +241,15 @@ export default function PdfPreviewModal({
   if (!open) return null
 
   const handlePrint = () => {
+    // Spec filename (report_{date}.pdf): browsers suggest document.title.
+    const prevTitle = document.title
+    document.title = buildReportFilename()
+    const restore = () => {
+      document.title = prevTitle
+    }
+    window.addEventListener('afterprint', restore, { once: true })
     window.print()
+    setTimeout(restore, 1000)
   }
 
   const { theme, currentDateStr, formattedDocDate, qrValue } = resolvePrintHeader({ docType, docDate, docNo })
@@ -280,6 +295,28 @@ export default function PdfPreviewModal({
             page-break-inside: avoid;
             page-break-after: auto;
           }
+          .print-report-footer {
+            display: flex !important;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #64748b;
+            padding: 4mm 12mm;
+          }
+          .print-report-footer .pageno::after {
+            content: counter(page);
+          }
+          .print-report-footer .pagecount::after {
+            content: counter(pages);
+          }
+        }
+        .print-report-footer {
+          display: none;
+        }
           @page {
             size: A4 portrait;
             margin: 8mm;
@@ -293,7 +330,7 @@ export default function PdfPreviewModal({
         <div
           id="printable-pdf-document"
           ref={printRef}
-          className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-sans relative overflow-hidden"
+          className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-report relative overflow-hidden"
           style={{ boxSizing: 'border-box' }}
         >
           {/* Top Decorative Accent Line */}
@@ -302,8 +339,14 @@ export default function PdfPreviewModal({
             style={{ background: `linear-gradient(90deg, ${theme.accent}, #0f172a)` }}
           />
 
+          {/* ── COVER PAGE (opt-in) ── */}
+          <PdfReportCover cover={cover} currentDateStr={currentDateStr} />
+
           {/* ── TOP HEADER ── */}
           <PdfDocHeader theme={theme} title={title} docNo={docNo} formattedDocDate={formattedDocDate} status={status} statusCfg={statusCfg} priority={priority} currentDateStr={currentDateStr} />
+
+          {/* ── SUMMARY STAT CARDS (opt-in) ── */}
+          <PdfSummaryCards items={summary} />
 
             {/* ── SECTION GROUPS ── */}
             <div className="space-y-4">
@@ -358,6 +401,9 @@ export default function PdfPreviewModal({
 
               <PdfDataTable gateKey='history' table={historyTable} themeAccent={theme.accent} isExcluded={isExcluded} />
 
+              {/* ── CHART (opt-in) ── */}
+              <PdfReportChart chart={chart} />
+
               {/* ── ATTACHED PHOTO GALLERY (STANDARDIZED PHOTO SHOWCASE) ── */}
               {!isExcluded('images') && <PdfPhotoGallery images={images} docAccent={theme.accent} />}
 
@@ -378,6 +424,13 @@ export default function PdfPreviewModal({
 
           {/* ── BOTTOM SECTION: SIGNATURES & VERIFICATION ── */}
           <PdfSignatures signatories={signatories} isExcluded={isExcluded} qrValue={qrValue} docNo={docNo} currentDateStr={currentDateStr} />
+
+          {/* ── PRINT FOOTER: date · doc · page x/y (print only) ── */}
+          <div className="print-report-footer">
+            <span>{currentDateStr}</span>
+            <span>{docNo || title}</span>
+            <span>หน้า <span className="pageno" /> / <span className="pagecount" /></span>
+          </div>
         </div>
     </div>,
     document.body

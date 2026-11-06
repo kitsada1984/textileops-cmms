@@ -804,6 +804,11 @@ html.dark .glass-panel {
   padding: 0.85rem 1rem !important;
 }
 
+/* ── Thai professional report typeface (format_report_pdf spec) ── */
+.font-report {
+  font-family: 'Sarabun', 'Noto Sans Thai', 'Segoe UI', Tahoma, sans-serif;
+}
+
 /* ── Accessibility: Reduced Motion (WCAG 2.3.3) ─────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
