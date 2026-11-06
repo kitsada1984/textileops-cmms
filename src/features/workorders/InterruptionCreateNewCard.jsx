@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { PlusCircle, Sparkles, ArrowRight, Clock, FilePlus } from 'lucide-react'
+import { ArrowRight, Clock, FilePlus } from 'lucide-react'
 
 export function InterruptionCreateNewCard({
   interruptionJob,
+  selectedTechs = [],
+  noTechRemaining = false,
   onOpenCreateWorkOrder,
   onStartImmediate,
 }) {
@@ -10,13 +12,14 @@ export function InterruptionCreateNewCard({
   const [taskDetail, setTaskDetail] = useState('')
 
   const handleCreateAndStart = () => {
+    const techSnippet = selectedTechs.length > 0 ? ` [ช่าง: ${selectedTechs.join(', ')}]` : ''
     const taskName = targetMc.trim()
-      ? `[งานแทรกเปิดใบงานใหม่] เครื่อง ${targetMc.trim()}${taskDetail.trim() ? `: ${taskDetail.trim()}` : ''}`
-      : `[งานแทรก] เปิดใบสั่งงานใหม่ด่วน`
+      ? `[งานแทรกเปิดใบงานใหม่] เครื่อง ${targetMc.trim()}${taskDetail.trim() ? `: ${taskDetail.trim()}` : ''}${techSnippet}`
+      : `[งานแทรก] เปิดใบสั่งงานใหม่ด่วน${techSnippet}`
 
     // Start timer on current job
     if (onStartImmediate) {
-      onStartImmediate(taskName)
+      onStartImmediate(taskName, { selectedTechs, noTechRemaining })
     }
 
     // Open create work order modal with initial prefill
@@ -24,6 +27,7 @@ export function InterruptionCreateNewCard({
       onOpenCreateWorkOrder({
         mc: targetMc.trim(),
         comment: `งานแทรกระหว่างทำใบงาน ${interruptionJob?.Job_ID || ''}${taskDetail.trim() ? ` - ${taskDetail.trim()}` : ''}`,
+        selectedTechs,
       })
     }
   }
@@ -33,6 +37,7 @@ export function InterruptionCreateNewCard({
       onOpenCreateWorkOrder({
         mc: targetMc.trim(),
         comment: `งานแทรกระหว่างทำใบงาน ${interruptionJob?.Job_ID || ''}`,
+        selectedTechs,
       })
     }
   }
@@ -102,10 +107,9 @@ export function InterruptionCreateNewCard({
         <button
           type="button"
           onClick={handleOpenModalOnly}
-          className="py-2.5 px-3.5 rounded-xl font-semibold text-xs text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all flex items-center justify-center gap-1"
+          className="py-2.5 px-3 rounded-xl font-semibold text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-all text-center"
         >
-          <PlusCircle size={14} />
-          <span>เปิดฟอร์มสร้างใบงานโดยไม่จับเวลา</span>
+          เปิดฟอร์มสร้างใบงานโดยไม่จับเวลา
         </button>
       </div>
     </div>

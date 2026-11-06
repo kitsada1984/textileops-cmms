@@ -126,8 +126,11 @@ export function WorkOrderDurationCell({ job, sla, isCompleted }) {
                             </div>
                           )}
                           {sla.activeInterruption && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 animate-pulse mt-0.5">
-                              ⏸️ กำลังพักงาน
+                            <span
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border animate-pulse mt-0.5 ${sla.activeInterruption.no_tech_remaining ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/40' : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30'}`}
+                              title={sla.activeInterruption.no_tech_remaining ? `ไม่มีช่างอยู่ (หยุดนับเวลา): ${sla.activeInterruption.task_name}` : `กำลังพักงาน: ${sla.activeInterruption.task_name}`}
+                            >
+                              {sla.activeInterruption.no_tech_remaining ? '🛑 ไม่มีช่างอยู่ (หยุดเวลา)' : '⏸️ กำลังพักงาน'}
                             </span>
                           )}
                         </td>

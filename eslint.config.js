@@ -38,6 +38,7 @@ export default [
       'coverage/**',
       'scratch/**',
       '.compare-vercel/**',
+      '.wrangler/**',
       'supabase/.temp/**',
       'public/**',
       'backups/**',

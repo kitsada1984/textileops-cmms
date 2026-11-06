@@ -47,6 +47,22 @@ describe('workOrderInterruptionHandlers behavior', () => {
     expect(ok.toast.info).toHaveBeenCalled()
   })
 
+  it('start: records selectedTechs and noTechRemaining flag properly', async () => {
+    const d = deps({ interruptionTaskName: 'ไปช่วยเครื่อง 102', setInterruptionTaskName: vi.fn() })
+
+    await startInterruption({
+      ...d,
+      taskName: 'ไปช่วยเครื่อง 102',
+      selectedTechs: ['ช่างสมชาย', 'ช่างวิชัย'],
+      noTechRemaining: true,
+    })
+
+    expect(d.saveJob).toHaveBeenCalled()
+    const saved = d.saveJob.mock.calls[0][0]
+    expect(saved.Interruption_Logs[0].technicians).toEqual(['ช่างสมชาย', 'ช่างวิชัย'])
+    expect(saved.Interruption_Logs[0].no_tech_remaining).toBe(true)
+  })
+
   it('start: reports save failures without touching state', async () => {
     const d = deps({ interruptionTaskName: 'x', setInterruptionTaskName: vi.fn() })
     d.saveJob.mockRejectedValueOnce(new Error('boom'))
@@ -56,18 +72,26 @@ describe('workOrderInterruptionHandlers behavior', () => {
     expect(d.setInterruptionJob).not.toHaveBeenCalled()
   })
 
-  it('stop: closes the active log', async () => {
-    const active = { id: 'INT-1', task_name: 't', start_time: new Date(Date.now() - 60000).toISOString(), is_active: true }
+  it('stop: closes the active log and records resumed_at and duration', async () => {
+    const active = {
+      id: 'INT-1',
+      task_name: 't',
+      technicians: ['ช่างสมชาย'],
+      start_time: new Date(Date.now() - 60000).toISOString(),
+      is_active: true,
+    }
     const d = deps({ interruptionJob: { ...job, Interruption_Logs: [active] } })
 
     await stopInterruption({ ...d, logId: 'INT-1' })
     const saved = d.saveJob.mock.calls[0][0]
     expect(saved.Interruption_Logs[0].is_active).toBe(false)
     expect(saved.Interruption_Logs[0].end_time).toBeTruthy()
+    expect(saved.Interruption_Logs[0].resumed_at).toBeTruthy()
+    expect(saved.Interruption_Logs[0].duration_minutes).toBeGreaterThanOrEqual(1)
     expect(d.toast.success).toHaveBeenCalled()
   })
 
-  it('addManual: validates name and minutes, resets the form on success', async () => {
+  it('addManual: validates name and minutes, records technicians on success', async () => {
     const bad = deps({
       interruptionTaskName: '', interruptionManualMins: '', interruptionManualNotes: '',
       setInterruptionTaskName: vi.fn(), setInterruptionManualMins: vi.fn(),
@@ -79,6 +103,7 @@ describe('workOrderInterruptionHandlers behavior', () => {
 
     const ok = deps({
       interruptionTaskName: 'รอวัตถุดิบ', interruptionManualMins: '30', interruptionManualNotes: 'note',
+      selectedTechs: ['ช่างสมชาย'], noTechRemaining: true,
       setInterruptionTaskName: vi.fn(), setInterruptionManualMins: vi.fn(),
       setInterruptionManualNotes: vi.fn(), setShowManualAdd: vi.fn(),
     })
@@ -86,6 +111,8 @@ describe('workOrderInterruptionHandlers behavior', () => {
     const saved = ok.saveJob.mock.calls[0][0]
     expect(saved.Interruption_Logs[0].duration_minutes).toBe(30)
     expect(saved.Interruption_Logs[0].notes).toBe('note')
+    expect(saved.Interruption_Logs[0].technicians).toEqual(['ช่างสมชาย'])
+    expect(saved.Interruption_Logs[0].no_tech_remaining).toBe(true)
     expect(ok.setShowManualAdd).toHaveBeenCalledWith(false)
     expect(ok.toast.success).toHaveBeenCalled()
   })

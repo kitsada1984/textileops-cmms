@@ -540,8 +540,35 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }
 
   // Start live interruption timer
-  const handleStartInterruption = async (taskName) => {
-    await startInterruption({ interruptionJob, taskName, interruptionTaskName, saveJob, setInterruptionJob, setInterruptionTaskName, toast, user })
+  const handleStartInterruption = async (taskNameOrOptions, maybeOptions) => {
+    let name = ''
+    let selectedTechs = []
+    let noTechRemaining = false
+
+    if (typeof taskNameOrOptions === 'string') {
+      name = taskNameOrOptions
+      if (maybeOptions && typeof maybeOptions === 'object') {
+        selectedTechs = maybeOptions.selectedTechs || []
+        noTechRemaining = Boolean(maybeOptions.noTechRemaining)
+      }
+    } else if (taskNameOrOptions && typeof taskNameOrOptions === 'object') {
+      name = taskNameOrOptions.taskName || ''
+      selectedTechs = taskNameOrOptions.selectedTechs || []
+      noTechRemaining = Boolean(taskNameOrOptions.noTechRemaining)
+    }
+
+    await startInterruption({
+      interruptionJob,
+      taskName: name,
+      interruptionTaskName,
+      selectedTechs,
+      noTechRemaining,
+      saveJob,
+      setInterruptionJob,
+      setInterruptionTaskName,
+      toast,
+      user,
+    })
   }
 
   // Stop live interruption timer
@@ -550,8 +577,26 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }
 
   // Add manual past interruption
-  const handleAddManualInterruption = async () => {
-    await addManualInterruption({ interruptionJob, interruptionTaskName, interruptionManualMins, interruptionManualNotes, saveJob, setInterruptionJob, setInterruptionTaskName, setInterruptionManualMins, setInterruptionManualNotes, setShowManualAdd, toast, user })
+  const handleAddManualInterruption = async (options) => {
+    const selectedTechs = options?.selectedTechs || []
+    const noTechRemaining = Boolean(options?.noTechRemaining)
+
+    await addManualInterruption({
+      interruptionJob,
+      interruptionTaskName,
+      interruptionManualMins,
+      interruptionManualNotes,
+      selectedTechs,
+      noTechRemaining,
+      saveJob,
+      setInterruptionJob,
+      setInterruptionTaskName,
+      setInterruptionManualMins,
+      setInterruptionManualNotes,
+      setShowManualAdd,
+      toast,
+      user,
+    })
   }
 
   // Delete an interruption record
@@ -560,9 +605,10 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }
 
   // Open Create Work Order modal from Interruption
-  const handleOpenCreateWorkOrderFromInterruption = ({ mc: targetMc, comment: initialComment } = {}) => {
+  const handleOpenCreateWorkOrderFromInterruption = ({ mc: targetMc, comment: initialComment, selectedTechs: initialTechs } = {}) => {
     if (targetMc) setMc(targetMc)
     if (initialComment) setComment(initialComment)
+    if (Array.isArray(initialTechs) && initialTechs.length > 0) setSelectedTechs(initialTechs)
     setInterruptionModalOpen(false)
     setCreateModalOpen(true)
   }
@@ -792,7 +838,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       <WorkOrdersKpiModal kpiModalOpen={kpiModalOpen} draftKpi={draftKpi} setDraftKpi={setDraftKpi} setKpiModalOpen={setKpiModalOpen} handleSaveKpiSettings={handleSaveKpiSettings} />
 
       {/* 6. Interruption & Lost Time Modal */}
-        <WorkOrdersInterruptionModal interruptionModalOpen={interruptionModalOpen} interruptionJob={interruptionJob} setInterruptionModalOpen={setInterruptionModalOpen} interruptionTaskName={interruptionTaskName} setInterruptionTaskName={setInterruptionTaskName} interruptionManualMins={interruptionManualMins} setInterruptionManualMins={setInterruptionManualMins} interruptionManualNotes={interruptionManualNotes} setInterruptionManualNotes={setInterruptionManualNotes} showManualAdd={showManualAdd} setShowManualAdd={setShowManualAdd} handleAddManualInterruption={handleAddManualInterruption} handleDeleteInterruption={handleDeleteInterruption} handleStartInterruption={handleStartInterruption} handleStopInterruption={handleStopInterruption} getJobInterruptions={getJobInterruptions} QUICK_INTERRUPTION_PRESETS={QUICK_INTERRUPTION_PRESETS} allJobs={allJobs} onOpenCreateWorkOrder={handleOpenCreateWorkOrderFromInterruption} />
+        <WorkOrdersInterruptionModal interruptionModalOpen={interruptionModalOpen} interruptionJob={interruptionJob} setInterruptionModalOpen={setInterruptionModalOpen} interruptionTaskName={interruptionTaskName} setInterruptionTaskName={setInterruptionTaskName} interruptionManualMins={interruptionManualMins} setInterruptionManualMins={setInterruptionManualMins} interruptionManualNotes={interruptionManualNotes} setInterruptionManualNotes={setInterruptionManualNotes} showManualAdd={showManualAdd} setShowManualAdd={setShowManualAdd} handleAddManualInterruption={handleAddManualInterruption} handleDeleteInterruption={handleDeleteInterruption} handleStartInterruption={handleStartInterruption} handleStopInterruption={handleStopInterruption} getJobInterruptions={getJobInterruptions} QUICK_INTERRUPTION_PRESETS={QUICK_INTERRUPTION_PRESETS} allJobs={allJobs} technicians={technicians} onOpenCreateWorkOrder={handleOpenCreateWorkOrderFromInterruption} />
 
       {/* 5. Print A4 PDF Report Modal */}
       <WorkOrdersPrintModal printModalOpen={printModalOpen} printJob={printJob} setPrintModalOpen={setPrintModalOpen} />

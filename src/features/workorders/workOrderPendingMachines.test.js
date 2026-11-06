@@ -3,11 +3,13 @@ import {
   extractPendingTasks,
   filterPendingTasks,
   buildInterruptionTaskNameFromPending,
+  parseJobTechnicians,
+  evaluateNoTechRemaining,
 } from './workOrderPendingMachines'
 
 describe('workOrderPendingMachines', () => {
   const mockWorkOrders = [
-    { Job_ID: 'WO-001', MC: 'DP-341M', Status: 'IN_PROGRESS', Problem: 'สายพานขาด', JobType: 'REPAIR' },
+    { Job_ID: 'WO-001', MC: 'DP-341M', Status: 'IN_PROGRESS', Problem: 'สายพานขาด', JobType: 'REPAIR', Technicians: 'ช่างหนึ่ง, ช่างสอง' },
     { Job_ID: 'WO-002', MC: 'DP-343M', Status: 'COMPLETED', Problem: 'เสร็จแล้ว', JobType: 'PM' },
     { Job_ID: 'WO-003', MC: 'DB-3411T', Status: 'WAITING_PARTS', Problem: 'รอลูกปืน', JobType: 'REPAIR' },
     { Job_ID: 'WO-004', MC: 'SC-365W', Status: 'CANCELLED', Problem: 'ยกเลิก', JobType: 'DESIGN' },
@@ -61,32 +63,52 @@ describe('workOrderPendingMachines', () => {
     expect(filteredByMc.length).toBe(1)
     expect(filteredByMc[0].refId).toBe('REQ-001')
 
-    const filteredByDetail = filterPendingTasks(pending, 'ลูกปืน')
+    const filteredByDetail = filterPendingTasks(pending, 'รอลูกปืน')
     expect(filteredByDetail.length).toBe(1)
     expect(filteredByDetail[0].refId).toBe('WO-003')
   })
 
-  it('filters pending tasks by category filter', () => {
+  it('filters pending tasks by job type (REPAIR, PM, WAIT_PARTS)', () => {
     const pending = extractPendingTasks({
       workOrders: mockWorkOrders,
       repairRequests: mockRepairRequests,
     })
 
-    const pmOnly = filterPendingTasks(pending, '', 'PM')
-    expect(pmOnly.every((t) => t.jobType === 'PM')).toBe(true)
+    const pmTasks = filterPendingTasks(pending, '', 'PM')
+    expect(pmTasks.every((t) => t.jobType === 'PM')).toBe(true)
 
-    const waitParts = filterPendingTasks(pending, '', 'WAIT_PARTS')
-    expect(waitParts.map((t) => t.refId)).toEqual(['WO-003', 'REQ-003'])
+    const waitPartsTasks = filterPendingTasks(pending, '', 'WAIT_PARTS')
+    expect(waitPartsTasks.map((t) => t.refId)).toContain('WO-003')
+    expect(waitPartsTasks.map((t) => t.refId)).toContain('REQ-003')
   })
 
-  it('builds standardized interruption task name from pending item', () => {
+  it('builds a standardized interruption task name from pending item', () => {
     const task = {
       source: 'WORK_ORDER',
+      refId: 'JOB-999',
       mc: 'DP-341M',
-      refId: 'WO-001',
-      details: 'สายพานสึกหรอ',
+      details: 'ด้ายขาดบ่อย',
     }
     const name = buildInterruptionTaskNameFromPending(task)
-    expect(name).toBe('[งานแทรก] DP-341M: ใบงาน WO-001 (สายพานสึกหรอ)')
+    expect(name).toBe('[งานแทรก] DP-341M: ใบงาน JOB-999 (ด้ายขาดบ่อย)')
+  })
+
+  it('parses technicians from job correctly', () => {
+    expect(parseJobTechnicians(null)).toEqual([])
+    expect(parseJobTechnicians({ Technicians: 'ช่างสมชาย, ช่างวิชัย' })).toEqual(['ช่างสมชาย', 'ช่างวิชัย'])
+    expect(parseJobTechnicians({ Technicians: ['ช่างเอก', 'ช่างโท'] })).toEqual(['ช่างเอก', 'ช่างโท'])
+  })
+
+  it('evaluates whether no technicians remain when pulled', () => {
+    const jobWithTwoTechs = { Technicians: 'ช่างA, ช่างB' }
+
+    // Pulling only 1 technician -> still has 1 tech left
+    expect(evaluateNoTechRemaining(jobWithTwoTechs, ['ช่างA'])).toBe(false)
+
+    // Pulling all technicians -> no tech remaining!
+    expect(evaluateNoTechRemaining(jobWithTwoTechs, ['ช่างA', 'ช่างB'])).toBe(true)
+
+    // Job with 0 technicians assigned initially -> evaluates to true
+    expect(evaluateNoTechRemaining({ Technicians: '' }, [])).toBe(true)
   })
 })

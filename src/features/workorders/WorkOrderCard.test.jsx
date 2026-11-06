@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { WorkOrderCard } from './WorkOrderCard'
 
 // Characterization: lock the mobile/tablet card exactly as WorkOrders rendered it.
@@ -15,6 +15,10 @@ function renderCard(over = {}) {
 }
 
 describe('WorkOrderCard characterization', () => {
+  beforeEach(() => {
+    cleanup()
+  })
+
   it('shows the job id and machine', () => {
     renderCard()
 

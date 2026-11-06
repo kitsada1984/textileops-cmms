@@ -65,6 +65,17 @@ export function WorkOrderCard({
           })()}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {sla.activeInterruption && (
+            <span
+              className={`badge text-[10px] font-bold animate-pulse ${
+                sla.activeInterruption.no_tech_remaining
+                  ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40'
+                  : 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40'
+              }`}
+            >
+              {sla.activeInterruption.no_tech_remaining ? '🛑 ไม่มีช่าง' : '⏸️ พักงาน'}
+            </span>
+          )}
           <span className={`badge text-[10px] ${statusMeta.badgeClass}`}>
             {statusMeta.label}
           </span>

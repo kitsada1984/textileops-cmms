@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react'
-import { Search, Wrench, Clock, AlertCircle, ArrowRight, Layers, Sparkles } from 'lucide-react'
+import { Search, Clock, AlertCircle } from 'lucide-react'
 import { filterPendingTasks, buildInterruptionTaskNameFromPending } from './workOrderPendingMachines'
 
 export function InterruptionPendingMachinesList({
   pendingTasks = [],
+  selectedTechs = [],
+  noTechRemaining = false,
   onSelectPendingTask,
   onStartImmediate,
 }) {
@@ -102,23 +104,37 @@ export function InterruptionPendingMachinesList({
             return (
               <div
                 key={item.id}
-                className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500/50 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 group"
+                className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-700/60 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs"
               >
-                {/* Task Details */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                    <span className="font-mono font-black text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-900">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Machine Badge */}
+                    <span className="font-mono font-black text-xs px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                       {item.mc}
                     </span>
-                    <span className="font-semibold text-[10.5px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+
+                    {/* Source / Type Badge */}
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                       {item.sourceLabel}: {item.refId}
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
-                      {item.status}
+
+                    {/* Job Type Tag */}
+                    <span
+                      className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded ${
+                        item.jobType === 'PM'
+                          ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
+                          : item.jobType === 'DESIGN'
+                          ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                          : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                      }`}
+                    >
+                      {item.jobType}
                     </span>
+
+                    {/* Technician if assigned */}
                     {item.technicians && (
                       <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                        • ช่าง: {item.technicians}
+                        (ช่าง: {item.technicians})
                       </span>
                     )}
                   </div>
@@ -140,7 +156,11 @@ export function InterruptionPendingMachinesList({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onStartImmediate(taskTitle)}
+                    onClick={() => {
+                      if (onStartImmediate) {
+                        onStartImmediate(taskTitle, { selectedTechs, noTechRemaining })
+                      }
+                    }}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 active:scale-95 transition-all shadow-xs flex items-center gap-1"
                   >
                     <Clock size={12} />
