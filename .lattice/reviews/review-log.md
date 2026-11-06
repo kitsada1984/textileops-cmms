@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — Release v1.3.255 (refactor batch + auth 500 fix)
+- **Scope**: bump 4 targets, full suite green, build after bump, Pages deploy
+- **Atoms**: test-quality, secure-coding
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: full suite 180 files / 1206 passed; live sw.js verified v1.3.255
+- **Strengths**: bump-first-then-build held; .wrangler/tmp lint noise correctly excluded
+
 ## 2026-11-06 — Web-QA fix verify (login 500 + labels)
 - **Scope**: login 500 message; label audit
 - **Atoms**: secure-coding, test-quality
