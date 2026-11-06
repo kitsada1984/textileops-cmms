@@ -6,6 +6,35 @@ import { resolveDailyLogJob } from './workOrderDailyLogHandlers.js'
 // component. Pure transformations only — the component keeps the
 // setter calls. Bodies run at call time exactly as before.
 
+// Page-permission defaults gating the open/edit/delete actions routed
+// through this feature's modals (`?? true` when the perm is undefined).
+export function resolvePagePerms(pagePerms = {}) {
+  return {
+    canAdd: pagePerms.canAdd ?? true,
+    canEdit: pagePerms.canEdit ?? true,
+    canDelete: pagePerms.canDelete ?? true,
+  }
+}
+
+// Was the body of `const openPrintModal = (job) => {...}` minus setters.
+export function fireOpenPrintModal(setPrintJob, setPrintModalOpen, job) {
+  setPrintJob(job)
+  setPrintModalOpen(true)
+}
+
+// Was the body of `const openInterruptionModal = (job) => {...}` minus setters.
+export function fireOpenInterruptionModal({
+  setInterruptionJob, setInterruptionTaskName, setInterruptionManualMins,
+  setInterruptionManualNotes, setShowManualAdd, setInterruptionModalOpen, job,
+}) {
+  setInterruptionJob(job)
+  setInterruptionTaskName('')
+  setInterruptionManualMins('')
+  setInterruptionManualNotes('')
+  setShowManualAdd(false)
+  setInterruptionModalOpen(true)
+}
+
 // Was the body of `const openCompleteModal = (job) => {...}` minus setters.
 export function buildCompleteModalState(job) {
   const now = new Date()

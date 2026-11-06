@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { buildCompleteModalState, buildEditModalState, buildDailyLogModalState } from './workOrderModalOpeners'
+import { describe, it, expect, vi } from 'vitest'
+import { buildCompleteModalState, buildEditModalState, buildDailyLogModalState, fireOpenPrintModal, fireOpenInterruptionModal, resolvePagePerms } from './workOrderModalOpeners'
 
 // Characterization: lock the opener state builders exactly as the
 // in-component openers computed them (moved verbatim, params only).
@@ -36,5 +36,36 @@ describe('workOrderModalOpeners characterization', () => {
     expect(s.status).toBe('IN_PROGRESS')
     expect(s.techs).toEqual(['ช่างA'])
     expect(s.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('fireOpenPrintModal: sets job and opens', () => {
+    const setPrintJob = vi.fn()
+    const setPrintModalOpen = vi.fn()
+    const job = { Job_ID: 'JOB-001' }
+
+    fireOpenPrintModal(setPrintJob, setPrintModalOpen, job)
+    expect(setPrintJob).toHaveBeenCalledWith(job)
+    expect(setPrintModalOpen).toHaveBeenCalledWith(true)
+  })
+
+  it('fireOpenInterruptionModal: resets fields and opens', () => {
+    const setters = {
+      setInterruptionJob: vi.fn(), setInterruptionTaskName: vi.fn(), setInterruptionManualMins: vi.fn(),
+      setInterruptionManualNotes: vi.fn(), setShowManualAdd: vi.fn(), setInterruptionModalOpen: vi.fn(),
+    }
+    const job = { Job_ID: 'JOB-001' }
+
+    fireOpenInterruptionModal({ ...setters, job })
+    expect(setters.setInterruptionJob).toHaveBeenCalledWith(job)
+    expect(setters.setInterruptionTaskName).toHaveBeenCalledWith('')
+    expect(setters.setShowManualAdd).toHaveBeenCalledWith(false)
+    expect(setters.setInterruptionModalOpen).toHaveBeenCalledWith(true)
+  })
+
+  it('resolvePagePerms: defaults missing perms to true', () => {
+    expect(resolvePagePerms({})).toEqual({ canAdd: true, canEdit: true, canDelete: true })
+    expect(resolvePagePerms({ canAdd: false, canEdit: true, canDelete: false })).toEqual({
+      canAdd: false, canEdit: true, canDelete: false,
+    })
   })
 })

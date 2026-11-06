@@ -13,7 +13,8 @@ import { normalizeAllJobs, computeTypeCounts, computeStatusCounts, computeCauseC
 import { getJobInterruptions, computeCompleteDuration } from './workOrderInterruptions.js'
 import { startInterruption, stopInterruption, addManualInterruption, deleteInterruption } from './workOrderInterruptionHandlers.js'
 import { saveDailyLog, confirmCancelJob, deleteDailyLog } from './workOrderDailyLogHandlers.js'
-import { buildCompleteModalState, buildEditModalState, buildDailyLogModalState } from './workOrderModalOpeners.js'
+import { useDefaultTabSync, useDeepLinkSearch, useTechLoader, useTechRealtimeSync } from './workOrderLifecycle.js'
+import { buildCompleteModalState, buildEditModalState, buildDailyLogModalState, fireOpenPrintModal, fireOpenInterruptionModal, resolvePagePerms } from './workOrderModalOpeners.js'
 import { buildAddTechForm, buildEditTechForm, selectUserForTech, saveTech, deleteTech, loadTechData, drilldownByCause } from './workOrderTechHandlers.js'
 import { startJob, completeJob, quickStatusChange } from './workOrderSubmitHandlers.js'
 import { matchActiveMachine, matchEditActiveMachine } from './workOrderMachines.js'
@@ -60,7 +61,6 @@ import { useToast } from '../../components/ui/Toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { SHEET_EXPORTS } from '../../utils/sheetExportConfigs'
 import RepairRequests from './RepairRequests'
-import { db } from '../../api/dbClient'
 import { notifyLineWorkOrderAssigned } from '../../utils/line'
 import { syncPMWorkOrderToMonthlySchedule, removePMWorkOrderFromMonthlySchedule } from '../../components/pm/PMMonthlyScheduleView'
 
@@ -349,9 +349,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const { user } = useAuth()
   const toast = useToast()
   const pagePerms = usePagePerms('workorders')
-  const canAdd = pagePerms.canAdd ?? true
-  const canEdit = pagePerms.canEdit ?? true
-  const canDelete = pagePerms.canDelete ?? true
+  const { canAdd, canEdit, canDelete } = resolvePagePerms(pagePerms)
 
   // Entity Hook for WorkOrders
   const {
@@ -365,9 +363,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   // Tabs: 'records' | 'repair_requests' | 'dashboard' | 'technicians' | 'settings'
   const [currentTab, setCurrentTab] = useState(defaultTab)
 
-  useEffect(() => {
-    if (defaultTab) setCurrentTab(defaultTab)
-  }, [defaultTab])
+  useDefaultTabSync(defaultTab, setCurrentTab)
 
   // Technicians State
   const [technicians, setTechnicians] = useState(DEFAULT_TECHS)
@@ -459,17 +455,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }
 
   // Deep Link support (?job=JOB-XXXX or ?wo=JOB-XXXX)
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined' && window.location?.search) {
-        const params = new URLSearchParams(window.location.search)
-        const jobParam = params.get('job') || params.get('wo') || params.get('id')
-        if (jobParam) {
-          setSearch(jobParam)
-        }
-      }
-    } catch {}
-  }, [])
+  useDeepLinkSearch(setSearch)
 
   // New Work Order Form State
   const [mc, setMc] = useState('')
@@ -550,12 +536,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Open Interruption Modal
   const openInterruptionModal = (job) => {
-    setInterruptionJob(job)
-    setInterruptionTaskName('')
-    setInterruptionManualMins('')
-    setInterruptionManualNotes('')
-    setShowManualAdd(false)
-    setInterruptionModalOpen(true)
+    fireOpenInterruptionModal({ setInterruptionJob, setInterruptionTaskName, setInterruptionManualMins, setInterruptionManualNotes, setShowManualAdd, setInterruptionModalOpen, job })
   }
 
   // Start live interruption timer
@@ -583,46 +564,10 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     await loadTechData({ setTechLoading, setSystemUsers, setCylinders, setTechnicians, setKpiTargets, setDraftKpi, defaultKpiTargets: DEFAULT_KPI_TARGETS, defaultTechs: DEFAULT_TECHS })
   }
 
-  useEffect(() => {
-    loadTechsAndSettings()
-  }, [currentTab])
+  useTechLoader(currentTab, loadTechsAndSettings)
 
   // Real-time & Window Focus Sync for Technicians & KPI Settings across PC and Mobile
-  useEffect(() => {
-    let lastSync = Date.now()
-    const handleFocusSync = () => {
-      if (Date.now() - lastSync > 3000) {
-        lastSync = Date.now()
-        loadTechsAndSettings()
-      }
-    }
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') handleFocusSync()
-    }
-
-    window.addEventListener('focus', handleFocusSync)
-    document.addEventListener('visibilitychange', handleVisibility)
-
-    let channel = null
-    try {
-      if (db && typeof db.channel === 'function') {
-        channel = db
-          .channel('workorders_tech_realtime')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'appconfigs' }, () => {
-            loadTechsAndSettings()
-          })
-          .subscribe()
-      }
-    } catch {}
-
-    return () => {
-      window.removeEventListener('focus', handleFocusSync)
-      document.removeEventListener('visibilitychange', handleVisibility)
-      try {
-        if (channel && typeof channel.unsubscribe === 'function') channel.unsubscribe()
-      } catch {}
-    }
-  }, [])
+  useTechRealtimeSync(loadTechsAndSettings)
 
   // Active jobs list filter with legacy and new column normalization
   const allJobs = useMemo(() => normalizeAllJobs(rawJobs), [rawJobs])
@@ -772,8 +717,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Open Print Sheet Modal
   const openPrintModal = (job) => {
-    setPrintJob(job)
-    setPrintModalOpen(true)
+    fireOpenPrintModal(setPrintJob, setPrintModalOpen, job)
   }
 
   const unregisteredLineUsers = useMemo(
