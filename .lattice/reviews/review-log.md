@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — Release v1.3.259 blocked (Cloudflare SIN incident)
+- **Scope**: bump done, suite green, deploy fails server-side 3×
+- **Atoms**: test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: active CF incident Singapore network (08:54 UTC); functions/ unchanged since good deploy
+- **Strengths**: source pushed; will retry deploy when incident clears — no code action needed
+
 ## 2026-11-06 — Report print theme (format_report_pdf phase 1)
 - **Scope**: theme tokens + Sarabun + hub cover/footer/tables/charts/filename
 - **Atoms**: clean-code, architecture, test-quality
