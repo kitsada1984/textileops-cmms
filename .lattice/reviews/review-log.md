@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — LINE QR miss vs button (per-attempt, not a bug)
+- **Scope**: QR tab UI + poll + webhook session evidence on prod D1
+- **Atoms**: clean-code, architecture, secure-coding
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: NQXKFP stayed pending but retry V87VY7 authenticated same account 6 min later — flow sound
+- **Strengths**: session/poll/match chain proven end-to-end on prod data
+
 ## 2026-11-06 — LINE QR login failure triage
 - **Scope**: Login QR client + line login/webhook functions + prod D1 evidence
 - **Atoms**: clean-code, architecture, secure-coding
