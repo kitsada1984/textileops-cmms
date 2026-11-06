@@ -13,6 +13,7 @@ import { normalizeAllJobs, computeTypeCounts, computeStatusCounts, computeCauseC
 import { getJobInterruptions, computeCompleteDuration } from './workOrderInterruptions.js'
 import { startInterruption, stopInterruption, addManualInterruption, deleteInterruption } from './workOrderInterruptionHandlers.js'
 import { saveDailyLog, confirmCancelJob, deleteDailyLog } from './workOrderDailyLogHandlers.js'
+import { buildAddTechForm, buildEditTechForm, selectUserForTech, saveTech, deleteTech, loadTechData, drilldownByCause } from './workOrderTechHandlers.js'
 import { startJob, completeJob, quickStatusChange } from './workOrderSubmitHandlers.js'
 import { matchActiveMachine, matchEditActiveMachine } from './workOrderMachines.js'
 import { confirmAndRemoveJob, saveEditJob } from './workOrderEdit.js'
@@ -45,9 +46,6 @@ import useEntity from '../../hooks/useEntity'
 import {
   WorkOrderAPI,
   TechnicianAPI,
-  CylinderAPI,
-  UserAPI,
-  KpiSettingsAPI,
   AuditLogAPI,
   WO_JOB_TYPE,
   TECH_SKILL_LEVELS,
@@ -456,8 +454,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Interactive Quick Drilldown from Dashboard to Records Tab
   const handleDrilldownByCause = (causeKey) => {
-    setCauseFilter(causeKey)
-    setCurrentTab('records')
+    drilldownByCause({ causeKey, setCauseFilter, setCurrentTab })
   }
 
   // Deep Link support (?job=JOB-XXXX or ?wo=JOB-XXXX)
@@ -582,76 +579,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Load Technicians & KPI Settings from Supabase / Storage
   const loadTechsAndSettings = async () => {
-    setTechLoading(true)
-    try {
-      const [techRes, kpiRes, usersRes, cylRes] = await Promise.allSettled([
-        TechnicianAPI.list(),
-        KpiSettingsAPI.list(),
-        UserAPI.list(),
-        CylinderAPI.list(),
-      ])
-
-      if (usersRes.status === 'fulfilled' && Array.isArray(usersRes.value)) {
-        setSystemUsers(usersRes.value)
-      }
-
-      if (cylRes.status === 'fulfilled' && Array.isArray(cylRes.value) && cylRes.value.length > 0) {
-        setCylinders(cylRes.value)
-      } else {
-        const stored =
-          typeof localStorage !== 'undefined'
-            ? localStorage.getItem('textileops_tbl_cylinders') || localStorage.getItem('txops_tbl_cylinders')
-            : null
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored)
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setCylinders(parsed)
-            }
-          } catch {}
-        }
-      }
-
-      if (techRes.status === 'fulfilled' && Array.isArray(techRes.value)) {
-        setTechnicians(techRes.value)
-      } else {
-        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('txops_tbl_technicians') : null
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored)
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setTechnicians(parsed)
-            } else {
-              setTechnicians(DEFAULT_TECHS)
-              localStorage.setItem('txops_tbl_technicians', JSON.stringify(DEFAULT_TECHS))
-            }
-          } catch {
-            setTechnicians(DEFAULT_TECHS)
-            localStorage.setItem('txops_tbl_technicians', JSON.stringify(DEFAULT_TECHS))
-          }
-        } else {
-          setTechnicians(DEFAULT_TECHS)
-          try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(DEFAULT_TECHS)) } catch {}
-        }
-      }
-
-      if (kpiRes.status === 'fulfilled' && Array.isArray(kpiRes.value)) {
-        const map = { ...DEFAULT_KPI_TARGETS }
-        kpiRes.value.forEach((item) => {
-          if (item.Key === 'kpi_target_repair') map.REPAIR = parseFloat(item.Value) || 1.0
-          if (item.Key === 'kpi_target_design') map.DESIGN = parseFloat(item.Value) || 3.0
-          if (item.Key === 'kpi_target_pm')     map.PM = parseFloat(item.Value) || 2.0
-          if (item.Key === 'kpi_target_setup')  map.SETUP = parseFloat(item.Value) || 1.0
-        })
-        setKpiTargets(map)
-        setDraftKpi(map)
-      }
-    } catch (err) {
-      console.warn('Could not load technicians/settings, using defaults:', err)
-      setTechnicians(DEFAULT_TECHS)
-    } finally {
-      setTechLoading(false)
-    }
+    await loadTechData({ setTechLoading, setSystemUsers, setCylinders, setTechnicians, setKpiTargets, setDraftKpi, defaultKpiTargets: DEFAULT_KPI_TARGETS, defaultTechs: DEFAULT_TECHS })
   }
 
   useEffect(() => {
@@ -832,140 +760,32 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Add / Edit / Delete Technician
   const openAddTech = (userToPreFill = null) => {
-    const maxNum = technicians.reduce((max, t) => {
-      const match = String(t.Technician_ID || t.id || '').match(/TECH-(\d+)/i)
-      return match ? Math.max(max, parseInt(match[1], 10)) : max
-    }, 0)
-    const nextId = `TECH-${String(maxNum + 1).padStart(3, '0')}`
-    setEditingTechId(null)
-    setSelectedUserId(userToPreFill?.id || '')
-    const baseForm = {
-      id: nextId,
-      Technician_ID: nextId,
-      Name: '',
-      Phone: '',
-      SkillLevel: 'Senior',
-      Specialization: '',
-      Status: 'ACTIVE',
-      Line_ID: '',
-      Telegram_ID: '',
-      Avatar_URL: '',
-      User_ID: '',
-    }
-    setTechForm(userToPreFill ? buildTechFromUser(userToPreFill, baseForm) : baseForm)
+    const built = buildAddTechForm(technicians, userToPreFill)
+    setEditingTechId(built.editingTechId)
+    setSelectedUserId(built.selectedUserId)
+    setTechForm(built.form)
     setTechModalOpen(true)
   }
 
   const openEditTech = (tech) => {
-    const techId = tech.id || tech.Technician_ID
-    setEditingTechId(techId)
-    const matchedUser = systemUsers.find(
-      (u) => (u.id && u.id === tech.User_ID) || (u.line_user_id && u.line_user_id === (tech.Line_ID || tech.line_id))
-    )
-    setSelectedUserId(matchedUser?.id || '')
-    setTechForm({
-      ...tech,
-      id: techId,
-      Technician_ID: tech.Technician_ID || techId,
-      Name: tech.Name || '',
-      Phone: tech.Phone || '',
-      SkillLevel: tech.SkillLevel || 'Senior',
-      Specialization: tech.Specialization || '',
-      Status: tech.Status || 'ACTIVE',
-      Line_ID: tech.Line_ID || tech.line_id || '',
-      Telegram_ID: tech.Telegram_ID || tech.telegram_id || '',
-      Avatar_URL: tech.Avatar_URL || matchedUser?.line_picture_url || '',
-      User_ID: tech.User_ID || matchedUser?.id || '',
-    })
+    const built = buildEditTechForm(tech, systemUsers)
+    setEditingTechId(built.techId)
+    setSelectedUserId(built.selectedUserId)
+    setTechForm(built.form)
     setTechModalOpen(true)
   }
 
   const handleSelectUserForTech = (userId) => {
-    setSelectedUserId(userId)
-    if (!userId) return
-    const userObj = systemUsers.find((u) => u.id === userId)
-    if (!userObj) return
-    setTechForm((prev) => buildTechFromUser(userObj, prev))
+    selectUserForTech({ userId, systemUsers, setSelectedUserId, setTechForm })
   }
 
-  // Sync Technicians to LINE and Telegram notification settings in Supabase & LocalStorage
-  const syncTechToNotifications = async (techList) => {
-    try {
-      if (typeof window !== 'undefined') {
-        try { localStorage.setItem('txops_tbl_technicians', JSON.stringify(techList)) } catch {}
-      }
-      const { data: lineData } = await db.from('appconfigs').select('value').eq('key', 'line_settings').maybeSingle()
-      let lineCfg = {}
-      if (lineData?.value) {
-        try { lineCfg = JSON.parse(lineData.value) } catch {}
-      } else {
-        try { lineCfg = JSON.parse(localStorage.getItem('txops_tbl_line_settings') || '{}') } catch {}
-      }
-      lineCfg.technicians = techList.map((t) => ({ name: t.Name, user_id: (t.Line_ID || t.line_id || '').trim() }))
-      await db.from('appconfigs').upsert({ key: 'line_settings', value: JSON.stringify(lineCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
-      try { localStorage.setItem('txops_tbl_line_settings', JSON.stringify(lineCfg)) } catch {}
-
-      const { data: tgData } = await db.from('appconfigs').select('value').eq('key', 'telegram_settings').maybeSingle()
-      let tgCfg = {}
-      if (tgData?.value) {
-        try { tgCfg = JSON.parse(tgData.value) } catch {}
-      } else {
-        try { tgCfg = JSON.parse(localStorage.getItem('txops_tbl_telegram_settings') || '{}') } catch {}
-      }
-      tgCfg.technicians = techList.map((t) => ({ name: t.Name, chat_id: (t.Telegram_ID || t.telegram_id || '').trim() }))
-      await db.from('appconfigs').upsert({ key: 'telegram_settings', value: JSON.stringify(tgCfg), updated_at: new Date().toISOString() }, { onConflict: 'key' })
-      try { localStorage.setItem('txops_tbl_telegram_settings', JSON.stringify(tgCfg)) } catch {}
-    } catch (e) {
-      console.warn('Sync tech to notifications error:', e)
-    }
-  }
 
   const handleSaveTech = async () => {
-    if (!techForm.Name.trim()) { toast.error('กรุณาระบุชื่อช่าง'); return }
-    const targetId = editingTechId || techForm.id || techForm.Technician_ID || `TECH-${Date.now()}`
-    const payload = {
-      ...techForm,
-      id: targetId,
-      Technician_ID: techForm.Technician_ID || targetId,
-    }
-
-    try {
-      let nextList
-      if (editingTechId) {
-        await TechnicianAPI.update(editingTechId, payload)
-        nextList = technicians.map((t) => (t.id === editingTechId || t.Technician_ID === editingTechId ? { ...t, ...payload } : t))
-        setTechnicians(nextList)
-        toast.success('อัปเดตข้อมูลช่างเรียบร้อย', payload.Name)
-      } else {
-        const created = await TechnicianAPI.create(payload)
-        const itemToAdd = created || payload
-        nextList = [...technicians, itemToAdd]
-        setTechnicians(nextList)
-        toast.success('เพิ่มช่างใหม่เรียบร้อย', payload.Name)
-      }
-      setTechModalOpen(false)
-      await syncTechToNotifications(nextList)
-      await loadTechsAndSettings()
-    } catch (err) {
-      console.warn('Backend update failed:', err)
-      toast.error('ไม่สามารถบันทึกข้อมูลช่างไปยังเซิร์ฟเวอร์ได้', err.message || 'กรุณาตรวจสอบสิทธิ์หรือการเชื่อมต่อ')
-    }
+    await saveTech({ techForm, editingTechId, technicians, saveTechFn: TechnicianAPI, setTechnicians, setTechModalOpen, reloadFn: loadTechsAndSettings, toast })
   }
 
   const handleDeleteTech = async (tech) => {
-    const techId = tech.id || tech.Technician_ID
-    if (!confirm(`ยืนยันการลบช่าง "${tech.Name}" ออกจากระบบหรือไม่?`)) return
-    try {
-      await TechnicianAPI.delete(techId)
-      const nextList = technicians.filter((t) => t.id !== techId && t.Technician_ID !== techId)
-      setTechnicians(nextList)
-      await syncTechToNotifications(nextList)
-      await loadTechsAndSettings()
-      toast.success('ลบข้อมูลช่างเรียบร้อย', tech.Name)
-    } catch (e) {
-      console.warn('Backend delete error:', e)
-      toast.error('ไม่สามารถลบข้อมูลช่างได้', e.message || 'กรุณาตรวจสอบสิทธิ์หรือการเชื่อมต่อ')
-    }
+    await deleteTech({ tech, confirmFn: (msg) => confirm(msg), deleteTechFn: TechnicianAPI, technicians, setTechnicians, reloadFn: loadTechsAndSettings, toast })
   }
 
   // Save KPI Settings
