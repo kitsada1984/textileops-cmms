@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — Release v1.3.256 (LINE webhook fix)
+- **Scope**: bump 4 targets, full suite green, build after bump, Pages deploy
+- **Atoms**: test-quality, secure-coding
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: full suite 181 files / 1212 passed; live sw.js verified v1.3.256
+- **Strengths**: signature gate + loud failures now live; secret still needs Pages env to enforce
+
 ## 2026-11-06 — LINE webhook signature + loud failures (fix)
 - **Scope**: HMAC verify (env→DB secret, warn-open w/o secret); error reply on link failure
 - **Atoms**: secure-coding, clean-code, test-quality
