@@ -68,6 +68,7 @@ export async function onRequestPost(context) {
 
     return jsonResponse({ ok: true, token, user })
   } catch (err) {
-    return jsonResponse({ ok: false, error: err.message }, 500)
+    console.error('Login failed:', err?.message)
+    return jsonResponse({ ok: false, error: 'เกิดข้อผิดพลาดของระบบ กรุณาลองใหม่อีกครั้ง' }, 500)
   }
 }
