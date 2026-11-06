@@ -14,7 +14,7 @@ import {
 import { getDirectImageUrl, getImageFallbackUrls, getFullResolutionImageUrl } from '../../utils/imageUrlUtils'
 import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
 import { getStatusStyle, buildSelectableItems, resolvePrintHeader } from './pdfPrintMeta'
-import { REPORT_TABLE, REPORT_FONTS, buildReportFilename } from './reportTheme'
+import { buildReportFilename } from './reportTheme'
 import { PdfReportCover } from './PdfReportCover'
 import { PdfSummaryCards } from './PdfSummaryCards'
 import { PdfReportChart } from './PdfReportChart'
