@@ -58,4 +58,11 @@ describe('WorkOrderTechModal characterization', () => {
 
     expect(screen.getByText(/แก้ไข/)).toBeInTheDocument()
   })
+
+  it('closes through the modal X button', () => {
+    const h = renderModal()
+
+    fireEvent.click(screen.getByTitle('ปิดหน้าต่าง'))
+    expect(h.setTechModalOpen).toHaveBeenCalledWith(false)
+  })
 })

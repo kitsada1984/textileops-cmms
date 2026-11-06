@@ -41,4 +41,11 @@ describe('WorkOrdersCompleteModal characterization', () => {
 
     expect(screen.queryByText('บันทึกจบงานซ่อม (Complete Job)')).not.toBeInTheDocument()
   })
+
+  it('closes through the modal X button', () => {
+    const h = renderModal()
+
+    fireEvent.click(screen.getByTitle('ปิดหน้าต่าง'))
+    expect(h.setCompleteModalOpen).toHaveBeenCalledWith(false)
+  })
 })

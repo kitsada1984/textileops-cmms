@@ -40,4 +40,11 @@ describe('WorkOrdersInterruptionModal characterization', () => {
 
     expect(screen.queryByText('⏸️ บันทึกงานแทรก & เวลาที่สูญเสียไป (Interruption Tracking)')).not.toBeInTheDocument()
   })
+
+  it('closes through the modal X button', () => {
+    const h = renderModal()
+
+    fireEvent.click(screen.getByTitle('ปิดหน้าต่าง'))
+    expect(h.setInterruptionModalOpen).toHaveBeenCalledWith(false)
+  })
 })

@@ -36,4 +36,11 @@ describe('WorkOrdersCreateModal characterization', () => {
 
     expect(screen.queryByText('ยืนยันเปิดใบสั่งงาน (เริ่มงาน)')).not.toBeInTheDocument()
   })
+
+  it('closes through the modal X button', () => {
+    const h = renderModal()
+
+    fireEvent.click(screen.getByTitle('ปิดหน้าต่าง'))
+    expect(h.setCreateModalOpen).toHaveBeenCalledWith(false)
+  })
 })

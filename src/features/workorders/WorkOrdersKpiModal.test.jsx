@@ -33,4 +33,11 @@ describe('WorkOrdersKpiModal characterization', () => {
 
     expect(screen.queryByText('ปรับแต่งเป้าหมาย KPI SLA แต่ละประเภทงาน')).not.toBeInTheDocument()
   })
+
+  it('closes through the modal X button', () => {
+    const h = renderModal()
+
+    fireEvent.click(screen.getByTitle('ปิดหน้าต่าง'))
+    expect(h.setKpiModalOpen).toHaveBeenCalledWith(false)
+  })
 })

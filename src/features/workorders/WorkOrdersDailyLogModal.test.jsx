@@ -47,4 +47,11 @@ describe('WorkOrdersDailyLogModal characterization', () => {
 
     expect(screen.queryByText(/อัปเดตความคืบหน้างานประจำวัน/)).not.toBeInTheDocument()
   })
+
+  it('closes through the modal X button', () => {
+    const h = renderModal()
+
+    fireEvent.click(screen.getByTitle('ปิดหน้าต่าง'))
+    expect(h.setDailyLogModalOpen).toHaveBeenCalledWith(false)
+  })
 })

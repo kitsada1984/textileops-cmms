@@ -34,4 +34,11 @@ describe('WorkOrdersCancelModal characterization', () => {
 
     expect(screen.queryByText('⚠️ ยืนยันการยกเลิกใบสั่งงาน')).not.toBeInTheDocument()
   })
+
+  it('closes through the modal X button', () => {
+    const h = renderModal()
+
+    fireEvent.click(screen.getByTitle('ปิดหน้าต่าง'))
+    expect(h.setCancelJobModalOpen).toHaveBeenCalledWith(false)
+  })
 })

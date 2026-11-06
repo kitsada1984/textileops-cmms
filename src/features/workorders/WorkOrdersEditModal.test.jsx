@@ -42,4 +42,11 @@ describe('WorkOrdersEditModal characterization', () => {
 
     expect(screen.queryByText(/แก้ไขใบสั่งงาน/)).not.toBeInTheDocument()
   })
+
+  it('closes through the modal X button', () => {
+    const h = renderModal()
+
+    fireEvent.click(screen.getByTitle('ปิดหน้าต่าง'))
+    expect(h.setEditModalOpen).toHaveBeenCalledWith(false)
+  })
 })
