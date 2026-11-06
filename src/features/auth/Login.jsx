@@ -351,8 +351,9 @@ export default function Login() {
                 <div className="relative group">
                   <QRCodeSVG
                     value={qrUrl}
-                    size={184}
+                    size={200}
                     level="M"
+                    includeMargin
                     bgColor="#ffffff"
                     fgColor="#0f172a"
                   />
