@@ -20,6 +20,7 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import gemmaLogo from '../../assets/logo-gemma.png'
 import { THAI_MONTHS, getItemDayRange, getStatusMeta } from './PMMonthlyScheduleView'
+import { REPORT_TABLE, buildReportFilename } from '../ui/reportTheme'
 
 export default function PMMonthlyPrintModal({
   open = false,
@@ -69,7 +70,15 @@ export default function PMMonthlyPrintModal({
 
   // Handlers
   const handlePrint = () => {
+    const prevTitle = document.title
+    document.title = buildReportFilename()
+    window.addEventListener('afterprint', () => {
+      document.title = prevTitle
+    }, { once: true })
     window.print()
+    setTimeout(() => {
+      document.title = prevTitle
+    }, 1000)
   }
 
   const handleDownloadPdf = async () => {
@@ -144,7 +153,7 @@ export default function PMMonthlyPrintModal({
         }
       }
 
-      const fileName = `PM_Monthly_Schedule_${year}_${String(month).padStart(2, '0')}.pdf`
+      const fileName = buildReportFilename()
       pdf.save(fileName)
     } catch (err) {
       console.error('Failed to generate PDF:', err)
@@ -291,7 +300,7 @@ export default function PMMonthlyPrintModal({
         <div
           ref={printRef}
           id="printable-pm-monthly-report"
-          className="w-[1122px] min-w-[1122px] max-w-[1122px] print:w-full print:min-w-0 print:max-w-none bg-white text-slate-900 p-6 sm:p-7 rounded-xl shadow-2xl border border-slate-300 font-sans print:border-0 print:p-2 print:shadow-none"
+          className="w-[1122px] min-w-[1122px] max-w-[1122px] print:w-full print:min-w-0 print:max-w-none bg-white text-slate-900 p-6 sm:p-7 rounded-xl shadow-2xl border border-slate-300 font-report print:border-0 print:p-2 print:shadow-none"
           style={{ boxSizing: 'border-box' }}
         >
           {/* ── 1. HEADER SECTION ─────────────────────────────────── */}
@@ -610,7 +619,7 @@ export default function PMMonthlyPrintModal({
             <div className="mb-3">
               <table className="w-full text-left border-collapse text-[10px]">
                 <thead>
-                  <tr className="bg-slate-900 text-white font-bold uppercase text-[9px] tracking-wider">
+                  <tr className="text-white font-bold uppercase text-[9px] tracking-wider" style={{ backgroundColor: REPORT_TABLE.headerFill }}>
                     <th className="py-1 px-1.5 text-center w-8 border border-slate-900">#</th>
                     <th className="py-1 px-2 w-28 border border-slate-900">รหัสเครื่อง (M/C)</th>
                     <th className="py-1 px-2 w-20 border border-slate-900">ซีเรียล (KI)</th>

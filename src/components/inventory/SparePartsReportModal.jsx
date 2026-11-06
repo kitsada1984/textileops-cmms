@@ -18,6 +18,7 @@ import { format } from 'date-fns'
 import gemmaLogo from '../../assets/logo-gemma.png'
 import { getSparePartImageUrl, stripSparePartImageMeta } from '../../utils/sparePartImage'
 import { getPartStockStatus } from '../../utils/inventory'
+import { REPORT_TABLE, buildReportFilename } from '../ui/reportTheme'
 
 /**
  * Helper to get spare part display name (EN or TH)
@@ -114,7 +115,15 @@ export default function SparePartsReportModal({
   if (!open) return null
 
   const handlePrint = () => {
+    const prevTitle = document.title
+    document.title = buildReportFilename()
+    window.addEventListener('afterprint', () => {
+      document.title = prevTitle
+    }, { once: true })
     window.print()
+    setTimeout(() => {
+      document.title = prevTitle
+    }, 1000)
   }
 
   const printDateStr = format(new Date(), 'dd/MM/yyyy HH:mm')
@@ -245,7 +254,7 @@ export default function SparePartsReportModal({
         <div
           id="printable-spare-parts-report"
           ref={printRef}
-          className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-4 sm:p-6 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-sans relative box-border"
+          className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-4 sm:p-6 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-report relative box-border"
         >
           {/* Top Decorative Header Accent */}
           <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-800" />
@@ -399,7 +408,7 @@ export default function SparePartsReportModal({
                   <col style={{ width: '70px' }} />
                 </colgroup>
                 <thead>
-                  <tr className="bg-slate-900 text-white font-bold uppercase text-[9px] tracking-wider">
+                  <tr className="text-white font-bold uppercase text-[9px] tracking-wider" style={{ backgroundColor: REPORT_TABLE.headerFill }}>
                     <th className="py-2 px-1 text-center border border-slate-900">#</th>
                     {showThumbnails && (
                       <th className="py-2 px-1 text-center border border-slate-900">รูป</th>

@@ -27,6 +27,7 @@ import { useT } from '../../contexts/LanguageContext'
    SEMANTIC STATUS SYSTEM & TOKENS (Standard CMMS Color Protocol)
    ───────────────────────────────────────────────────────────── */
 import { getStatusMeta, matchesTimeFilter, StatusAnalyticsCard, DrilldownModal } from './reportParts.jsx'
+import { buildReportFilename } from '../../components/ui/reportTheme'
 import { ReportHeader } from './reportHeader.jsx'
 
 /* ─────────────────────────────────────────────────────────────
@@ -215,7 +216,15 @@ export default function Reports() {
 
   // Handle Print Action
   const handlePrint = () => {
+    const prevTitle = document.title
+    document.title = buildReportFilename()
+    window.addEventListener('afterprint', () => {
+      document.title = prevTitle
+    }, { once: true })
     window.print()
+    setTimeout(() => {
+      document.title = prevTitle
+    }, 1000)
   }
 
   if (loading) {
@@ -230,7 +239,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="space-y-6 pb-12 print:p-0 print:space-y-4">
+    <div className="space-y-6 pb-12 print:p-0 print:space-y-4 print-sarabun">
       {/* ─────────────────────────────────────────────────────────────
           1. HEADER & ACTION CONTROLS BAR (Hidden on Print)
          ───────────────────────────────────────────────────────────── */}

@@ -41,6 +41,7 @@ import {
   WORK_ORDER_STATUS_OPTIONS,
 } from '../../pages/WorkOrders'
 import { getProblemCauseMeta } from '../../constants/problemCause'
+import { REPORT_TABLE, buildReportFilename } from '../ui/reportTheme'
 import {
   loadLineSettings,
   getSupervisorLineIds,
@@ -112,7 +113,15 @@ export default function WorkOrdersReportModal({
   if (!open) return null
 
   const handlePrint = () => {
+    const prevTitle = document.title
+    document.title = buildReportFilename()
+    window.addEventListener('afterprint', () => {
+      document.title = prevTitle
+    }, { once: true })
     window.print()
+    setTimeout(() => {
+      document.title = prevTitle
+    }, 1000)
   }
 
   const printDateStr = format(new Date(), 'dd/MM/yyyy HH:mm')
@@ -195,8 +204,7 @@ export default function WorkOrdersReportModal({
         heightLeft -= pdfHeight
       }
 
-      const timestamp = format(new Date(), 'yyyyMMdd_HHmm')
-      pdf.save(`TextileOps_WorkOrders_Report_${timestamp}.pdf`)
+      pdf.save(buildReportFilename())
     } catch (err) {
       console.error('PDF download error:', err)
       window.print()
@@ -520,7 +528,7 @@ ${origin}`
       <div className="p-4 sm:p-8 w-full flex justify-center print:p-0">
         <div
           ref={printRef}
-          className={`bg-white text-slate-900 shadow-2xl rounded-2xl p-6 sm:p-8 w-full print:p-0 print:shadow-none print:rounded-none print:w-full ${
+          className={`bg-white text-slate-900 shadow-2xl rounded-2xl p-6 sm:p-8 w-full print:p-0 print:shadow-none print:rounded-none print:w-full font-report ${
             orientation === 'landscape' ? 'max-w-[297mm]' : 'max-w-[210mm]'
           }`}
           style={{ minHeight: orientation === 'landscape' ? '210mm' : '297mm' }}
@@ -619,7 +627,7 @@ ${origin}`
           <div className="overflow-x-auto border border-slate-300 rounded-xl mb-4 print:border-slate-400 print:rounded-none">
             <table className="w-full text-left border-collapse text-[11px]">
               <thead>
-                <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800 print:bg-slate-200">
+                <tr className="border-b border-slate-300 font-bold print:border-slate-400" style={{ backgroundColor: REPORT_TABLE.headerFill, color: REPORT_TABLE.headerText }}>
                   <th className="py-2 px-2 text-center w-8">#</th>
                   <th className="py-2 px-2.5 w-24">Job ID</th>
                   <th className="py-2 px-2 w-16">เครื่อง</th>
@@ -632,7 +640,7 @@ ${origin}`
                   <th className="py-2 px-2 w-24">เวลาเริ่ม</th>
                   <th className="py-2 px-2 w-20 text-center">ระยะเวลา</th>
                   <th className="py-2 px-2 w-28 text-center">SLA Performance</th>
-                  <th className="py-2 px-2 w-16 text-slate-600">ผู้บันทึก</th>
+                  <th className="py-2 px-2 w-16" style={{ color: 'inherit' }}>ผู้บันทึก</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 print:divide-slate-300">

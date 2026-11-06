@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import gemmaLogo from '../../assets/logo-gemma.png'
+import { REPORT_TABLE, buildReportFilename } from '../../components/ui/reportTheme'
 
 export default function YarnBeltsPrintModal({
   open = false,
@@ -30,7 +31,15 @@ export default function YarnBeltsPrintModal({
   } = data
 
   const handlePrint = () => {
+    const prevTitle = document.title
+    document.title = buildReportFilename()
+    window.addEventListener('afterprint', () => {
+      document.title = prevTitle
+    }, { once: true })
     window.print()
+    setTimeout(() => {
+      document.title = prevTitle
+    }, 1000)
   }
 
   const printDateStr = format(new Date(), 'dd/MM/yyyy HH:mm')
@@ -141,7 +150,7 @@ export default function YarnBeltsPrintModal({
         <div
           id="printable-yarn-belts-report"
           ref={printRef}
-          className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-6 sm:p-9 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-sans relative overflow-hidden"
+          className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-6 sm:p-9 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-report relative overflow-hidden"
           style={{ boxSizing: 'border-box' }}
         >
           {/* Top Decorative Header Accent */}
@@ -271,7 +280,7 @@ export default function YarnBeltsPrintModal({
               </div>
               <table className="w-full text-left border-collapse text-[10px]">
                 <thead>
-                  <tr className="bg-slate-900 text-white font-bold uppercase text-[9px] tracking-wider">
+                  <tr className="text-white font-bold uppercase text-[9px] tracking-wider" style={{ backgroundColor: REPORT_TABLE.headerFill }}>
                     <th className="py-1.5 px-2 text-center w-8 border border-slate-900">#</th>
                     <th className="py-1.5 px-3 w-28 border border-slate-900">เบอร์สายพาน</th>
                     <th className="py-1.5 px-2 text-center w-14 border border-slate-900">เทป 1</th>
@@ -378,7 +387,7 @@ export default function YarnBeltsPrintModal({
                       </div>
                       <table className="w-full text-[9px]">
                         <thead>
-                          <tr className="bg-slate-100 text-slate-600 border-b border-slate-200">
+                          <tr className="border-b border-slate-200" style={{ backgroundColor: REPORT_TABLE.headerFill, color: REPORT_TABLE.headerText }}>
                             <th className="py-1 px-1.5 text-left">เบอร์</th>
                             <th className="py-1 px-1.5 text-right">จำนวน</th>
                           </tr>

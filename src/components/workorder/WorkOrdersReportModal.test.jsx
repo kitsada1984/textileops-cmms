@@ -183,7 +183,7 @@ describe('WorkOrdersReportModal Component', () => {
     })
 
     expect(mockPdfSave).toHaveBeenCalledWith(
-      expect.stringMatching(/TextileOps_WorkOrders_Report_.*\.pdf/)
+      expect.stringMatching(/^report_\d{4}-\d{2}-\d{2}\.pdf$/)
     )
   })
 

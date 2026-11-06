@@ -809,6 +809,13 @@ html.dark .glass-panel {
   font-family: 'Sarabun', 'Noto Sans Thai', 'Segoe UI', Tahoma, sans-serif;
 }
 
+/* Print-only Sarabun for mixed screen+print pages (screen look unchanged) */
+@media print {
+  .print-sarabun, .print-sarabun * {
+    font-family: 'Sarabun', 'Noto Sans Thai', 'Segoe UI', Tahoma, sans-serif !important;
+  }
+}
+
 /* ── Accessibility: Reduced Motion (WCAG 2.3.3) ─────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
