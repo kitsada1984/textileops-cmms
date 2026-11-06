@@ -1,5 +1,5 @@
-export const APP_VERSION = 'v1.3.254'
-export const APP_BUILD_DATE = '2026-11-05'
+export const APP_VERSION = 'v1.3.255'
+export const APP_BUILD_DATE = '2026-11-06'
 export const APP_NAME = 'TextileOps CMMS'
 export const APP_SUBTITLE = 'Gemma Knits CMMS Platform'
 export const COMPANY_NAME_TH = 'บริษัท เจมม่า นิตติ้ง จำกัด'
