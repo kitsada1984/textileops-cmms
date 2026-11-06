@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — Report print theme (format_report_pdf phase 1)
+- **Scope**: theme tokens + Sarabun + hub cover/footer/tables/charts/filename
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: print pipeline is HTML+window.print (no jsPDF text) — CSS theme is the right seam
+- **Strengths**: 185 files / 1227 tests green; all new props opt-in, defaults unchanged
+
 
 ## 2026-11-06 — LINE QR scan confirmed working (user-verified)
 
