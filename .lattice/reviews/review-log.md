@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders submit/edit/kpi handlers
+- **Scope**: interruption(4) + daily(3) + start/complete/status(3) + save-edit + save-kpi, deps-object pattern
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: shared daily-job lookup deduped (output-identical); tech CRUD + loader deferred (db/confirm coupling)
+- **Strengths**: 33 files / 150 tests green; gate stays ≤25; orphans cleaned per move
+
 ## 2026-11-06 — WorkOrders complexity gate ≤25
 - **Scope**: header/print/report/datalist moved verbatim; double-gated bridges flattened
 - **Atoms**: clean-code, architecture, test-quality
