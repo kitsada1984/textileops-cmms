@@ -12,6 +12,7 @@ import { filterWorkOrderJobs, toggleMultiFilterValue, nextMultiFilter, nextCause
 import { normalizeAllJobs, computeTypeCounts, computeStatusCounts, computeCauseCounts, computeKpiStats } from './workOrderStats.js'
 import { getJobInterruptions, computeCompleteDuration } from './workOrderInterruptions.js'
 import { startInterruption, stopInterruption, addManualInterruption, deleteInterruption } from './workOrderInterruptionHandlers.js'
+import { saveDailyLog, confirmCancelJob, deleteDailyLog } from './workOrderDailyLogHandlers.js'
 import { matchActiveMachine, matchEditActiveMachine } from './workOrderMachines.js'
 import { buildEditJobPayload, resolveNewlyAddedTechs, notifyAddedTechs, confirmAndRemoveJob } from './workOrderEdit.js'
 import { WorkOrderTechModal } from './WorkOrderTechModal.jsx'
@@ -968,68 +969,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Submit Daily Work Progress Update (Saves in existing record, 100% backward compatible)
   const handleSaveDailyLog = async () => {
-    if (!dailyLogJob) return
-    const details = dailyLogDetails.trim()
-    if (!details) {
-      toast.warning('กรุณาระบุรายละเอียดงานประจำวัน / สิ่งที่ทำได้ในวันนี้')
-      return
-    }
-    setDailyLogSubmitting(true)
-    try {
-      const currentJob =
-        allJobs.find(
-          (j) =>
-            (j.id && j.id === dailyLogJob.id) ||
-            (j.WO_ID && j.WO_ID === (dailyLogJob.WO_ID || dailyLogJob.Job_ID)) ||
-            (j.Job_ID && j.Job_ID === (dailyLogJob.Job_ID || dailyLogJob.WO_ID))
-        ) || dailyLogJob
-
-      const existingLogs = getJobDailyLogs(currentJob)
-      const newEntry = {
-        id: `DLOG-${Date.now()}`,
-        date: dailyLogDate || format(new Date(), 'yyyy-MM-dd'),
-        timestamp: new Date().toISOString(),
-        status: dailyLogStatus,
-        details,
-        hours: dailyLogHours ? parseFloat(dailyLogHours) : null,
-        techs: dailyLogTechs,
-        recorded_by: user?.username || user?.full_name || 'ช่างประจำกะ',
-      }
-      const updatedLogs = [...existingLogs, newEntry]
-      const nextMeta = getWorkOrderStatusMeta(dailyLogStatus)
-      const logsJson = JSON.stringify(updatedLogs)
-      const techStr = Array.isArray(dailyLogTechs) && dailyLogTechs.length > 0 ? dailyLogTechs.join(', ') : (currentJob.Technicians || currentJob.Tech || '')
-
-      const payload = {
-        ...currentJob,
-        DailyLogs: logsJson,
-        daily_logs: logsJson,
-        Status: nextMeta.value,
-        Tech: techStr,
-        Technicians: techStr,
-        UpdatedBy: user?.username || user?.full_name || 'ผู้บันทึกรายวัน',
-        updated_at: new Date().toISOString(),
-      }
-
-      await saveJob(payload)
-      toast.success(
-        'บันทึกความคืบหน้ารายวันสำเร็จ',
-        `${currentJob.Job_ID || currentJob['Job ID'] || currentJob.WO_ID} • สถานะ: ${nextMeta.label}`
-      )
-
-      // Auto-sync daily log PM work order to Monthly PM Schedule
-      if (String(payload.JobType || currentJob?.JobType || '').toUpperCase() === 'PM') {
-        syncPMWorkOrderToMonthlySchedule(payload, cylinders).catch((e) => {
-          console.warn('[WorkOrders] Failed to sync daily log to monthly schedule:', e)
-        })
-      }
-      setDailyLogModalOpen(false)
-      setDailyLogJob(null)
-    } catch (err) {
-      toast.error('บันทึกความคืบหน้าไม่สำเร็จ', err.message)
-    } finally {
-      setDailyLogSubmitting(false)
-    }
+    await saveDailyLog({ dailyLogJob, dailyLogDetails, dailyLogDate, dailyLogStatus, dailyLogHours, dailyLogTechs, allJobs, saveJob, setDailyLogSubmitting, setDailyLogModalOpen, setDailyLogJob, toast, user, cylinders })
   }
 
   // Open 2-Step Confirmation Modal to Cancel Job from Daily Log
@@ -1040,75 +980,12 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Confirm Cancellation of Job
   const handleConfirmCancelJob = async () => {
-    if (!dailyLogJob) return
-    const reason = cancelJobReason.trim()
-    if (!reason) {
-      toast.warning('กรุณาระบุเหตุผล', 'กรุณาระบุเหตุผลในการยกเลิกใบสั่งงาน')
-      return
-    }
-
-    setCancellingJobSubmitting(true)
-    try {
-      const currentJob =
-        allJobs.find(
-          (j) =>
-            (j.id && j.id === dailyLogJob.id) ||
-            (j.WO_ID && j.WO_ID === (dailyLogJob.WO_ID || dailyLogJob.Job_ID)) ||
-            (j.Job_ID && j.Job_ID === (dailyLogJob.Job_ID || dailyLogJob.WO_ID))
-        ) || dailyLogJob
-
-      const userName = user?.full_name || user?.line_display_name || user?.username || user?.Name || 'ช่างผู้ใช้งาน'
-      const payload = buildCancelJobPayload({
-        job: currentJob,
-        cancelDate: format(new Date(), 'yyyy-MM-dd'),
-        reason,
-        technician: userName,
-      })
-
-      await saveJob(payload)
-
-      toast.success(
-        'ยกเลิกใบสั่งงานสำเร็จ',
-        `${currentJob.Job_ID || currentJob['Job ID'] || currentJob.WO_ID} • สถานะ: ยกเลิก`
-      )
-
-      setCancelJobModalOpen(false)
-      setDailyLogModalOpen(false)
-      setDailyLogJob(null)
-    } catch (err) {
-      toast.error('ยกเลิกใบสั่งงานไม่สำเร็จ', err.message)
-    } finally {
-      setCancellingJobSubmitting(false)
-    }
+    await confirmCancelJob({ dailyLogJob, cancelJobReason, allJobs, user, saveJob, setCancellingJobSubmitting, setCancelJobModalOpen, setDailyLogModalOpen, setDailyLogJob, toast })
   }
 
   // Delete a Daily Log Entry (admin / correction)
   const handleDeleteDailyLog = async (logId) => {
-    if (!dailyLogJob || !canDelete) return
-    const currentJob =
-      allJobs.find(
-        (j) =>
-          (j.id && j.id === dailyLogJob.id) ||
-          (j.WO_ID && j.WO_ID === (dailyLogJob.WO_ID || dailyLogJob.Job_ID)) ||
-          (j.Job_ID && j.Job_ID === (dailyLogJob.Job_ID || dailyLogJob.WO_ID))
-      ) || dailyLogJob
-    const existingLogs = getJobDailyLogs(currentJob)
-    const updatedLogs = existingLogs.filter((l) => l.id !== logId)
-    const logsJson = JSON.stringify(updatedLogs)
-    const payload = {
-      ...currentJob,
-      DailyLogs: logsJson,
-      daily_logs: logsJson,
-      UpdatedBy: user?.username || user?.full_name || 'ผู้แก้ไข',
-      updated_at: new Date().toISOString(),
-    }
-    try {
-      await saveJob(payload)
-      setDailyLogJob(payload)
-      toast.success('ลบรายการบันทึกรายวันเรียบร้อย')
-    } catch (err) {
-      toast.error('ลบรายการไม่สำเร็จ', err.message)
-    }
+    await deleteDailyLog({ dailyLogJob, canDelete, allJobs, logId, saveJob, setDailyLogJob, toast, user })
   }
 
   // Submit Edit Job
