@@ -1,4 +1,4 @@
-import { UserCheck, Users, AlertTriangle, ShieldAlert } from 'lucide-react'
+import { UserCheck, Users, ShieldAlert } from 'lucide-react'
 
 /**
  * InterruptionTechSelector.jsx

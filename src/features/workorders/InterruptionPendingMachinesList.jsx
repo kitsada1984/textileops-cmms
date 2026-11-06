@@ -158,7 +158,7 @@ export function InterruptionPendingMachinesList({
                     type="button"
                     onClick={() => {
                       if (onStartImmediate) {
-                        onStartImmediate(taskTitle, { selectedTechs, noTechRemaining })
+                        onStartImmediate(taskTitle, { selectedTechs, noTechRemaining, targetTask: item })
                       }
                     }}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 active:scale-95 transition-all shadow-xs flex items-center gap-1"

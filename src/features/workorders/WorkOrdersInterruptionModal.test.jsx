@@ -148,11 +148,12 @@ describe('WorkOrdersInterruptionModal characterization & technician pulling', ()
       expect.objectContaining({
         selectedTechs: ['ช่างสมชาย', 'ช่างวิชัย'],
         noTechRemaining: true,
+        targetTask: expect.objectContaining({ mc: 'MC-02' }),
       })
     )
   })
 
-  it('renders active running interruption with details, technician list, and resume button', () => {
+  it('renders active running interruption with details, technician list, and resume or return to pool buttons', () => {
     const activeInt = {
       id: 'INT-ACTIVE-1',
       task_name: 'ไปช่วยงานด่วนเครื่อง 102',
@@ -172,9 +173,14 @@ describe('WorkOrdersInterruptionModal characterization & technician pulling', ()
     expect(screen.getByText(/ไม่มีช่างอยู่ \(หยุดนับเวลาทำงานสุทธิ\)/i)).toBeInTheDocument()
     expect(screen.getByText(/สถานะ: ช่างยังไม่กลับมา/i)).toBeInTheDocument()
 
-    // Resume button
-    const resumeBtn = screen.getByRole('button', { name: /ช่างกลับมาทำงานใหม่ \/ สิ้นสุดงานแทรก/i })
-    fireEvent.click(resumeBtn)
-    expect(h.handleStopInterruption).toHaveBeenCalledWith('INT-ACTIVE-1')
+    // Resume button (return to job)
+    const returnToJobBtn = screen.getByRole('button', { name: /ช่างกลับมาทำงานเดิม/i })
+    fireEvent.click(returnToJobBtn)
+    expect(h.handleStopInterruption).toHaveBeenCalledWith('INT-ACTIVE-1', { returnTechsToJob: true })
+
+    // Return to central pool button
+    const returnToPoolBtn = screen.getByRole('button', { name: /ส่งช่างคืนส่วนกลาง/i })
+    fireEvent.click(returnToPoolBtn)
+    expect(h.handleStopInterruption).toHaveBeenCalledWith('INT-ACTIVE-1', { returnTechsToJob: false })
   })
 })

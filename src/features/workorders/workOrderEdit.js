@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import { syncPMWorkOrderToMonthlySchedule } from '../../components/pm/PMMonthlyScheduleView'
+import { parseJobTechnicians } from './workOrderPendingMachines.js'
 
 // Edit-job shaping moved out of the submit handler (grill-approved,
 // behavior-preserving restructure: same fields, same fallbacks, same order).
@@ -76,7 +77,9 @@ export async function confirmAndRemoveJob({ job, confirmFn, removeJob, syncRemov
       })
     }
 
-    toast.success('ลบใบสั่งงานสำเร็จ', job.Job_ID || job['Job ID'] || id)
+    const assignedTechs = parseJobTechnicians(job)
+    const techNotice = assignedTechs.length > 0 ? ` (คืนช่าง ${assignedTechs.join(', ')} สู่ส่วนกลางเรียบร้อย)` : ''
+    toast.success('ลบใบสั่งงานสำเร็จ', `${job.Job_ID || job['Job ID'] || id}${techNotice}`)
   } catch (err) {
     toast.error('ลบใบสั่งงานไม่สำเร็จ', err.message)
   }

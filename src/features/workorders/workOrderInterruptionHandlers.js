@@ -1,9 +1,22 @@
 import { getJobInterruptions } from './workOrderInterruptions.js'
+import { parseJobTechnicians } from './workOrderPendingMachines.js'
 
 // Stateful interruption handlers moved verbatim out of the WorkOrders
 // component to meet the complexity gate. Every free variable of the
 // original closure is an explicit deps field; bodies are unchanged and
 // run at call time exactly as before (same state snapshot semantics).
+
+export function deductTechnicians(currentTechs = [], pulledTechs = []) {
+  const current = Array.isArray(currentTechs) ? currentTechs : parseJobTechnicians({ Technicians: currentTechs })
+  const pulled = Array.isArray(pulledTechs) ? pulledTechs : [pulledTechs]
+  return current.filter((t) => !pulled.includes(t))
+}
+
+export function restoreTechnicians(currentTechs = [], returnedTechs = []) {
+  const current = Array.isArray(currentTechs) ? currentTechs : parseJobTechnicians({ Technicians: currentTechs })
+  const returned = Array.isArray(returnedTechs) ? returnedTechs : [returnedTechs]
+  return Array.from(new Set([...current, ...returned]))
+}
 
 // Was `const handleStartInterruption = async (taskName) => {...}`.
 export async function startInterruption({
@@ -12,6 +25,7 @@ export async function startInterruption({
   interruptionTaskName,
   selectedTechs = [],
   noTechRemaining = false,
+  targetJob = null,
   saveJob,
   setInterruptionJob,
   setInterruptionTaskName,
@@ -25,12 +39,18 @@ export async function startInterruption({
   const currentLogs = getJobInterruptions(interruptionJob)
   const techList = Array.isArray(selectedTechs) ? selectedTechs : (selectedTechs ? [selectedTechs] : [])
 
+  const originalTechs = parseJobTechnicians(interruptionJob)
+  const remainingTechs = deductTechnicians(originalTechs, techList)
+  const effectiveNoTech = remainingTechs.length === 0 || Boolean(noTechRemaining)
+
   const newEntry = {
     id: `INT-${Date.now()}`,
     task_name: name,
     technicians: techList,
     pulled_techs: techList,
-    no_tech_remaining: Boolean(noTechRemaining),
+    original_technicians: originalTechs,
+    remaining_technicians: remainingTechs,
+    no_tech_remaining: effectiveNoTech,
     start_time: new Date().toISOString(),
     end_time: null,
     is_active: true,
@@ -38,14 +58,32 @@ export async function startInterruption({
   }
 
   const updatedLogs = [...currentLogs, newEntry]
-  const updatedJob = { ...interruptionJob, Interruption_Logs: updatedLogs }
+  const updatedJob = {
+    ...interruptionJob,
+    Technicians: remainingTechs.join(', '),
+    ...(interruptionJob.Tech !== undefined ? { Tech: remainingTechs.join(', ') } : {}),
+    Interruption_Logs: updatedLogs,
+  }
 
   try {
     await saveJob(updatedJob)
     setInterruptionJob(updatedJob)
     setInterruptionTaskName('')
-    const techNotice = techList.length > 0 ? ` [ดึงช่าง: ${techList.join(', ')}]` : ''
-    const noTechNotice = noTechRemaining ? ' (ไม่มีช่างอยู่ - หยุดเวลาชั่วคราว)' : ''
+
+    // If a target job from pending machines was selected, transfer pulled techs to it
+    if (targetJob && techList.length > 0) {
+      const existingTargetTechs = parseJobTechnicians(targetJob)
+      const mergedTargetTechs = restoreTechnicians(existingTargetTechs, techList)
+      const updatedTargetJob = {
+        ...targetJob,
+        Technicians: mergedTargetTechs.join(', '),
+        ...(targetJob.Tech !== undefined ? { Tech: mergedTargetTechs.join(', ') } : {}),
+      }
+      await saveJob(updatedTargetJob)
+    }
+
+    const techNotice = techList.length > 0 ? ` [ย้ายช่าง: ${techList.join(', ')}]` : ''
+    const noTechNotice = effectiveNoTech ? ' (ไม่มีช่างอยู่ - หยุดเวลาชั่วคราว)' : ''
     toast.info('เริ่มจับเวลางานแทรก', `${name}${techNotice}${noTechNotice}`)
   } catch (err) {
     toast.error('บันทึกงานแทรกไม่สำเร็จ', err.message)
@@ -53,7 +91,14 @@ export async function startInterruption({
 }
 
 // Was `const handleStopInterruption = async (logId) => {...}`.
-export async function stopInterruption({ interruptionJob, logId, saveJob, setInterruptionJob, toast }) {
+export async function stopInterruption({
+  interruptionJob,
+  logId,
+  returnTechsToJob = true,
+  saveJob,
+  setInterruptionJob,
+  toast,
+}) {
   if (!interruptionJob) return
   const currentLogs = getJobInterruptions(interruptionJob)
   const now = new Date()
@@ -72,6 +117,7 @@ export async function stopInterruption({ interruptionJob, logId, saveJob, setInt
         resumed_at: nowIso,
         duration_minutes,
         duration_hours,
+        returned_to_pool: !returnTechsToJob,
         is_active: false,
       }
       return stoppedEntry
@@ -79,13 +125,27 @@ export async function stopInterruption({ interruptionJob, logId, saveJob, setInt
     return log
   })
 
-  const updatedJob = { ...interruptionJob, Interruption_Logs: updatedLogs }
+  let updatedJob = { ...interruptionJob, Interruption_Logs: updatedLogs }
+
+  // If returning technicians back to original job
+  if (returnTechsToJob && stoppedEntry?.pulled_techs?.length) {
+    const currentTechs = parseJobTechnicians(interruptionJob)
+    const restoredTechs = restoreTechnicians(currentTechs, stoppedEntry.pulled_techs)
+    updatedJob = {
+      ...updatedJob,
+      Technicians: restoredTechs.join(', '),
+      ...(interruptionJob.Tech !== undefined ? { Tech: restoredTechs.join(', ') } : {}),
+    }
+  }
+
   try {
     await saveJob(updatedJob)
     setInterruptionJob(updatedJob)
-    const techNotice = stoppedEntry?.technicians?.length > 0 ? ` (ช่าง ${stoppedEntry.technicians.join(', ')})` : ''
+    const pulledList = stoppedEntry?.pulled_techs || stoppedEntry?.technicians || []
+    const techNotice = pulledList.length > 0 ? ` (ช่าง ${pulledList.join(', ')})` : ''
     const minsText = stoppedEntry?.duration_minutes !== undefined ? ` รวม ${stoppedEntry.duration_minutes} นาที` : ''
-    toast.success('ช่างกลับมาทำงานต่อเรียบร้อย', `กลับสู่เวลาทำงานหลัก${techNotice}${minsText}`)
+    const actionNotice = returnTechsToJob ? 'ช่างกลับมาทำงานต่อเรียบร้อย' : 'ส่งช่างคืนส่วนกลางเรียบร้อย'
+    toast.success(actionNotice, `กลับสู่เวลาทำงานหลัก${techNotice}${minsText}`)
   } catch (err) {
     toast.error('บันทึกจบงานแทรกไม่สำเร็จ', err.message)
   }
@@ -156,13 +216,17 @@ export async function addManualInterruption({
 export async function deleteInterruption({ interruptionJob, logId, saveJob, setInterruptionJob, toast }) {
   if (!interruptionJob) return
   const currentLogs = getJobInterruptions(interruptionJob)
+  const logToDelete = currentLogs.find((log) => log.id === logId)
   const updatedLogs = currentLogs.filter((log) => log.id !== logId)
   const updatedJob = { ...interruptionJob, Interruption_Logs: updatedLogs }
 
   try {
     await saveJob(updatedJob)
     setInterruptionJob(updatedJob)
-    toast.success('ลบรายการงานแทรกแล้ว')
+    const techNotice = logToDelete?.pulled_techs?.length
+      ? ` (คืนช่าง ${logToDelete.pulled_techs.join(', ')} สู่ส่วนกลาง)`
+      : ''
+    toast.success('ลบรายการงานแทรกแล้ว', `เปลี่ยนแผน/ยกเลิกงานแทรก${techNotice}`)
   } catch (err) {
     toast.error('ลบไม่สำเร็จ', err.message)
   }

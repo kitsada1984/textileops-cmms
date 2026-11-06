@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Check, Clock, History, Pause, Play, Trash2, Layers, FilePlus, Users } from 'lucide-react'
+import { Check, Clock, History, Pause, Play, Trash2, Layers, FilePlus, Users, Building2 } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import { format } from 'date-fns'
 import { calculateDuration, calculateInterruptionTotal, formatMinutesToThai, RepairRequestAPI } from '../../api/entities'
@@ -105,10 +105,10 @@ export function WorkOrdersInterruptionModal({
         const activeElapsedMins = Math.max(0, Math.floor((Date.now() - activeStart.getTime()) / 60000))
         const activeTechs = activeInt?.technicians || activeInt?.pulled_techs || []
 
-        const triggerStart = (name) => {
+        const triggerStart = (name, extraOptions = {}) => {
           const title = name || interruptionTaskName
           if (handleStartInterruption) {
-            handleStartInterruption(title, { selectedTechs, noTechRemaining })
+            handleStartInterruption(title, { selectedTechs, noTechRemaining, ...extraOptions })
           }
         }
 
@@ -225,15 +225,27 @@ export function WorkOrdersInterruptionModal({
                     </div>
                   </div>
 
-                  {/* Return to Work / End Interruption Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleStopInterruption(activeInt.id)}
-                    className="w-full py-3 rounded-xl font-extrabold text-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all shadow-md shadow-emerald-500/30 flex items-center justify-center gap-2"
-                  >
-                    <Play size={16} />
-                    <span>▶️ ช่างกลับมาทำงานใหม่ / สิ้นสุดงานแทรก (เริ่มนับเวลาต่อ)</span>
-                  </button>
+                  {/* Return to Work / End Interruption Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleStopInterruption(activeInt.id, { returnTechsToJob: true })}
+                      className="flex-1 py-3 px-3 rounded-xl font-extrabold text-xs sm:text-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all shadow-md shadow-emerald-500/30 flex items-center justify-center gap-2"
+                      title="ช่างทำงานแทรกเสร็จสิ้นและกลับมาประจำเครื่องนี้ (เริ่มนับเวลาต่อ)"
+                    >
+                      <Play size={16} />
+                      <span>▶️ ช่างกลับมาทำงานเดิม (คืนช่างเข้าใบงาน)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStopInterruption(activeInt.id, { returnTechsToJob: false })}
+                      className="py-3 px-3.5 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                      title="สิ้นสุดงานแทรก แต่ส่งช่างคืนสู่ส่วนกลาง (ไม่ดึงกลับมาใบงานนี้)"
+                    >
+                      <Building2 size={14} className="text-slate-500" />
+                      <span>🏢 ส่งช่างคืนส่วนกลาง</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* Mode Options Selection Section */
@@ -312,8 +324,8 @@ export function WorkOrdersInterruptionModal({
                           setInterruptionTaskName(title)
                           setActiveTab('presets')
                         }}
-                        onStartImmediate={(title) => {
-                          triggerStart(title)
+                        onStartImmediate={(title, extra) => {
+                          triggerStart(title, extra)
                         }}
                       />
                     </div>

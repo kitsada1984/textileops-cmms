@@ -84,15 +84,18 @@ describe('workOrderEdit characterization', () => {
     await confirmAndRemoveJob({ job: { id: '1', Job_ID: 'J1' }, confirmFn: confirmNo, removeJob, syncRemoveFn: vi.fn(), cylinders: [], toast })
     expect(removeJob).not.toHaveBeenCalled()
 
-    // PM job → removes, syncs monthly plan, toasts success
+    // PM job → removes, syncs monthly plan, toasts success with returned tech notice
     const syncRemoveFn = vi.fn(() => Promise.resolve())
     await confirmAndRemoveJob({
-      job: { id: '1', Job_ID: 'J1', JobType: 'PM' },
+      job: { id: '1', Job_ID: 'J1', JobType: 'PM', Technicians: 'ช่าง1' },
       confirmFn, removeJob, syncRemoveFn, cylinders: [], toast,
     })
     expect(removeJob).toHaveBeenCalledWith('1')
     expect(syncRemoveFn).toHaveBeenCalled()
-    expect(toast.success).toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith(
+      'ลบใบสั่งงานสำเร็จ',
+      expect.stringContaining('คืนช่าง ช่าง1 สู่ส่วนกลาง')
+    )
 
     // removal failure → error toast
     const toast2 = { success: vi.fn(), error: vi.fn() }

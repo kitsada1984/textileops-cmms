@@ -544,17 +544,27 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     let name = ''
     let selectedTechs = []
     let noTechRemaining = false
+    let targetTask = null
 
     if (typeof taskNameOrOptions === 'string') {
       name = taskNameOrOptions
       if (maybeOptions && typeof maybeOptions === 'object') {
         selectedTechs = maybeOptions.selectedTechs || []
         noTechRemaining = Boolean(maybeOptions.noTechRemaining)
+        targetTask = maybeOptions.targetTask || null
       }
     } else if (taskNameOrOptions && typeof taskNameOrOptions === 'object') {
       name = taskNameOrOptions.taskName || ''
       selectedTechs = taskNameOrOptions.selectedTechs || []
       noTechRemaining = Boolean(taskNameOrOptions.noTechRemaining)
+      targetTask = taskNameOrOptions.targetTask || null
+    }
+
+    let targetJob = null
+    if (targetTask && allJobs) {
+      targetJob = allJobs.find(
+        (j) => (j.id && j.id === targetTask.refId) || (j.Job_ID && j.Job_ID === targetTask.refId)
+      ) || targetTask.raw || null
     }
 
     await startInterruption({
@@ -563,6 +573,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       interruptionTaskName,
       selectedTechs,
       noTechRemaining,
+      targetJob,
       saveJob,
       setInterruptionJob,
       setInterruptionTaskName,
@@ -572,8 +583,16 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   }
 
   // Stop live interruption timer
-  const handleStopInterruption = async (logId) => {
-    await stopInterruption({ interruptionJob, logId, saveJob, setInterruptionJob, toast })
+  const handleStopInterruption = async (logId, options = {}) => {
+    const returnTechsToJob = options.returnTechsToJob !== false
+    await stopInterruption({
+      interruptionJob,
+      logId,
+      returnTechsToJob,
+      saveJob,
+      setInterruptionJob,
+      toast,
+    })
   }
 
   // Add manual past interruption
