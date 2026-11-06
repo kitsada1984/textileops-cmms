@@ -1,5 +1,19 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders complexity gate ≤25
+- **Scope**: header/print/report/datalist moved verbatim; double-gated bridges flattened
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: gate counts direct-body JSX only — memo/helper moves score zero; fixed 2 dropped header props via no-undef
+- **Strengths**: main complexity 48→≤25 (zero warnings); dir 30 files / 134 tests green
+
+## 2026-11-06 — WorkOrders pure helper extraction
+- **Scope**: stats/interruptions/machines/filter-toggle modules, verbatim cores + import-back
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: brace-script truncated getJobInterruptions (leftover lines) — fixed; restored overwritten filters test
+- **Strengths**: 18 characterization tests green first run; residual-diff probes ALL-OK
+
 ## 2026-11-06 — WorkOrders create FAB portal
 - **Scope**: 12-line portaled FAB moved verbatim, props-only
 - **Atoms**: clean-code, architecture, test-quality
