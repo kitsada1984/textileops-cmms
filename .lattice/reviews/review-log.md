@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders dashboard tab + type cards
+- **Scope**: 717-line dashboard moved verbatim; 4 cards unified via lookup (no interpolation)
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — main 187→162, bare causeStats unused so dropped from props
+- **Strengths**: TypeCard lookup keeps Tailwind classes literal; Setup `?.` fallbacks preserved via optional flag
+
 ## 2026-11-06 — WorkOrders tech modal split
 - **Scope**: tech modal + level consts, verbatim + render tests
 - **Atoms**: clean-code, architecture, test-quality
