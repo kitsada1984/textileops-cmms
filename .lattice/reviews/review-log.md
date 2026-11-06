@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders complete modal
+- **Scope**: 130-line modal moved verbatim, props-only
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: pre-commit hook caught dropped openInterruptionModal prop — fixed + regression test added
+- **Strengths**: hook + no-undef gate proved value on cross-modal shortcut
+
 ## 2026-11-06 — WorkOrders records tab + card
 - **Scope**: 92-line card moved verbatim; 626-line records tab, props-only
 - **Atoms**: clean-code, architecture, test-quality
