@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — LINE webhook signature + loud failures (fix)
+- **Scope**: HMAC verify (env→DB secret, warn-open w/o secret); error reply on link failure
+- **Atoms**: secure-coding, clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: forged-event login closed once LINE_CHANNEL_SECRET set; null-appUser now replies instead of silent spin
+- **Strengths**: 6 new tests green; full suite 181/1212; magic-link null-user dead path removed with reply
+
 ## 2026-11-06 — LINE QR miss vs button (per-attempt, not a bug)
 - **Scope**: QR tab UI + poll + webhook session evidence on prod D1
 - **Atoms**: clean-code, architecture, secure-coding
