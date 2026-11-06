@@ -13,6 +13,7 @@ import { filterWorkOrderJobs } from './workOrderFilters.js'
 import { buildEditJobPayload, resolveNewlyAddedTechs, notifyAddedTechs, confirmAndRemoveJob } from './workOrderEdit.js'
 import { WorkOrderTechModal } from './WorkOrderTechModal.jsx'
 import { WorkOrdersDashboard } from './WorkOrdersDashboard.jsx'
+import { WorkOrdersCreateFab } from './WorkOrdersCreateFab.jsx'
 import { WorkOrdersCreateModal } from './WorkOrdersCreateModal.jsx'
 import { WorkOrdersCancelModal } from './WorkOrdersCancelModal.jsx'
 import { WorkOrdersDailyLogModal } from './WorkOrdersDailyLogModal.jsx'
@@ -23,9 +24,7 @@ import { WorkOrdersCompleteModal } from './WorkOrdersCompleteModal.jsx'
 import { WorkOrdersRecords } from './WorkOrdersRecords.jsx'
 import { WorkOrdersTechnicians } from './WorkOrdersTechnicians.jsx'
 import { WorkOrdersSettings } from './WorkOrdersSettings.jsx'
-import { createPortal } from 'react-dom'
 import {
-  Plus,
   RefreshCw,
   ClipboardList,
   Target,
@@ -1880,18 +1879,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       </datalist>
 
       {/* Mobile Floating Action Button (FAB) for Opening Work Order (Portaled to document.body to lock viewport position) */}
-      {currentTab === 'records' && canAdd && typeof document !== 'undefined' && createPortal(
-        <button
-          type="button"
-          onClick={() => setCreateModalOpen(true)}
-          className="btn-fab"
-          title="เปิดใบสั่งงาน"
-          aria-label="เปิดใบสั่งงาน"
-        >
-          <Plus size={26} strokeWidth={2.5} />
-        </button>,
-        document.body
-      )}
+      <WorkOrdersCreateFab currentTab={currentTab} canAdd={canAdd} setCreateModalOpen={setCreateModalOpen} />
     </div>
   )
 }
