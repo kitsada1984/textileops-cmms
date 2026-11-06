@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders modal-opener builders
+- **Scope**: complete/edit/daily openers → pure builders + thin wrappers
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: effects unmovable (Rules of Hooks); ??/trivial openers kept (cohesion)
+- **Strengths**: 36 files / 165 tests green; gate stays ≤25; snapshots overwrite-guarded
+
 ## 2026-11-06 — WorkOrders tech/loader/drilldown handlers
 - **Scope**: openers/builders + save/delete + sync + loader + drilldown, deps-object pattern
 - **Atoms**: clean-code, architecture, secure-coding, test-quality
