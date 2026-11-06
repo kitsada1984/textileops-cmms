@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders cancel modal
+- **Scope**: 68-line IIFE modal moved verbatim (gate + IIFE inside component)
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — Ban/AlertTriangle orphans cleaned
+- **Strengths**: 3 tests green first run
+
 ## 2026-11-06 — WorkOrders daily-log modal
 - **Scope**: 252-line IIFE modal moved verbatim (gate + IIFE inside component)
 - **Atoms**: clean-code, architecture, test-quality
