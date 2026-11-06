@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — LINE secret enforced live (verify)
+- **Scope**: Pages secret set (exact bytes) + redeploy + forged/signed probes
+- **Atoms**: secure-coding
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: pipe-added newline broke first upload; forged → 403, valid → authenticated; test rows cleaned
+- **Strengths**: prod left clean (0 leftovers); secret never on disk
+
 ## 2026-11-06 — Release v1.3.256 (LINE webhook fix)
 - **Scope**: bump 4 targets, full suite green, build after bump, Pages deploy
 - **Atoms**: test-quality, secure-coding
