@@ -13,7 +13,11 @@ function resolveTrend(trend) {
   const raw = String(trend).trim()
   const key = raw.toLowerCase()
   if (key === 'up' || key === 'down' || key === 'flat') return { dir: key, text: '' }
-  return { dir: raw.startsWith('-') ? 'down' : 'up', text: raw.replace(/^\+/, '') }
+  if (!/^[+-]?\d+(\.\d+)?%?$/.test(raw)) return null
+  const numeric = Number(raw.replace('%', ''))
+  if (!Number.isFinite(numeric)) return null
+  const dir = numeric === 0 ? 'flat' : numeric > 0 ? 'up' : 'down'
+  return { dir, text: `${Math.abs(numeric)}${raw.endsWith('%') ? '%' : ''}` }
 }
 
 const TREND_STYLES = {

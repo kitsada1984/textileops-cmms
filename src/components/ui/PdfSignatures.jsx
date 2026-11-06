@@ -36,7 +36,7 @@ export function PdfSignatures({ signatories, isExcluded, qrValue, docNo, current
 
       {/* Verification line */}
       <div
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-[9px]"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-[10px]"
         style={{ borderTop: `1px solid ${REPORT_COLORS.line}`, color: REPORT_COLORS.muted }}
       >
         <div className="flex items-center gap-2.5">
@@ -48,12 +48,12 @@ export function PdfSignatures({ signatories, isExcluded, qrValue, docNo, current
               <ShieldCheck size={11} className="text-emerald-600" />
               <span>TEXTILEOPS CMMS VERIFIED DOCUMENT</span>
             </div>
-            <div style={{ fontSize: 8.5 }}>สแกน QR เพื่อตรวจสอบความถูกต้องของข้อมูลผ่านระบบออนไลน์</div>
+            <div style={{ fontSize: 10 }}>สแกน QR เพื่อตรวจสอบความถูกต้องของข้อมูลผ่านระบบออนไลน์</div>
           </div>
         </div>
         <div className="sm:text-right">
           <div className="font-semibold">เอกสารควบคุมภายใน · บริษัท เจมม่า นิตติ้ง จำกัด</div>
-          <div className="font-mono" style={{ fontSize: 8.5 }}>
+          <div className="font-mono" style={{ fontSize: 10 }}>
             DOC-REF: {docNo || 'N/A'} · GEN: {currentDateStr}
           </div>
         </div>

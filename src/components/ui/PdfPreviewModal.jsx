@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  FileText,
-  CheckCircle2,
-  AlertCircle,
-  QrCode as QrIcon,
   Image as ImageIcon,
   ExternalLink,
-  Calendar,
-  Layers,
-  Wrench,
 } from 'lucide-react'
 import { getDirectImageUrl, getImageFallbackUrls, getFullResolutionImageUrl } from '../../utils/imageUrlUtils'
 import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
@@ -23,6 +16,7 @@ import { PdfSectionPicker } from './PdfSectionPicker'
 import { PdfDocHeader } from './PdfDocHeader'
 import { PdfSignatures } from './PdfSignatures'
 import { PdfDataTable } from './PdfDataTable'
+import { PdfSectionHeading } from './PdfSectionHeading'
 
 
 
@@ -181,7 +175,6 @@ export default function PdfPreviewModal({
   docDate = '',
   status = '',
   priority = '',
-  record = {},
   sections = [],
   tableData = null,
   historyTable = null,
@@ -414,10 +407,7 @@ export default function PdfPreviewModal({
               {sections.map((sec, idx) => isExcluded(`sec-${idx}`) ? null : (
                 <div key={idx} className="space-y-2 card" style={{ breakInside: 'avoid' }}>
                   {sec.title && (
-                    <div className="flex items-center gap-2" style={{ color: REPORT_COLORS.primary }}>
-                      <span className="w-1 h-4 rounded-full" style={{ backgroundColor: REPORT_COLORS.accent }} />
-                      <span className="text-[16px] font-bold">{sec.title}</span>
-                    </div>
+                    <PdfSectionHeading title={sec.title} />
                   )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -472,10 +462,7 @@ export default function PdfPreviewModal({
               {/* ── REMARKS / NOTES ── */}
               {!isExcluded('remarks') && remarks && (
                 <div className="space-y-2 mt-4 card" style={{ breakInside: 'avoid' }}>
-                  <div className="flex items-center gap-2" style={{ color: REPORT_COLORS.primary }}>
-                    <span className="w-1 h-4 rounded-full" style={{ backgroundColor: REPORT_COLORS.accent }} />
-                    <span className="text-[16px] font-bold">หมายเหตุและบันทึกเพิ่มเติม</span>
-                  </div>
+                  <PdfSectionHeading title="หมายเหตุและบันทึกเพิ่มเติม" />
                   <div
                     className="p-4 rounded-xl text-[11px] whitespace-pre-line leading-relaxed"
                     style={{ backgroundColor: '#fffaeb', borderLeft: `4px solid ${REPORT_COLORS.accent}`, color: REPORT_COLORS.ink }}

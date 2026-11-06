@@ -1,6 +1,7 @@
 // Inline SVG bar chart for print reports (opt-in via `chart` prop).
 // Pure SVG prints crisply (no canvas); `type: 'auto'` resolves to bars.
 import { REPORT_COLORS, REPORT_CHART_COLORS, REPORT_FONTS, layoutBarChart } from './reportTheme'
+import { PdfSectionHeading } from './PdfSectionHeading'
 
 export function PdfReportChart({ chart }) {
   if (!chart || !Array.isArray(chart.data) || chart.data.length === 0) return null
@@ -10,10 +11,7 @@ export function PdfReportChart({ chart }) {
   return (
     <div className="mt-4 chart" style={{ breakInside: 'avoid' }}>
       {chart.title && (
-        <div className="flex items-center gap-2 mb-2" style={{ color: REPORT_COLORS.primary, breakAfter: 'avoid' }}>
-          <span className="w-1 h-4 rounded-full" style={{ backgroundColor: colors[1] }} />
-          <span className="text-[16px] font-bold">{chart.title}</span>
-        </div>
+        <PdfSectionHeading title={chart.title} accent={colors[1]} className="mb-2" />
       )}
       <svg
         width="100%"

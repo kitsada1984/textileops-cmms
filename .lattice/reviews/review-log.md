@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — Shared print report design overhaul
+- **Scope**: 10 files, UI components + print CSS + tests
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 3 warning, 4 suggestion (5 fixed, 2 deferred)
+- **Key findings**: invalid trend strings rendered ▲; 8.5px signature meta below 10px spec; trend/alignment untested
+- **Strengths**: 3-page A4 output verified; shared section heading extracted; lint clean
+
 ## 2026-11-06 — Release v1.3.259 deployed (incident cleared)
 - **Scope**: 4th deploy attempt green after SIN monitoring, live sw.js verified
 - **Atoms**: test-quality

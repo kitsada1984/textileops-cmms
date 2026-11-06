@@ -37,6 +37,33 @@ describe('PdfSummaryCards', () => {
     const cards = container.querySelectorAll('.grid > div')
     expect(cards[1].getAttribute('style')).toContain('rgb(242, 169, 0)')
   })
+
+  it('renders up/down arrows for signed numbers', () => {
+    const { container } = render(
+      <PdfSummaryCards items={[{ label: 'เพิ่ม', value: 8, trend: 12 }, { label: 'ลด', value: 2, trend: -3 }]} />
+    )
+
+    expect(container.textContent).toContain('▲12%')
+    expect(container.textContent).toContain('▼3%')
+  })
+
+  it('renders a flat marker for zero and the flat keyword', () => {
+    const { container } = render(
+      <PdfSummaryCards items={[{ label: 'คงที่', value: 8, trend: 0 }, { label: 'คงที่', value: 2, trend: 'flat' }]} />
+    )
+
+    expect(container.textContent).toContain('–0%')
+    expect(container.textContent.match(/–/g)).toHaveLength(2)
+  })
+
+  it('ignores unparseable trends', () => {
+    const { container } = render(
+      <PdfSummaryCards items={[{ label: 'ไม่ทราบ', value: 8, trend: 'N/A' }]} />
+    )
+
+    expect(container.textContent).not.toContain('▲')
+    expect(container.textContent).not.toContain('▼')
+  })
 })
 
 describe('PdfReportChart', () => {

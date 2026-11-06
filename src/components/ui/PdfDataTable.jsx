@@ -1,6 +1,7 @@
 // Detail/history tables moved verbatim from PdfPreviewModal (props only).
 // The two blocks were identical except data source and gate key.
 import { REPORT_COLORS, REPORT_TABLE } from './reportTheme'
+import { PdfSectionHeading } from './PdfSectionHeading'
 
 function isNumericValue(value) {
   if (typeof value === 'number') return Number.isFinite(value)
@@ -37,10 +38,7 @@ export function PdfDataTable({ gateKey, table, themeAccent, isExcluded, headerFi
       {!isExcluded(gateKey) && table && table.rows && table.rows.length > 0 && (
         <div className="space-y-2 mt-4">
           {table.title && (
-            <div className="flex items-center gap-2" style={{ color: REPORT_COLORS.primary, breakAfter: 'avoid' }}>
-              <span className="w-1 h-4 rounded-full" style={{ backgroundColor: themeAccent || REPORT_COLORS.accent }} />
-              <span className="text-[16px] font-bold">{table.title}</span>
-            </div>
+            <PdfSectionHeading title={table.title} accent={themeAccent} />
           )}
 
           <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${REPORT_COLORS.line}` }}>
@@ -50,6 +48,7 @@ export function PdfDataTable({ gateKey, table, themeAccent, isExcluded, headerFi
                   {table.headers.map((h, hIdx) => (
                     <th
                       key={hIdx}
+                      scope="col"
                       className="py-2 px-2.5 font-bold tracking-wide"
                       style={{
                         textAlign: numericCols[hIdx] ? 'right' : 'left',
