@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders create FAB portal
+- **Scope**: 12-line portaled FAB moved verbatim, props-only
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — Plus/createPortal orphans cleaned
+- **Strengths**: main 4213→1885 lines, complexity 187→48; dir 23 files / 108 tests green
+
 ## 2026-11-06 — WorkOrders create modal
 - **Scope**: 230-line modal moved verbatim, props-only
 - **Atoms**: clean-code, architecture, test-quality
