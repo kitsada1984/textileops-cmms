@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders records tab + card
+- **Scope**: 92-line card moved verbatim; 626-line records tab, props-only
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: WORK_ORDER_TYPE_OPTIONS stays in parent (ReportModal/test import surface); STATUS_OPTIONS imported from normalize source
+- **Strengths**: workorders dir 15 files / 81 tests green; parent back to pre-existing warns only
+
 ## 2026-11-06 — WorkOrders technicians/settings tabs + skill helpers
 - **Scope**: skill helpers moved verbatim; 206-line tech + 117-line settings tabs, props-only
 - **Atoms**: clean-code, architecture, test-quality
