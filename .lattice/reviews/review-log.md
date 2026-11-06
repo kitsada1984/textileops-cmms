@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders KPI modal
+- **Scope**: 91-line modal moved verbatim, props-only
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — 5-prop surface, shared save handler with settings tab untouched
+- **Strengths**: 3 characterization tests green first run
+
 ## 2026-11-06 — WorkOrders edit modal
 - **Scope**: 189-line modal moved verbatim, props-only
 - **Atoms**: clean-code, architecture, test-quality
