@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders modal open-close audit
+- **Scope**: all 8 modal gates + X-button close paths, cycle tests added
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: no refactor logic bug found — gates/wiring/mount identical; symptom likely on live pre-refactor build
+- **Strengths**: 37 files / 181 tests green; close path now locked per modal
+
 ## 2026-11-06 — WorkOrders lifecycle hooks + opener fires
 - **Scope**: 4 effects → custom hooks (same call order); print/interruption openers + page perms
 - **Atoms**: clean-code, architecture, test-quality
