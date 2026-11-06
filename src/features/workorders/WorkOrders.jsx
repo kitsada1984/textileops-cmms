@@ -13,6 +13,7 @@ import { normalizeAllJobs, computeTypeCounts, computeStatusCounts, computeCauseC
 import { getJobInterruptions, computeCompleteDuration } from './workOrderInterruptions.js'
 import { startInterruption, stopInterruption, addManualInterruption, deleteInterruption } from './workOrderInterruptionHandlers.js'
 import { saveDailyLog, confirmCancelJob, deleteDailyLog } from './workOrderDailyLogHandlers.js'
+import { buildCompleteModalState, buildEditModalState, buildDailyLogModalState } from './workOrderModalOpeners.js'
 import { buildAddTechForm, buildEditTechForm, selectUserForTech, saveTech, deleteTech, loadTechData, drilldownByCause } from './workOrderTechHandlers.js'
 import { startJob, completeJob, quickStatusChange } from './workOrderSubmitHandlers.js'
 import { matchActiveMachine, matchEditActiveMachine } from './workOrderMachines.js'
@@ -656,10 +657,10 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Open Complete Modal
   const openCompleteModal = (job) => {
-    setCompJob(job)
-    const now = new Date()
-    setCompEndDate(format(now, 'yyyy-MM-dd'))
-    setCompEndTime(format(now, 'HH:mm'))
+    const state = buildCompleteModalState(job)
+    setCompJob(state.compJob)
+    setCompEndDate(state.compEndDate)
+    setCompEndTime(state.compEndTime)
     setCompleteModalOpen(true)
   }
 
@@ -673,20 +674,9 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Open Edit Modal
   const openEditModal = (job) => {
-    const detailsVal = getWorkOrderDetails(job)
-    const statusCode = getWorkOrderStatusMeta(job.Status).value
-    setEditJob({
-      ...job,
-      Comment: detailsVal === '—' ? (job.Comment || '') : detailsVal,
-      Details: detailsVal === '—' ? (job.Details || '') : detailsVal,
-      ProblemCause: job.ProblemCause || job.problem_cause || '',
-      Status: statusCode,
-    })
-    const techArray = (job.Technicians || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-    setEditTechs(techArray)
+    const state = buildEditModalState(job)
+    setEditJob(state.editJob)
+    setEditTechs(state.editTechs)
     setEditModalOpen(true)
   }
 
@@ -697,26 +687,13 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Open Daily Work Progress (End of Day Update) Modal
   const openDailyLogModal = (job) => {
-    const freshJob =
-      allJobs.find(
-        (j) =>
-          (j.id && j.id === job.id) ||
-          (j.WO_ID && j.WO_ID === (job.WO_ID || job.Job_ID)) ||
-          (j.Job_ID && j.Job_ID === (job.Job_ID || job.WO_ID))
-      ) || job
-
-    setDailyLogJob(freshJob)
-    const now = new Date()
-    setDailyLogDate(format(now, 'yyyy-MM-dd'))
-    const currentMeta = getWorkOrderStatusMeta(freshJob.Status)
-    setDailyLogStatus(currentMeta.value)
+    const state = buildDailyLogModalState(allJobs, job)
+    setDailyLogJob(state.freshJob)
+    setDailyLogDate(state.date)
+    setDailyLogStatus(state.status)
     setDailyLogDetails('')
     setDailyLogHours('')
-    const currentTechs = (freshJob.Technicians || freshJob.Tech || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-    setDailyLogTechs(currentTechs)
+    setDailyLogTechs(state.techs)
     setDailyLogModalOpen(true)
   }
 
