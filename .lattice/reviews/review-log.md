@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders interruption modal
+- **Scope**: 236-line IIFE modal moved verbatim (gate + IIFE inside component)
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: start button is disabled on empty task name — fixture uses real name
+- **Strengths**: 6 orphaned imports cleaned; main complexity down to 69
+
 ## 2026-11-06 — WorkOrders KPI modal
 - **Scope**: 91-line modal moved verbatim, props-only
 - **Atoms**: clean-code, architecture, test-quality
