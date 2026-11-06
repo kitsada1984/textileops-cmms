@@ -15,7 +15,7 @@ import { startInterruption, stopInterruption, addManualInterruption, deleteInter
 import { saveDailyLog, confirmCancelJob, deleteDailyLog } from './workOrderDailyLogHandlers.js'
 import { startJob, completeJob, quickStatusChange } from './workOrderSubmitHandlers.js'
 import { matchActiveMachine, matchEditActiveMachine } from './workOrderMachines.js'
-import { buildEditJobPayload, resolveNewlyAddedTechs, notifyAddedTechs, confirmAndRemoveJob } from './workOrderEdit.js'
+import { confirmAndRemoveJob, saveEditJob } from './workOrderEdit.js'
 import { WorkOrderTechModal } from './WorkOrderTechModal.jsx'
 import { WorkOrdersDashboard } from './WorkOrdersDashboard.jsx'
 import { WorkOrdersHeader } from './WorkOrdersHeader.jsx'
@@ -815,31 +815,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
 
   // Submit Edit Job
   const handleEditJob = async () => {
-    if (!editJob) return
-    setEditSubmitting(true)
-    try {
-      const payload = buildEditJobPayload(editJob, editTechs, user)
-      const newlyAddedTechs = resolveNewlyAddedTechs(editJob, editTechs)
-
-      await saveJob(payload)
-      toast.success('แก้ไขข้อมูลใบสั่งงานสำเร็จ', editJob.Job_ID || editJob['Job ID'])
-
-      // Auto-sync edited PM work order to Monthly PM Schedule
-      if (String(payload.JobType || editJob?.JobType || '').toUpperCase() === 'PM') {
-        syncPMWorkOrderToMonthlySchedule(payload, cylinders).catch((e) => {
-          console.warn('[WorkOrders] Failed to sync edited PM work order to monthly schedule:', e)
-        })
-      }
-
-      notifyAddedTechs({ payload, newlyAddedTechs, technicians, systemUsers, notifyFn: notifyLineWorkOrderAssigned, toast })
-
-      setEditModalOpen(false)
-      setEditJob(null)
-    } catch (err) {
-      toast.error('ไม่สามารถแก้ไขใบสั่งงานได้', err.message)
-    } finally {
-      setEditSubmitting(false)
-    }
+    await saveEditJob({ editJob, editTechs, user, saveJob, setEditSubmitting, setEditModalOpen, setEditJob, technicians, systemUsers, notifyFn: notifyLineWorkOrderAssigned, cylinders, toast })
   }
 
   // Delete Job

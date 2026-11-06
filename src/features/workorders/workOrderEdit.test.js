@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { buildEditJobPayload, resolveNewlyAddedTechs, notifyAddedTechs, confirmAndRemoveJob } from './workOrderEdit'
+import { buildEditJobPayload, resolveNewlyAddedTechs, notifyAddedTechs, confirmAndRemoveJob, saveEditJob } from './workOrderEdit'
 
 // Characterization: lock edit-job shaping before extracting it out of
 // the submit handler (behavior-preserving restructure, grill-approved).
@@ -102,5 +102,26 @@ describe('workOrderEdit characterization', () => {
       syncRemoveFn: vi.fn(), cylinders: [], toast: toast2,
     })
     expect(toast2.error).toHaveBeenCalled()
+  })
+
+  it('saveEditJob: no-ops without a job, saves and closes on success', async () => {
+    const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn() }
+    const saveJob = vi.fn().mockResolvedValue({})
+    const base = {
+      editTechs: ['ช่างA'], user, saveJob,
+      setEditSubmitting: vi.fn(), setEditModalOpen: vi.fn(), setEditJob: vi.fn(),
+      technicians: [], systemUsers: [], notifyFn: vi.fn().mockResolvedValue({}), cylinders: [], toast,
+    }
+
+    await saveEditJob({ ...base, editJob: null })
+    expect(saveJob).not.toHaveBeenCalled()
+
+    const editJob = { Job_ID: 'JOB-001', Status: 'IN_PROGRESS', Comment: 'ซ่อม', Technicians: '' }
+    await saveEditJob({ ...base, editJob })
+    expect(saveJob).toHaveBeenCalled()
+    expect(base.setEditModalOpen).toHaveBeenCalledWith(false)
+    expect(base.setEditJob).toHaveBeenCalledWith(null)
+    expect(base.setEditSubmitting).toHaveBeenLastCalledWith(false)
+    expect(toast.success).toHaveBeenCalled()
   })
 })

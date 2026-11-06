@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { syncPMWorkOrderToMonthlySchedule } from '../../components/pm/PMMonthlyScheduleView'
 
 // Edit-job shaping moved out of the submit handler (grill-approved,
 // behavior-preserving restructure: same fields, same fallbacks, same order).
@@ -78,5 +79,38 @@ export async function confirmAndRemoveJob({ job, confirmFn, removeJob, syncRemov
     toast.success('ลบใบสั่งงานสำเร็จ', job.Job_ID || job['Job ID'] || id)
   } catch (err) {
     toast.error('ลบใบสั่งงานไม่สำเร็จ', err.message)
+  }
+}
+
+// Was `const handleEditJob = async () => {...}` in the WorkOrders component.
+// Stateful submit moved verbatim; every closure variable is a deps field.
+export async function saveEditJob({
+  editJob, editTechs, user, saveJob, setEditSubmitting, setEditModalOpen, setEditJob,
+  technicians, systemUsers, notifyFn, cylinders, toast,
+}) {
+  if (!editJob) return
+  setEditSubmitting(true)
+  try {
+    const payload = buildEditJobPayload(editJob, editTechs, user)
+    const newlyAddedTechs = resolveNewlyAddedTechs(editJob, editTechs)
+
+    await saveJob(payload)
+    toast.success('แก้ไขข้อมูลใบสั่งงานสำเร็จ', editJob.Job_ID || editJob['Job ID'])
+
+    // Auto-sync edited PM work order to Monthly PM Schedule
+    if (String(payload.JobType || editJob?.JobType || '').toUpperCase() === 'PM') {
+      syncPMWorkOrderToMonthlySchedule(payload, cylinders).catch((e) => {
+        console.warn('[WorkOrders] Failed to sync edited PM work order to monthly schedule:', e)
+      })
+    }
+
+    notifyAddedTechs({ payload, newlyAddedTechs, technicians, systemUsers, notifyFn, toast })
+
+    setEditModalOpen(false)
+    setEditJob(null)
+  } catch (err) {
+    toast.error('ไม่สามารถแก้ไขใบสั่งงานได้', err.message)
+  } finally {
+    setEditSubmitting(false)
   }
 }
