@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — Release v1.3.258 (QR quiet zone)
+- **Scope**: QRCodeSVG includeMargin + 184→200px, full suite green, deploy verified
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: local decode proof — no-margin fails, margin decodes (both URL lengths)
+- **Strengths**: full suite 182/1214; user-approved before change
+
 ## 2026-11-06 — QR still unscanned (stale-cache verdict)
 - **Scope**: live QR SVG structure (DOM-measured, screenshots unavailable)
 - **Atoms**: clean-code
