@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders tech modal split
+- **Scope**: tech modal + level consts, verbatim + render tests
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — main 194→187, 3 modal tests green
+- **Strengths**: consts moved with their only consumer
+
 ## 2026-11-06 — WorkOrders row mapper (cells with render locks)
 - **Scope**: 6 cells + pure helper move, verbatim-verified per line
 - **Atoms**: clean-code, architecture, test-quality
