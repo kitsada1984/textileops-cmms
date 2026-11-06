@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders row mapper (cells with render locks)
+- **Scope**: 6 cells + pure helper move, verbatim-verified per line
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — arrow 53 cleared, 57 tests green
+- **Strengths**: first-run-green cell tests prove faithful split
+
 ## 2026-11-06 — Release v1.3.254 (auth hardening + handlers)
 - **Scope**: full suite green, bump-first-then-build, Pages deploy
 - **Atoms**: secure-coding, test-quality
