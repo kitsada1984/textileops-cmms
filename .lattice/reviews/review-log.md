@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders technicians/settings tabs + skill helpers
+- **Scope**: skill helpers moved verbatim; 206-line tech + 117-line settings tabs, props-only
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: none — TechSkillBar had zero external importers; orphaned Pencil/UserPlus cleaned
+- **Strengths**: 9 new characterization tests green on first stable run
+
 ## 2026-11-06 — WorkOrders dashboard tab + type cards
 - **Scope**: 717-line dashboard moved verbatim; 4 cards unified via lookup (no interpolation)
 - **Atoms**: clean-code, architecture, test-quality
