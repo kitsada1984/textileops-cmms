@@ -51,6 +51,27 @@ export async function sha256Hex(text) {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+/**
+ * Verify a LINE webhook request signature (HMAC-SHA256, base64).
+ * Returns false when any input is missing (caller decides fail-open vs fail-closed).
+ * String comparison matches the existing auth-helper strength convention.
+ */
+export async function verifyLineSignature(rawBody, signature, secret) {
+  if (!secret || !signature || !rawBody) return false
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody))
+  const bytes = new Uint8Array(sig)
+  let bin = ''
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
+  return btoa(bin) === signature
+}
+
 function randomSaltHex() {
   const bytes = new Uint8Array(16)
   crypto.getRandomValues(bytes)

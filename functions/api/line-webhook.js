@@ -2,7 +2,7 @@
 // Cloudflare Pages Function: LINE Webhook for Instant QR/LINE Login, Auto User Provisioning, and Contact Sync
 // Storage: Cloudflare D1 (users & appconfigs tables)
 
-import { createAuthToken } from './_auth.js'
+import { createAuthToken, verifyLineSignature } from './_auth.js'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -252,9 +252,15 @@ export async function onRequestPost({ request, env }) {
   }
 
   try {
+    let rawBody = ''
+    try {
+      rawBody = await request.text()
+    } catch {
+      rawBody = ''
+    }
     let body = {}
     try {
-      body = await request.json()
+      body = rawBody ? JSON.parse(rawBody) : {}
     } catch {
       body = {}
     }
@@ -269,6 +275,24 @@ export async function onRequestPost({ request, env }) {
 
     const settings = (await getConfigValue(db, 'line_settings')) || {}
     let channelToken = settings.channel_access_token || env?.LINE_CHANNEL_ACCESS_TOKEN || ''
+
+    // Verify LINE webhook signature so forged events cannot mint login sessions.
+    // Secret from Pages env first, D1 line_settings fallback. Without either,
+    // warn loudly and continue (operator must set LINE_CHANNEL_SECRET to enforce).
+    const lineSecret = env?.LINE_CHANNEL_SECRET || settings.channel_secret || ''
+    if (lineSecret) {
+      const signature = request.headers?.get?.('x-line-signature') || ''
+      const valid = await verifyLineSignature(rawBody, signature, lineSecret)
+      if (!valid) {
+        console.warn('LINE webhook rejected: invalid x-line-signature')
+        return new Response(JSON.stringify({ ok: false, error: 'Invalid signature' }), {
+          status: 403,
+          headers: jsonHeaders,
+        })
+      }
+    } else {
+      console.warn('LINE_CHANNEL_SECRET is not configured — skipping webhook signature verification')
+    }
 
     let contacts = []
     try {
@@ -329,6 +353,27 @@ export async function onRequestPost({ request, env }) {
           )
         } catch (err) {
           console.error('Upsert LINE user error:', err)
+        }
+
+        if (!appUser) {
+          // Account linking failed — tell the user in chat instead of leaving
+          // the QR poll spinning until the session expires.
+          if (replyToken && channelToken) {
+            try {
+              await fetch('https://api.line.me/v2/bot/message/reply', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${channelToken.trim()}`,
+                },
+                body: JSON.stringify({
+                  replyToken,
+                  messages: [{ type: 'text', text: 'เชื่อมบัญชีไม่สำเร็จ กรุณาสแกน QR ใหม่อีกครั้ง หากยังไม่ได้โปรดติดต่อผู้ดูแลระบบ' }],
+                }),
+              })
+            } catch {}
+          }
+          continue
         }
 
         if (appUser && appUser.status !== 'inactive') {
