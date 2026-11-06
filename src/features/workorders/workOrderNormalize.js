@@ -1,3 +1,128 @@
+export const WORK_ORDER_STATUS_OPTIONS = [
+  {
+    value: 'IN_PROGRESS',
+    label: 'กำลังทำ',
+    fullLabel: '🟡 กำลังทำ (In Progress)',
+    icon: '🟡',
+    badgeClass: 'badge-orange',
+    activeClass: 'bg-amber-500 text-white border-amber-500 shadow-xs',
+  },
+  {
+    value: 'WAITING_TECH',
+    label: 'รอช่าง',
+    fullLabel: '🟠 รอช่าง (Waiting Tech)',
+    icon: '🟠',
+    badgeClass: 'badge-yellow',
+    activeClass: 'bg-orange-500 text-white border-orange-500 shadow-xs',
+  },
+  {
+    value: 'WAITING_PARTS',
+    label: 'รออะไหล่',
+    fullLabel: '🟣 รออะไหล่ (Waiting Parts)',
+    icon: '🟣',
+    badgeClass: 'badge-purple',
+    activeClass: 'bg-purple-600 text-white border-purple-600 shadow-xs',
+  },
+  {
+    value: 'WAITING_SUMMARY',
+    label: 'รอสรุป',
+    fullLabel: '🔵 รอสรุป (Waiting Summary)',
+    icon: '🔵',
+    badgeClass: 'badge-blue',
+    activeClass: 'bg-blue-600 text-white border-blue-600 shadow-xs',
+  },
+  {
+    value: 'COMPLETED',
+    label: 'เสร็จสิ้น',
+    fullLabel: '🟢 เสร็จสิ้น (Completed)',
+    icon: '🟢',
+    badgeClass: 'badge-green',
+    activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
+  },
+  {
+    value: 'CANCELLED',
+    label: 'ยกเลิก',
+    fullLabel: '⚪ ยกเลิก (Cancelled)',
+    icon: '⚪',
+    badgeClass: 'badge-gray',
+    activeClass: 'bg-slate-500 text-white border-slate-500 shadow-xs',
+    isCancelled: true,
+  },
+]
+
+export function getWorkOrderStatusMeta(status) {
+  const raw = String(status || '').trim()
+  const upper = raw.toUpperCase()
+
+  if (upper === 'CANCELLED' || raw === 'ยกเลิก') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[5], isCompleted: false, isCancelled: true }
+  }
+  if (upper === 'COMPLETED' || raw === 'เสร็จสิ้น') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[4], isCompleted: true, isCancelled: false }
+  }
+  if (upper === 'WAITING_TECH' || raw === 'รอช่าง') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[1], isCompleted: false, isCancelled: false }
+  }
+  if (upper === 'WAITING_PARTS' || raw === 'รออะไหล่') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[2], isCompleted: false, isCancelled: false }
+  }
+  if (upper === 'WAITING_SUMMARY' || raw === 'รอสรุป') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[3], isCompleted: false, isCancelled: false }
+  }
+  return { ...WORK_ORDER_STATUS_OPTIONS[0], isCompleted: false, isCancelled: false }
+}
+
+export function getWorkOrderDetails(job = {}) {
+  if (!job) return '—'
+  const comment = job.Comment || job.comment || ''
+  if (comment && typeof comment === 'string') {
+    if (comment.trim().startsWith('{') && comment.includes('synced_from_repair')) {
+      return job.Problem || job.problem || job.Details || job.details || job.Detail || job.Solution || '—'
+    }
+    return comment
+  }
+  return job.Details || job.details || job.Problem || job.problem || job.Detail || job.Description || '—'
+}
+
+export function getJobDailyLogs(job = {}) {
+  if (!job) return []
+  const raw = job.DailyLogs || job.daily_logs || job.dailyLogs
+  if (!raw) {
+    const comment = job.Comment || job.comment || ''
+    if (typeof comment === 'string' && comment.trim().startsWith('{') && comment.includes('daily_logs')) {
+      try {
+        const parsed = JSON.parse(comment)
+        if (Array.isArray(parsed.daily_logs)) return parsed.daily_logs
+      } catch {}
+    }
+    return []
+  }
+  if (Array.isArray(raw)) return raw
+  if (typeof raw === 'string') {
+    try {
+      let parsed = JSON.parse(raw)
+      if (typeof parsed === 'string') {
+        try { parsed = JSON.parse(parsed) } catch {}
+      }
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+export function getLatestDailyLog(job = {}) {
+  const logs = getJobDailyLogs(job)
+  if (!Array.isArray(logs) || logs.length === 0) return null
+  const sorted = [...logs].sort((a, b) => {
+    const tA = new Date(a.timestamp || a.date).getTime() || 0
+    const tB = new Date(b.timestamp || b.date).getTime() || 0
+    return tA - tB
+  })
+  return sorted[sorted.length - 1]
+}
+
 // Pure row normalizer for work orders (moved verbatim out of the
 // WorkOrders component to meet the complexity gate; params only,
 // no component state, no side effects).
