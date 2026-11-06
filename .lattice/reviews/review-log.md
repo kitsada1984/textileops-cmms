@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders daily-log modal
+- **Scope**: 252-line IIFE modal moved verbatim (gate + IIFE inside component)
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: save disabled on empty details — fixture uses real text
+- **Strengths**: Trash2/CalendarClock orphans cleaned; 4 tests green
+
 ## 2026-11-06 — WorkOrders interruption modal
 - **Scope**: 236-line IIFE modal moved verbatim (gate + IIFE inside component)
 - **Atoms**: clean-code, architecture, test-quality
