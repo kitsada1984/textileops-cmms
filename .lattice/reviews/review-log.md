@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders edit modal
+- **Scope**: 189-line modal moved verbatim, props-only
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: full-token identifier sweep caught editTechs (missed by brace-head regex)
+- **Strengths**: 4 characterization tests green first run
+
 ## 2026-11-06 — WorkOrders complete modal
 - **Scope**: 130-line modal moved verbatim, props-only
 - **Atoms**: clean-code, architecture, test-quality
