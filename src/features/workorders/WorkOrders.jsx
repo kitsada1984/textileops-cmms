@@ -559,6 +559,14 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     await deleteInterruption({ interruptionJob, logId, saveJob, setInterruptionJob, toast })
   }
 
+  // Open Create Work Order modal from Interruption
+  const handleOpenCreateWorkOrderFromInterruption = ({ mc: targetMc, comment: initialComment } = {}) => {
+    if (targetMc) setMc(targetMc)
+    if (initialComment) setComment(initialComment)
+    setInterruptionModalOpen(false)
+    setCreateModalOpen(true)
+  }
+
   // Load Technicians & KPI Settings from Supabase / Storage
   const loadTechsAndSettings = async () => {
     await loadTechData({ setTechLoading, setSystemUsers, setCylinders, setTechnicians, setKpiTargets, setDraftKpi, defaultKpiTargets: DEFAULT_KPI_TARGETS, defaultTechs: DEFAULT_TECHS })
@@ -784,7 +792,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       <WorkOrdersKpiModal kpiModalOpen={kpiModalOpen} draftKpi={draftKpi} setDraftKpi={setDraftKpi} setKpiModalOpen={setKpiModalOpen} handleSaveKpiSettings={handleSaveKpiSettings} />
 
       {/* 6. Interruption & Lost Time Modal */}
-        <WorkOrdersInterruptionModal interruptionModalOpen={interruptionModalOpen} interruptionJob={interruptionJob} setInterruptionModalOpen={setInterruptionModalOpen} interruptionTaskName={interruptionTaskName} setInterruptionTaskName={setInterruptionTaskName} interruptionManualMins={interruptionManualMins} setInterruptionManualMins={setInterruptionManualMins} interruptionManualNotes={interruptionManualNotes} setInterruptionManualNotes={setInterruptionManualNotes} showManualAdd={showManualAdd} setShowManualAdd={setShowManualAdd} handleAddManualInterruption={handleAddManualInterruption} handleDeleteInterruption={handleDeleteInterruption} handleStartInterruption={handleStartInterruption} handleStopInterruption={handleStopInterruption} getJobInterruptions={getJobInterruptions} QUICK_INTERRUPTION_PRESETS={QUICK_INTERRUPTION_PRESETS} />
+        <WorkOrdersInterruptionModal interruptionModalOpen={interruptionModalOpen} interruptionJob={interruptionJob} setInterruptionModalOpen={setInterruptionModalOpen} interruptionTaskName={interruptionTaskName} setInterruptionTaskName={setInterruptionTaskName} interruptionManualMins={interruptionManualMins} setInterruptionManualMins={setInterruptionManualMins} interruptionManualNotes={interruptionManualNotes} setInterruptionManualNotes={setInterruptionManualNotes} showManualAdd={showManualAdd} setShowManualAdd={setShowManualAdd} handleAddManualInterruption={handleAddManualInterruption} handleDeleteInterruption={handleDeleteInterruption} handleStartInterruption={handleStartInterruption} handleStopInterruption={handleStopInterruption} getJobInterruptions={getJobInterruptions} QUICK_INTERRUPTION_PRESETS={QUICK_INTERRUPTION_PRESETS} allJobs={allJobs} onOpenCreateWorkOrder={handleOpenCreateWorkOrderFromInterruption} />
 
       {/* 5. Print A4 PDF Report Modal */}
       <WorkOrdersPrintModal printModalOpen={printModalOpen} printJob={printJob} setPrintModalOpen={setPrintModalOpen} />
