@@ -1,35 +1,87 @@
 // Detail/history tables moved verbatim from PdfPreviewModal (props only).
 // The two blocks were identical except data source and gate key.
-import { REPORT_TABLE } from './reportTheme'
+import { REPORT_COLORS, REPORT_TABLE } from './reportTheme'
+
+function isNumericValue(value) {
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (typeof value !== 'string') return false
+  const cleaned = value
+    .replace(/[\s,]/g, '')
+    .replace(/%$/, '')
+    .replace(/^[+฿$]/, '')
+    .replace(/^\((.*)\)$/, '$1')
+  if (!cleaned) return false
+  return /^-?\d+(\.\d+)?$/.test(cleaned)
+}
+
+function resolveNumericColumns(table) {
+  const rows = Array.isArray(table?.rows) ? table.rows : []
+  const width = Array.isArray(table?.headers) ? table.headers.length : 0
+  return Array.from({ length: width }, (_, col) => {
+    let nonEmpty = 0
+    let numeric = 0
+    rows.forEach((row) => {
+      const value = row?.[col]
+      if (value === null || value === undefined || value === '') return
+      nonEmpty += 1
+      if (isNumericValue(value)) numeric += 1
+    })
+    return nonEmpty > 0 && numeric >= Math.ceil(nonEmpty / 2)
+  })
+}
 
 export function PdfDataTable({ gateKey, table, themeAccent, isExcluded, headerFill = REPORT_TABLE.headerFill, headerText = REPORT_TABLE.headerText }) {
+  const numericCols = resolveNumericColumns(table)
   return (
     <>
       {!isExcluded(gateKey) && table && table.rows && table.rows.length > 0 && (
-        <div className="space-y-1.5 mt-4">
+        <div className="space-y-2 mt-4">
           {table.title && (
-            <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
-              <span className="w-2 h-3.5 rounded-xs" style={{ backgroundColor: themeAccent }} />
-              <span>{table.title}</span>
+            <div className="flex items-center gap-2" style={{ color: REPORT_COLORS.primary, breakAfter: 'avoid' }}>
+              <span className="w-1 h-4 rounded-full" style={{ backgroundColor: themeAccent || REPORT_COLORS.accent }} />
+              <span className="text-[16px] font-bold">{table.title}</span>
             </div>
           )}
 
-          <div className="border border-slate-300 rounded-xl overflow-hidden shadow-2xs">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${REPORT_COLORS.line}` }}>
+            <table className="report-table w-full text-left border-collapse" style={{ fontSize: 11 }}>
               <thead>
-                <tr className="text-[10.5px] font-black uppercase" style={{ backgroundColor: headerFill, color: headerText }}>
+                <tr style={{ backgroundColor: headerFill, color: headerText }}>
                   {table.headers.map((h, hIdx) => (
-                    <th key={hIdx} className="py-2 px-2.5 border-r last:border-r-0 tracking-wide" style={{ borderColor: 'rgba(255,255,255,0.25)' }}>
+                    <th
+                      key={hIdx}
+                      className="py-2 px-2.5 font-bold tracking-wide"
+                      style={{
+                        textAlign: numericCols[hIdx] ? 'right' : 'left',
+                        borderRight: hIdx === table.headers.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.25)',
+                      }}
+                    >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 text-[11px]">
+              <tbody>
                 {table.rows.map((row, rIdx) => (
-                  <tr key={rIdx} style={rIdx % 2 === 0 ? undefined : { backgroundColor: REPORT_TABLE.zebraFill }} className={rIdx % 2 === 0 ? 'bg-white' : ''}>
+                  <tr
+                    key={rIdx}
+                    style={{
+                      backgroundColor: rIdx % 2 === 0 ? REPORT_COLORS.white : REPORT_TABLE.zebraFill,
+                      breakInside: 'avoid',
+                    }}
+                  >
                     {row.map((cell, cIdx) => (
-                      <td key={cIdx} className="py-2 px-2.5 border-r border-slate-200 last:border-r-0 font-medium text-slate-800">
+                      <td
+                        key={cIdx}
+                        className="py-2 px-2.5 font-medium whitespace-normal"
+                        style={{
+                          color: REPORT_COLORS.ink,
+                          textAlign: numericCols[cIdx] ? 'right' : 'left',
+                          borderTop: `1px solid ${REPORT_COLORS.line}`,
+                          borderRight: cIdx === row.length - 1 ? 'none' : `1px solid ${REPORT_COLORS.line}`,
+                          fontVariantNumeric: numericCols[cIdx] ? 'tabular-nums' : undefined,
+                        }}
+                      >
                         {cell}
                       </td>
                     ))}

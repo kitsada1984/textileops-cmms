@@ -8,11 +8,11 @@ export function PdfReportChart({ chart }) {
   const colors = Array.isArray(chart.colors) && chart.colors.length > 0 ? chart.colors : REPORT_CHART_COLORS
   const labelW = 150
   return (
-    <div className="mt-4">
+    <div className="mt-4 chart" style={{ breakInside: 'avoid' }}>
       {chart.title && (
-        <div className="text-[11px] font-black uppercase tracking-wider flex items-center gap-2 border-b pb-1 mb-2" style={{ color: REPORT_COLORS.primary, borderColor: REPORT_COLORS.line, fontFamily: REPORT_FONTS.family }}>
-          <span className="w-2 h-3.5 rounded-xs" style={{ backgroundColor: colors[1] }} />
-          <span>{chart.title}</span>
+        <div className="flex items-center gap-2 mb-2" style={{ color: REPORT_COLORS.primary, breakAfter: 'avoid' }}>
+          <span className="w-1 h-4 rounded-full" style={{ backgroundColor: colors[1] }} />
+          <span className="text-[16px] font-bold">{chart.title}</span>
         </div>
       )}
       <svg

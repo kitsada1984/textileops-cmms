@@ -816,6 +816,15 @@ html.dark .glass-panel {
   }
 }
 
+/* Report tables opt out of the app-wide table chrome (base th colour/nowrap). */
+.report-table th {
+  color: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+  font-size: 11px;
+}
+
 /* ── Accessibility: Reduced Motion (WCAG 2.3.3) ─────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,

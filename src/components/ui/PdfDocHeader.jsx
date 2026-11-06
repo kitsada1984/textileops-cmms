@@ -1,93 +1,69 @@
 import gemmaLogo from '../../assets/logo-gemma.png'
 import { format } from 'date-fns'
+import { REPORT_COLORS } from './reportTheme'
 
-// Document header moved verbatim from PdfPreviewModal (props only).
+// Minimal professional header (report design spec): one brand line,
+// document title, code chip, and a thin meta row. Stacks on narrow screens.
 export function PdfDocHeader({ theme, title, docNo, formattedDocDate, status, statusCfg, priority, currentDateStr }) {
   return (
     <>
-            <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4 mb-5 gap-4">
-              {/* Company Logo & Identity */}
-              <div className="flex items-center gap-3.5">
-                <img
-                  src={gemmaLogo}
-                  alt="Gemma Knits Logo"
-                  className="w-13 h-13 object-contain drop-shadow-xs"
-                />
-                <div>
-                  <h1 className="text-base font-black tracking-tight text-slate-950 uppercase leading-tight">
-                    บริษัท เจมม่า นิตติ้ง จำกัด (Gemma Knits (Thailand)Co., Ltd.)
-                  </h1>
-                  <p className="text-[11px] font-bold text-slate-700 tracking-wide uppercase mt-0.5">
-                    TEXTILE OPERATIONS CMMS · MAINTENANCE & ENGINEERING
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                    ระบบบริหารจัดการงานบำรุงรักษาและควบคุมการผลิตสิ่งทอ
-                  </p>
-                </div>
-              </div>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 mb-3" style={{ borderBottom: `1px solid ${REPORT_COLORS.line}`, breakAfter: 'avoid' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <img src={gemmaLogo} alt="Gemma Knits Logo" className="w-11 h-11 object-contain shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-[13px] font-extrabold tracking-tight leading-tight" style={{ color: REPORT_COLORS.primary }}>
+              บริษัท เจมม่า นิตติ้ง จำกัด
+            </h1>
+            <p className="text-[10px] font-semibold mt-0.5" style={{ color: REPORT_COLORS.muted }}>
+              Gemma Knits (Thailand) Co., Ltd. · TextileOps CMMS
+            </p>
+          </div>
+        </div>
 
-              {/* Document Type Badge & Identification */}
-              <div className="text-right">
-                <div
-                  className="inline-flex items-center gap-1.5 px-3 py-1 text-white rounded-md text-xs font-black tracking-wider uppercase mb-1.5 shadow-xs"
-                  style={{ backgroundColor: theme.accent }}
-                >
-                  <span>{theme.icon}</span>
-                  <span>{title}</span>
-                </div>
-                <div className="text-[11.5px] font-mono text-slate-800 flex items-center justify-end gap-1">
-                  <span className="text-slate-500 font-sans text-[10.5px]">เลขที่เอกสาร:</span>
-                  <strong className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-900 font-bold border border-slate-200">
-                    {docNo || 'DOC-' + format(new Date(), 'yyyyMMdd')}
-                  </strong>
-                </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">
-                  วันที่เอกสาร: <span className="font-semibold text-slate-700">{formattedDocDate}</span>
-                </div>
-              </div>
-            </div>
+        <div className="sm:text-right shrink-0">
+          <div
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-bold tracking-wide mb-1 max-w-full"
+            style={{ backgroundColor: REPORT_COLORS.accent, color: REPORT_COLORS.primary }}
+          >
+            <span>{theme.icon}</span>
+            <span>{title}</span>
+          </div>
+          <div className="text-[10.5px] font-mono font-bold" style={{ color: REPORT_COLORS.ink }}>
+            {docNo || 'DOC-' + format(new Date(), 'yyyyMMdd')}
+          </div>
+          <div className="text-[10px] mt-0.5" style={{ color: REPORT_COLORS.muted }}>
+            วันที่เอกสาร: {formattedDocDate}
+          </div>
+        </div>
+      </div>
 
-            {/* ── STATUS & METADATA BAR ── */}
-            <div className="flex items-center justify-between bg-slate-50/90 border border-slate-200 rounded-lg p-2.5 mb-5 text-xs">
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* Status Badge */}
-                {status && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">สถานะ:</span>
-                    <span
-                      style={{
-                        backgroundColor: statusCfg.bg,
-                        color: statusCfg.text,
-                        borderColor: statusCfg.border,
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-[11px] border"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusCfg.dot }} />
-                      <span>{status}</span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Priority / Extra Tag */}
-                {priority && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">ข้อมูลจำเพาะ / ตำแหน่ง:</span>
-                    <span className="px-2.5 py-0.5 rounded-md font-bold text-[11px] bg-slate-200/80 text-slate-800 border border-slate-300">
-                      {priority}
-                    </span>
-                  </div>
-                )}
-
-                {/* Doc Code Tag */}
-                <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white text-slate-600 border border-slate-200">
-                  {theme.code}
-                </span>
-              </div>
-
-              <div className="text-[10px] text-slate-500 font-medium">
-                พิมพ์เมื่อ: <span className="font-mono text-slate-700 font-bold">{currentDateStr}</span>
-              </div>
-            </div>
+      <div
+        className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 mb-3 text-[10.5px]"
+        style={{ backgroundColor: REPORT_COLORS.zebra, color: REPORT_COLORS.ink, breakAfter: 'avoid' }}
+      >
+        <div className="flex items-center gap-3 flex-wrap">
+          {status && (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold"
+              style={{ backgroundColor: statusCfg.bg, color: statusCfg.text, border: `1px solid ${statusCfg.border}` }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusCfg.dot }} />
+              {status}
+            </span>
+          )}
+          {priority && (
+            <span className="font-semibold" style={{ color: REPORT_COLORS.muted }}>
+              ข้อมูลจำเพาะ / ตำแหน่ง: <b style={{ color: REPORT_COLORS.ink }}>{priority}</b>
+            </span>
+          )}
+          <span className="px-2 py-0.5 rounded font-mono font-bold" style={{ backgroundColor: '#ffffff', color: REPORT_COLORS.muted, border: `1px solid ${REPORT_COLORS.line}` }}>
+            {theme.code}
+          </span>
+        </div>
+        <div className="font-medium" style={{ color: REPORT_COLORS.muted }}>
+          พิมพ์เมื่อ: <span className="font-mono font-bold" style={{ color: REPORT_COLORS.ink }}>{currentDateStr}</span>
+        </div>
+      </div>
     </>
   )
 }

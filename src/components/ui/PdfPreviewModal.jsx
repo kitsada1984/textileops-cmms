@@ -14,7 +14,7 @@ import {
 import { getDirectImageUrl, getImageFallbackUrls, getFullResolutionImageUrl } from '../../utils/imageUrlUtils'
 import { convertHeicDataUrlIfNeeded } from '../../utils/imageFileProcessor'
 import { getStatusStyle, buildSelectableItems, resolvePrintHeader } from './pdfPrintMeta'
-import { buildReportFilename } from './reportTheme'
+import { REPORT_COLORS, buildReportFilename } from './reportTheme'
 import { PdfReportCover } from './PdfReportCover'
 import { PdfSummaryCards } from './PdfSummaryCards'
 import { PdfReportChart } from './PdfReportChart'
@@ -254,9 +254,14 @@ export default function PdfPreviewModal({
 
   const { theme, currentDateStr, formattedDocDate, qrValue } = resolvePrintHeader({ docType, docDate, docNo })
   const statusCfg = getStatusStyle(status)
+  const cssText = (value) => String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n\t]+/g, ' ')
+    .trim()
 
   return createPortal(
-    <div className="fixed inset-0 z-[999] flex flex-col bg-slate-900/85 backdrop-blur-md overflow-y-auto">
+    <div id="pdf-preview-root" className="fixed inset-0 z-[999] flex flex-col bg-slate-900/85 backdrop-blur-md overflow-y-auto">
       {/* ── TOP ACTION BAR (Hidden when printing) ── */}
       <PdfTopBar title={title} docNo={docNo} theme={theme} handlePrint={handlePrint} onClose={onClose} />
 
@@ -266,21 +271,48 @@ export default function PdfPreviewModal({
       {/* ── PRINT STYLES ── */}
       <style>{`
         @media print {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            overflow: visible !important;
+          }
           body * {
             visibility: hidden;
           }
           #printable-pdf-document, #printable-pdf-document * {
             visibility: visible;
           }
+          body > #root {
+            display: none !important;
+          }
+          #pdf-preview-root {
+            position: static !important;
+            display: block !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            backdrop-filter: none !important;
+          }
+          #pdf-preview-root > :not(#pdf-preview-scroll) {
+            display: none !important;
+          }
+          #pdf-preview-scroll {
+            display: block !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
           #printable-pdf-document {
             position: static !important;
+            display: block !important;
             overflow: visible !important;
             height: auto !important;
             min-height: auto !important;
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
-            padding: 10mm 12mm !important;
+            padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
             background: #ffffff !important;
@@ -295,48 +327,77 @@ export default function PdfPreviewModal({
             page-break-inside: avoid;
             page-break-after: auto;
           }
-          .print-report-footer {
-            display: flex !important;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 9px;
-            color: #64748b;
-            padding: 4mm 12mm;
+          #printable-pdf-document thead {
+            display: table-header-group;
           }
-          .print-report-footer .pageno::after {
-            content: counter(page);
+          #printable-pdf-document figure,
+          #printable-pdf-document .card,
+          #printable-pdf-document .chart {
+            break-inside: avoid;
           }
-          .print-report-footer .pagecount::after {
-            content: counter(pages);
+          #printable-pdf-document h1,
+          #printable-pdf-document h2,
+          #printable-pdf-document h3 {
+            break-after: avoid;
           }
-        }
-        .print-report-footer {
-          display: none;
-        }
+          #printable-pdf-document p {
+            orphans: 3;
+            widows: 3;
+          }
           @page {
             size: A4 portrait;
-            margin: 8mm;
+            margin: 20mm;
+            @top-left {
+              content: "${cssText(title)}";
+              font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;
+              font-size: 8pt;
+              color: #64748b;
+            }
+            @top-right {
+              content: "${cssText(docNo || '')}";
+              font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;
+              font-size: 8pt;
+              color: #64748b;
+            }
+            @bottom-left {
+              content: "${cssText(currentDateStr)}";
+              font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;
+              font-size: 8pt;
+              color: #64748b;
+            }
+            @bottom-center {
+              content: "TextileOps CMMS";
+              font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;
+              font-size: 8pt;
+              color: #94a3b8;
+            }
+            @bottom-right {
+              content: "หน้า " counter(page) " / " counter(pages);
+              font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;
+              font-size: 8pt;
+              color: #64748b;
+            }
+          }
+          @page :first {
+            @top-left { content: none; }
+            @top-right { content: none; }
           }
         }
       `}</style>
 
       {/* ── PREVIEW WRAPPER ── */}
-      <div className="flex-1 p-4 sm:p-8 flex justify-center items-start">
+      <div id="pdf-preview-scroll" className="flex-1 p-4 sm:p-8 flex justify-center items-start">
         {/* ── A4 PAPER SHEET ── */}
         <div
           id="printable-pdf-document"
           ref={printRef}
           className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-sm border border-slate-200 flex flex-col justify-between font-report relative overflow-hidden"
-          style={{ boxSizing: 'border-box' }}
+          style={{ boxSizing: 'border-box', colorScheme: 'light' }}
         >
           {/* Top Decorative Accent Line */}
           <div
-            className="absolute top-0 left-0 right-0 h-[4px]"
-            style={{ background: `linear-gradient(90deg, ${theme.accent}, #0f172a)` }}
+            className="absolute top-0 left-0 right-0 h-[3px]"
+            style={{ background: REPORT_COLORS.accent }}
           />
 
           {/* ── COVER PAGE (opt-in) ── */}
@@ -349,23 +410,24 @@ export default function PdfPreviewModal({
           <PdfSummaryCards items={summary} />
 
             {/* ── SECTION GROUPS ── */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {sections.map((sec, idx) => isExcluded(`sec-${idx}`) ? null : (
-                <div key={idx} className="space-y-1.5">
+                <div key={idx} className="space-y-2 card" style={{ breakInside: 'avoid' }}>
                   {sec.title && (
-                    <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
-                      <span className="w-2 h-3.5 rounded-xs" style={{ backgroundColor: theme.accent }} />
-                      <span>{sec.title}</span>
+                    <div className="flex items-center gap-2" style={{ color: REPORT_COLORS.primary }}>
+                      <span className="w-1 h-4 rounded-full" style={{ backgroundColor: REPORT_COLORS.accent }} />
+                      <span className="text-[16px] font-bold">{sec.title}</span>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50/60 p-2.5 rounded-xl border border-slate-200">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {sec.fields.map((f, fIdx) => (
                       <div
                         key={fIdx}
-                        className={`${f.full ? 'col-span-2 sm:col-span-4' : 'col-span-1 sm:col-span-2'} p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs`}
+                        className={`${f.full ? 'col-span-2 sm:col-span-4' : 'col-span-1 sm:col-span-2'} p-2 rounded-lg`}
+                        style={{ backgroundColor: REPORT_COLORS.zebra }}
                       >
-                        <div className="text-[9.5px] font-bold text-slate-500 uppercase tracking-tight mb-0.5">
+                        <div className="text-[10px] font-bold uppercase tracking-tight mb-0.5" style={{ color: REPORT_COLORS.muted }}>
                           {f.label}
                         </div>
 
@@ -387,7 +449,7 @@ export default function PdfPreviewModal({
                             ))}
                           </div>
                         ) : (
-                          <div className={`text-[12px] font-bold text-slate-900 ${f.mono ? 'font-mono' : ''} break-words mt-0.5 leading-snug`}>
+                          <div className={`text-[11px] font-semibold break-words mt-0.5 leading-snug ${f.mono ? 'font-mono' : ''}`} style={{ color: REPORT_COLORS.ink }}>
                             {f.value !== null && f.value !== undefined && f.value !== '' ? String(f.value) : '—'}
                           </div>
                         )}
@@ -397,41 +459,37 @@ export default function PdfPreviewModal({
                 </div>
               ))}
 
-              <PdfDataTable gateKey='table' table={tableData} themeAccent={theme.accent} isExcluded={isExcluded} />
+              <PdfDataTable gateKey='table' table={tableData} themeAccent={REPORT_COLORS.accent} isExcluded={isExcluded} />
 
-              <PdfDataTable gateKey='history' table={historyTable} themeAccent={theme.accent} isExcluded={isExcluded} />
+              <PdfDataTable gateKey='history' table={historyTable} themeAccent={REPORT_COLORS.accent} isExcluded={isExcluded} />
 
               {/* ── CHART (opt-in) ── */}
               <PdfReportChart chart={chart} />
 
               {/* ── ATTACHED PHOTO GALLERY (STANDARDIZED PHOTO SHOWCASE) ── */}
-              {!isExcluded('images') && <PdfPhotoGallery images={images} docAccent={theme.accent} />}
+              {!isExcluded('images') && <PdfPhotoGallery images={images} docAccent={REPORT_COLORS.accent} />}
 
               {/* ── REMARKS / NOTES ── */}
               {!isExcluded('remarks') && remarks && (
-                <div className="space-y-1 mt-4">
-                  <div className="text-[11px] font-black uppercase text-slate-800 tracking-wider flex items-center gap-2 border-b border-slate-200 pb-1">
-                    <span className="w-2 h-3.5 bg-slate-600 rounded-xs" />
-                    <span>หมายเหตุและบันทึกเพิ่มเติม (Remarks & Observations)</span>
+                <div className="space-y-2 mt-4 card" style={{ breakInside: 'avoid' }}>
+                  <div className="flex items-center gap-2" style={{ color: REPORT_COLORS.primary }}>
+                    <span className="w-1 h-4 rounded-full" style={{ backgroundColor: REPORT_COLORS.accent }} />
+                    <span className="text-[16px] font-bold">หมายเหตุและบันทึกเพิ่มเติม</span>
                   </div>
-                  <div className="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200 text-xs text-slate-800 whitespace-pre-line leading-relaxed border-l-4" style={{ borderLeftColor: theme.accent }}>
+                  <div
+                    className="p-4 rounded-xl text-[11px] whitespace-pre-line leading-relaxed"
+                    style={{ backgroundColor: '#fffaeb', borderLeft: `4px solid ${REPORT_COLORS.accent}`, color: REPORT_COLORS.ink }}
+                  >
                     {remarks}
                   </div>
                 </div>
               )}
             </div>
-          </div>
 
           {/* ── BOTTOM SECTION: SIGNATURES & VERIFICATION ── */}
           <PdfSignatures signatories={signatories} isExcluded={isExcluded} qrValue={qrValue} docNo={docNo} currentDateStr={currentDateStr} />
-
-          {/* ── PRINT FOOTER: date · doc · page x/y (print only) ── */}
-          <div className="print-report-footer">
-            <span>{currentDateStr}</span>
-            <span>{docNo || title}</span>
-            <span>หน้า <span className="pageno" /> / <span className="pagecount" /></span>
-          </div>
         </div>
+      </div>
     </div>,
     document.body
   )

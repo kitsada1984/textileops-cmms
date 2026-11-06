@@ -30,7 +30,7 @@ describe('PdfPreviewModal report extras', () => {
 
     expect(screen.getAllByText('รายงานซ่อม').length).toBeGreaterThan(0)
     expect(screen.getByText('ตามประเภท')).toBeInTheDocument()
-    expect(document.querySelector('.print-report-footer')).not.toBeNull()
+    expect(document.body.innerHTML).toContain('counter(pages)')
   })
 
   it('suggests the spec filename on print', () => {
