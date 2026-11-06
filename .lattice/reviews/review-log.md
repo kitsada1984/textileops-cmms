@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — WorkOrders lifecycle hooks + opener fires
+- **Scope**: 4 effects → custom hooks (same call order); print/interruption openers + page perms
+- **Atoms**: clean-code, architecture, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: JSX in `.js` breaks vite SSR transform — renamed to `.jsx`; mock chains must mirror subscribe shape
+- **Strengths**: 37 files / 173 tests green; realtime channel/params byte-identical
+
 ## 2026-11-06 — WorkOrders modal-opener builders
 - **Scope**: complete/edit/daily openers → pure builders + thin wrappers
 - **Atoms**: clean-code, architecture, test-quality
