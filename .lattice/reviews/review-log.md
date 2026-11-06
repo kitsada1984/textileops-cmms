@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-06 — QR still unscanned (stale-cache verdict)
+- **Scope**: live QR SVG structure (DOM-measured, screenshots unavailable)
+- **Atoms**: clean-code
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: new QR is version-4 (37×37) at 184px — structurally sound; user likely on cached v1.3.256 page
+- **Strengths**: no code change needed; hard-refresh + regenerate resolves
+
 
 ## 2026-11-06 — Release v1.3.257 (QR prefill shorten)
 
