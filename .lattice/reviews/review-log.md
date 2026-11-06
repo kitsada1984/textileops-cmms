@@ -1,5 +1,14 @@
 # Review Log
 
+## 2026-11-06 — Release v1.3.257 (QR prefill shorten)
+- **Scope**: 1-line login text + URL shape test, full suite green, deploy verified
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: live QR URL 225→62 chars, #CODE intact for webhook match
+- **Strengths**: full suite 182/1214; user-approved before change
+
+## 2026-11-06 — LINE secret enforced live (verify)
+
 ## History
 - 2026-11-05 — mobile touch targets (b8edc47) | 18 files, presentation layer only (CSS classes) | 0 critical, 0 warning, 1 suggestion
 - 2026-11-05 — AUTH_SECRET rotation (no code change) | 0 files, secrets infra only (Pages secret set, value never on disk/rep | 0 critical, 0 warning, 0 suggestion
