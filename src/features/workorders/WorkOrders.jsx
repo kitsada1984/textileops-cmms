@@ -15,6 +15,10 @@ import { matchActiveMachine, matchEditActiveMachine } from './workOrderMachines.
 import { buildEditJobPayload, resolveNewlyAddedTechs, notifyAddedTechs, confirmAndRemoveJob } from './workOrderEdit.js'
 import { WorkOrderTechModal } from './WorkOrderTechModal.jsx'
 import { WorkOrdersDashboard } from './WorkOrdersDashboard.jsx'
+import { WorkOrdersHeader } from './WorkOrdersHeader.jsx'
+import { WorkOrdersPrintModal } from './WorkOrdersPrintModal.jsx'
+import { WorkOrdersReportBridge } from './WorkOrdersReportBridge.jsx'
+import { WorkOrdersMachineDatalist } from './WorkOrdersMachineDatalist.jsx'
 import { WorkOrdersCreateFab } from './WorkOrdersCreateFab.jsx'
 import { WorkOrdersCreateModal } from './WorkOrdersCreateModal.jsx'
 import { WorkOrdersCancelModal } from './WorkOrdersCancelModal.jsx'
@@ -27,14 +31,7 @@ import { WorkOrdersRecords } from './WorkOrdersRecords.jsx'
 import { WorkOrdersTechnicians } from './WorkOrdersTechnicians.jsx'
 import { WorkOrdersSettings } from './WorkOrdersSettings.jsx'
 import {
-  RefreshCw,
-  ClipboardList,
-  Target,
-  Wrench,
-  Settings as SettingsIcon,
-  UserCheck,
   Search,
-  Printer,
   AlertCircle,
   FileSpreadsheet,
   Hourglass,
@@ -53,24 +50,17 @@ import {
   TECH_SKILL_LEVELS,
   TECH_SPECIALIZATIONS,
   generateJobId,
-  calculateDuration,
   calculateSlaPerformance,
 } from '../../api/entities'
-import Modal from '../../components/ui/Modal'
 import { useT } from '../../contexts/LanguageContext'
 import usePagePerms from '../../hooks/usePagePerms'
 import useDeviceView from '../../hooks/useDeviceView'
 import { useToast } from '../../components/ui/Toast'
 import { useAuth } from '../../contexts/AuthContext'
-import GoogleSheetSyncButton from '../../components/ui/GoogleSheetSyncButton'
 import { SHEET_EXPORTS } from '../../utils/sheetExportConfigs'
 import RepairRequests from './RepairRequests'
-import PdfPreviewModal from '../../components/ui/PdfPreviewModal'
-import WorkOrdersReportModal from '../../components/workorder/WorkOrdersReportModal'
 import { db } from '../../api/dbClient'
-import { generateWorkOrderPdfProps } from '../../utils/pdfDocGenerators'
 import { notifyLineWorkOrderAssigned } from '../../utils/line'
-import { PROBLEM_CAUSE_OPTIONS } from '../../constants/problemCause'
 import { syncPMWorkOrderToMonthlySchedule, removePMWorkOrderFromMonthlySchedule } from '../../components/pm/PMMonthlyScheduleView'
 
 const DEFAULT_KPI_TARGETS = {
@@ -1434,132 +1424,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   return (
     <div className="space-y-6">
       {/* ── Top Header & Sub-Tabs Navigation ──────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-900)' }}>
-            ระบบบันทึกผลงานช่าง (Work Orders & KPI)
-          </h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-500)' }}>
-            Gemma Knits Maintenance Management System · Version 55
-          </p>
-        </div>
-
-        {/* Action Controls & Sync */}
-        <div className="flex items-center gap-2">
-          {exportConfig && (
-            <GoogleSheetSyncButton
-              sheetName={exportConfig.sheetName}
-              columns={exportConfig.columns}
-              fetchRows={WorkOrderAPI.list}
-              valueGetters={exportConfig.valueGetters}
-            />
-          )}
-          <button
-            type="button"
-            onClick={() => setReportModalOpen(true)}
-            className="btn btn-secondary text-xs flex items-center gap-1.5 shadow-2xs font-bold"
-            title="พิมพ์รายงานใบสั่งงานตามตัวกรองที่เลือก"
-          >
-            <Printer size={14} className="text-blue-500" />
-            <span className="hidden sm:inline">พิมพ์รายงาน</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px]">
-              {filteredJobs.length}
-            </span>
-          </button>
-          <button
-            onClick={() => {
-              loadJobs()
-              loadTechsAndSettings()
-            }}
-            className="btn-outline"
-            title="รีเฟรชข้อมูล"
-          >
-            <RefreshCw size={14} className={jobsLoading ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">รีเฟรช</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── 5-Tabs Navigation Bar (Smooth Horizontal Scroll on Mobile) ── */}
-      <div
-        className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar scrollbar-none flex-nowrap pb-2 sm:pb-1.5 scroll-smooth"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        <button
-          type="button"
-          onClick={() => setCurrentTab('records')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
-            currentTab === 'records'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <ClipboardList size={16} />
-          <span>รายการใบสั่งงาน & เปิดงาน</span>
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-            currentTab === 'records' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-          }`}>
-            {allJobs.filter((j) => !j.IsDeleted).length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCurrentTab('repair_requests')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
-            currentTab === 'repair_requests'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <Wrench size={16} />
-          <span>แจ้งซ่อม (Repair Requests)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCurrentTab('dashboard')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
-            currentTab === 'dashboard'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <Target size={16} />
-          <span>แดชบอร์ด & สรุป KPI</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCurrentTab('technicians')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
-            currentTab === 'technicians'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <UserCheck size={16} />
-          <span>ทะเบียนช่าง</span>
-          <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-            currentTab === 'technicians' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-          }`}>
-            {technicians.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCurrentTab('settings')}
-          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
-            currentTab === 'settings'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <SettingsIcon size={16} />
-          <span>ตั้งค่าเป้าหมาย KPI</span>
-        </button>
-      </div>
+      <WorkOrdersHeader currentTab={currentTab} setCurrentTab={setCurrentTab} exportConfig={exportConfig} filteredJobs={filteredJobs} allJobs={allJobs} technicians={technicians} jobsLoading={jobsLoading} loadJobs={loadJobs} loadTechsAndSettings={loadTechsAndSettings} setReportModalOpen={setReportModalOpen} workOrderList={WorkOrderAPI.list} />
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* ── TAB: REPAIR REQUESTS (แจ้งซ่อม) ────────────────────── */}
@@ -1601,66 +1466,25 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       {/* ══════════════════════════════════════════════════════════ */}
 
       {/* 1. Complete Job Modal */}
-{completeModalOpen && compJob && (
-        <WorkOrdersCompleteModal completeModalOpen={completeModalOpen} compJob={compJob} compCalcDuration={compCalcDuration} compEndDate={compEndDate} compEndTime={compEndTime} compSubmitting={compSubmitting} setCompEndDate={setCompEndDate} setCompEndTime={setCompEndTime} setCompleteModalOpen={setCompleteModalOpen} handleCompleteJob={handleCompleteJob} openInterruptionModal={openInterruptionModal} />
-      )}
+      <WorkOrdersCompleteModal completeModalOpen={completeModalOpen} compJob={compJob} compCalcDuration={compCalcDuration} compEndDate={compEndDate} compEndTime={compEndTime} compSubmitting={compSubmitting} setCompEndDate={setCompEndDate} setCompEndTime={setCompEndTime} setCompleteModalOpen={setCompleteModalOpen} handleCompleteJob={handleCompleteJob} openInterruptionModal={openInterruptionModal} />
 
       {/* 2. Edit Job Modal */}
-{editModalOpen && editJob && (
-        <WorkOrdersEditModal editModalOpen={editModalOpen} editJob={editJob} editTechs={editTechs} editSubmitting={editSubmitting} setEditJob={setEditJob} setEditModalOpen={setEditModalOpen} handleEditJob={handleEditJob} toggleEditTechSelection={toggleEditTechSelection} technicians={technicians} inUseMachines={inUseMachines} matchedEditActiveMachine={matchedEditActiveMachine} />
-      )}
+      <WorkOrdersEditModal editModalOpen={editModalOpen} editJob={editJob} editTechs={editTechs} editSubmitting={editSubmitting} setEditJob={setEditJob} setEditModalOpen={setEditModalOpen} handleEditJob={handleEditJob} toggleEditTechSelection={toggleEditTechSelection} technicians={technicians} inUseMachines={inUseMachines} matchedEditActiveMachine={matchedEditActiveMachine} />
 
       {/* 3. Add / Edit Technician Modal */}
       <WorkOrderTechModal techModalOpen={techModalOpen} setTechModalOpen={setTechModalOpen} editingTechId={editingTechId} techForm={techForm} setTechForm={setTechForm} selectedUserId={selectedUserId} systemUsers={systemUsers} technicians={technicians} handleSaveTech={handleSaveTech} handleSelectUserForTech={handleSelectUserForTech} />
 
       {/* 4. Quick KPI Settings Modal */}
-{kpiModalOpen && (
-        <WorkOrdersKpiModal kpiModalOpen={kpiModalOpen} draftKpi={draftKpi} setDraftKpi={setDraftKpi} setKpiModalOpen={setKpiModalOpen} handleSaveKpiSettings={handleSaveKpiSettings} />
-      )}
+      <WorkOrdersKpiModal kpiModalOpen={kpiModalOpen} draftKpi={draftKpi} setDraftKpi={setDraftKpi} setKpiModalOpen={setKpiModalOpen} handleSaveKpiSettings={handleSaveKpiSettings} />
 
       {/* 6. Interruption & Lost Time Modal */}
         <WorkOrdersInterruptionModal interruptionModalOpen={interruptionModalOpen} interruptionJob={interruptionJob} setInterruptionModalOpen={setInterruptionModalOpen} interruptionTaskName={interruptionTaskName} setInterruptionTaskName={setInterruptionTaskName} interruptionManualMins={interruptionManualMins} setInterruptionManualMins={setInterruptionManualMins} interruptionManualNotes={interruptionManualNotes} setInterruptionManualNotes={setInterruptionManualNotes} showManualAdd={showManualAdd} setShowManualAdd={setShowManualAdd} handleAddManualInterruption={handleAddManualInterruption} handleDeleteInterruption={handleDeleteInterruption} handleStartInterruption={handleStartInterruption} handleStopInterruption={handleStopInterruption} getJobInterruptions={getJobInterruptions} QUICK_INTERRUPTION_PRESETS={QUICK_INTERRUPTION_PRESETS} />
 
       {/* 5. Print A4 PDF Report Modal */}
-      {printModalOpen && printJob && (
-        <PdfPreviewModal
-          open={printModalOpen}
-          onClose={() => setPrintModalOpen(false)}
-          {...generateWorkOrderPdfProps({
-            ...printJob,
-            WONumber: printJob.Job_ID || printJob['Job ID'],
-            OrderDate: printJob.StartDate,
-            WOType: printJob.JobType === 'DESIGN' ? 'ปรับแบบ (Design)' : printJob.JobType === 'PM' ? 'บำรุงรักษา (PM)' : printJob.JobType === 'SETUP' ? 'เตรียมเครื่อง (Setup)' : 'แก้ไขเครื่อง (Repair)',
-            MachineID: printJob.MC,
-            KI: printJob.KI,
-            Design: printJob.Design,
-            RollNo: printJob.RollNo || printJob.roll_no || '',
-            AssignedTo: printJob.Technicians,
-            Title: printJob.Design ? `งานปรับแบบ: ${printJob.Design}` : `งานซ่อมบำรุง: ${printJob.MC}`,
-            Description: printJob.Comment,
-            Duration: printJob.WorkingDurationText || printJob.WorkingHoursDecimal,
-            StartTime: `${printJob.StartDate || ''} ${printJob.StartTime || ''}`.trim(),
-            EndTime: printJob.EndDate ? `${printJob.EndDate} ${printJob.EndTime || ''}`.trim() : 'ยังไม่เสร็จสิ้น',
-          })}
-        />
-      )}
+      <WorkOrdersPrintModal printModalOpen={printModalOpen} printJob={printJob} setPrintModalOpen={setPrintModalOpen} />
 
       {/* 6. Filtered Work Orders Print Report Modal */}
-      {reportModalOpen && (
-        <WorkOrdersReportModal
-          open={reportModalOpen}
-          onClose={() => setReportModalOpen(false)}
-          items={filteredJobs}
-          filterContext={{
-            typeFilters,
-            statusFilters,
-            search,
-            showDeleted,
-          }}
-          kpiTargets={kpiTargets}
-          currentUserName={user?.full_name || user?.line_display_name || user?.username || user?.Name || 'ช่างผู้ใช้งาน'}
-        />
-      )}
+      <WorkOrdersReportBridge reportModalOpen={reportModalOpen} setReportModalOpen={setReportModalOpen} filteredJobs={filteredJobs} typeFilters={typeFilters} statusFilters={statusFilters} search={search} showDeleted={showDeleted} kpiTargets={kpiTargets} user={user} />
 
       {/* 6. Daily Progress Update Modal (อัปเดตงานประจำวัน / บันทึกจบวัน) */}
         <WorkOrdersDailyLogModal dailyLogModalOpen={dailyLogModalOpen} dailyLogJob={dailyLogJob} setDailyLogModalOpen={setDailyLogModalOpen} dailyLogDate={dailyLogDate} setDailyLogDate={setDailyLogDate} dailyLogDetails={dailyLogDetails} setDailyLogDetails={setDailyLogDetails} dailyLogHours={dailyLogHours} setDailyLogHours={setDailyLogHours} dailyLogStatus={dailyLogStatus} setDailyLogStatus={setDailyLogStatus} dailyLogTechs={dailyLogTechs} setDailyLogTechs={setDailyLogTechs} dailyLogSubmitting={dailyLogSubmitting} cancellingJobSubmitting={cancellingJobSubmitting} handleSaveDailyLog={handleSaveDailyLog} handleDeleteDailyLog={handleDeleteDailyLog} openCancelJobConfirm={openCancelJobConfirm} technicians={technicians} allJobs={allJobs} canEdit={canEdit} canDelete={canDelete} />
@@ -1672,16 +1496,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
         <WorkOrdersCreateModal createModalOpen={createModalOpen} setCreateModalOpen={setCreateModalOpen} handleStartJob={handleStartJob} submittingStart={submittingStart} mc={mc} setMc={setMc} ki={ki} setKi={setKi} design={design} setDesign={setDesign} jobType={jobType} setJobType={setJobType} status={status} setStatus={setStatus} problemCause={problemCause} setProblemCause={setProblemCause} rollNo={rollNo} setRollNo={setRollNo} comment={comment} setComment={setComment} selectedTechs={selectedTechs} toggleTechSelection={toggleTechSelection} technicians={technicians} inUseMachines={inUseMachines} matchedActiveMachine={matchedActiveMachine} user={user} />
 
       {/* Shared In-use Machines Datalist for Autocomplete in Create/Edit Work Order */}
-      <datalist id="wo-inuse-machines">
-        {inUseMachines.map((m) => (
-          <option
-            key={m.code}
-            value={m.code}
-          >
-            {m.code} ({m.location ? `โซน ${m.location}` : ''}{m.standard ? ` · ${m.standard}` : ''}{m.diameter ? ` · ${m.diameter}"` : ''}{m.gauge ? ` ${m.gauge}G` : ''})
-          </option>
-        ))}
-      </datalist>
+      <WorkOrdersMachineDatalist inUseMachines={inUseMachines} />
 
       {/* Mobile Floating Action Button (FAB) for Opening Work Order (Portaled to document.body to lock viewport position) */}
       <WorkOrdersCreateFab currentTab={currentTab} canAdd={canAdd} setCreateModalOpen={setCreateModalOpen} />
