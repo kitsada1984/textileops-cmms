@@ -1,7 +1,16 @@
 # Review Log
 
 
+## 2026-11-06 — LINE QR scan confirmed working (user-verified)
+
+- **Scope**: user phone scan on live v1.3.258
+- **Atoms**: test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion
+- **Key findings**: quiet-zone fix resolved the scan failure
+- **Strengths**: diagnose → prove → fix → release loop closed
+
 ## 2026-11-06 — Release v1.3.258 (QR quiet zone)
+
 
 - **Scope**: QRCodeSVG includeMargin + 184→200px, full suite green, deploy verified
 - **Atoms**: clean-code, test-quality
@@ -10,6 +19,7 @@
 - **Strengths**: full suite 182/1214; user-approved before change
 
 ## 2026-11-06 — QR still unscanned (stale-cache verdict)
+
 
 - **Scope**: live QR SVG structure (DOM-measured, screenshots unavailable)
 - **Atoms**: clean-code
@@ -20,6 +30,7 @@
 ## 2026-11-06 — Release v1.3.257 (QR prefill shorten)
 
 
+
 - **Scope**: 1-line login text + URL shape test, full suite green, deploy verified
 - **Atoms**: clean-code, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -27,6 +38,7 @@
 - **Strengths**: full suite 182/1214; user-approved before change
 
 ## 2026-11-06 — LINE secret enforced live (verify)
+
 
 
 
@@ -96,7 +108,10 @@
 
 - 2026-11-06 — WorkOrders cancel modal | 68-line IIFE modal moved verbatim (gate + IIFE inside component) | 0 critical, 0 warning, 0 suggestion
 - 2026-11-06 — WorkOrders create modal | 230-line modal moved verbatim, props-only | 0 critical, 0 warning, 0 suggestion
+
+- 2026-11-06 — WorkOrders create FAB portal | 12-line portaled FAB moved verbatim, props-only | 0 critical, 0 warning, 0 suggestion
 ## 2026-11-06 — LINE secret enforced live (verify)
+
 
 
 
@@ -110,6 +125,7 @@
 
 
 
+
 - **Scope**: bump 4 targets, full suite green, build after bump, Pages deploy
 - **Atoms**: test-quality, secure-coding
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -117,6 +133,7 @@
 - **Strengths**: signature gate + loud failures now live; secret still needs Pages env to enforce
 
 ## 2026-11-06 — LINE webhook signature + loud failures (fix)
+
 
 
 
@@ -130,6 +147,7 @@
 
 
 
+
 - **Scope**: QR tab UI + poll + webhook session evidence on prod D1
 - **Atoms**: clean-code, architecture, secure-coding
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -137,6 +155,7 @@
 - **Strengths**: session/poll/match chain proven end-to-end on prod data
 
 ## 2026-11-06 — LINE QR login failure triage
+
 
 
 
@@ -150,6 +169,7 @@
 
 
 
+
 - **Scope**: 0 files (tree clean at bdaa4e0)
 - **Atoms**: none loaded (no delta)
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -157,6 +177,7 @@
 - **Strengths**: trunk stays green between sessions
 
 ## 2026-11-06 — Release v1.3.255 (refactor batch + auth 500 fix)
+
 
 
 
@@ -170,6 +191,7 @@
 
 
 
+
 - **Scope**: login 500 message; label audit
 - **Atoms**: secure-coding, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -177,6 +199,7 @@
 - **Strengths**: no SQL text in UI after fix; 401/400/403 messages untouched
 
 ## 2026-11-06 — WorkOrders modal open-close audit
+
 
 
 
@@ -190,6 +213,7 @@
 
 
 
+
 - **Scope**: 4 effects → custom hooks (same call order); print/interruption openers + page perms
 - **Atoms**: clean-code, architecture, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -197,6 +221,7 @@
 - **Strengths**: 37 files / 173 tests green; realtime channel/params byte-identical
 
 ## 2026-11-06 — WorkOrders modal-opener builders
+
 
 
 
@@ -210,6 +235,7 @@
 
 
 
+
 - **Scope**: openers/builders + save/delete + sync + loader + drilldown, deps-object pattern
 - **Atoms**: clean-code, architecture, secure-coding, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -217,6 +243,7 @@
 - **Strengths**: 35 files / 161 tests green; DB/localStorage surface unchanged (secure)
 
 ## 2026-11-06 — WorkOrders submit/edit/kpi handlers
+
 
 
 
@@ -230,6 +257,7 @@
 
 
 
+
 - **Scope**: header/print/report/datalist moved verbatim; double-gated bridges flattened
 - **Atoms**: clean-code, architecture, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
@@ -240,18 +268,9 @@
 
 
 
+
 - **Scope**: stats/interruptions/machines/filter-toggle modules, verbatim cores + import-back
 - **Atoms**: clean-code, architecture, test-quality
 - **Result**: 0 critical, 0 warning, 0 suggestion
 - **Key findings**: brace-script truncated getJobInterruptions (leftover lines) — fixed; restored overwritten filters test
 - **Strengths**: 18 characterization tests green first run; residual-diff probes ALL-OK
-
-## 2026-11-06 — WorkOrders create FAB portal
-
-
-
-- **Scope**: 12-line portaled FAB moved verbatim, props-only
-- **Atoms**: clean-code, architecture, test-quality
-- **Result**: 0 critical, 0 warning, 0 suggestion
-- **Key findings**: none — Plus/createPortal orphans cleaned
-- **Strengths**: main 4213→1885 lines, complexity 187→48; dir 23 files / 108 tests green
