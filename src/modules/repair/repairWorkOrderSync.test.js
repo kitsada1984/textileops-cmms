@@ -90,6 +90,20 @@ describe('buildRepairWorkOrderPayload', () => {
     expect(comment.interruption_logs).toEqual([{ minutes: 10 }])
   })
 
+  it('syncs WAITING_DYE_TEST when the machine still needs a test run', () => {
+    const dyePayload = buildRepairWorkOrderPayload({
+      woId: 'WO-RR202609-0059',
+      record,
+      techName: 'ช.หนึ่ง',
+      startIso: '2026-09-29T06:00:00.000Z',
+      endIso: '2026-09-29T08:30:00.000Z',
+      durationHours: 2.5,
+      woStatus: 'WAITING_DYE_TEST',
+    })
+    expect(dyePayload.Status).toBe('WAITING_DYE_TEST')
+    expect(dyePayload.WO_ID).toBe('WO-RR202609-0059')
+  })
+
   it('defaults missing priority to LOW', () => {
     const p = buildRepairWorkOrderPayload({
       woId: 'WO-2',

@@ -533,6 +533,10 @@ export function StepComplete({ request, onUpdated }) {
   const [tech, setTech] = useState(request.technician_name || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // Closing outcome chosen by the tech before confirming: a machine that
+  // still needs a test run stays pending as WAITING_DYE_TEST instead of
+  // vanishing into COMPLETED.
+  const [closingStatus, setClosingStatus] = useState('COMPLETED')
 
   // 📦 Hybrid Spare Part Selector State
   const [catalogParts, setCatalogParts] = useState([])
@@ -690,6 +694,7 @@ export function StepComplete({ request, onUpdated }) {
             endIso: now.toISOString(),
             durationHours: netHours,
             detail: details.trim(),
+            woStatus: closingStatus,
             extraComment: {
               gross_duration_hours: grossHours,
               sunday_duration_hours: durationRes.sundayHoursDecimal,
@@ -973,6 +978,25 @@ export function StepComplete({ request, onUpdated }) {
 
         {/* ⏱️ ส่วนสรุประยะเวลา & บันทึกงานแทรก/เวลาที่สูญเสียไป */}
         <StepCompleteDuration durationRes={durationRes} showIntSection={showIntSection} setShowIntSection={setShowIntSection} intTaskName={intTaskName} setIntTaskName={setIntTaskName} intMins={intMins} setIntMins={setIntMins} interruptionLogs={interruptionLogs} handleAddInterruption={handleAddInterruption} handleRemoveInterruption={handleRemoveInterruption} inputStyle={inputStyle} />
+
+        {/* 🏁 สถานะหลังบันทึกปิดงาน */}
+        <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '12px 14px' }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
+            🏁 สถานะหลังบันทึกปิดงาน *
+          </label>
+          <select
+            value={closingStatus}
+            onChange={(e) => setClosingStatus(e.target.value)}
+            title="สถานะหลังบันทึกปิดงาน"
+            style={{ ...inputStyle, fontWeight: 700 }}
+          >
+            <option value="COMPLETED">✅ เสร็จสมบูรณ์ — เครื่องพร้อมเดินงาน</option>
+            <option value="WAITING_DYE_TEST">🧪 รอเทส-ย้อม — รอเดินเครื่องทดสอบ</option>
+          </select>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
+            ถ้าเครื่องยังเดินทดสอบไม่ได้ ให้เลือกรอเทส-ย้อม งานจะค้างในใบสั่งงานให้ติดตามต่อ
+          </div>
+        </div>
 
         {error && (
           <div

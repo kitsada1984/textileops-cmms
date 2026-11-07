@@ -25,6 +25,8 @@ const priorityMap = { 'ด่วนที่สุด': 'HIGH', 'ด่วน': 
  * @param {string} args.endIso          ISO end (completed_at)
  * @param {number} args.durationHours   Net working hours
  * @param {string} [args.detail]        Repair solution text
+ * @param {string} [args.woStatus]      Synced WO status (default COMPLETED;
+ *                                      WAITING_DYE_TEST keeps it pending)
  * @param {object} [args.extraComment]  Extra JSON stored in Comment (durations, parts…)
  */
 export function buildRepairWorkOrderPayload({
@@ -35,6 +37,7 @@ export function buildRepairWorkOrderPayload({
   endIso,
   durationHours,
   detail = '',
+  woStatus = 'COMPLETED',
   extraComment = {},
 }) {
   const priority = record.priority || 'ปกติ'
@@ -59,7 +62,7 @@ export function buildRepairWorkOrderPayload({
     StartTime: startIso,
     EndTime: endIso,
     Duration: durationHours,
-    Status: 'COMPLETED',
+    Status: woStatus,
     ProblemCause: record.problem_cause || record.ProblemCause || '',
     LastUpdated: new Date().toISOString(),
     Comment: JSON.stringify({

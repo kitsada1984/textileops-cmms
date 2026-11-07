@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Closing-status dropdown on repair close page (waza-check)
+- **Scope**: 2 files + 2 test files, StepComplete close flow and repair→WO sync payload
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (repair record still closes COMPLETED; WO carries the dye-test state)
+- **Key findings**: close flow hardcoded COMPLETED on both records; synced WO vanished from pending even when test run pending
+- **Strengths**: 6 files / 39 tests green; woStatus optional param keeps existing callers unchanged
+
 ## 2026-11-07 — Release v1.3.269 deployed (repair quick status)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 506f2bf8
 - **Atoms**: clean-code, test-quality, waza-check
