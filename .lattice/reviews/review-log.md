@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.268 deployed (pre-ticked filter + dye-test status)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 0f7c1b0b
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (workorders+dashboard 230+21 tests green)
+- **Key findings**: pre-ticked 5 pending incl. WAITING_DYE_TEST; dashboard badge teal added post-approval
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.268
+
 ## 2026-11-07 — Pre-ticked pending filter + new WAITING_DYE_TEST status (waza-check)
 - **Scope**: 10 files + 4 test files, WO status pipeline, badges, report, LINE flex, PM sync comment
 - **Atoms**: clean-code, test-quality
