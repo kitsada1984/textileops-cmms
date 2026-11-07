@@ -77,6 +77,7 @@ describe('RepairRequests characterization', () => {
 
     fireEvent.click(screen.getAllByText('REQ-001')[0])
     const quickSelect = await screen.findByTitle('เปลี่ยนสถานะใบแจ้งซ่อมด่วน')
+    expect(quickSelect).toHaveAttribute('aria-label', 'เปลี่ยนสถานะใบแจ้งซ่อม')
 
     fireEvent.change(quickSelect, { target: { value: 'IN_PROGRESS' } })
 
@@ -102,6 +103,7 @@ describe('RepairRequests characterization', () => {
 
     fireEvent.click(screen.getAllByText('REQ-001')[0])
     const quickSelect = await screen.findByTitle('เปลี่ยนสถานะใบแจ้งซ่อมด่วน')
+    expect(quickSelect).toHaveAttribute('aria-label', 'เปลี่ยนสถานะใบแจ้งซ่อม')
     const names = Array.from(quickSelect.querySelectorAll('option')).map((o) => o.textContent).join(' ')
     for (const label of ['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'รอเทส-ย้อม', 'เสร็จสิ้น', 'ยกเลิก']) {
       expect(names).toContain(label)

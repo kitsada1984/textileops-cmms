@@ -49,3 +49,5 @@ Thumbs.db
 
 .mimosa/
 .skill-eval/
+.web-qa/node_modules/
+.web-qa/reports/

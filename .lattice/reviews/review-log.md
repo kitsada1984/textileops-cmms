@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Fix web-qa findings: aria labels + kpi_settings table (waza-check)
+- **Scope**: 4 files + 1 migration, a11y labels and D1 table
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (contrast/viewport notes deferred as intended)
+- **Key findings**: icon-only refresh button; title-only selects; kpi_settings absent on D1
+- **Strengths**: 41 files / 216 tests green; migration verified live (table exists, 0 rows)
+
 ## 2026-11-07 — Release v1.3.274 deployed (drop unified tab)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, e9004797
 - **Atoms**: clean-code, test-quality, waza-check

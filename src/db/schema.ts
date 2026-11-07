@@ -479,3 +479,16 @@ export const d1_change_log = sqliteTable('_d1_change_log', {
 }))
 export type D1ChangeLog = InferSelectModel<typeof d1_change_log>
 export type NewD1ChangeLog = InferInsertModel<typeof d1_change_log>
+
+// 19. kpi_settings (per-type SLA targets; Key/Value casing matches KpiSettingsAPI)
+export const kpi_settings = sqliteTable('kpi_settings', {
+  id: text('id').primaryKey(),
+  Key: text('Key').unique(),
+  Value: text('Value'),
+  created_at: text('created_at').$defaultFn(() => new Date().toISOString()),
+  updated_at: text('updated_at').$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  keyIdx: index('idx_kpi_settings_key').on(table.Key),
+}))
+export type KpiSetting = InferSelectModel<typeof kpi_settings>
+export type NewKpiSetting = InferInsertModel<typeof kpi_settings>

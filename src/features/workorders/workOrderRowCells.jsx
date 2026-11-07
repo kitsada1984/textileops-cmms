@@ -83,6 +83,7 @@ export function WorkOrderStatusCell({ job, statusMeta, canEdit, handleQuickStatu
                               onChange={(e) => handleQuickStatusChange(job, e.target.value)}
                               className={`badge ${statusMeta.badgeClass} cursor-pointer font-bold border-0 pr-5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40`}
                               title="คลิกเพื่อเปลี่ยนสถานะใบสั่งงาน"
+                              aria-label="สถานะใบสั่งงาน"
                             >
                               {WORK_ORDER_STATUS_OPTIONS.map((opt) => (
                                 <option

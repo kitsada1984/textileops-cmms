@@ -77,7 +77,9 @@ describe('workOrderRowCells characterization', () => {
       </table>
     )
 
-    fireEvent.change(screen.getByTitle('คลิกเพื่อเปลี่ยนสถานะใบสั่งงาน'), {
+    const select = screen.getByTitle('คลิกเพื่อเปลี่ยนสถานะใบสั่งงาน')
+    expect(select).toHaveAttribute('aria-label', 'สถานะใบสั่งงาน')
+    fireEvent.change(select, {
       target: { value: 'COMPLETED' },
     })
     expect(onChange).toHaveBeenCalledWith(job, 'COMPLETED')

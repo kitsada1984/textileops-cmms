@@ -526,6 +526,7 @@ export default function RepairRequests() {
               className="btn-ghost text-xs flex items-center gap-1.5 active:scale-95 transition-all duration-150 py-2 px-3 rounded-xl whitespace-nowrap min-h-[44px]"
               onClick={load}
               disabled={loading}
+              aria-label={t('refresh')}
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
               <span className="hidden xs:inline">{t('refresh')}</span>
@@ -794,6 +795,7 @@ export default function RepairRequests() {
             disabled={statusSaving || !canEdit}
             onChange={(e) => quickRepairStatus(detailRec, e.target.value)}
             title="เปลี่ยนสถานะใบแจ้งซ่อมด่วน"
+            aria-label="เปลี่ยนสถานะใบแจ้งซ่อม"
             style={{
               padding: '9px 12px', borderRadius: 11, fontSize: 12, fontWeight: 700,
               cursor: statusSaving ? 'wait' : 'pointer', background: 'var(--bg-page)',
