@@ -50,6 +50,7 @@ describe('D1TestPage - Pilot Page for TanStack Table Integration & Cloudflare Qu
           json: () =>
             Promise.resolve({
               ok: true,
+              source: 'cloudflare_api',
               plan: 'Cloudflare Free Plan',
               has_warning: true,
               quotas: {
@@ -150,10 +151,26 @@ describe('D1TestPage - Pilot Page for TanStack Table Integration & Cloudflare Qu
     expect(screen.getByText('D1 STORAGE SIZE')).toBeInTheDocument()
     expect(screen.getByText('PAGES FUNCTIONS (24H)')).toBeInTheDocument()
 
-    // Warning banner should be present due to 88.6% rows read
-    expect(screen.getByText(/⚠️ แจ้งเตือน: การอ่านข้อมูล D1 \(Rows Read\) อยู่ในระดับเสี่ยงสูง/)).toBeInTheDocument()
+    // Warning banner appears once live telemetry arrives (not from placeholder)
+    await waitFor(() => {
+      expect(screen.getByText(/⚠️ แจ้งเตือน: การอ่านข้อมูล D1 \(Rows Read\) อยู่ในระดับเสี่ยงสูง/)).toBeInTheDocument()
+    })
     expect(screen.getByText('⚠️ ใกล้ติดลิมิต')).toBeInTheDocument()
     expect(screen.getByText(/อ่านคำสั่ง \(Read Queries\):/)).toBeInTheDocument()
+  })
+
+  it('shows a neutral placeholder (no false critical) when quota fetch fails', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/d1/quota')) return Promise.reject(new Error('offline'))
+      return Promise.reject(new Error(`Unhandled URL: ${url}`))
+    })
+    render(<D1TestPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('ยังไม่เชื่อมต่อข้อมูลโควต้าสด')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/อยู่ในระดับเสี่ยงสูง/)).not.toBeInTheDocument()
+    expect(screen.queryByText('⚠️ ใกล้ติดลิมิต')).not.toBeInTheDocument()
   })
 
   it('opens and closes Cloudflare API Token configuration modal', async () => {

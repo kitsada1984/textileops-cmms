@@ -68,7 +68,7 @@ export async function onRequestGet(context) {
     const pollNext = async () => {
       if (isAborted) return
       try {
-        let sql = 'SELECT * FROM _d1_change_log WHERE id > ?'
+        let sql = 'SELECT id, table_name, action, record_id, data, created_at FROM _d1_change_log WHERE id > ?'
         const params = [currentSinceId]
 
         if (filterTable) {
@@ -161,7 +161,7 @@ export async function onRequestGet(context) {
       })
     }
 
-    let sql = 'SELECT * FROM _d1_change_log WHERE id > ?'
+    let sql = 'SELECT id, table_name, action, record_id, data, created_at FROM _d1_change_log WHERE id > ?'
     const params = [lastEventId]
 
     if (filterTable) {

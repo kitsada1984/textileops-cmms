@@ -28,8 +28,10 @@ const TABLES = [
 ]
 
 const DEFAULT_QUOTA_DATA = {
+  source: 'placeholder',
+  needs_token: true,
   plan: 'Cloudflare Free Plan',
-  has_warning: true,
+  has_warning: false,
   reset_schedule: {
     time_utc: '00:00 UTC',
     time_th: '07:00 น. (เวลาไทย)',
@@ -38,50 +40,50 @@ const DEFAULT_QUOTA_DATA = {
   quotas: {
     rows_read: {
       label: 'การอ่านแถวข้อมูล D1 (Rows Read)',
-      current: 4431650,
+      current: 0,
       limit: 5000000,
-      percent: 88.63,
-      level: 'critical',
-      readable_current: '4.43M',
+      percent: 0,
+      level: 'normal',
+      readable_current: '—',
       readable_limit: '5.00M',
       unit: 'แถว/วัน',
     },
     rows_written: {
       label: 'การเขียนแถวข้อมูล D1 (Rows Written)',
-      current: 685,
+      current: 0,
       limit: 100000,
-      percent: 0.69,
+      percent: 0,
       level: 'normal',
-      readable_current: '685',
+      readable_current: '—',
       readable_limit: '100,000',
       unit: 'แถว/วัน',
     },
     storage: {
       label: 'พื้นที่จัดเก็บฐานข้อมูล (Storage)',
-      current: 2351104,
+      current: 0,
       limit: 5368709120,
-      percent: 0.05,
+      percent: 0,
       level: 'normal',
-      readable_current: '2.35 MB',
+      readable_current: '—',
       readable_limit: '5.00 GB',
       unit: 'ไบต์',
     },
     functions_requests: {
       label: 'การเรียกใช้ Pages Functions (Requests)',
-      current: 4937,
+      current: 0,
       limit: 100000,
-      percent: 4.94,
+      percent: 0,
       level: 'normal',
-      readable_current: '4,937',
+      readable_current: '—',
       readable_limit: '100,000',
       unit: 'ครั้ง/วัน',
     },
   },
   activity_24h: {
-    read_queries: 49919,
-    write_queries: 111,
-    total_queries: 50030,
-    num_tables: 19,
+    read_queries: 0,
+    write_queries: 0,
+    total_queries: 0,
+    num_tables: 0,
   },
 }
 
@@ -180,7 +182,7 @@ export default function D1TestPage() {
     loadTableData(selectedTable)
   }, [selectedTable])
 
-  // 3. Load Cloudflare Quota Data
+  // 3. Load Cloudflare Quota Data (placeholder stays neutral until live data arrives)
   const loadQuotaData = async () => {
     setQuotaLoading(true)
     setQuotaError(null)
@@ -195,10 +197,13 @@ export default function D1TestPage() {
             return
           }
         }
+        setQuotaError('ดึงข้อมูลโควต้าไม่สำเร็จ (แสดงค่าตั้งต้น — ยังไม่ใช่ยอดจริง)')
+        addLog('⚠️ ดึงโควต้า Cloudflare ไม่สำเร็จ (แสดงค่าตั้งต้น — ยังไม่ใช่ยอดจริง)', 'warning')
+        return
       }
     } catch (err) {
       setQuotaError(err.message)
-      addLog(`⚠️ ดึงโควต้า Cloudflare สดล้มเหลว (ใช้ข้อมูลแคช): ${err.message}`, 'warning')
+      addLog(`⚠️ ดึงโควต้า Cloudflare สดล้มเหลว (แสดงค่าตั้งต้น — ยังไม่ใช่ยอดจริง): ${err.message}`, 'warning')
     } finally {
       setQuotaLoading(false)
     }
@@ -430,8 +435,22 @@ export default function D1TestPage() {
           </div>
         </div>
 
-        {/* Global Health Alert Banner */}
-        {quotaData?.has_warning ? (
+        {/* Quota Status Banner: live warning only on real telemetry; neutral until connected */}
+        {quotaData?.source !== 'cloudflare_api' && quotaData?.source !== 'd1_direct' ? (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px',
+            backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px',
+            marginBottom: '16px', color: '#475569'
+          }}>
+            <AlertCircle size={20} style={{ color: '#64748b', flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
+              <strong style={{ fontSize: '14px', display: 'block', marginBottom: '2px' }}>
+                ยังไม่เชื่อมต่อข้อมูลโควต้าสด
+              </strong>
+              ตัวเลขด้านล่างเป็นค่าตั้งต้น (ยังไม่ใช่ยอดจริง) | กดปุ่ม <strong>ตั้งค่า Token</strong> เพื่อดึงยอด 24 ชม. สดจาก Cloudflare | โควต้าจะรีเซ็ตรอบใหม่ทุกวันเวลา <strong>07:00 น. (00:00 UTC)</strong>
+            </div>
+          </div>
+        ) : quotaData?.has_warning ? (
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px',
             backgroundColor: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '10px',
@@ -442,7 +461,7 @@ export default function D1TestPage() {
               <strong style={{ fontSize: '14px', display: 'block', marginBottom: '2px' }}>
                 ⚠️ แจ้งเตือน: การอ่านข้อมูล D1 (Rows Read) อยู่ในระดับเสี่ยงสูง ({quotas.rows_read.percent}%)
               </strong>
-              ตรวจพบการอ่านข้อมูล <strong>{quotas.rows_read.readable_current} แถว</strong> จากขีดจำกัดฟรี <strong>{quotas.rows_read.readable_limit} แถว/วัน</strong> | ระบบได้เพิ่ม Index บน <code>_d1_change_log(id)</code> และปรับแต่งรอบ Realtime เรียบร้อยแล้วเพื่อลดการอ่านข้อมูลลงมากกว่า 95% ทันที | โควต้าจะรีเซ็ตรอบใหม่ทุกวันเวลา <strong>07:00 น. (00:00 UTC)</strong>
+              ตรวจพบการอ่านข้อมูล <strong>{quotas.rows_read.readable_current} แถว</strong> จากขีดจำกัดฟรี <strong>{quotas.rows_read.readable_limit} แถว/วัน</strong> | โควต้าจะรีเซ็ตรอบใหม่ทุกวันเวลา <strong>07:00 น. (00:00 UTC)</strong>
             </div>
           </div>
         ) : (

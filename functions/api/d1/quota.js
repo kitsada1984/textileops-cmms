@@ -4,8 +4,9 @@
 
 import { CORS_HEADERS, jsonResponse } from '../_auth.js'
 
-export const DEFAULT_ACCOUNT_ID = '392e2aeb2648effccebd585e5c29611b'
-export const DEFAULT_DATABASE_ID = 'b54a2924-8238-408b-ab82-b329dcc6e16d'
+// Cloudflare account/database IDs must come from env; no real IDs in source.
+export const DEFAULT_ACCOUNT_ID = ''
+export const DEFAULT_DATABASE_ID = ''
 
 // Cloudflare Free Plan Quota Limits
 export const QUOTA_LIMITS = {
@@ -45,8 +46,8 @@ export async function onRequestGet(context) {
   const { env } = context
   const db = env?.DB || env?.textileops_db
 
-  const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID
-  const databaseId = env?.CLOUDFLARE_DATABASE_ID || DEFAULT_DATABASE_ID
+  const accountId = env?.CLOUDFLARE_ACCOUNT_ID || DEFAULT_ACCOUNT_ID || 'not-configured'
+  const databaseId = env?.CLOUDFLARE_DATABASE_ID || DEFAULT_DATABASE_ID || 'not-configured'
 
   let apiToken = env?.CLOUDFLARE_API_TOKEN || env?.CF_API_TOKEN
 

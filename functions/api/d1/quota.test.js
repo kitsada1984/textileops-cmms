@@ -17,7 +17,7 @@ describe('functions/api/d1/quota.js - Quota & Telemetry Calculations', () => {
     expect(warning.percent).toBe(75.0)
     expect(warning.level).toBe('warning')
 
-    // Critical (>= 85%) - Like the current 4.43M / 5M rows read (88.6%)
+    // Critical (>= 85%) — boundary math example (values are arbitrary test fixtures)
     const critical = computeQuotaItem(4431650, 5000000, 'แถว/วัน')
     expect(critical.percent).toBe(88.63)
     expect(critical.level).toBe('critical')
