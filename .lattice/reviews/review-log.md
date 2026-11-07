@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.277 deployed (clean spare-part remarks)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 0c9aad4a
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (spareparts+util 12 tests green)
+- **Key findings**: remark input no longer shows hidden ImageUrl: lines; save path unchanged
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.277
+
 ## 2026-11-07 — Strip image meta from spare-part notes input (waza-check)
 - **Scope**: 2 files + 2 test files, spare-part edit form and image-meta contract
 - **Atoms**: clean-code, test-quality
