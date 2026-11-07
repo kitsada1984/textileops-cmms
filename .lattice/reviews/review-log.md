@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.267 deployed (auto-hide finished work)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, d924bc2b
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (workorders 40 files / 206 tests green)
+- **Key findings**: prod was on v1.3.266 without the filter fix; shipped 80f4698 + d6991ab + release
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.267
+
 ## 2026-11-07 — Auto-hide finished work in WO and repair lists (waza-check)
 - **Scope**: 6 files + 4 test files, workorders filter pipeline and repair list
 - **Atoms**: clean-code, test-quality
