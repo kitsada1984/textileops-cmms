@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.273 deployed (unified pending-work tab)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 639d2dba
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (workorders 41 files / 217 tests green)
+- **Key findings**: unified tab merges WO + repair pending with origin badges and synced-pair dedup
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.273
+
 ## 2026-11-07 — Unified pending-work tab with origin badges (waza-check)
 - **Scope**: 3 files + 1 new test, unified WO + repair pending list with synced-pair dedup
 - **Atoms**: clean-code, test-quality
