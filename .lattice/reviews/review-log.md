@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.266 deployed (D1 quota fix)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 981ffc6a
+- **Atoms**: clean-code, secure-coding, test-quality, lattice-review
+- **Result**: 0 critical, 0 warning, 0 suggestion (open: CF IDs in wrangler/drizzle config, by design)
+- **Key findings**: full suite 189 files / 1271 tests green; live sw.js = v1.3.266; /api/d1/quota HTTP 200
+- **Strengths**: fix and release commits separated; push 4f16341 on origin/master
+
 ## 2026-11-07 — D1 quota false-critical fix (lattice-review)
 - **Scope**: 5 files, D1 Sandbox + realtime/query functions + tests
 - **Atoms**: clean-code, secure-coding, test-quality
