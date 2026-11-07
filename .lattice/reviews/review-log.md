@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Unified pending-work tab with origin badges (waza-check)
+- **Scope**: 3 files + 1 new test, unified WO + repair pending list with synced-pair dedup
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (source tabs and flows unchanged)
+- **Key findings**: separate menus hid cross-source duplicates; WO_ID/Comment markers already identify synced pairs
+- **Strengths**: 41 files / 217 tests green; rows deep-link back to their source tab
+
 ## 2026-11-07 — Release v1.3.272 deployed (close dropdown status set)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 4b73384c
 - **Atoms**: clean-code, test-quality, waza-check

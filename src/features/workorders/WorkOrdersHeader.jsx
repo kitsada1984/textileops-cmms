@@ -1,4 +1,4 @@
-import { ClipboardList, Printer, RefreshCw, Settings as SettingsIcon, Target, UserCheck, Wrench } from 'lucide-react'
+import { ClipboardList, Layers, Printer, RefreshCw, Settings as SettingsIcon, Target, UserCheck, Wrench } from 'lucide-react'
 import GoogleSheetSyncButton from '../../components/ui/GoogleSheetSyncButton'
 
 // Top header + sub-tabs navigation moved verbatim from WorkOrders (props only).
@@ -73,6 +73,19 @@ export function WorkOrdersHeader({ currentTab, setCurrentTab, exportConfig, filt
           }`}>
             {allJobs.filter((j) => !j.IsDeleted).length}
           </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentTab('unified')}
+          className={`flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] flex-shrink-0 whitespace-nowrap active:scale-95 ${
+            currentTab === 'unified'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-[1.02]'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Layers size={16} />
+          <span>รวมงานค้าง</span>
         </button>
 
         <button
