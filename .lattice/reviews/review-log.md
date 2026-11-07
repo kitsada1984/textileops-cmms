@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.275 deployed (web-qa fixes verified)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 71a0f139
+- **Atoms**: clean-code, test-quality, waza-check, web-qa
+- **Result**: 0 critical, 0 warning, 0 suggestion (web-qa re-run: 2 pass, 0 network failures)
+- **Key findings**: button-name + label-title-only gone; kpi 500 gone; contrast/viewport deferred as intended
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.275
+
 ## 2026-11-07 — Fix web-qa findings: aria labels + kpi_settings table (waza-check)
 - **Scope**: 4 files + 1 migration, a11y labels and D1 table
 - **Atoms**: clean-code, test-quality
