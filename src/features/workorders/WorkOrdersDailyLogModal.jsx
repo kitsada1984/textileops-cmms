@@ -3,7 +3,7 @@ import Modal from '../../components/ui/Modal'
 import { WORK_ORDER_STATUS_OPTIONS, getJobDailyLogs, getWorkOrderDetails, getWorkOrderStatusMeta } from './workOrderNormalize.js'
 
 // Daily-progress modal moved verbatim from WorkOrders (props only).
-export function WorkOrdersDailyLogModal({ dailyLogModalOpen, dailyLogJob, setDailyLogModalOpen, dailyLogDate, setDailyLogDate, dailyLogDetails, setDailyLogDetails, dailyLogHours, setDailyLogHours, dailyLogStatus, setDailyLogStatus, dailyLogTechs, setDailyLogTechs, dailyLogSubmitting, cancellingJobSubmitting, handleSaveDailyLog, handleDeleteDailyLog, openCancelJobConfirm, technicians, allJobs, canEdit, canDelete }) {
+export function WorkOrdersDailyLogModal({ dailyLogModalOpen, dailyLogJob, setDailyLogModalOpen, dailyLogDate, setDailyLogDate, dailyLogDetails, setDailyLogDetails, dailyLogHours, setDailyLogHours, dailyLogStatus, setDailyLogStatus, dailyLogTechs, setDailyLogTechs, dailyLogSubmitting, cancellingJobSubmitting, handleSaveDailyLog, handleDeleteDailyLog, openCancelJobConfirm, technicians, allJobs, canEdit, canDelete, canEditDate = true }) {
   return (
     <>
       {dailyLogModalOpen && dailyLogJob && (() => {
@@ -135,13 +135,14 @@ export function WorkOrdersDailyLogModal({ dailyLogModalOpen, dailyLogJob, setDai
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="label text-[11px]">วันที่ *</label>
+                    <label className="label text-[11px]">วันที่ * {!canEditDate && <span className="font-normal">(เฉพาะ admin)</span>}</label>
                     <input
                       type="date"
                       value={dailyLogDate}
                       onChange={(e) => setDailyLogDate(e.target.value)}
                       className="input font-mono text-xs"
                       required
+                      disabled={!canEditDate}
                     />
                   </div>
 

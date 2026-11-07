@@ -67,6 +67,12 @@ export const DEFAULT_ACTIVE_STATUS_FILTERS = WORK_ORDER_STATUS_OPTIONS.filter(
   (opt) => !FINISHED_STATUSES.includes(opt.value)
 ).map((opt) => opt.value)
 
+// True only for the admin role — date fields across work orders,
+// repairs, and interruptions are editable by admin alone.
+export function isAdminUser(user) {
+  return String(user?.role || '').toLowerCase() === 'admin'
+}
+
 // True when the selection equals the default (order-insensitive).
 export function isDefaultStatusSelection(statusFilters) {
   if (!Array.isArray(statusFilters)) return true

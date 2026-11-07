@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { RepairStatusRow, isFinishedRepairStatus } from './repairStatusRow.jsx'
+import { isAdminUser } from './workOrderNormalize.js'
 import { WORK_ORDER_STATUS_OPTIONS } from './workOrderNormalize.js'
 import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode, FileText } from 'lucide-react'
 import { format } from 'date-fns'
@@ -884,11 +885,11 @@ export default function RepairRequests() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <F form={form} setForm={setForm} label={t('rr_field_approved_by')} id="approved_by" />
-              <F form={form} setForm={setForm} label={t('rr_field_approved_at')} id="approved_at" type="datetime-local" />
+              <F form={form} setForm={setForm} label={t('rr_field_approved_at')} id="approved_at" type="datetime-local" disabled={!isAdminUser(user)} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <F form={form} setForm={setForm} label={t('rr_field_completed_by')} id="completed_by" />
-              <F form={form} setForm={setForm} label={t('rr_field_completed_at')} id="completed_at" type="datetime-local" />
+              <F form={form} setForm={setForm} label={t('rr_field_completed_at')} id="completed_at" type="datetime-local" disabled={!isAdminUser(user)} />
             </div>
           </div>
 

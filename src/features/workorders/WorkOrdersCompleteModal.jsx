@@ -2,7 +2,7 @@ import { Check, CheckCircle2, Clock } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 
 // Complete-job modal moved verbatim from WorkOrders (props only).
-export function WorkOrdersCompleteModal({ completeModalOpen, compJob, compCalcDuration, compEndDate, compEndTime, compSubmitting, setCompEndDate, setCompEndTime, setCompleteModalOpen, handleCompleteJob, openInterruptionModal }) {
+export function WorkOrdersCompleteModal({ completeModalOpen, compJob, compCalcDuration, compEndDate, compEndTime, compSubmitting, setCompEndDate, setCompEndTime, setCompleteModalOpen, handleCompleteJob, openInterruptionModal, canEditDate = true }) {
   return (
     <>
       {completeModalOpen && compJob && (
@@ -35,13 +35,14 @@ export function WorkOrdersCompleteModal({ completeModalOpen, compJob, compCalcDu
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">วันที่จบงาน *</label>
+                <label className="label">วันที่จบงาน * {!canEditDate && <span className="font-normal">(เฉพาะ admin แก้ไขได้)</span>}</label>
                 <input
                   type="date"
                   value={compEndDate}
                   onChange={(e) => setCompEndDate(e.target.value)}
                   className="input font-mono"
                   required
+                  disabled={!canEditDate}
                 />
               </div>
               <div>

@@ -3,13 +3,14 @@ import {
   WORK_ORDER_STATUS_OPTIONS,
   DEFAULT_ACTIVE_STATUS_FILTERS,
   isDefaultStatusSelection,
+  isAdminUser,
   getWorkOrderStatusMeta,
   getWorkOrderDetails,
   getJobDailyLogs,
   getLatestDailyLog,
 } from './workOrderNormalize.js'
 
-export { WORK_ORDER_STATUS_OPTIONS, DEFAULT_ACTIVE_STATUS_FILTERS, isDefaultStatusSelection, getWorkOrderStatusMeta, getWorkOrderDetails, getJobDailyLogs, getLatestDailyLog }
+export { WORK_ORDER_STATUS_OPTIONS, DEFAULT_ACTIVE_STATUS_FILTERS, isDefaultStatusSelection, isAdminUser, getWorkOrderStatusMeta, getWorkOrderDetails, getJobDailyLogs, getLatestDailyLog }
 import { filterWorkOrderJobs, toggleMultiFilterValue, nextMultiFilter, nextCauseFilter, togglePersistedOpen } from './workOrderFilters.js'
 import { normalizeAllJobs, computeTypeCounts, computeStatusCounts, computeCauseCounts, computeKpiStats, saveKpiSettings } from './workOrderStats.js'
 import { getJobInterruptions, computeCompleteDuration } from './workOrderInterruptions.js'
@@ -848,7 +849,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       {/* ══════════════════════════════════════════════════════════ */}
 
       {/* 1. Complete Job Modal */}
-      <WorkOrdersCompleteModal completeModalOpen={completeModalOpen} compJob={compJob} compCalcDuration={compCalcDuration} compEndDate={compEndDate} compEndTime={compEndTime} compSubmitting={compSubmitting} setCompEndDate={setCompEndDate} setCompEndTime={setCompEndTime} setCompleteModalOpen={setCompleteModalOpen} handleCompleteJob={handleCompleteJob} openInterruptionModal={openInterruptionModal} />
+      <WorkOrdersCompleteModal completeModalOpen={completeModalOpen} compJob={compJob} compCalcDuration={compCalcDuration} compEndDate={compEndDate} compEndTime={compEndTime} compSubmitting={compSubmitting} setCompEndDate={setCompEndDate} setCompEndTime={setCompEndTime} setCompleteModalOpen={setCompleteModalOpen} handleCompleteJob={handleCompleteJob} openInterruptionModal={openInterruptionModal} canEditDate={isAdminUser(user)} />
 
       {/* 2. Edit Job Modal */}
       <WorkOrdersEditModal editModalOpen={editModalOpen} editJob={editJob} editTechs={editTechs} editSubmitting={editSubmitting} setEditJob={setEditJob} setEditModalOpen={setEditModalOpen} handleEditJob={handleEditJob} toggleEditTechSelection={toggleEditTechSelection} technicians={technicians} inUseMachines={inUseMachines} matchedEditActiveMachine={matchedEditActiveMachine} />
@@ -869,7 +870,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       <WorkOrdersReportBridge reportModalOpen={reportModalOpen} setReportModalOpen={setReportModalOpen} filteredJobs={filteredJobs} typeFilters={typeFilters} statusFilters={statusFilters} search={search} showDeleted={showDeleted} kpiTargets={kpiTargets} user={user} />
 
       {/* 6. Daily Progress Update Modal (อัปเดตงานประจำวัน / บันทึกจบวัน) */}
-        <WorkOrdersDailyLogModal dailyLogModalOpen={dailyLogModalOpen} dailyLogJob={dailyLogJob} setDailyLogModalOpen={setDailyLogModalOpen} dailyLogDate={dailyLogDate} setDailyLogDate={setDailyLogDate} dailyLogDetails={dailyLogDetails} setDailyLogDetails={setDailyLogDetails} dailyLogHours={dailyLogHours} setDailyLogHours={setDailyLogHours} dailyLogStatus={dailyLogStatus} setDailyLogStatus={setDailyLogStatus} dailyLogTechs={dailyLogTechs} setDailyLogTechs={setDailyLogTechs} dailyLogSubmitting={dailyLogSubmitting} cancellingJobSubmitting={cancellingJobSubmitting} handleSaveDailyLog={handleSaveDailyLog} handleDeleteDailyLog={handleDeleteDailyLog} openCancelJobConfirm={openCancelJobConfirm} technicians={technicians} allJobs={allJobs} canEdit={canEdit} canDelete={canDelete} />
+        <WorkOrdersDailyLogModal dailyLogModalOpen={dailyLogModalOpen} dailyLogJob={dailyLogJob} setDailyLogModalOpen={setDailyLogModalOpen} dailyLogDate={dailyLogDate} setDailyLogDate={setDailyLogDate} dailyLogDetails={dailyLogDetails} setDailyLogDetails={setDailyLogDetails} dailyLogHours={dailyLogHours} setDailyLogHours={setDailyLogHours} dailyLogStatus={dailyLogStatus} setDailyLogStatus={setDailyLogStatus} dailyLogTechs={dailyLogTechs} setDailyLogTechs={setDailyLogTechs} dailyLogSubmitting={dailyLogSubmitting} cancellingJobSubmitting={cancellingJobSubmitting} handleSaveDailyLog={handleSaveDailyLog} handleDeleteDailyLog={handleDeleteDailyLog} openCancelJobConfirm={openCancelJobConfirm} technicians={technicians} allJobs={allJobs} canEdit={canEdit} canDelete={canDelete} canEditDate={isAdminUser(user)} />
 
       {/* 2-Step Confirmation Modal for Cancelling Job */}
         <WorkOrdersCancelModal cancelJobModalOpen={cancelJobModalOpen} dailyLogJob={dailyLogJob} cancelJobReason={cancelJobReason} setCancelJobReason={setCancelJobReason} cancellingJobSubmitting={cancellingJobSubmitting} setCancelJobModalOpen={setCancelJobModalOpen} handleConfirmCancelJob={handleConfirmCancelJob} />

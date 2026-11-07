@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import RepairRequests from './RepairRequests'
 import { updateRepairRequest } from '../../modules/repair'
+import { useAuth } from '../../contexts/AuthContext'
 
 // Characterization tests: lock RepairRequests stats behavior before
 // splitting presentational blocks out of the main component.
@@ -12,7 +13,7 @@ const seedRequests = [
 ]
 
 vi.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { role: 'admin', full_name: 'Test Admin' }, refreshUser: vi.fn() }),
+  useAuth: vi.fn(() => ({ user: { role: 'admin', full_name: 'Test Admin' }, refreshUser: vi.fn() })),
 }))
 
 vi.mock('../../contexts/LanguageContext', () => ({
@@ -108,6 +109,19 @@ describe('RepairRequests characterization', () => {
     for (const label of ['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'รอเทส-ย้อม', 'เสร็จสิ้น', 'ยกเลิก']) {
       expect(names).toContain(label)
     }
+  })
+
+  it('locks repair date fields for non-admin', async () => {
+    useAuth.mockReturnValue({ user: { role: 'technician', full_name: 'Tech' }, refreshUser: vi.fn() })
+    render(<RepairRequests />)
+    await screen.findAllByText('รอแก้ไข')
+
+    fireEvent.click(screen.getAllByTitle('แก้ไข')[0])
+
+    expect(screen.getByLabelText('rr_field_approved_at')).toBeDisabled()
+    expect(screen.getByLabelText('rr_field_completed_at')).toBeDisabled()
+
+    useAuth.mockReturnValue({ user: { role: 'admin', full_name: 'Test Admin' }, refreshUser: vi.fn() })
   })
 
   it('hides completed repairs by default and shows them when requested', async () => {

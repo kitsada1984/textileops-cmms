@@ -35,6 +35,18 @@ describe('WorkOrdersDailyLogModal characterization', () => {
     expect(h.handleSaveDailyLog).toHaveBeenCalled()
   })
 
+  it('locks the log date for non-admin', () => {
+    renderModal({ canEditDate: false })
+
+    expect(screen.getByDisplayValue('2026-11-06')).toBeDisabled()
+  })
+
+  it('frees the log date for admin', () => {
+    renderModal({ canEditDate: true })
+
+    expect(screen.getByDisplayValue('2026-11-06')).not.toBeDisabled()
+  })
+
   it('routes the cancel-job shortcut', () => {
     const h = renderModal()
 

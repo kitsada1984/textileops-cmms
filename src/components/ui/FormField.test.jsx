@@ -47,6 +47,20 @@ describe('FormField - React Composition Patterns', () => {
     expect(screen.getByRole('combobox')).toHaveValue('admin')
   })
 
+  it('forwards disabled to the input', () => {
+    const form = { completed_at: '2026-11-07T10:00' }
+
+    const { rerender } = render(
+      <FormField id="completed_at" label="เสร็จ" type="datetime-local" form={form} setForm={vi.fn()} />
+    )
+    expect(screen.getByLabelText('เสร็จ')).not.toBeDisabled()
+
+    rerender(
+      <FormField id="completed_at" label="เสร็จ" type="datetime-local" form={form} setForm={vi.fn()} disabled />
+    )
+    expect(screen.getByLabelText('เสร็จ')).toBeDisabled()
+  })
+
   it('renders correctly as compound components with explicit variants', () => {
     render(
       <FormField id="custom-field">

@@ -17,6 +17,7 @@ import {
   extractInUseMachinesFromCylinders,
   DEFAULT_ACTIVE_STATUS_FILTERS,
   isDefaultStatusSelection,
+  isAdminUser,
 } from './WorkOrders.jsx'
 
 describe('WorkOrders utilities', () => {
@@ -142,6 +143,15 @@ describe('WorkOrders utilities', () => {
       expect(getWorkOrderStatusMeta('WAITING_DYE_TEST').isCancelled).toBe(false)
       expect(getWorkOrderStatusMeta('รอเทส-ย้อม').value).toBe('WAITING_DYE_TEST')
       expect(matchesWorkOrderStatusFilter('WAITING_DYE_TEST', 'รอเทส-ย้อม')).toBe(true)
+    })
+
+    it('grants date editing to admin only', () => {
+      expect(isAdminUser({ role: 'admin' })).toBe(true)
+      expect(isAdminUser({ role: 'Admin' })).toBe(true)
+      expect(isAdminUser({ role: 'technician' })).toBe(false)
+      expect(isAdminUser({ role: 'viewer' })).toBe(false)
+      expect(isAdminUser(null)).toBe(false)
+      expect(isAdminUser({})).toBe(false)
     })
 
     it('pre-ticks the 5 pending statuses by default, finished left out', () => {

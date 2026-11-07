@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Admin-only date editing across WO/repair modals (waza-check)
+- **Scope**: 6 files + 5 test files, complete/daily-log/repair date inputs + shared FormField
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (frontend gate only; API has no date-field policy)
+- **Key findings**: edit/interruption modals have no date inputs; non-admin dates now locked with note
+- **Strengths**: 63 focused tests green; isAdminUser centralized and unit-tested
+
 ## 2026-11-07 — Release v1.3.275 deployed (web-qa fixes verified)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 71a0f139
 - **Atoms**: clean-code, test-quality, waza-check, web-qa

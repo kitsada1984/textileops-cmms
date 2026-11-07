@@ -19,9 +19,9 @@ export function resolveFieldConfig({ wbCol, opts, rows, type, form, id, pathname
   return { val, fieldId, effectiveType, effectiveOptions, effectiveRows, effectiveLabel, currentOptionExists }
 }
 
-export function FormSelectInput({ fieldId, val, set, effectiveOptions, currentOptionExists }) {
+export function FormSelectInput({ fieldId, val, set, effectiveOptions, currentOptionExists, disabled }) {
   return (
-    <select id={fieldId} className="select" value={val ?? ''} onChange={e => set(e.target.value)}>
+    <select id={fieldId} className="select" value={val ?? ''} onChange={e => set(e.target.value)} disabled={disabled}>
       <option value="">—</option>
       {val !== '' && val !== undefined && !currentOptionExists && <option value={val}>{val}</option>}
       {effectiveOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -29,8 +29,8 @@ export function FormSelectInput({ fieldId, val, set, effectiveOptions, currentOp
   )
 }
 
-export function FormTextAreaInput({ fieldId, effectiveRows, placeholder, val, set }) {
-  return <textarea id={fieldId} className="input" rows={effectiveRows} placeholder={placeholder} value={val ?? ''} onChange={e => set(e.target.value)} />
+export function FormTextAreaInput({ fieldId, effectiveRows, placeholder, val, set, disabled }) {
+  return <textarea id={fieldId} className="input" rows={effectiveRows} placeholder={placeholder} value={val ?? ''} onChange={e => set(e.target.value)} disabled={disabled} />
 }
 
 export function FormBooleanInput({ val, set }) {
@@ -47,9 +47,9 @@ export function FormBooleanInput({ val, set }) {
   )
 }
 
-export function FormTextInput({ fieldId, effectiveType, placeholder, val, set }) {
+export function FormTextInput({ fieldId, effectiveType, placeholder, val, set, disabled }) {
   return (
-    <input id={fieldId} className="input" type={effectiveType} placeholder={placeholder} value={val ?? ''}
+    <input id={fieldId} className="input" type={effectiveType} placeholder={placeholder} value={val ?? ''} disabled={disabled}
       onChange={e => set(effectiveType === 'number'
         ? (e.target.value === '' ? '' : +e.target.value)
         : e.target.value

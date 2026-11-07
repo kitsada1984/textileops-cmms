@@ -103,6 +103,7 @@ export default function FormField({
   onChange,
   placeholder,
   className = '',
+  disabled,
   children,
   ...props
 }) {
@@ -131,12 +132,12 @@ export default function FormField({
           <>
             {effectiveLabel && <label className="label" htmlFor={fieldId}>{effectiveLabel}</label>}
             {effectiveType === 'select'
-              ? <FormSelectInput fieldId={fieldId} val={val} set={set} effectiveOptions={effectiveOptions} currentOptionExists={currentOptionExists} />
+              ? <FormSelectInput fieldId={fieldId} val={val} set={set} effectiveOptions={effectiveOptions} currentOptionExists={currentOptionExists} disabled={disabled} />
               : effectiveType === 'textarea'
-                ? <FormTextAreaInput fieldId={fieldId} effectiveRows={effectiveRows} placeholder={placeholder} val={val} set={set} />
+                ? <FormTextAreaInput fieldId={fieldId} effectiveRows={effectiveRows} placeholder={placeholder} val={val} set={set} disabled={disabled} />
                 : effectiveType === 'boolean'
                   ? <FormBooleanInput val={val} set={set} />
-                  : <FormTextInput fieldId={fieldId} effectiveType={effectiveType} placeholder={placeholder} val={val} set={set} />
+                  : <FormTextInput fieldId={fieldId} effectiveType={effectiveType} placeholder={placeholder} val={val} set={set} disabled={disabled} />
             }
           </>
         )}

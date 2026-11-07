@@ -30,6 +30,28 @@ describe('WorkOrdersCompleteModal characterization', () => {
     expect(h.handleCompleteJob).toHaveBeenCalled()
   })
 
+  it('locks the end date for non-admin and frees it for admin', () => {
+    const { rerender } = render(
+      <WorkOrdersCompleteModal
+        completeModalOpen compJob={compJob} compCalcDuration="8 ชม."
+        compEndDate="2026-11-01" compEndTime="16:00" compSubmitting={false}
+        setCompEndDate={vi.fn()} setCompEndTime={vi.fn()} setCompleteModalOpen={vi.fn()}
+        handleCompleteJob={vi.fn()} openInterruptionModal={vi.fn()} canEditDate={false}
+      />
+    )
+    expect(screen.getByDisplayValue('2026-11-01')).toBeDisabled()
+
+    rerender(
+      <WorkOrdersCompleteModal
+        completeModalOpen compJob={compJob} compCalcDuration="8 ชม."
+        compEndDate="2026-11-01" compEndTime="16:00" compSubmitting={false}
+        setCompEndDate={vi.fn()} setCompEndTime={vi.fn()} setCompleteModalOpen={vi.fn()}
+        handleCompleteJob={vi.fn()} openInterruptionModal={vi.fn()} canEditDate
+      />
+    )
+    expect(screen.getByDisplayValue('2026-11-01')).not.toBeDisabled()
+  })
+
   it('routes the interruption shortcut with the job', () => {
     const h = renderModal()
 
