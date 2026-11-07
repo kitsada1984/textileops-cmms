@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Fix blank spare-parts print via proven overlay pattern (waza-check)
+- **Scope**: 1 file + 1 test file, spare-parts report print CSS and hooks
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (verified PRINT_OK headless: doc 1122px, PDF 129KB)
+- **Key findings**: fixed overlay + visible #root paginated a blank viewport on mobile Chrome
+- **Strengths**: mirrors verified PdfPreviewModal pattern; regression test locks the hooks
+
 ## 2026-11-07 — Release v1.3.277 deployed (clean spare-part remarks)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 0c9aad4a
 - **Atoms**: clean-code, test-quality, waza-check

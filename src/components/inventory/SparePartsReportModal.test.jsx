@@ -120,6 +120,29 @@ describe('SparePartsReportModal', () => {
     printSpy.mockRestore()
   })
 
+  it('keeps the proven print structure: app hidden, overlay flattened', () => {
+    // NOTE: createPortal mounts into document.body, outside the render container.
+    render(
+      <SparePartsReportModal
+        open={true}
+        onClose={vi.fn()}
+        items={MOCK_PARTS}
+      />
+    )
+
+    // Portal root and scroll container must exist for the print CSS hooks.
+    expect(document.querySelector('#spare-report-root')).not.toBeNull()
+    expect(document.querySelector('#spare-report-scroll')).not.toBeNull()
+    expect(document.querySelector('#printable-spare-parts-report')).not.toBeNull()
+
+    // The print stylesheet must drop the app + fixed overlay from the print
+    // layout, otherwise mobile Chrome paginates a blank viewport.
+    const css = document.querySelector('#spare-report-root style')?.textContent || ''
+    expect(css).toContain('body > #root')
+    expect(css).toContain('#spare-report-root')
+    expect(css).toContain('#spare-report-scroll')
+  })
+
   it('triggers onClose when close button is clicked', () => {
     const onClose = vi.fn()
 

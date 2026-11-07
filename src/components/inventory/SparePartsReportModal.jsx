@@ -129,7 +129,7 @@ export default function SparePartsReportModal({
   const printDateStr = format(new Date(), 'dd/MM/yyyy HH:mm')
 
   return createPortal(
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex flex-col items-center">
+    <div id="spare-report-root" className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex flex-col items-center">
       {/* ── TOP ACTION BAR (Screen only) ─────────────────────────── */}
       <div className="sticky top-0 z-20 w-full bg-slate-900/95 border-b border-slate-800 px-4 py-3 flex items-center justify-between shadow-xl backdrop-blur-md print:hidden">
         <div className="flex items-center gap-3">
@@ -208,10 +208,31 @@ export default function SparePartsReportModal({
           #printable-spare-parts-report * {
             visibility: visible;
           }
+          /* Proven pattern (mirrors PdfPreviewModal): drop the app and the
+             fixed overlay from the print layout so mobile Chrome paginates
+             the document instead of a blank viewport. */
+          body > #root {
+            display: none !important;
+          }
+          #spare-report-root {
+            position: static !important;
+            display: block !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            backdrop-filter: none !important;
+          }
+          #spare-report-root > :not(#spare-report-scroll):not(style) {
+            display: none !important;
+          }
+          #spare-report-scroll {
+            display: block !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
           #printable-spare-parts-report {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: static !important;
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
@@ -249,7 +270,7 @@ export default function SparePartsReportModal({
       `}</style>
 
       {/* ── PREVIEW CONTAINER ───────────────────────────────────── */}
-      <div className="flex-1 w-full p-2 sm:p-6 flex justify-center items-start overflow-x-auto">
+      <div id="spare-report-scroll" className="flex-1 w-full p-2 sm:p-6 flex justify-center items-start overflow-x-auto">
         {/* ── A4 PAPER SHEET ─────────────────────────────────────── */}
         <div
           id="printable-spare-parts-report"
