@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.278 deployed (spare-parts print fix)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 0ba93b45
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (headless PRINT_OK + 7 modal tests green)
+- **Key findings**: fixed overlay paginated a blank viewport; proven pattern restores content
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.278
+
 ## 2026-11-07 — Fix blank spare-parts print via proven overlay pattern (waza-check)
 - **Scope**: 1 file + 1 test file, spare-parts report print CSS and hooks
 - **Atoms**: clean-code, test-quality
