@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Repair quick status dropdown + APPROVED option (waza-check)
+- **Scope**: 2 files + 2 test files, repair drawer/modal status update paths
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (COMPLETED side effects shared, not duplicated)
+- **Key findings**: WO dropdowns already shared incl. dye-test; repair had modal-only dropdown missing APPROVED
+- **Strengths**: 40 files / 211 tests green; quick path reuses syncCompletedRepair
+
 ## 2026-11-07 — Release v1.3.268 deployed (pre-ticked filter + dye-test status)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 0f7c1b0b
 - **Atoms**: clean-code, test-quality, waza-check

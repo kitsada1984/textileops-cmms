@@ -81,6 +81,9 @@ describe('workOrderRowCells characterization', () => {
       target: { value: 'COMPLETED' },
     })
     expect(onChange).toHaveBeenCalledWith(job, 'COMPLETED')
+
+    const options = screen.getAllByRole('option').map((o) => o.textContent)
+    expect(options).toContain('🧪 รอเทส-ย้อม')
   })
 
   it('shows a static badge when editing is locked', () => {

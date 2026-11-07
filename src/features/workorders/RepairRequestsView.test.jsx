@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import RepairRequests from './RepairRequests'
+import { updateRepairRequest } from '../../modules/repair'
 
 // Characterization tests: lock RepairRequests stats behavior before
 // splitting presentational blocks out of the main component.
@@ -46,6 +47,14 @@ vi.mock('../../hooks/useWebBuilderMenu', () => ({
   useFieldOptions: (route, field, fallback) => fallback,
 }))
 
+vi.mock('../../modules/repair', async (importOriginal) => {
+  const mod = await importOriginal()
+  return {
+    ...mod,
+    updateRepairRequest: vi.fn(async (id, payload) => ({ ok: true, data: { id, ...payload } })),
+  }
+})
+
 describe('RepairRequests characterization', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -60,6 +69,29 @@ describe('RepairRequests characterization', () => {
     await screen.findAllByText('รอแก้ไข')
 
     expect(screen.getAllByText('รอแก้ไข').length).toBeGreaterThan(0)
+  })
+
+  it('changes status from the drawer quick dropdown without the edit modal', async () => {
+    render(<RepairRequests />)
+    await screen.findAllByText('รอแก้ไข')
+
+    fireEvent.click(screen.getAllByText('REQ-001')[0])
+    const quickSelect = await screen.findByTitle('เปลี่ยนสถานะใบแจ้งซ่อมด่วน')
+
+    fireEvent.change(quickSelect, { target: { value: 'IN_PROGRESS' } })
+
+    await screen.findAllByText('กำลังแก้ไข')
+    expect(updateRepairRequest).toHaveBeenCalledWith('r1', { status: 'IN_PROGRESS' })
+  })
+
+  it('offers every status including อนุมัติแล้ว in the edit form dropdown', async () => {
+    render(<RepairRequests />)
+    await screen.findAllByText('รอแก้ไข')
+
+    fireEvent.click(screen.getAllByTitle('แก้ไข')[0])
+
+    const names = screen.getAllByRole('option').map((o) => o.textContent)
+    expect(names).toContain('อนุมัติแล้ว')
   })
 
   it('hides completed repairs by default and shows them when requested', async () => {

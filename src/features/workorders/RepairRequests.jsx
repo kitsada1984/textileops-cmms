@@ -44,11 +44,16 @@ const EMPTY = {
   repair_details: '', parts_used: '', completed_by: '', completed_at: '',
 }
 
+// Form/dropdown options: the 4 summary statuses plus APPROVED, which
+// exists in live data (approval flow) but has no summary card.
+const REPAIR_STATUS_OPTIONS = [...REPAIR_STATUS, { value: 'APPROVED', label: 'อนุมัติแล้ว' }]
+
 const STATUS_CFG = {
   PENDING:     { bg:'rgba(251,191,36,0.12)',  border:'rgba(251,191,36,0.35)',  color:'#f59e0b', dot:'#f59e0b'  },
   IN_PROGRESS: { bg:'rgba(59,130,246,0.12)',  border:'rgba(59,130,246,0.35)',  color:'#3b82f6', dot:'#3b82f6'  },
   WAIT_PARTS:  { bg:'rgba(168,85,247,0.12)',  border:'rgba(168,85,247,0.35)',  color:'#a855f7', dot:'#a855f7'  },
   COMPLETED:   { bg:'rgba(16,185,129,0.12)',  border:'rgba(16,185,129,0.35)',  color:'#10b981', dot:'#10b981'  },
+  APPROVED:    { bg:'rgba(99,102,241,0.12)',  border:'rgba(99,102,241,0.35)',  color:'#6366f1', dot:'#6366f1'  },
 }
 
 function fmt(dt) {
@@ -139,6 +144,52 @@ export default function RepairRequests() {
     setDetailRec(null)
   }
 
+  // Shared COMPLETED side effects (LINE notify + WO/KPI sync), used by
+  // both the full edit form and the drawer's quick status dropdown so a
+  // status change to COMPLETED behaves identically from either path.
+  const syncCompletedRepair = async (savedRecord, wasCompleted, fallback = {}) => {
+    // Notify LINE/Telegram when a request is closed from this form
+    // (the QR flow already notifies on completion — keep both in sync).
+    if (savedRecord && savedRecord.status === 'COMPLETED' && !wasCompleted) {
+      dispatchRepairCompletedNotification(savedRecord).catch((err) => {
+        console.warn('[RepairRequests] Completion notify warning:', err)
+      })
+    }
+
+    // Auto-Sync Q1: If status is COMPLETED, sync to Work Orders & Tech KPI
+    if (savedRecord && savedRecord.status === 'COMPLETED') {
+      try {
+        const reqNo = savedRecord.request_no || fallback.request_no || `REQ-${String(savedRecord.id || Date.now()).slice(0, 6)}`
+        const techName = savedRecord.technician_name || savedRecord.completed_by || fallback.technician_name || fallback.completed_by || 'ช่างซ่อมบำรุง'
+        const startTimeStr = savedRecord.approved_at || savedRecord.created_at || new Date().toISOString()
+        const endTimeStr = savedRecord.completed_at || new Date().toISOString()
+        const diffMs = Math.max(0, new Date(endTimeStr) - new Date(startTimeStr))
+        const durationHours = Math.max(0.25, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100)
+
+        // Only real DB columns + duplicate guard (saving a completed record
+        // twice must not create a second work order).
+        const woId = `WO-${reqNo}`
+        const existingWOs = await WorkOrderAPI.list().catch(() => [])
+        const alreadySynced = (Array.isArray(existingWOs) ? existingWOs : []).some(
+          (w) => String(w.WO_ID || '') === woId
+        )
+        if (!alreadySynced) {
+          await WorkOrderAPI.create(buildRepairWorkOrderPayload({
+            woId,
+            record: { ...savedRecord, repair_details: savedRecord.repair_details || fallback.repair_details },
+            techName,
+            startIso: startTimeStr,
+            endIso: endTimeStr,
+            durationHours,
+            detail: savedRecord.repair_details || fallback.repair_details || '',
+          }))
+        }
+      } catch (woSyncErr) {
+        console.warn('Work order auto-sync from RepairRequests warning:', woSyncErr)
+      }
+    }
+  }
+
   const submit = async () => {
     if (saving) return
     const isEdit = !!(form._id || form.id)
@@ -185,47 +236,8 @@ export default function RepairRequests() {
         await load()
       }
 
-      // Notify LINE/Telegram when a request is closed from this form
-      // (the QR flow already notifies on completion — keep both in sync).
       const wasCompleted = existing?.status === 'COMPLETED'
-      if (savedRecord && savedRecord.status === 'COMPLETED' && !wasCompleted) {
-        dispatchRepairCompletedNotification(savedRecord).catch((err) => {
-          console.warn('[RepairRequests] Completion notify warning:', err)
-        })
-      }
-
-      // Auto-Sync Q1: If status is COMPLETED, sync to Work Orders & Tech KPI
-      if (savedRecord && savedRecord.status === 'COMPLETED') {
-        try {
-          const reqNo = savedRecord.request_no || form.request_no || `REQ-${String(savedRecord.id || Date.now()).slice(0, 6)}`
-          const techName = savedRecord.technician_name || savedRecord.completed_by || form.technician_name || form.completed_by || 'ช่างซ่อมบำรุง'
-          const startTimeStr = savedRecord.approved_at || savedRecord.created_at || new Date().toISOString()
-          const endTimeStr = savedRecord.completed_at || new Date().toISOString()
-          const diffMs = Math.max(0, new Date(endTimeStr) - new Date(startTimeStr))
-          const durationHours = Math.max(0.25, Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100)
-
-          // Only real DB columns + duplicate guard (saving a completed record
-          // twice must not create a second work order).
-          const woId = `WO-${reqNo}`
-          const existingWOs = await WorkOrderAPI.list().catch(() => [])
-          const alreadySynced = (Array.isArray(existingWOs) ? existingWOs : []).some(
-            (w) => String(w.WO_ID || '') === woId
-          )
-          if (!alreadySynced) {
-            await WorkOrderAPI.create(buildRepairWorkOrderPayload({
-              woId,
-              record: { ...savedRecord, repair_details: savedRecord.repair_details || form.repair_details },
-              techName,
-              startIso: startTimeStr,
-              endIso: endTimeStr,
-              durationHours,
-              detail: savedRecord.repair_details || form.repair_details || '',
-            }))
-          }
-        } catch (woSyncErr) {
-          console.warn('Work order auto-sync from RepairRequests warning:', woSyncErr)
-        }
-      }
+      await syncCompletedRepair(savedRecord, wasCompleted, form)
 
       toast.success(isEdit ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มข้อมูลสำเร็จ', `${form.request_no || serialForSave}`)
       setModal(false)
@@ -241,7 +253,31 @@ export default function RepairRequests() {
     } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
   }
 
-  const STATUS_TH = Object.fromEntries(REPAIR_STATUS.map(s => [s.value, s.label]))
+  const [statusSaving, setStatusSaving] = useState(false)
+
+  // Drawer's quick status dropdown: same save path and COMPLETED side
+  // effects as the full form, without opening the edit modal.
+  const quickRepairStatus = async (rec, nextStatus) => {
+    const id = rec?._id || rec?.id
+    if (!id || !nextStatus || rec.status === nextStatus || statusSaving) return
+    if (!canEdit) {
+      toast.warning('ไม่มีสิทธิ์', 'บัญชีนี้แก้ไขสถานะไม่ได้')
+      return
+    }
+    setStatusSaving(true)
+    try {
+      const wasCompleted = rec.status === 'COMPLETED'
+      const { data: saved } = await updateRepairRequest(id, { status: nextStatus })
+      const savedRecord = { ...rec, ...(saved || {}), status: nextStatus }
+      await syncCompletedRepair(savedRecord, wasCompleted, rec)
+      setDetailRec(savedRecord)
+      await load()
+      toast.success('อัปเดตสถานะสำเร็จ', STATUS_TH[nextStatus] || nextStatus)
+    } catch (e) { toast.error('เกิดข้อผิดพลาด', e.message) }
+    finally { setStatusSaving(false) }
+  }
+
+  const STATUS_TH = Object.fromEntries(REPAIR_STATUS_OPTIONS.map(s => [s.value, s.label]))
 
 
   const getRRFallbackCols = () => [
@@ -296,7 +332,7 @@ export default function RepairRequests() {
     return list
   })()
   const FS_COLS = useMemo(() => buildFilterSortColumns(cols, {
-    selectOptions: { status: REPAIR_STATUS, repair_type: REPAIR_TYPE_OPTIONS, problem_cause: PROBLEM_CAUSE_OPTIONS },
+    selectOptions: { status: REPAIR_STATUS_OPTIONS, repair_type: REPAIR_TYPE_OPTIONS, problem_cause: PROBLEM_CAUSE_OPTIONS },
   }), [cols])
   const displayRows = useMemo(() => applyFilterSort(searched, FS_COLS, filterSort), [searched, FS_COLS, filterSort])
 
@@ -737,6 +773,22 @@ export default function RepairRequests() {
         onDelete={() => { del(detailRec._id || detailRec.id); setDetailRec(null) }}
         groups={drawerGroups}
         extraActions={detailRec ? (
+          <>
+          <select
+            value={detailRec.status || 'PENDING'}
+            disabled={statusSaving || !canEdit}
+            onChange={(e) => quickRepairStatus(detailRec, e.target.value)}
+            title="เปลี่ยนสถานะใบแจ้งซ่อมด่วน"
+            style={{
+              padding: '9px 12px', borderRadius: 11, fontSize: 12, fontWeight: 700,
+              cursor: statusSaving ? 'wait' : 'pointer', background: 'var(--bg-page)',
+              color: 'var(--text-700)', border: '1px solid var(--border)',
+            }}
+          >
+            {REPAIR_STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>{STATUS_TH[s.value] || s.label}</option>
+            ))}
+          </select>
           <button
             onClick={() => window.open(`${baseUrl}/repair/${detailRec.cylinder_serial}?req=${detailRec._id || detailRec.id}&step=view`, '_blank')}
             style={{
@@ -750,6 +802,7 @@ export default function RepairRequests() {
           >
             <ArrowUpRight size={12} /> {t('rr_open_page')}
           </button>
+          </>
         ) : null}
       />
 
@@ -792,7 +845,7 @@ export default function RepairRequests() {
               </datalist>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <F form={form} setForm={setForm} label="สถานะ" id="status" opts={REPAIR_STATUS} useBuilder={false} />
+              <F form={form} setForm={setForm} label="สถานะ" id="status" opts={REPAIR_STATUS_OPTIONS} useBuilder={false} />
               <F form={form} setForm={setForm} label="เลขที่ใบแจ้งซ่อม" id="request_no" placeholder="สร้างอัตโนมัติ" />
             </div>
             <div className="grid grid-cols-2 gap-2">
