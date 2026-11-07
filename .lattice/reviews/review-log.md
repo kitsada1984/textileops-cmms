@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.276 deployed (admin-only dates)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 3187b193
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (63 focused + 221 workorders tests green)
+- **Key findings**: date inputs locked for non-admin with note; backend has no date-field policy
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.276
+
 ## 2026-11-07 — Admin-only date editing across WO/repair modals (waza-check)
 - **Scope**: 6 files + 5 test files, complete/daily-log/repair date inputs + shared FormField
 - **Atoms**: clean-code, test-quality
