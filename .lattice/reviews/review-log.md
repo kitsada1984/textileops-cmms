@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Record parts as note without stock deduction (waza-check)
+- **Scope**: 3 files + 1 test file, StepComplete close flow and parts picker label
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (store requisition remains the single deduction path)
+- **Key findings**: close flow deducted stock + wrote USE txn, double-counting the store issue
+- **Strengths**: 6 files / 40 tests green; regression test locks zero stock writes with parts picked
+
 ## 2026-11-07 — Closing-status dropdown on repair close page (waza-check)
 - **Scope**: 2 files + 2 test files, StepComplete close flow and repair→WO sync payload
 - **Atoms**: clean-code, test-quality

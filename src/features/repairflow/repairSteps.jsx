@@ -16,7 +16,6 @@ import {
 import {
   TechnicianAPI,
   SparePartAPI,
-  StockTxnAPI,
   WorkOrderAPI,
   RepairRequestAPI,
   calculateDuration,
@@ -708,41 +707,9 @@ export function StepComplete({ request, onUpdated }) {
         console.warn('Work order auto-sync warning (will continue):', woErr)
       }
 
-      // 5. Auto-Deduct Q2: Deduct stock from spareparts & insert stocktransactions
-      for (const p of selectedPartsList) {
-        try {
-          const currentStock = Number(p.QuantityOnHand || 0)
-          const nextStock = Math.max(0, currentStock - p.qty)
-          await SparePartAPI.update(p.id, {
-            Stock_Qty: nextStock,
-            QuantityOnHand: nextStock,
-            updated_at: now.toISOString(),
-          })
-          const machineCode = String(request.machine_mc || request.mc || '').trim()
-          await StockTxnAPI.create({
-            TXN_ID: `TXN-USE-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-            TXN_Type: 'USE',
-            Part_ID: p.id,
-            Part_Code: p.PartNumber,
-            Part_Name_EN: p.PartName,
-            Location_Store: p.Location_Store || '',
-            Quantity: -Math.abs(p.qty),
-            Qty_Change: Math.abs(p.qty),
-            Reference: request.request_no,
-            Reference_ID: request.request_no,
-            MC: machineCode,
-            Machine_MC: machineCode,
-            Remarks: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no}${machineCode ? ` (เครื่อง ${machineCode})` : ''}${p.Location_Store ? ` [คลัง ${p.Location_Store}]` : ''}`,
-            Note: `เบิกใช้ในงานแจ้งซ่อม ${request.request_no}${machineCode ? ` (เครื่อง ${machineCode})` : ''}${machineCode ? `\nMC: ${machineCode}` : ''}${p.Location_Store ? `\nคลัง: ${p.Location_Store}` : ''}`,
-            Created_By: tech.trim(),
-            Performed_By: tech.trim(),
-            Date: now.toISOString(),
-            created_date: now.toISOString(),
-          })
-        } catch (stockErr) {
-          console.warn(`Stock deduction warning for ${p.PartName}:`, stockErr)
-        }
-      }
+      // 5. Parts used are recorded as a note only (parts_used). Stock is
+      //    deducted by the store requisition flow — deducting here as well
+      //    would double-count the same withdrawal.
 
       onUpdated(data)
     } catch (e) {

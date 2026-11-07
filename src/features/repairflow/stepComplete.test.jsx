@@ -1,7 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { StepComplete } from './repairSteps'
-import { WorkOrderAPI } from '../../api/entities'
+import { WorkOrderAPI, SparePartAPI, StockTxnAPI } from '../../api/entities'
+import { completeRepairRequest } from '../../modules/repair'
 
 // Characterization: lock StepComplete status-gate behavior before
 // splitting the gates out (no logic change).
@@ -10,8 +11,12 @@ vi.mock('../../api/entities', async (importOriginal) => {
   const orig = await importOriginal()
   return {
     ...orig,
-    SparePartAPI: { ...(orig.SparePartAPI || {}), list: async () => [] },
-    StockTxnAPI: { ...(orig.StockTxnAPI || {}), create: async () => ({}) },
+    SparePartAPI: {
+      ...(orig.SparePartAPI || {}),
+      list: async () => [{ id: 'p1', Part_Code: 'NDL-01', Part_Name_EN: 'เข็ม', Unit: 'ชิ้น', Unit_Price: 10, Stock_Qty: 5 }],
+      update: vi.fn(async () => ({})),
+    },
+    StockTxnAPI: { ...(orig.StockTxnAPI || {}), create: vi.fn(async () => ({})) },
     WorkOrderAPI: { ...(orig.WorkOrderAPI || {}), list: async () => [], create: vi.fn(async () => ({})) },
   }
 })
@@ -84,5 +89,27 @@ describe('StepComplete characterization', () => {
       expect(WorkOrderAPI.create).toHaveBeenCalledWith(expect.objectContaining({ Status: 'WAITING_DYE_TEST' }))
     })
     expect(onUpdated).toHaveBeenCalled()
+  })
+
+  it('records used parts as a note without deducting stock', async () => {
+    const onUpdated = vi.fn()
+    render(<StepComplete request={{ ...base, status: 'APPROVED', id: 'r1', request_no: 'RR-1' }} onUpdated={onUpdated} />)
+
+    const picker = (await screen.findAllByRole('combobox'))[0]
+    fireEvent.change(picker, { target: { value: 'p1' } })
+    fireEvent.click(screen.getAllByRole('button', { name: /\+ เพิ่ม/ })[0])
+    fireEvent.change(screen.getByPlaceholderText('ชื่อช่างผู้ปฏิบัติงาน'), { target: { value: 'ช่างหนึ่ง' } })
+    fireEvent.change(screen.getByPlaceholderText(/อธิบายวิธีแก้ไข/), { target: { value: 'เปลี่ยนเข็มใหม่' } })
+    fireEvent.click(screen.getByRole('button', { name: /ยืนยันบันทึกปิดงานซ่อม/ }))
+
+    await waitFor(() => {
+      expect(onUpdated).toHaveBeenCalled()
+    })
+    expect(completeRepairRequest).toHaveBeenCalledWith(
+      'r1',
+      expect.objectContaining({ parts_used: expect.stringContaining('เข็ม') })
+    )
+    expect(SparePartAPI.update).not.toHaveBeenCalled()
+    expect(StockTxnAPI.create).not.toHaveBeenCalled()
   })
 })

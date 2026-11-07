@@ -3,7 +3,7 @@ export function StepCompleteParts({ catalogParts, selectedPartId, setSelectedPar
   return (
             <div style={{ background: '#f8fafc', padding: 14, borderRadius: 14, border: '1.5px solid #cbd5e1' }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>
-                📦 อะไหล่ที่เบิกใช้ (ตัดสต็อกอัตโนมัติ)
+                📦 อะไหล่ที่เบิกใช้ (บันทึกเป็นรายการ ไม่ตัดสต็อก)
               </label>
 
               {/* 1. Catalog Part Picker */}
