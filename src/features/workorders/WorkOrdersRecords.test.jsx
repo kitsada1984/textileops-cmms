@@ -50,6 +50,15 @@ describe('WorkOrdersRecords characterization', () => {
     expect(h.setReportModalOpen).toHaveBeenCalledWith(true)
   })
 
+  it('hides completed and cancelled statuses from the status filter', () => {
+    renderTab()
+
+    expect(screen.getByRole('button', { name: /กำลังทำ/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /รออะไหล่/ })).toBeInTheDocument()
+    expect(screen.queryByText('เสร็จสิ้น')).not.toBeInTheDocument()
+    expect(screen.queryByText('ยกเลิก')).not.toBeInTheDocument()
+  })
+
   it('shows the empty state when no jobs match', () => {
     renderTab({ filteredJobs: [] })
 

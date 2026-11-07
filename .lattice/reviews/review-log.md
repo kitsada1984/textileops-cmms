@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Hide completed/cancelled from WO and repair menus (lattice-review)
+- **Scope**: 4 files + 1 new test, workorders filter UI and repair summary row
+- **Atoms**: clean-code, test-quality, lattice-review
+- **Result**: 0 critical, 0 warning, 0 suggestion (display-only; data and edit forms unchanged)
+- **Key findings**: status filter used full WORK_ORDER_STATUS_OPTIONS; repair summary used full REPAIR_STATUS
+- **Strengths**: filtered list derived once in workOrderNormalize; 39 tests green in workorder suite
+
 ## 2026-11-07 — Release v1.3.266 deployed (D1 quota fix)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 981ffc6a
 - **Atoms**: clean-code, secure-coding, test-quality, lattice-review

@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronUp, ClipboardList, Clock, PieChart, Plus, Printer, RotateCcw, Tag, X } from 'lucide-react'
 import SearchInput from '../../components/ui/SearchInput'
-import { WORK_ORDER_STATUS_OPTIONS, getWorkOrderStatusMeta, getWorkOrderDetails, getJobDailyLogs, getLatestDailyLog } from './workOrderNormalize.js'
+import { WORK_ORDER_FILTER_STATUS_OPTIONS, WORK_ORDER_STATUS_OPTIONS, getWorkOrderStatusMeta, getWorkOrderDetails, getJobDailyLogs, getLatestDailyLog } from './workOrderNormalize.js'
 import { calculateSlaPerformance } from '../../api/entities'
 import { getProblemCauseMeta } from '../../constants/problemCause'
 import { WorkOrderCard } from './WorkOrderCard.jsx'
@@ -240,7 +240,7 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                     </button>
 
                     {/* Individual Status Cards */}
-                    {WORK_ORDER_STATUS_OPTIONS.map((opt) => {
+                    {WORK_ORDER_FILTER_STATUS_OPTIONS.map((opt) => {
                       const isSelected = statusFilters.includes(opt.value)
                       const count = statusCounts[opt.value] || 0
                       return (

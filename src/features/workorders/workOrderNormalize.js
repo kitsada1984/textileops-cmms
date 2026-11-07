@@ -50,6 +50,12 @@ export const WORK_ORDER_STATUS_OPTIONS = [
   },
 ]
 
+const HIDDEN_FILTER_STATUSES = ['COMPLETED', 'CANCELLED']
+
+export const WORK_ORDER_FILTER_STATUS_OPTIONS = WORK_ORDER_STATUS_OPTIONS.filter(
+  (opt) => !HIDDEN_FILTER_STATUSES.includes(opt.value)
+)
+
 export function getWorkOrderStatusMeta(status) {
   const raw = String(status || '').trim()
   const upper = raw.toUpperCase()

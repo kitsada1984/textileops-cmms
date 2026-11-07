@@ -1,12 +1,15 @@
 import { REPAIR_STATUS } from '../../api/entities'
 
+const HIDDEN_SUMMARY_STATUSES = ['COMPLETED']
+const SUMMARY_STATUSES = REPAIR_STATUS.filter((s) => !HIDDEN_SUMMARY_STATUSES.includes(s.value))
+
 export function RepairStatusRow({ byStatus, STATUS_CFG }) {
   return (
       <div
         className="flex gap-2.5 overflow-x-auto no-scrollbar scrollbar-none pb-1 flex-nowrap sm:flex-wrap"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {REPAIR_STATUS.map(s => {
+        {SUMMARY_STATUSES.map(s => {
           const cfg = STATUS_CFG[s.value] || {}
           return (
             <div key={s.value} className="flex-shrink-0" style={{
