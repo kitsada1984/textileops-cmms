@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.272 deployed (close dropdown status set)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 4b73384c
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (repairflow+repair 40 tests green)
+- **Key findings**: close dropdown now lists the shared 7 WorkOrders statuses
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.272
+
 ## 2026-11-07 — Full WO status set on repair close dropdown (waza-check)
 - **Scope**: 1 file + 1 test file, StepComplete closing-status select
 - **Atoms**: clean-code, test-quality
