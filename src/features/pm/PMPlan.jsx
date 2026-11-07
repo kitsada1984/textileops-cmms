@@ -1272,6 +1272,7 @@ export default function PMPlan({ defaultTab = 'plan' }) {
           canEdit={canEdit}
           canAdd={canAdd}
           canDelete={canDelete}
+          isAdmin={user?.role === 'admin'}
         />
       ) : (
         <>

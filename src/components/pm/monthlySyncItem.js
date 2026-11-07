@@ -77,6 +77,9 @@ export function resolveEffectiveActualEnd(item, year, month, today = new Date())
     return item.actualEndDate || item.actualStartDate
   }
   if (item.status === 'IN_PROGRESS') {
+    if (item.manualOverrideEndDate && item.actualEndDate) {
+      return item.actualEndDate
+    }
     const sDate = item.actualStartDate
     const todayStr = typeof today === 'string' ? today : format(today, 'yyyy-MM-dd')
     const targetPrefix = `${year}-${String(month).padStart(2, '0')}`

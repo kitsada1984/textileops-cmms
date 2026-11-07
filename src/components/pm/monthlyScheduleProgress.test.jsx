@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import {
   resolveEffectiveActualEnd,
   resolveSyncProgressDate,
@@ -11,6 +11,7 @@ import {
   syncWorkOrdersToMonthlyPlan,
 } from './PMMonthlyScheduleView'
 import { TimelineActualBar } from './TimelineActualBar'
+import { MonthlyUpdateModal } from './MonthlyUpdateModal'
 
 describe('Monthly PM Schedule - Ongoing Progress Tracking (ความคืบหน้าตามวันที่ จนกว่าจะจบงาน)', () => {
   describe('resolveEffectiveActualEnd', () => {
@@ -311,4 +312,124 @@ describe('Monthly PM Schedule - Ongoing Progress Tracking (ความคืบ
       expect(screen.getByText(/\(ถึง 07\)/)).toBeDefined()
     })
   })
+
+  describe('Admin Role-Based Date Control (วันที่อัตโนมัติ admin สามารถแก้ไขได้คนเดียวเท่านั้น)', () => {
+    it('resolveEffectiveActualEnd respects manualOverrideEndDate when set by admin', () => {
+      const item = {
+        status: 'IN_PROGRESS',
+        actualStartDate: '2026-11-01',
+        actualEndDate: '2026-11-04',
+        manualOverrideEndDate: true,
+      }
+      // Today is 2026-11-08, but since admin manually overrode the end date to 2026-11-04, it must return 2026-11-04
+      const result = resolveEffectiveActualEnd(item, 2026, 11, new Date('2026-11-08'))
+      expect(result).toBe('2026-11-04')
+    })
+
+    it('MonthlyUpdateModal disables auto date input and shows lock badge for non-admin on IN_PROGRESS items', () => {
+      const mockSetActualForm = vi.fn()
+      const actualForm = {
+        status: 'IN_PROGRESS',
+        actualStartDate: '2026-11-01',
+        actualEndDate: '2026-11-07',
+        actualTech: 'ช่างทดสอบ',
+        notes: '',
+      }
+
+      render(
+        <MonthlyUpdateModal
+          updateModalOpen={true}
+          setUpdateModalOpen={vi.fn()}
+          selectedItem={{ id: 'item-1', mc: 'MC-01', plannedStartDate: '2026-11-01', plannedEndDate: '2026-11-03' }}
+          actualForm={actualForm}
+          setActualForm={mockSetActualForm}
+          handleSaveActual={vi.fn()}
+          daysPerMachine={3}
+          isAdmin={false}
+        />
+      )
+
+      expect(screen.getByText('เฉพาะ Admin')).toBeDefined()
+      expect(screen.getByText(/วันที่อัตโนมัติ: ระบบอัปเดตตามวันต่อเนื่อง/)).toBeDefined()
+
+      // The date input should be disabled
+      const dateInputs = screen.getAllByDisplayValue('2026-11-07')
+      expect(dateInputs.length).toBeGreaterThan(0)
+      const autoDateInput = dateInputs[0]
+      expect(autoDateInput.hasAttribute('disabled')).toBe(true)
+      expect(autoDateInput.getAttribute('aria-disabled')).toBe('true')
+
+      // Reset button should not be rendered for non-admin
+      expect(screen.queryByText('รีเซ็ต')).toBeNull()
+    })
+
+    it('MonthlyUpdateModal enables date input, displays Admin badge, and allows reset for admin users', () => {
+      const mockSetActualForm = vi.fn()
+      const mockResetAutoDate = vi.fn()
+      const actualForm = {
+        status: 'IN_PROGRESS',
+        actualStartDate: '2026-11-01',
+        actualEndDate: '2026-11-07',
+        actualTech: 'ช่างแอดมิน',
+        notes: '',
+      }
+
+      render(
+        <MonthlyUpdateModal
+          updateModalOpen={true}
+          setUpdateModalOpen={vi.fn()}
+          selectedItem={{ id: 'item-1', mc: 'MC-01', plannedStartDate: '2026-11-01', plannedEndDate: '2026-11-03' }}
+          actualForm={actualForm}
+          setActualForm={mockSetActualForm}
+          handleSaveActual={vi.fn()}
+          daysPerMachine={3}
+          isAdmin={true}
+          onResetAutoDate={mockResetAutoDate}
+        />
+      )
+
+      expect(screen.getByText('Admin แก้ไขได้')).toBeDefined()
+      expect(screen.getByText(/สิทธิ์ Admin: สามารถแก้ไขวันที่อัตโนมัตินี้ได้คนเดียวเท่านั้น/)).toBeDefined()
+
+      // Date input must NOT be disabled for admin
+      const dateInputs = screen.getAllByDisplayValue('2026-11-07')
+      expect(dateInputs.length).toBeGreaterThan(0)
+      const autoDateInput = dateInputs[0]
+      expect(autoDateInput.hasAttribute('disabled')).toBe(false)
+
+      // Admin can click reset button
+      const resetBtn = screen.getByText('รีเซ็ต')
+      expect(resetBtn).toBeDefined()
+      fireEvent.click(resetBtn)
+      expect(mockResetAutoDate).toHaveBeenCalledTimes(1)
+    })
+
+    it('MonthlyUpdateModal enables date input for COMPLETED status regardless of admin role', () => {
+      const actualForm = {
+        status: 'COMPLETED',
+        actualStartDate: '2026-11-01',
+        actualEndDate: '2026-11-03',
+        actualTech: 'ช่างเอก',
+        notes: 'เสร็จเรียบร้อย',
+      }
+
+      render(
+        <MonthlyUpdateModal
+          updateModalOpen={true}
+          setUpdateModalOpen={vi.fn()}
+          selectedItem={{ id: 'item-1', mc: 'MC-01' }}
+          actualForm={actualForm}
+          setActualForm={vi.fn()}
+          handleSaveActual={vi.fn()}
+          daysPerMachine={3}
+          isAdmin={false}
+        />
+      )
+
+      expect(screen.getByText('วันที่เสร็จจริง (Actual End)')).toBeDefined()
+      const dateInput = screen.getByDisplayValue('2026-11-03')
+      expect(dateInput.hasAttribute('disabled')).toBe(false)
+    })
+  })
+
 })

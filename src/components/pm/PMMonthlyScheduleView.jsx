@@ -21,6 +21,7 @@ import {
 import { format, parseISO, isAfter, isBefore, startOfDay } from 'date-fns'
 import { AppConfigAPI, WorkOrderAPI, CylinderAPI, PMPlanAPI, countWorkingDaysExcludingSundays, isSystemWorkOrder } from '../../api/entities'
 import { useToast } from '../ui/Toast'
+import { useAuth } from '../../contexts/AuthContext'
 import Modal from '../ui/Modal'
 import PMMonthlyPrintModal from './PMMonthlyPrintModal'
 import {
@@ -556,7 +557,10 @@ export default function PMMonthlyScheduleView({
   canEdit = true,
   canAdd = true,
   canDelete = true,
+  isAdmin: isAdminProp,
 }) {
+  const auth = useAuth?.() || {}
+  const isAdmin = typeof isAdminProp === 'boolean' ? isAdminProp : (auth?.user?.role === 'admin')
   const toast = useToast()
 
   const [remoteCylinders, setRemoteCylinders] = useState([])
@@ -962,14 +966,30 @@ export default function PMMonthlyScheduleView({
   // Handle open actual execution update modal
   const handleOpenUpdateModal = (item) => {
     setSelectedItem(item)
+    const autoEndDate = resolveEffectiveActualEnd(item, selectedYear, selectedMonth)
     setActualForm({
       actualStartDate: item.actualStartDate || item.plannedStartDate || '',
-      actualEndDate: item.actualEndDate || (item.status === 'COMPLETED' ? item.plannedEndDate : ''),
+      actualEndDate: item.actualEndDate || (item.status === 'COMPLETED' ? item.plannedEndDate : (item.status === 'IN_PROGRESS' ? autoEndDate : '')),
       actualTech: item.actualTech || item.assignedTech || '',
       status: item.status || 'SCHEDULED',
       notes: item.notes || '',
+      manualOverrideEndDate: Boolean(item.manualOverrideEndDate),
     })
     setUpdateModalOpen(true)
+  }
+
+  const handleResetAutoDate = () => {
+    if (!selectedItem) return
+    const autoEndDate = resolveEffectiveActualEnd(
+      { ...selectedItem, manualOverrideEndDate: false, actualEndDate: null, actualStartDate: actualForm.actualStartDate || selectedItem.actualStartDate },
+      selectedYear,
+      selectedMonth
+    )
+    setActualForm(prev => ({
+      ...prev,
+      actualEndDate: autoEndDate,
+      manualOverrideEndDate: false,
+    }))
   }
 
   // Handle Save Actual Execution
@@ -977,10 +997,33 @@ export default function PMMonthlyScheduleView({
     e?.preventDefault?.()
     if (!selectedItem) return
 
+    let effectiveActualEnd = actualForm.actualEndDate
+    let manualOverrideEndDate = selectedItem.manualOverrideEndDate || false
+
+    if (actualForm.status === 'IN_PROGRESS') {
+      const systemAutoDate = resolveEffectiveActualEnd(
+        { ...selectedItem, manualOverrideEndDate: false, actualEndDate: null, actualStartDate: actualForm.actualStartDate || selectedItem.actualStartDate },
+        selectedYear,
+        selectedMonth
+      )
+      if (!isAdmin) {
+        effectiveActualEnd = systemAutoDate
+        manualOverrideEndDate = false
+      } else {
+        if (actualForm.actualEndDate && actualForm.actualEndDate !== systemAutoDate) {
+          manualOverrideEndDate = true
+        } else if (actualForm.manualOverrideEndDate === false) {
+          manualOverrideEndDate = false
+        }
+      }
+    } else {
+      manualOverrideEndDate = false
+    }
+
     // Evaluate SLA On-Time: If actualEndDate is on or before plannedEndDate, it's on-time
     let isOnTime = null
-    if (actualForm.status === 'COMPLETED' && actualForm.actualEndDate && selectedItem.plannedEndDate) {
-      const actualEnd = startOfDay(parseISO(actualForm.actualEndDate))
+    if (actualForm.status === 'COMPLETED' && effectiveActualEnd && selectedItem.plannedEndDate) {
+      const actualEnd = startOfDay(parseISO(effectiveActualEnd))
       const plannedEnd = startOfDay(parseISO(selectedItem.plannedEndDate))
       isOnTime = !isAfter(actualEnd, plannedEnd)
     }
@@ -990,10 +1033,11 @@ export default function PMMonthlyScheduleView({
         return {
           ...item,
           actualStartDate: actualForm.actualStartDate,
-          actualEndDate: actualForm.actualEndDate,
+          actualEndDate: effectiveActualEnd,
           actualTech: actualForm.actualTech,
           status: actualForm.status,
           notes: actualForm.notes,
+          manualOverrideEndDate,
           isOnTime,
           updatedAt: new Date().toISOString(),
         }
@@ -1758,7 +1802,7 @@ export default function PMMonthlyScheduleView({
           <MonthlyAnnualView annualSummary={annualSummary} selectedYear={selectedYear} setSelectedYear={setSelectedYear} setSelectedMonth={setSelectedMonth} setViewMode={setViewMode} currentMonth={currentMonth} currentYear={currentYear} />
       )}
 
-      <MonthlyUpdateModal updateModalOpen={updateModalOpen} setUpdateModalOpen={setUpdateModalOpen} selectedItem={selectedItem} actualForm={actualForm} setActualForm={setActualForm} handleSaveActual={handleSaveActual} daysPerMachine={daysPerMachine} />
+      <MonthlyUpdateModal updateModalOpen={updateModalOpen} setUpdateModalOpen={setUpdateModalOpen} selectedItem={selectedItem} actualForm={actualForm} setActualForm={setActualForm} handleSaveActual={handleSaveActual} daysPerMachine={daysPerMachine} isAdmin={isAdmin} onResetAutoDate={handleResetAutoDate} />
 
       <MonthlyAddEditModal addEditModalOpen={addEditModalOpen} setAddEditModalOpen={setAddEditModalOpen} editItemForm={editItemForm} setEditItemForm={setEditItemForm} selectedMonth={selectedMonth} selectedYear={selectedYear} effectiveMachines={effectiveMachines} handleSelectMachinePreset={handleSelectMachinePreset} handleSaveItem={handleSaveItem} />
 
