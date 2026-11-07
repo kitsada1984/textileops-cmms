@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Strip image meta from spare-part notes input (waza-check)
+- **Scope**: 2 files + 2 test files, spare-part edit form and image-meta contract
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (save path untouched; meta re-appended on save)
+- **Key findings**: openEdit loaded raw Remark with ImageUrl: lines; upload also appended meta to notes
+- **Strengths**: 3 files / 12 tests green; round-trip invariant locked (strip on load, append on save)
+
 ## 2026-11-07 — Release v1.3.276 deployed (admin-only dates)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 3187b193
 - **Atoms**: clean-code, test-quality, waza-check

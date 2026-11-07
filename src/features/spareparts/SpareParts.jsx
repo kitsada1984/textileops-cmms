@@ -372,6 +372,9 @@ export default function SpareParts() {
         ? p.Compatible_Machines.join(',') : p.Compatible_Machines || '',
       Status: getSparePartStatus(p),
       ImageUrl: getSparePartImageUrl(p),
+      // Hidden ImageUrl:/fingerprint/embedding lines live in Remark for
+      // storage — keep them out of the notes input (save re-appends them).
+      Remark: stripSparePartImageMeta(p.Remark),
     })
     setModal(true)
     setDetailRec(null)
@@ -434,10 +437,9 @@ export default function SpareParts() {
         ...prev,
         ImageUrl: imageUrl,
         ImageEmbedding: localVector || prev.ImageEmbedding,
-        Remark: appendSparePartImageMeta(prev.Remark, {
-          imageUrl,
-          embedding: localVector || parseEmbedding(prev.ImageEmbedding),
-        }),
+        // Keep the notes input free of hidden meta lines — the URL lives in
+        // the ImageUrl field and save re-appends storage meta automatically.
+        Remark: stripSparePartImageMeta(prev.Remark),
       }))
       toast.success('อัปโหลดรูปสำเร็จ', `บันทึกไว้ในโฟลเดอร์ ${SPARE_PART_IMAGE_FOLDER}`)
     } catch (e) {

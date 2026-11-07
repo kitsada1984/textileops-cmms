@@ -8,6 +8,7 @@ import SpareParts from './SpareParts'
 const seedParts = [
   { id: 'p1', Part_Code: 'SP-001', Part_Name_EN: 'Needle S-01', Part_Name: 'เข็ม S-01', Stock_Qty: 10, Min_Qty: 2, Unit_Price: 100 },
   { id: 'p2', Part_Code: 'SP-002', Part_Name_EN: 'Needle D-01', Part_Name: 'เข็ม D-01', Stock_Qty: 0, Min_Qty: 5, Unit_Price: 200 },
+  { id: 'p3', Part_Code: 'SP-003', Part_Name_EN: 'Belt X-01', Part_Name: 'สายพาน X-01', Stock_Qty: 3, Min_Qty: 1, Unit_Price: 5500, ImageUrl: 'https://drive.google.com/file/d/abc', Remark: 'ของแท้ เบิกศูนย์\nImageUrl: https://drive.google.com/file/d/abc' },
 ]
 
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -87,6 +88,19 @@ describe('SpareParts characterization', () => {
     await screen.findAllByText('รายการอะไหล่ทั้งหมด')
 
     expect(screen.getAllByText('จัดการ').length).toBeGreaterThan(0)
+  })
+
+  it('shows a clean remark without the image URL when editing', async () => {
+    render(<SpareParts />)
+    await screen.findAllByText('Belt X-01')
+
+    const editButtons = screen.getAllByTitle('แก้ไขข้อมูลอะไหล่')
+    fireEvent.click(editButtons[editButtons.length - 1])
+
+    await screen.findAllByText(/แก้ไขข้อมูลอะไหล่/)
+    const remarkInput = screen.getByLabelText('remark')
+    expect(remarkInput.value).toBe('ของแท้ เบิกศูนย์')
+    expect(remarkInput.value).not.toContain('ImageUrl:')
   })
 
   it('opens the detail drawer on row click', async () => {
