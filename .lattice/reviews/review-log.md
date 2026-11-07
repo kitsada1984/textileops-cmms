@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.270 deployed (closing status + no stock deduct)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, a296cc9f
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (repairflow+repair 40 tests green)
+- **Key findings**: shipped closing-status dropdown and note-only parts recording together
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.270
+
 ## 2026-11-07 — Record parts as note without stock deduction (waza-check)
 - **Scope**: 3 files + 1 test file, StepComplete close flow and parts picker label
 - **Atoms**: clean-code, test-quality
