@@ -3,6 +3,15 @@ import { REPAIR_STATUS } from '../../api/entities'
 const HIDDEN_SUMMARY_STATUSES = ['COMPLETED']
 const SUMMARY_STATUSES = REPAIR_STATUS.filter((s) => !HIDDEN_SUMMARY_STATUSES.includes(s.value))
 
+// Terminal repair statuses hidden by the default "pending work only" view.
+// 'CANCELLED' is not a known REPAIR_STATUS option but is guarded here so
+// legacy rows with that value are hidden the same way.
+export const REPAIR_FINISHED_STATUSES = ['COMPLETED', 'CANCELLED']
+
+export function isFinishedRepairStatus(status) {
+  return REPAIR_FINISHED_STATUSES.includes(String(status || '').toUpperCase())
+}
+
 export function RepairStatusRow({ byStatus, STATUS_CFG }) {
   return (
       <div

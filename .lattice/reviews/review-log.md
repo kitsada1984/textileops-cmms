@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Auto-hide finished work in WO and repair lists (waza-check)
+- **Scope**: 6 files + 4 test files, workorders filter pipeline and repair list
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (display filter only; data, KPIs, forms unchanged)
+- **Key findings**: WO list and repair list had no default finished-exclusion; single caller of filterWorkOrderJobs
+- **Strengths**: finished-rule centralized in isFinished helpers; 40 files / 206 tests green; persisted opt-in toggle
+
 ## 2026-11-07 — Hide completed/cancelled from WO and repair menus (lattice-review)
 - **Scope**: 4 files + 1 new test, workorders filter UI and repair summary row
 - **Atoms**: clean-code, test-quality, lattice-review

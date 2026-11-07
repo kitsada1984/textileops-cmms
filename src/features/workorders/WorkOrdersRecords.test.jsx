@@ -18,6 +18,7 @@ function renderTab(over = {}) {
     search: '', setSearch: vi.fn(),
     typeFilters: [], setTypeFilters: vi.fn(), statusFilters: [], setStatusFilters: vi.fn(),
     causeFilter: '', setCauseFilter: vi.fn(), showDeleted: false, setShowDeleted: vi.fn(),
+    showFinished: false, setShowFinished: vi.fn(),
     isTypeFilterOpen: true, isStatusFilterOpen: true, isCauseFilterOpen: true,
     toggleTypeFilterOpen: vi.fn(), toggleStatusFilterOpen: vi.fn(), toggleCauseFilterOpen: vi.fn(),
     toggleTypeFilter: vi.fn(), toggleStatusFilter: vi.fn(), toggleCauseFilter: vi.fn(),
@@ -57,6 +58,13 @@ describe('WorkOrdersRecords characterization', () => {
     expect(screen.getByRole('button', { name: /รออะไหล่/ })).toBeInTheDocument()
     expect(screen.queryByText('เสร็จสิ้น')).not.toBeInTheDocument()
     expect(screen.queryByText('ยกเลิก')).not.toBeInTheDocument()
+  })
+
+  it('toggles finished-work visibility and resets it with clear-all', () => {
+    const h = renderTab()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /งานเสร็จ\/ยกเลิกแล้ว/ }))
+    expect(h.setShowFinished).toHaveBeenCalledWith(true)
   })
 
   it('shows the empty state when no jobs match', () => {

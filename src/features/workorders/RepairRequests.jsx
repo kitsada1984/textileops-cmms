@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { RepairStatusRow } from './repairStatusRow.jsx'
+import { RepairStatusRow, isFinishedRepairStatus } from './repairStatusRow.jsx'
 import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../../hooks/useEntity'
@@ -71,6 +71,22 @@ export default function RepairRequests() {
   const [cylinders, setCylinders] = useState([])
   const [filterSort, setFilterSort] = useState(INIT_FS)
   const [qrModalCylinder, setQrModalCylinder] = useState(null)
+  // Default view shows pending repairs only (completed hidden).
+  // Persisted so the user does not re-filter on every visit.
+  const [showFinished, setShowFinished] = useState(() => {
+    try {
+      return localStorage.getItem('textileops_rr_show_finished') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const handleShowFinishedChange = (next) => {
+    setShowFinished(next)
+    try {
+      localStorage.setItem('textileops_rr_show_finished', String(next))
+    } catch {}
+  }
 
   useEffect(() => {
     CylinderAPI.list().then(setCylinders).catch(() => setCylinders([]))
@@ -248,10 +264,12 @@ export default function RepairRequests() {
 
   const normalizedData = useMemo(() => (Array.isArray(data) ? data.map(normalizeRepairRecord) : []), [data])
 
-  const searched = normalizedData.filter(r =>
-    [r.request_no, r.cylinder_serial, r.cylinder_location, r.Design, r.KI, r.roll_no, r.RollNo, r.reported_by, r.technician_name, r.problem_description, r.problem_cause, r.repair_type]
-      .some(v => String(v || '').toLowerCase().includes(search.toLowerCase()))
-  )
+  const searched = normalizedData
+    .filter((r) => showFinished || !isFinishedRepairStatus(r.status))
+    .filter(r =>
+      [r.request_no, r.cylinder_serial, r.cylinder_location, r.Design, r.KI, r.roll_no, r.RollNo, r.reported_by, r.technician_name, r.problem_description, r.problem_cause, r.repair_type]
+        .some(v => String(v || '').toLowerCase().includes(search.toLowerCase()))
+    )
   const byStatus = REPAIR_STATUS.reduce((acc, s) => { acc[s.value] = normalizedData.filter(r => r.status === s.value).length; return acc }, {})
 
   const wbCols = useWebBuilderMenu('/repair-requests')
@@ -426,6 +444,15 @@ export default function RepairRequests() {
           className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-0.5 flex-nowrap justify-between sm:justify-end"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none px-2.5 py-2 min-h-[44px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium whitespace-nowrap" title="ค่าเริ่มต้นซ่อนงานที่แก้ไขสำเร็จ เห็นเฉพาะงานค้าง">
+            <input
+              type="checkbox"
+              checked={showFinished}
+              onChange={(e) => handleShowFinishedChange(e.target.checked)}
+              className="rounded text-blue-600 focus:ring-0"
+            />
+            <span>งานที่เสร็จแล้ว</span>
+          </label>
           <FilterSortPanel cols={FS_COLS} value={filterSort} onChange={setFilterSort} />
           <GoogleSheetSyncButton
             sheetName="แจ้งซ่อม"

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import RepairRequests from './RepairRequests'
 
@@ -50,6 +50,9 @@ describe('RepairRequests characterization', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.print = vi.fn()
+    try {
+      localStorage.removeItem('textileops_rr_show_finished')
+    } catch {}
   })
 
   it('shows status summary computed from seeded requests', async () => {
@@ -57,6 +60,17 @@ describe('RepairRequests characterization', () => {
     await screen.findAllByText('รอแก้ไข')
 
     expect(screen.getAllByText('รอแก้ไข').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('แก้ไขสำเร็จ').length).toBeGreaterThan(0)
+  })
+
+  it('hides completed repairs by default and shows them when requested', async () => {
+    render(<RepairRequests />)
+    await screen.findAllByText('รอแก้ไข')
+
+    expect(screen.getAllByText('REQ-001').length).toBeGreaterThan(0)
+    expect(screen.queryByText('REQ-002')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /งานที่เสร็จแล้ว/ }))
+
+    expect(screen.getAllByText('REQ-002').length).toBeGreaterThan(0)
   })
 })

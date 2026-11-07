@@ -4,11 +4,14 @@ import {
   matchesWorkOrderProblemCauseFilter,
   getWorkOrderDetails,
 } from './WorkOrders.jsx'
+import { isFinishedWorkOrderStatus } from './workOrderNormalize.js'
 
 // Pure job-list filter predicate (moved verbatim out of the WorkOrders
 // component to meet the complexity gate; params only, no component
 // state, no side effects).
-export function filterWorkOrderJobs(allJobs, { showDeleted, typeFilters, statusFilters, causeFilter, search }) {
+// `showFinished` defaults to false: the list shows pending work only
+// (completed / cancelled hidden) unless the caller opts in.
+export function filterWorkOrderJobs(allJobs, { showDeleted, typeFilters, statusFilters, causeFilter, search, showFinished = false }) {
   return allJobs.filter((job) => {
     const isDel = Boolean(job.IsDeleted)
     if (!showDeleted && isDel) return false
@@ -16,6 +19,7 @@ export function filterWorkOrderJobs(allJobs, { showDeleted, typeFilters, statusF
 
     if (!matchesWorkOrderTypeFilter(job.JobType, typeFilters)) return false
     if (!matchesWorkOrderStatusFilter(job.Status, statusFilters)) return false
+    if (!showFinished && isFinishedWorkOrderStatus(job.Status)) return false
     if (!matchesWorkOrderProblemCauseFilter(job.ProblemCause || job.problem_cause, causeFilter)) return false
 
     if (search.trim()) {

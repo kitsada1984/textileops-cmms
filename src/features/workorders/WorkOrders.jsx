@@ -311,6 +311,7 @@ export const WO_FILTER_STORAGE_KEYS = {
   TYPE_OPEN: 'textileops_wo_filter_type_open',
   STATUS_OPEN: 'textileops_wo_filter_status_open',
   CAUSE_OPEN: 'textileops_wo_filter_cause_open',
+  SHOW_FINISHED: 'textileops_wo_filter_show_finished',
 }
 
 /**
@@ -394,6 +395,22 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   const [statusFilters, setStatusFilters] = useState([]) // [] = ALL, or ['IN_PROGRESS', 'WAITING_TECH', ...]
   const [causeFilter, setCauseFilter] = useState('') // '' = ALL, 'คน', 'เครื่องจักร', 'วัตถุดิบ', 'UNSPECIFIED'
   const [showDeleted, setShowDeleted] = useState(false)
+  // Default view shows pending work only (completed / cancelled hidden).
+  // Persisted so the user does not re-filter on every visit.
+  const [showFinished, setShowFinished] = useState(() => {
+    try {
+      return localStorage.getItem(WO_FILTER_STORAGE_KEYS.SHOW_FINISHED) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const handleShowFinishedChange = (next) => {
+    setShowFinished(next)
+    try {
+      localStorage.setItem(WO_FILTER_STORAGE_KEYS.SHOW_FINISHED, String(next))
+    } catch {}
+  }
 
   // Collapsible Filter Panels with localStorage persistence
   const [isTypeFilterOpen, setIsTypeFilterOpen] = useState(() => {
@@ -654,7 +671,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
   // Live counts for Problem Cause filter cards
   const causeCounts = useMemo(() => computeCauseCounts(allJobs, showDeleted), [allJobs, showDeleted])
 
-  const filteredJobs = useMemo(() => filterWorkOrderJobs(allJobs, { showDeleted, typeFilters, statusFilters, causeFilter, search }), [allJobs, typeFilters, statusFilters, showDeleted, search]);
+  const filteredJobs = useMemo(() => filterWorkOrderJobs(allJobs, { showDeleted, typeFilters, statusFilters, causeFilter, search, showFinished }), [allJobs, typeFilters, statusFilters, showDeleted, search, showFinished]);
 
   // KPI Breakdown Calculations
   const kpiStats = useMemo(() => computeKpiStats(allJobs, kpiTargets), [allJobs, kpiTargets])
@@ -823,7 +840,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       {/* ── TAB 2: WORK ORDERS & CREATE WORK ORDER ──────────────── */}
       {/* ══════════════════════════════════════════════════════════ */}
       {currentTab === 'records' && (
-        <WorkOrdersRecords filteredJobs={filteredJobs} jobsLoading={jobsLoading} kpiTargets={kpiTargets} typeCounts={typeCounts} statusCounts={statusCounts} causeCounts={causeCounts} WORK_ORDER_TYPE_OPTIONS={WORK_ORDER_TYPE_OPTIONS} search={search} setSearch={setSearch} typeFilters={typeFilters} setTypeFilters={setTypeFilters} statusFilters={statusFilters} setStatusFilters={setStatusFilters} causeFilter={causeFilter} setCauseFilter={setCauseFilter} showDeleted={showDeleted} setShowDeleted={setShowDeleted} isTypeFilterOpen={isTypeFilterOpen} isStatusFilterOpen={isStatusFilterOpen} isCauseFilterOpen={isCauseFilterOpen} toggleTypeFilterOpen={toggleTypeFilterOpen} toggleStatusFilterOpen={toggleStatusFilterOpen} toggleCauseFilterOpen={toggleCauseFilterOpen} toggleTypeFilter={toggleTypeFilter} toggleStatusFilter={toggleStatusFilter} toggleCauseFilter={toggleCauseFilter} canAdd={canAdd} canEdit={canEdit} canDelete={canDelete} isMobile={isMobile} isTablet={isTablet} isDesktop={isDesktop} openEditModal={openEditModal} openCompleteModal={openCompleteModal} openDailyLogModal={openDailyLogModal} openInterruptionModal={openInterruptionModal} openPrintModal={openPrintModal} handleDeleteJob={handleDeleteJob} handleQuickStatusChange={handleQuickStatusChange} setCreateModalOpen={setCreateModalOpen} setReportModalOpen={setReportModalOpen} />
+        <WorkOrdersRecords filteredJobs={filteredJobs} jobsLoading={jobsLoading} kpiTargets={kpiTargets} typeCounts={typeCounts} statusCounts={statusCounts} causeCounts={causeCounts} WORK_ORDER_TYPE_OPTIONS={WORK_ORDER_TYPE_OPTIONS} search={search} setSearch={setSearch} typeFilters={typeFilters} setTypeFilters={setTypeFilters} statusFilters={statusFilters} setStatusFilters={setStatusFilters} causeFilter={causeFilter} setCauseFilter={setCauseFilter} showDeleted={showDeleted} setShowDeleted={setShowDeleted} showFinished={showFinished} setShowFinished={handleShowFinishedChange} isTypeFilterOpen={isTypeFilterOpen} isStatusFilterOpen={isStatusFilterOpen} isCauseFilterOpen={isCauseFilterOpen} toggleTypeFilterOpen={toggleTypeFilterOpen} toggleStatusFilterOpen={toggleStatusFilterOpen} toggleCauseFilterOpen={toggleCauseFilterOpen} toggleTypeFilter={toggleTypeFilter} toggleStatusFilter={toggleStatusFilter} toggleCauseFilter={toggleCauseFilter} canAdd={canAdd} canEdit={canEdit} canDelete={canDelete} isMobile={isMobile} isTablet={isTablet} isDesktop={isDesktop} openEditModal={openEditModal} openCompleteModal={openCompleteModal} openDailyLogModal={openDailyLogModal} openInterruptionModal={openInterruptionModal} openPrintModal={openPrintModal} handleDeleteJob={handleDeleteJob} handleQuickStatusChange={handleQuickStatusChange} setCreateModalOpen={setCreateModalOpen} setReportModalOpen={setReportModalOpen} />
       )}
 
       {/* ══════════════════════════════════════════════════════════ */}

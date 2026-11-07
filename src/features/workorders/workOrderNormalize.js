@@ -56,6 +56,14 @@ export const WORK_ORDER_FILTER_STATUS_OPTIONS = WORK_ORDER_STATUS_OPTIONS.filter
   (opt) => !HIDDEN_FILTER_STATUSES.includes(opt.value)
 )
 
+// True for terminal statuses (completed / cancelled) hidden by the default
+// "pending work only" view. Centralizes the rule so the job filter,
+// counts, and any future caller share one definition.
+export function isFinishedWorkOrderStatus(status) {
+  const meta = getWorkOrderStatusMeta(status)
+  return Boolean(meta.isCompleted || meta.isCancelled)
+}
+
 export function getWorkOrderStatusMeta(status) {
   const raw = String(status || '').trim()
   const upper = raw.toUpperCase()

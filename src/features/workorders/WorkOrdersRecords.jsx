@@ -7,7 +7,11 @@ import { WorkOrderCard } from './WorkOrderCard.jsx'
 import { WorkOrderJobTypeBadge, WorkOrderProblemCell, WorkOrderDetailsCell, WorkOrderStatusCell, WorkOrderDurationCell, WorkOrderRowActions } from './workOrderRowCells.jsx'
 
 // Records tab content moved verbatim from WorkOrders (props only).
-export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeCounts, statusCounts, causeCounts, WORK_ORDER_TYPE_OPTIONS, search, setSearch, typeFilters, setTypeFilters, statusFilters, setStatusFilters, causeFilter, setCauseFilter, showDeleted, setShowDeleted, isTypeFilterOpen, isStatusFilterOpen, isCauseFilterOpen, toggleTypeFilterOpen, toggleStatusFilterOpen, toggleCauseFilterOpen, toggleTypeFilter, toggleStatusFilter, toggleCauseFilter, canAdd, canEdit, canDelete, isMobile, isTablet, isDesktop, openEditModal, openCompleteModal, openDailyLogModal, openInterruptionModal, openPrintModal, handleDeleteJob, handleQuickStatusChange, setCreateModalOpen, setReportModalOpen }) {
+export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeCounts, statusCounts, causeCounts, WORK_ORDER_TYPE_OPTIONS, search, setSearch, typeFilters, setTypeFilters, statusFilters, setStatusFilters, causeFilter, setCauseFilter, showDeleted, setShowDeleted, showFinished, setShowFinished, isTypeFilterOpen, isStatusFilterOpen, isCauseFilterOpen, toggleTypeFilterOpen, toggleStatusFilterOpen, toggleCauseFilterOpen, toggleTypeFilter, toggleStatusFilter, toggleCauseFilter, canAdd, canEdit, canDelete, isMobile, isTablet, isDesktop, openEditModal, openCompleteModal, openDailyLogModal, openInterruptionModal, openPrintModal, handleDeleteJob, handleQuickStatusChange, setCreateModalOpen, setReportModalOpen }) {
+  // "ทั้งหมด" badge counts only listed jobs: finished work is hidden by default.
+  const allStatusBadge = showFinished
+    ? statusCounts.ALL
+    : WORK_ORDER_FILTER_STATUS_OPTIONS.reduce((n, o) => n + (statusCounts[o.value] || 0), 0)
   return (
         <div className="space-y-6">
           {/* Search & Filter Toolbar */}
@@ -49,7 +53,7 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                   </span>
                 </button>
 
-                {(typeFilters.length > 0 || statusFilters.length > 0 || Boolean(causeFilter) || search.trim()) && (
+                {(typeFilters.length > 0 || statusFilters.length > 0 || Boolean(causeFilter) || search.trim() || showFinished) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -57,6 +61,7 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                       setStatusFilters([])
                       setCauseFilter('')
                       setSearch('')
+                      setShowFinished(false)
                     }}
                     className="inline-flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-bold text-xs flex-shrink-0 cursor-pointer"
                     title="ล้างตัวกรองทั้งหมดกลับเป็นค่าเริ่มต้น"
@@ -74,6 +79,16 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                     className="rounded text-blue-600 focus:ring-0"
                   />
                   <span>รายการที่ลบ</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 cursor-pointer select-none px-2.5 py-1.5 min-h-[44px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium flex-shrink-0" title="ค่าเริ่มต้นซ่อนงานเสร็จสิ้น/ยกเลิก เห็นเฉพาะงานค้าง">
+                  <input
+                    type="checkbox"
+                    checked={showFinished}
+                    onChange={(e) => setShowFinished(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-0"
+                  />
+                  <span>งานเสร็จ/ยกเลิกแล้ว</span>
                 </label>
               </div>
             </div>
@@ -235,7 +250,7 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}
                       >
-                        {statusCounts.ALL}
+                        {allStatusBadge}
                       </span>
                     </button>
 

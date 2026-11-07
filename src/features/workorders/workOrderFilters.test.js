@@ -13,6 +13,8 @@ import {
 const jobs = [
   { id: 'a', Job_ID: 'JOB-A', Status: 'OPEN', JobType: 'REPAIR', ProblemCause: 'คน', Technicians: 'ช่างหนึ่ง' },
   { id: 'b', Job_ID: 'JOB-B', Status: 'COMPLETED', JobType: 'PM', ProblemCause: 'เครื่องจักร', IsDeleted: true },
+  { id: 'c', Job_ID: 'JOB-C', Status: 'COMPLETED', JobType: 'PM', ProblemCause: 'คน' },
+  { id: 'd', Job_ID: 'JOB-D', Status: 'CANCELLED', JobType: 'REPAIR', ProblemCause: 'คน' },
 ]
 
 const baseFilters = {
@@ -28,7 +30,17 @@ describe('filterWorkOrderJobs', () => {
     expect(filterWorkOrderJobs(jobs, baseFilters).map((j) => j.id)).toEqual(['a'])
     expect(
       filterWorkOrderJobs(jobs, { ...baseFilters, showDeleted: true }).map((j) => j.id)
+    ).toEqual([])
+    expect(
+      filterWorkOrderJobs(jobs, { ...baseFilters, showDeleted: true, showFinished: true }).map((j) => j.id)
     ).toEqual(['b'])
+  })
+
+  it('hides completed and cancelled jobs by default and shows them when requested', () => {
+    expect(filterWorkOrderJobs(jobs, baseFilters).map((j) => j.id)).toEqual(['a'])
+    expect(
+      filterWorkOrderJobs(jobs, { ...baseFilters, showFinished: true }).map((j) => j.id)
+    ).toEqual(['a', 'c', 'd'])
   })
 
   it('matches search text across job fields', () => {
