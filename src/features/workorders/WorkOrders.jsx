@@ -63,7 +63,6 @@ import { useToast } from '../../components/ui/Toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { SHEET_EXPORTS } from '../../utils/sheetExportConfigs'
 import RepairRequests from './RepairRequests'
-import { UnifiedJobs } from './UnifiedJobs.jsx'
 import { notifyLineWorkOrderAssigned } from '../../utils/line'
 import { syncPMWorkOrderToMonthlySchedule, removePMWorkOrderFromMonthlySchedule } from '../../components/pm/PMMonthlyScheduleView'
 
@@ -363,7 +362,7 @@ export default function WorkOrders({ defaultTab = 'records' }) {
     remove: removeJob,
   } = useEntity(WorkOrderAPI)
 
-  // Tabs: 'records' | 'unified' | 'repair_requests' | 'dashboard' | 'technicians' | 'settings'
+  // Tabs: 'records' | 'repair_requests' | 'dashboard' | 'technicians' | 'settings'
   const [currentTab, setCurrentTab] = useState(defaultTab)
 
   useDefaultTabSync(defaultTab, setCurrentTab)
@@ -812,10 +811,6 @@ export default function WorkOrders({ defaultTab = 'records' }) {
       {/* ══════════════════════════════════════════════════════════ */}
       {/* ── TAB: REPAIR REQUESTS (แจ้งซ่อม) ────────────────────── */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {currentTab === 'unified' && (
-        <UnifiedJobs allJobs={allJobs} setCurrentTab={setCurrentTab} setSearch={setSearch} />
-      )}
-
       {currentTab === 'repair_requests' && (
         <RepairRequests />
       )}

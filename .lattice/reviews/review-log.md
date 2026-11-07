@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Remove unified tab, WO list already shows scanned repairs (waza-check)
+- **Scope**: 2 files edited + 2 files deleted, WorkOrders tabs
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (records + repair tabs unchanged)
+- **Key findings**: unified tab redundant — synced WO-RR rows already surface scan repairs in records
+- **Strengths**: 40 files / 212 tests green; no leftover references to the removed tab
+
 ## 2026-11-07 — Release v1.3.273 deployed (unified pending-work tab)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 639d2dba
 - **Atoms**: clean-code, test-quality, waza-check
