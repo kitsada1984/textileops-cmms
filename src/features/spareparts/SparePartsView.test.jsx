@@ -101,6 +101,10 @@ describe('SpareParts characterization', () => {
     const remarkInput = screen.getByLabelText('remark')
     expect(remarkInput.value).toBe('ของแท้ เบิกศูนย์')
     expect(remarkInput.value).not.toContain('ImageUrl:')
+
+    fireEvent.change(remarkInput, { target: { value: 'ของแท้ เบิกศูนย์ เพิ่มเติม' } })
+    expect(remarkInput.value).toBe('ของแท้ เบิกศูนย์ เพิ่มเติม')
+    expect(remarkInput.value).not.toContain('ImageUrl:')
   })
 
   it('opens the detail drawer on row click', async () => {

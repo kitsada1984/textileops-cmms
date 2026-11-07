@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Fix untypeable spare-part remark input (waza-check)
+- **Scope**: 1 file + 1 test file, spare-part edit modal notes handler
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (proven red-on-old, green-on-new)
+- **Key findings**: onChange rebuilt Remark from the previous text, discarding keystrokes
+- **Strengths**: typed text kept verbatim minus pasted meta; save path untouched
+
 ## 2026-11-07 — Release v1.3.278 deployed (spare-parts print fix)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 0ba93b45
 - **Atoms**: clean-code, test-quality, waza-check

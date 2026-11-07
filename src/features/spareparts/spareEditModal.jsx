@@ -2,7 +2,7 @@ import Modal from '../../components/ui/Modal'
 import F from '../../components/ui/FormField'
 import SearchableDropdown from '../../components/ui/SearchableDropdown'
 import { Check, DollarSign, ExternalLink, Image as ImageIcon, Layers, Package, RefreshCw, Sparkles, Upload } from 'lucide-react'
-import { preserveRemarkWithSparePartImageMeta } from '../../utils/sparePartImage'
+import { stripSparePartImageMeta } from '../../utils/sparePartImage'
 import { WAREHOUSE_OPTIONS } from './sparePartHelpers.jsx'
 
 export function SpareEditModal({ modal, setModal, form, setForm, saving, uploadingImage, submit, handleCopyBasePartInfo, onPickImageFile, t, otherWarehousesForForm, setCategoryModalOpen, allCategories }) {
@@ -187,9 +187,14 @@ export function SpareEditModal({ modal, setModal, form, setForm, saving, uploadi
                   label={t('remark')}
                   id="Remark"
                   placeholder="ข้อคิดเห็น หรือรายละเอียดเพิ่มเติมของอะไหล่"
+                  // Take the typed text as-is (minus pasted meta lines).
+                  // The old handler rebuilt Remark from the PREVIOUS text,
+                  // discarding every keystroke, and re-appended hidden
+                  // ImageUrl: lines into the input. Meta lives in the
+                  // ImageUrl field; save re-appends storage lines.
                   onChange={(value) => setForm((p) => ({
                     ...p,
-                    Remark: preserveRemarkWithSparePartImageMeta(p.Remark, value),
+                    Remark: stripSparePartImageMeta(value),
                   }))}
                 />
               </div>
