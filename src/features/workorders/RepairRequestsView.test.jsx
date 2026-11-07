@@ -84,14 +84,28 @@ describe('RepairRequests characterization', () => {
     expect(updateRepairRequest).toHaveBeenCalledWith('r1', { status: 'IN_PROGRESS' })
   })
 
-  it('offers every status including อนุมัติแล้ว in the edit form dropdown', async () => {
+  it('offers the WorkOrders status set in the edit form dropdown', async () => {
     render(<RepairRequests />)
     await screen.findAllByText('รอแก้ไข')
 
     fireEvent.click(screen.getAllByTitle('แก้ไข')[0])
 
-    const names = screen.getAllByRole('option').map((o) => o.textContent)
-    expect(names).toContain('อนุมัติแล้ว')
+    const names = screen.getAllByRole('option').map((o) => o.textContent).join(' ')
+    for (const label of ['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'รอเทส-ย้อม', 'เสร็จสิ้น', 'ยกเลิก', 'อนุมัติแล้ว']) {
+      expect(names).toContain(label)
+    }
+  })
+
+  it('offers the WorkOrders status set in the drawer quick dropdown', async () => {
+    render(<RepairRequests />)
+    await screen.findAllByText('รอแก้ไข')
+
+    fireEvent.click(screen.getAllByText('REQ-001')[0])
+    const quickSelect = await screen.findByTitle('เปลี่ยนสถานะใบแจ้งซ่อมด่วน')
+    const names = Array.from(quickSelect.querySelectorAll('option')).map((o) => o.textContent).join(' ')
+    for (const label of ['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'รอเทส-ย้อม', 'เสร็จสิ้น', 'ยกเลิก']) {
+      expect(names).toContain(label)
+    }
   })
 
   it('hides completed repairs by default and shows them when requested', async () => {

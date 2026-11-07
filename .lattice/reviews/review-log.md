@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Repair dropdowns use the WorkOrders status set (waza-check)
+- **Scope**: 1 file + 1 test file, repair drawer/modal/column status options and badges
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (approve flow and summary cards untouched)
+- **Key findings**: repair dropdowns used their own 4-code set; WO codes now offered with legacy labels kept
+- **Strengths**: 40 files / 212 tests green; APPROVED retained so approved rows stay editable
+
 ## 2026-11-07 — Release v1.3.270 deployed (closing status + no stock deduct)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, a296cc9f
 - **Atoms**: clean-code, test-quality, waza-check

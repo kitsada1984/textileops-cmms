@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { RepairStatusRow, isFinishedRepairStatus } from './repairStatusRow.jsx'
+import { WORK_ORDER_STATUS_OPTIONS } from './workOrderNormalize.js'
 import { Wrench, RefreshCw, ArrowUpRight, Pencil, Trash2, Plus, QrCode, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import useEntity from '../../hooks/useEntity'
@@ -44,9 +45,13 @@ const EMPTY = {
   repair_details: '', parts_used: '', completed_by: '', completed_at: '',
 }
 
-// Form/dropdown options: the 4 summary statuses plus APPROVED, which
-// exists in live data (approval flow) but has no summary card.
-const REPAIR_STATUS_OPTIONS = [...REPAIR_STATUS, { value: 'APPROVED', label: 'อนุมัติแล้ว' }]
+// Dropdown options shared with WorkOrders (same 7 statuses) plus APPROVED,
+// which exists in live data (approval flow) but has no summary card.
+// Dropping APPROVED would leave approved rows with a blank select.
+const REPAIR_STATUS_OPTIONS = [
+  ...WORK_ORDER_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+  { value: 'APPROVED', label: 'อนุมัติแล้ว' },
+]
 
 const STATUS_CFG = {
   PENDING:     { bg:'rgba(251,191,36,0.12)',  border:'rgba(251,191,36,0.35)',  color:'#f59e0b', dot:'#f59e0b'  },
@@ -54,6 +59,11 @@ const STATUS_CFG = {
   WAIT_PARTS:  { bg:'rgba(168,85,247,0.12)',  border:'rgba(168,85,247,0.35)',  color:'#a855f7', dot:'#a855f7'  },
   COMPLETED:   { bg:'rgba(16,185,129,0.12)',  border:'rgba(16,185,129,0.35)',  color:'#10b981', dot:'#10b981'  },
   APPROVED:    { bg:'rgba(99,102,241,0.12)',  border:'rgba(99,102,241,0.35)',  color:'#6366f1', dot:'#6366f1'  },
+  WAITING_TECH:    { bg:'rgba(249,115,22,0.12)',  border:'rgba(249,115,22,0.35)',  color:'#f97316', dot:'#f97316'  },
+  WAITING_PARTS:   { bg:'rgba(168,85,247,0.12)',  border:'rgba(168,85,247,0.35)',  color:'#a855f7', dot:'#a855f7'  },
+  WAITING_SUMMARY: { bg:'rgba(59,130,246,0.12)',  border:'rgba(59,130,246,0.35)',  color:'#3b82f6', dot:'#3b82f6'  },
+  WAITING_DYE_TEST:{ bg:'rgba(20,184,166,0.12)',  border:'rgba(20,184,166,0.35)',  color:'#14b8a6', dot:'#14b8a6'  },
+  CANCELLED:   { bg:'rgba(100,116,139,0.12)', border:'rgba(100,116,139,0.35)', color:'#64748b', dot:'#64748b'  },
 }
 
 function fmt(dt) {
@@ -277,7 +287,12 @@ export default function RepairRequests() {
     finally { setStatusSaving(false) }
   }
 
-  const STATUS_TH = Object.fromEntries(REPAIR_STATUS_OPTIONS.map(s => [s.value, s.label]))
+  // Legacy repair codes keep their Thai labels; WO labels win on shared
+  // codes (COMPLETED) so both menus speak one language.
+  const STATUS_TH = Object.fromEntries([
+    ...REPAIR_STATUS.map((s) => [s.value, s.label]),
+    ...REPAIR_STATUS_OPTIONS.map((s) => [s.value, s.label]),
+  ])
 
 
   const getRRFallbackCols = () => [
