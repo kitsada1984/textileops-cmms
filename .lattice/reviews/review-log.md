@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Full WO status set on repair close dropdown (waza-check)
+- **Scope**: 1 file + 1 test file, StepComplete closing-status select
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (repair still closes COMPLETED; WO carries chosen status)
+- **Key findings**: 2-option close dropdown did not match the requested 7-status list
+- **Strengths**: 6 files / 40 tests green; options sourced from shared WORK_ORDER_STATUS_OPTIONS
+
 ## 2026-11-07 — Release v1.3.271 deployed (shared repair status set)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, 3d19a071
 - **Atoms**: clean-code, test-quality, waza-check

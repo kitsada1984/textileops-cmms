@@ -72,8 +72,10 @@ describe('StepComplete characterization', () => {
 
     const select = await screen.findByTitle('สถานะหลังบันทึกปิดงาน')
     expect(select.value).toBe('COMPLETED')
-    const names = Array.from(select.querySelectorAll('option')).map((o) => o.textContent)
-    expect(names.join(' ')).toContain('รอเทส-ย้อม')
+    const names = Array.from(select.querySelectorAll('option')).map((o) => o.textContent).join(' ')
+    for (const label of ['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'รอเทส-ย้อม', 'เสร็จสิ้น', 'ยกเลิก']) {
+      expect(names).toContain(label)
+    }
   })
 
   it('syncs the work order as WAITING_DYE_TEST when the tech chooses it', async () => {

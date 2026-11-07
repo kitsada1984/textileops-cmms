@@ -21,6 +21,7 @@ import {
   calculateDuration,
 } from '../../api/entities'
 import { isItemInText, toggleItemInText } from '../../utils/textToggle'
+import { WORK_ORDER_STATUS_OPTIONS } from '../workorders/workOrderNormalize.js'
 import {
   CheckCircle,
   ChevronRight,
@@ -957,11 +958,14 @@ export function StepComplete({ request, onUpdated }) {
             title="สถานะหลังบันทึกปิดงาน"
             style={{ ...inputStyle, fontWeight: 700 }}
           >
-            <option value="COMPLETED">✅ เสร็จสมบูรณ์ — เครื่องพร้อมเดินงาน</option>
-            <option value="WAITING_DYE_TEST">🧪 รอเทส-ย้อม — รอเดินเครื่องทดสอบ</option>
+            {WORK_ORDER_STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.icon} {o.label}
+              </option>
+            ))}
           </select>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
-            ถ้าเครื่องยังเดินทดสอบไม่ได้ ให้เลือกรอเทส-ย้อม งานจะค้างในใบสั่งงานให้ติดตามต่อ
+            เลือกสถานะใบสั่งงานหลังปิดงาน ถ้าเครื่องยังเดินทดสอบไม่ได้ให้เลือกรอเทส-ย้อม งานจะค้างให้ติดตามต่อ
           </div>
         </div>
 
