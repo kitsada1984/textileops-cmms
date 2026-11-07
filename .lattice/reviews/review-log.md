@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.279 deployed (typeable spare-part remarks)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 75853b30
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (red-on-old confirmed, green on new)
+- **Key findings**: remark onChange discarded keystrokes by rebuilding from previous text
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.279
+
 ## 2026-11-07 — Fix untypeable spare-part remark input (waza-check)
 - **Scope**: 1 file + 1 test file, spare-part edit modal notes handler
 - **Atoms**: clean-code, test-quality
