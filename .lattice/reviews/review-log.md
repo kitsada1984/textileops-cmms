@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.274 deployed (drop unified tab)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, e9004797
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (workorders 40 files / 212 tests green)
+- **Key findings**: unified tab removed; scanned repairs surface via WO-RR rows in records
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.274
+
 ## 2026-11-07 — Remove unified tab, WO list already shows scanned repairs (waza-check)
 - **Scope**: 2 files edited + 2 files deleted, WorkOrders tabs
 - **Atoms**: clean-code, test-quality
