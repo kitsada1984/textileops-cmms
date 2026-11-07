@@ -27,20 +27,23 @@ const baseFilters = {
 
 describe('filterWorkOrderJobs', () => {
   it('hides deleted jobs by default and shows them when requested', () => {
-    expect(filterWorkOrderJobs(jobs, baseFilters).map((j) => j.id)).toEqual(['a'])
+    expect(filterWorkOrderJobs(jobs, baseFilters).map((j) => j.id)).toEqual(['a', 'c', 'd'])
     expect(
       filterWorkOrderJobs(jobs, { ...baseFilters, showDeleted: true }).map((j) => j.id)
-    ).toEqual([])
-    expect(
-      filterWorkOrderJobs(jobs, { ...baseFilters, showDeleted: true, showFinished: true }).map((j) => j.id)
     ).toEqual(['b'])
   })
 
-  it('hides completed and cancelled jobs by default and shows them when requested', () => {
-    expect(filterWorkOrderJobs(jobs, baseFilters).map((j) => j.id)).toEqual(['a'])
+  it('filters by an explicit pre-ticked pending selection', () => {
+    const pendingOnly = ['IN_PROGRESS', 'WAITING_TECH', 'WAITING_PARTS', 'WAITING_SUMMARY', 'WAITING_DYE_TEST']
     expect(
-      filterWorkOrderJobs(jobs, { ...baseFilters, showFinished: true }).map((j) => j.id)
-    ).toEqual(['a', 'c', 'd'])
+      filterWorkOrderJobs(jobs, { ...baseFilters, statusFilters: pendingOnly }).map((j) => j.id)
+    ).toEqual(['a'])
+    expect(
+      filterWorkOrderJobs(
+        [{ id: 'e', Job_ID: 'JOB-E', Status: 'WAITING_DYE_TEST', JobType: 'REPAIR', ProblemCause: 'คน' }],
+        { ...baseFilters, statusFilters: pendingOnly }
+      ).map((j) => j.id)
+    ).toEqual(['e'])
   })
 
   it('matches search text across job fields', () => {

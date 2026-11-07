@@ -15,6 +15,8 @@ import {
   buildCancelJobPayload,
   WO_FILTER_STORAGE_KEYS,
   extractInUseMachinesFromCylinders,
+  DEFAULT_ACTIVE_STATUS_FILTERS,
+  isDefaultStatusSelection,
 } from './WorkOrders.jsx'
 
 describe('WorkOrders utilities', () => {
@@ -129,9 +131,26 @@ describe('WorkOrders utilities', () => {
   })
 
   describe('getWorkOrderStatusMeta & matchesWorkOrderStatusFilter', () => {
-    it('defines all 6 status options including รอช่าง, รอสรุป, รออะไหล่, ยกเลิก', () => {
+    it('defines all 7 status options including รอเทส-ย้อม, รอช่าง, รอสรุป, รออะไหล่, ยกเลิก', () => {
       const labels = WORK_ORDER_STATUS_OPTIONS.map((o) => o.label)
-      expect(labels).toEqual(['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'เสร็จสิ้น', 'ยกเลิก'])
+      expect(labels).toEqual(['กำลังทำ', 'รอช่าง', 'รออะไหล่', 'รอสรุป', 'รอเทส-ย้อม', 'เสร็จสิ้น', 'ยกเลิก'])
+    })
+
+    it('normalizes the รอเทส-ย้อม status code and label', () => {
+      expect(getWorkOrderStatusMeta('WAITING_DYE_TEST').label).toBe('รอเทส-ย้อม')
+      expect(getWorkOrderStatusMeta('WAITING_DYE_TEST').isCompleted).toBe(false)
+      expect(getWorkOrderStatusMeta('WAITING_DYE_TEST').isCancelled).toBe(false)
+      expect(getWorkOrderStatusMeta('รอเทส-ย้อม').value).toBe('WAITING_DYE_TEST')
+      expect(matchesWorkOrderStatusFilter('WAITING_DYE_TEST', 'รอเทส-ย้อม')).toBe(true)
+    })
+
+    it('pre-ticks the 5 pending statuses by default, finished left out', () => {
+      expect(DEFAULT_ACTIVE_STATUS_FILTERS).toEqual([
+        'IN_PROGRESS', 'WAITING_TECH', 'WAITING_PARTS', 'WAITING_SUMMARY', 'WAITING_DYE_TEST',
+      ])
+      expect(isDefaultStatusSelection([...DEFAULT_ACTIVE_STATUS_FILTERS].reverse())).toBe(true)
+      expect(isDefaultStatusSelection([])).toBe(false)
+      expect(isDefaultStatusSelection([...DEFAULT_ACTIVE_STATUS_FILTERS, 'COMPLETED'])).toBe(false)
     })
 
     it('normalizes both English codes and Thai labels accurately', () => {

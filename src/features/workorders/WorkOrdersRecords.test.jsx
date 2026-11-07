@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { WorkOrdersRecords } from './WorkOrdersRecords'
+import { DEFAULT_ACTIVE_STATUS_FILTERS } from './workOrderNormalize.js'
 
 // Characterization: lock the records tab exactly as WorkOrders rendered it.
 // Mobile view renders WorkOrderCard rows (minimal fixture); desktop table
@@ -16,9 +17,8 @@ function renderTab(over = {}) {
       { value: 'PM', label: 'pm' }, { value: 'SETUP', label: 'setup' },
     ],
     search: '', setSearch: vi.fn(),
-    typeFilters: [], setTypeFilters: vi.fn(), statusFilters: [], setStatusFilters: vi.fn(),
+    typeFilters: [], setTypeFilters: vi.fn(), statusFilters: [...DEFAULT_ACTIVE_STATUS_FILTERS], setStatusFilters: vi.fn(),
     causeFilter: '', setCauseFilter: vi.fn(), showDeleted: false, setShowDeleted: vi.fn(),
-    showFinished: false, setShowFinished: vi.fn(),
     isTypeFilterOpen: true, isStatusFilterOpen: true, isCauseFilterOpen: true,
     toggleTypeFilterOpen: vi.fn(), toggleStatusFilterOpen: vi.fn(), toggleCauseFilterOpen: vi.fn(),
     toggleTypeFilter: vi.fn(), toggleStatusFilter: vi.fn(), toggleCauseFilter: vi.fn(),
@@ -51,20 +51,26 @@ describe('WorkOrdersRecords characterization', () => {
     expect(h.setReportModalOpen).toHaveBeenCalledWith(true)
   })
 
-  it('hides completed and cancelled statuses from the status filter', () => {
+  it('shows all 7 status options including รอเทส-ย้อม', () => {
     renderTab()
 
-    expect(screen.getByRole('button', { name: /กำลังทำ/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /รออะไหล่/ })).toBeInTheDocument()
-    expect(screen.queryByText('เสร็จสิ้น')).not.toBeInTheDocument()
-    expect(screen.queryByText('ยกเลิก')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /รอเทส-ย้อม/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /เสร็จสิ้น/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ยกเลิก/ })).toBeInTheDocument()
   })
 
-  it('toggles finished-work visibility and resets it with clear-all', () => {
+  it('ticking an unticked finished status toggles it on', () => {
     const h = renderTab()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /งานเสร็จ\/ยกเลิกแล้ว/ }))
-    expect(h.setShowFinished).toHaveBeenCalledWith(true)
+    fireEvent.click(screen.getByRole('button', { name: /เสร็จสิ้น/ }))
+    expect(h.toggleStatusFilter).toHaveBeenCalledWith('COMPLETED')
+  })
+
+  it('unticking a pre-ticked status toggles it off', () => {
+    const h = renderTab()
+
+    fireEvent.click(screen.getByRole('button', { name: /กำลังทำ/ }))
+    expect(h.toggleStatusFilter).toHaveBeenCalledWith('IN_PROGRESS')
   })
 
   it('shows the empty state when no jobs match', () => {

@@ -25,6 +25,7 @@ const MAP = {
   PENDING_APPROVAL: 'badge-yellow',
   APPROVED:         'badge-green',
   IN_PROGRESS:      'badge-orange',
+  WAITING_DYE_TEST:  'badge-teal',
   COMPLETED:        'badge-green',
   CLOSED:           'badge-gray',
   CANCELLED:        'badge-gray',

@@ -658,6 +658,7 @@ ${origin}`
                   else if (statusMeta.value === 'WAITING_TECH') statusBg = 'bg-orange-50 text-orange-800 border-orange-300'
                   else if (statusMeta.value === 'WAITING_PARTS') statusBg = 'bg-purple-50 text-purple-800 border-purple-300'
                   else if (statusMeta.value === 'WAITING_SUMMARY') statusBg = 'bg-blue-50 text-blue-800 border-blue-300'
+                  else if (statusMeta.value === 'WAITING_DYE_TEST') statusBg = 'bg-teal-50 text-teal-800 border-teal-300'
 
                   // Job type label
                   const typeLabel =

@@ -32,6 +32,14 @@ export const WORK_ORDER_STATUS_OPTIONS = [
     activeClass: 'bg-blue-600 text-white border-blue-600 shadow-xs',
   },
   {
+    value: 'WAITING_DYE_TEST',
+    label: 'รอเทส-ย้อม',
+    fullLabel: '🧪 รอเทส-ย้อม (Waiting Dye Test)',
+    icon: '🧪',
+    badgeClass: 'badge-teal',
+    activeClass: 'bg-teal-600 text-white border-teal-600 shadow-xs',
+  },
+  {
     value: 'COMPLETED',
     label: 'เสร็จสิ้น',
     fullLabel: '🟢 เสร็จสิ้น (Completed)',
@@ -50,18 +58,20 @@ export const WORK_ORDER_STATUS_OPTIONS = [
   },
 ]
 
-const HIDDEN_FILTER_STATUSES = ['COMPLETED', 'CANCELLED']
+const FINISHED_STATUSES = ['COMPLETED', 'CANCELLED']
 
-export const WORK_ORDER_FILTER_STATUS_OPTIONS = WORK_ORDER_STATUS_OPTIONS.filter(
-  (opt) => !HIDDEN_FILTER_STATUSES.includes(opt.value)
-)
+// Default status filter: the 5 pending-work options pre-ticked on open,
+// finished / cancelled left unticked. Derived (not hardcoded) so a future
+// active status joins the default automatically.
+export const DEFAULT_ACTIVE_STATUS_FILTERS = WORK_ORDER_STATUS_OPTIONS.filter(
+  (opt) => !FINISHED_STATUSES.includes(opt.value)
+).map((opt) => opt.value)
 
-// True for terminal statuses (completed / cancelled) hidden by the default
-// "pending work only" view. Centralizes the rule so the job filter,
-// counts, and any future caller share one definition.
-export function isFinishedWorkOrderStatus(status) {
-  const meta = getWorkOrderStatusMeta(status)
-  return Boolean(meta.isCompleted || meta.isCancelled)
+// True when the selection equals the default (order-insensitive).
+export function isDefaultStatusSelection(statusFilters) {
+  if (!Array.isArray(statusFilters)) return true
+  if (statusFilters.length !== DEFAULT_ACTIVE_STATUS_FILTERS.length) return false
+  return DEFAULT_ACTIVE_STATUS_FILTERS.every((v) => statusFilters.includes(v))
 }
 
 export function getWorkOrderStatusMeta(status) {
@@ -69,10 +79,10 @@ export function getWorkOrderStatusMeta(status) {
   const upper = raw.toUpperCase()
 
   if (upper === 'CANCELLED' || raw === 'ยกเลิก') {
-    return { ...WORK_ORDER_STATUS_OPTIONS[5], isCompleted: false, isCancelled: true }
+    return { ...WORK_ORDER_STATUS_OPTIONS[6], isCompleted: false, isCancelled: true }
   }
   if (upper === 'COMPLETED' || raw === 'เสร็จสิ้น') {
-    return { ...WORK_ORDER_STATUS_OPTIONS[4], isCompleted: true, isCancelled: false }
+    return { ...WORK_ORDER_STATUS_OPTIONS[5], isCompleted: true, isCancelled: false }
   }
   if (upper === 'WAITING_TECH' || raw === 'รอช่าง') {
     return { ...WORK_ORDER_STATUS_OPTIONS[1], isCompleted: false, isCancelled: false }
@@ -82,6 +92,9 @@ export function getWorkOrderStatusMeta(status) {
   }
   if (upper === 'WAITING_SUMMARY' || raw === 'รอสรุป') {
     return { ...WORK_ORDER_STATUS_OPTIONS[3], isCompleted: false, isCancelled: false }
+  }
+  if (upper === 'WAITING_DYE_TEST' || raw === 'รอเทส-ย้อม' || raw === 'รอเทสย้อม') {
+    return { ...WORK_ORDER_STATUS_OPTIONS[4], isCompleted: false, isCancelled: false }
   }
   return { ...WORK_ORDER_STATUS_OPTIONS[0], isCompleted: false, isCancelled: false }
 }

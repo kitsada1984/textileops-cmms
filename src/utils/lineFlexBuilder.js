@@ -933,6 +933,7 @@ export function buildWorkOrderAssignedFlexMessage(job = {}, assignedTechs = [], 
     IN_PROGRESS: { text: '🔵 กำลังทำ', color: '#38bdf8' },
     WAITING_TECH: { text: '🟠 รอช่าง', color: '#f97316' },
     WAITING_SUMMARY: { text: '🟣 รอสรุป', color: '#a855f7' },
+    WAITING_DYE_TEST: { text: '🧪 รอเทส-ย้อม', color: '#14b8a6' },
     WAITING_PARTS: { text: '🟡 รออะไหล่', color: '#eab308' },
     COMPLETED: { text: '🟢 เสร็จสิ้น', color: '#10b981' },
   }

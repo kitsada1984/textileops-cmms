@@ -100,6 +100,8 @@ describe('Dashboard - isPendingWorkOrder (Filter out COMPLETED and CANCELLED)', 
     expect(isPendingWorkOrder({ Status: 'WAITING_TECH' })).toBe(true)
     expect(isPendingWorkOrder({ Status: 'WAITING_PARTS' })).toBe(true)
     expect(isPendingWorkOrder({ Status: 'WAITING_SUMMARY' })).toBe(true)
+    expect(isPendingWorkOrder({ Status: 'WAITING_DYE_TEST' })).toBe(true)
+    expect(isPendingWorkOrder({ Status: 'รอเทส-ย้อม' })).toBe(true)
     expect(isPendingWorkOrder({ Status: 'OVERDUE' })).toBe(true)
     expect(isPendingWorkOrder({ Status: 'กำลังทำ' })).toBe(true)
   })

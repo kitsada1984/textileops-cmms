@@ -54,7 +54,7 @@ export function DashboardWorkOrders({ stats, t, setSelectedWO, getWorkOrderDetai
                     </span>
                   </td>
                   <td className="py-2.5 px-3 whitespace-nowrap">
-                    <span className={`badge ${wo.Status==='COMPLETED'?'badge-green':wo.Status==='IN_PROGRESS'?'badge-orange':wo.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
+                    <span className={`badge ${wo.Status==='COMPLETED'?'badge-green':wo.Status==='IN_PROGRESS'?'badge-orange':wo.Status==='OPEN'?'badge-blue':wo.Status==='WAITING_DYE_TEST'?'badge-teal':'badge-gray'}`}>
                       {wo.Status==='COMPLETED'?'เสร็จสิ้น':wo.Status==='IN_PROGRESS'?'กำลังทำ':(statusLabel(wo.Status) || wo.Status)}
                     </span>
                   </td>

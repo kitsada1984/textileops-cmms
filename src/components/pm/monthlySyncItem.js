@@ -112,7 +112,7 @@ export function mapSyncWoStatus(wo) {
   // If completed: 'COMPLETED'
   // If cancelled: 'CANCELLED'
   // If explicitly scheduled: 'SCHEDULED'
-  // Any active/open state (OPEN, IN_PROGRESS, WAITING_TECH, WAITING_PARTS, WAITING_SUMMARY, ASSIGNED, etc.): 'IN_PROGRESS'
+  // Any active/open state (OPEN, IN_PROGRESS, WAITING_TECH, WAITING_PARTS, WAITING_SUMMARY, WAITING_DYE_TEST, ASSIGNED, etc.): 'IN_PROGRESS'
   const isCompleted = ['COMPLETED', 'เสร็จสิ้น', 'DONE', 'CLOSED'].includes(woStatus)
   const isCancelled = ['CANCELLED', 'CANCELED', 'ยกเลิก'].includes(woStatus)
   const isScheduled = ['SCHEDULED', 'ตามแผน', 'PLANNED'].includes(woStatus)

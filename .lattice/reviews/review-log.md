@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Pre-ticked pending filter + new WAITING_DYE_TEST status (waza-check)
+- **Scope**: 10 files + 4 test files, WO status pipeline, badges, report, LINE flex, PM sync comment
+- **Atoms**: clean-code, test-quality
+- **Result**: 0 critical, 0 warning, 0 suggestion (repair list keeps its finished toggle)
+- **Key findings**: new option needed meta/count/badge/LINE/report coverage; index-based meta updated for shift
+- **Strengths**: 42 files / 230 tests + 5 files / 37 tests green; defaults derived, not hardcoded
+
 ## 2026-11-07 — Release v1.3.267 deployed (auto-hide finished work)
 - **Scope**: Wrangler Pages deploy to textileops-cmms, d924bc2b
 - **Atoms**: clean-code, test-quality, waza-check

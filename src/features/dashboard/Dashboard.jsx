@@ -275,7 +275,7 @@ export default function Dashboard() {
           iconColor="#3b82f6"
           accentColor="#3b82f6"
           badge={
-            <span className={`badge ${selectedWO.Status==='COMPLETED'?'badge-green':selectedWO.Status==='IN_PROGRESS'?'badge-orange':selectedWO.Status==='OPEN'?'badge-blue':'badge-gray'}`}>
+            <span className={`badge ${selectedWO.Status==='COMPLETED'?'badge-green':selectedWO.Status==='IN_PROGRESS'?'badge-orange':selectedWO.Status==='OPEN'?'badge-blue':selectedWO.Status==='WAITING_DYE_TEST'?'badge-teal':'badge-gray'}`}>
               {selectedWO.Status==='COMPLETED'?'เสร็จสิ้น':selectedWO.Status==='IN_PROGRESS'?'กำลังทำ':(statusLabel(selectedWO.Status) || selectedWO.Status)}
             </span>
           }

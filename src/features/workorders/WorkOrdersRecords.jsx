@@ -1,17 +1,15 @@
 import { Check, ChevronDown, ChevronUp, ClipboardList, Clock, PieChart, Plus, Printer, RotateCcw, Tag, X } from 'lucide-react'
 import SearchInput from '../../components/ui/SearchInput'
-import { WORK_ORDER_FILTER_STATUS_OPTIONS, WORK_ORDER_STATUS_OPTIONS, getWorkOrderStatusMeta, getWorkOrderDetails, getJobDailyLogs, getLatestDailyLog } from './workOrderNormalize.js'
+import { WORK_ORDER_STATUS_OPTIONS, DEFAULT_ACTIVE_STATUS_FILTERS, isDefaultStatusSelection, getWorkOrderStatusMeta, getWorkOrderDetails, getJobDailyLogs, getLatestDailyLog } from './workOrderNormalize.js'
 import { calculateSlaPerformance } from '../../api/entities'
 import { getProblemCauseMeta } from '../../constants/problemCause'
 import { WorkOrderCard } from './WorkOrderCard.jsx'
 import { WorkOrderJobTypeBadge, WorkOrderProblemCell, WorkOrderDetailsCell, WorkOrderStatusCell, WorkOrderDurationCell, WorkOrderRowActions } from './workOrderRowCells.jsx'
 
 // Records tab content moved verbatim from WorkOrders (props only).
-export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeCounts, statusCounts, causeCounts, WORK_ORDER_TYPE_OPTIONS, search, setSearch, typeFilters, setTypeFilters, statusFilters, setStatusFilters, causeFilter, setCauseFilter, showDeleted, setShowDeleted, showFinished, setShowFinished, isTypeFilterOpen, isStatusFilterOpen, isCauseFilterOpen, toggleTypeFilterOpen, toggleStatusFilterOpen, toggleCauseFilterOpen, toggleTypeFilter, toggleStatusFilter, toggleCauseFilter, canAdd, canEdit, canDelete, isMobile, isTablet, isDesktop, openEditModal, openCompleteModal, openDailyLogModal, openInterruptionModal, openPrintModal, handleDeleteJob, handleQuickStatusChange, setCreateModalOpen, setReportModalOpen }) {
-  // "ทั้งหมด" badge counts only listed jobs: finished work is hidden by default.
-  const allStatusBadge = showFinished
-    ? statusCounts.ALL
-    : WORK_ORDER_FILTER_STATUS_OPTIONS.reduce((n, o) => n + (statusCounts[o.value] || 0), 0)
+export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeCounts, statusCounts, causeCounts, WORK_ORDER_TYPE_OPTIONS, search, setSearch, typeFilters, setTypeFilters, statusFilters, setStatusFilters, causeFilter, setCauseFilter, showDeleted, setShowDeleted, isTypeFilterOpen, isStatusFilterOpen, isCauseFilterOpen, toggleTypeFilterOpen, toggleStatusFilterOpen, toggleCauseFilterOpen, toggleTypeFilter, toggleStatusFilter, toggleCauseFilter, canAdd, canEdit, canDelete, isMobile, isTablet, isDesktop, openEditModal, openCompleteModal, openDailyLogModal, openInterruptionModal, openPrintModal, handleDeleteJob, handleQuickStatusChange, setCreateModalOpen, setReportModalOpen }) {
+  // Reset-all returns the status filter to its pre-ticked default.
+  const statusIsDefault = isDefaultStatusSelection(statusFilters)
   return (
         <div className="space-y-6">
           {/* Search & Filter Toolbar */}
@@ -53,15 +51,14 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                   </span>
                 </button>
 
-                {(typeFilters.length > 0 || statusFilters.length > 0 || Boolean(causeFilter) || search.trim() || showFinished) && (
+                {(typeFilters.length > 0 || !statusIsDefault || Boolean(causeFilter) || search.trim()) && (
                   <button
                     type="button"
                     onClick={() => {
                       setTypeFilters([])
-                      setStatusFilters([])
+                      setStatusFilters(DEFAULT_ACTIVE_STATUS_FILTERS)
                       setCauseFilter('')
                       setSearch('')
-                      setShowFinished(false)
                     }}
                     className="inline-flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors font-bold text-xs flex-shrink-0 cursor-pointer"
                     title="ล้างตัวกรองทั้งหมดกลับเป็นค่าเริ่มต้น"
@@ -79,16 +76,6 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                     className="rounded text-blue-600 focus:ring-0"
                   />
                   <span>รายการที่ลบ</span>
-                </label>
-
-                <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 cursor-pointer select-none px-2.5 py-1.5 min-h-[44px] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium flex-shrink-0" title="ค่าเริ่มต้นซ่อนงานเสร็จสิ้น/ยกเลิก เห็นเฉพาะงานค้าง">
-                  <input
-                    type="checkbox"
-                    checked={showFinished}
-                    onChange={(e) => setShowFinished(e.target.checked)}
-                    className="rounded text-blue-600 focus:ring-0"
-                  />
-                  <span>งานเสร็จ/ยกเลิกแล้ว</span>
                 </label>
               </div>
             </div>
@@ -206,7 +193,7 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                       <span>สถานะงาน (Job Status)</span>
                     </div>
 
-                    {statusFilters.length > 0 && (
+                    {!statusIsDefault && (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-in fade-in">
                         เลือกแล้ว {statusFilters.length} สถานะ
                       </span>
@@ -217,10 +204,10 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                     </div>
                   </button>
 
-                  {statusFilters.length > 0 && (
+                  {!statusIsDefault && (
                     <button
                       type="button"
-                      onClick={() => setStatusFilters([])}
+                      onClick={() => setStatusFilters(DEFAULT_ACTIVE_STATUS_FILTERS)}
                       className="text-[11px] font-medium text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
                       title="ล้างตัวกรองสถานะทั้งหมด"
                     >
@@ -250,12 +237,12 @@ export function WorkOrdersRecords({ filteredJobs, jobsLoading, kpiTargets, typeC
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}
                       >
-                        {allStatusBadge}
+                        {statusCounts.ALL}
                       </span>
                     </button>
 
                     {/* Individual Status Cards */}
-                    {WORK_ORDER_FILTER_STATUS_OPTIONS.map((opt) => {
+                    {WORK_ORDER_STATUS_OPTIONS.map((opt) => {
                       const isSelected = statusFilters.includes(opt.value)
                       const count = statusCounts[opt.value] || 0
                       return (
