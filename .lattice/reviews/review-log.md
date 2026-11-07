@@ -1,5 +1,12 @@
 # Review Log
 
+## 2026-11-07 — Release v1.3.271 deployed (shared repair status set)
+- **Scope**: Wrangler Pages deploy to textileops-cmms, 3d19a071
+- **Atoms**: clean-code, test-quality, waza-check
+- **Result**: 0 critical, 0 warning, 0 suggestion (workorders 40 files / 212 tests green)
+- **Key findings**: repair dropdowns now share the 7 WorkOrders statuses; legacy labels kept
+- **Strengths**: fix and release commits separated; live sw.js = v1.3.271
+
 ## 2026-11-07 — Repair dropdowns use the WorkOrders status set (waza-check)
 - **Scope**: 1 file + 1 test file, repair drawer/modal/column status options and badges
 - **Atoms**: clean-code, test-quality
